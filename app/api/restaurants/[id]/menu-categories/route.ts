@@ -1,0 +1,47 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const supabase = await createClient()
+    const restaurantId = parseInt(params.id)
+    
+    // Get courses
+    const { data: courses, error: coursesError } = await supabase
+      .from('courses')
+      .select('id, name, description, display_order, is_active')
+      .eq('restaurant_id', restaurantId)
+      .order('display_order', { ascending: true })
+    
+    if (coursesError) throw coursesError
+    
+    // Get dish counts in a single query with GROUP BY
+    const { data: dishCounts, error: countError } = await supabase
+      .from('dishes')
+      .select('course_id')
+      .eq('restaurant_id', restaurantId)
+    
+    if (countError) throw countError
+    
+    // Build count map
+    const countMap = new Map<number, number>()
+    dishCounts?.forEach((dish) => {
+      if (dish.course_id) {
+        countMap.set(dish.course_id, (countMap.get(dish.course_id) || 0) + 1)
+      }
+    })
+    
+    // Merge counts with courses
+    const coursesWithCounts = (courses || []).map((course) => ({
+      ...course,
+      dish_count: countMap.get(course.id) || 0
+    }))
+    
+    return NextResponse.json(coursesWithCounts)
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message || 'Failed to fetch menu categories' }, { status: 500 })
+  }
+}
