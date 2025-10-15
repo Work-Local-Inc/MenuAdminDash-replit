@@ -71,11 +71,41 @@ COMMENT ON COLUMN restaurants.font_family IS 'Brand font family name';
 
 ---
 
+## 3. Restaurant SEO Table
+
+**File**: `restaurant_seo.sql`
+
+```sql
+-- Create restaurant_seo table
+CREATE TABLE IF NOT EXISTS restaurant_seo (
+  id SERIAL PRIMARY KEY,
+  restaurant_id INTEGER NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE UNIQUE,
+  meta_title VARCHAR(60),
+  meta_description VARCHAR(160),
+  og_title VARCHAR(60),
+  og_description VARCHAR(160),
+  og_image_url TEXT,
+  include_in_sitemap BOOLEAN DEFAULT true,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create index for faster lookups
+CREATE INDEX IF NOT EXISTS idx_restaurant_seo_restaurant_id ON restaurant_seo(restaurant_id);
+
+-- Add comment
+COMMENT ON TABLE restaurant_seo IS 'SEO metadata and Open Graph tags for restaurant pages';
+```
+
+**Status**: ⚠️ Required for SEO tab to function
+
+---
+
 ## Migration Status Checklist
 
 - [ ] restaurant_integrations - Required for Integrations tab
 - [ ] add_restaurant_branding_columns - Required for Branding tab
-- [ ] restaurant_seo - Required for SEO tab (coming soon)
+- [ ] restaurant_seo - Required for SEO tab
 - [ ] restaurant_custom_css - Required for Custom CSS tab (coming soon)
 
 ---
