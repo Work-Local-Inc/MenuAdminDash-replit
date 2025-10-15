@@ -43,9 +43,38 @@ COMMENT ON TABLE restaurant_integrations IS 'Third-party integrations for restau
 
 ---
 
+## 2. Restaurant Branding Columns
+
+**File**: `add_restaurant_branding_columns.sql`
+
+```sql
+-- Add branding columns to restaurants table
+ALTER TABLE restaurants 
+  ADD COLUMN IF NOT EXISTS logo_url TEXT,
+  ADD COLUMN IF NOT EXISTS primary_color VARCHAR(7) DEFAULT '#000000',
+  ADD COLUMN IF NOT EXISTS secondary_color VARCHAR(7) DEFAULT '#666666',
+  ADD COLUMN IF NOT EXISTS font_family VARCHAR(100) DEFAULT 'Inter';
+
+-- Add comment
+COMMENT ON COLUMN restaurants.logo_url IS 'URL to restaurant logo image in Supabase Storage';
+COMMENT ON COLUMN restaurants.primary_color IS 'Primary brand color (hex format)';
+COMMENT ON COLUMN restaurants.secondary_color IS 'Secondary brand color (hex format)';
+COMMENT ON COLUMN restaurants.font_family IS 'Brand font family name';
+```
+
+**Status**: ⚠️ Required for Branding tab to function
+
+**Note**: You also need to create the `restaurant-logos` storage bucket in Supabase:
+1. Go to Storage in Supabase Dashboard
+2. Create new bucket named `restaurant-logos`
+3. Set it to Public
+
+---
+
 ## Migration Status Checklist
 
 - [ ] restaurant_integrations - Required for Integrations tab
+- [ ] add_restaurant_branding_columns - Required for Branding tab
 - [ ] restaurant_seo - Required for SEO tab (coming soon)
 - [ ] restaurant_custom_css - Required for Custom CSS tab (coming soon)
 

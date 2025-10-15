@@ -8,6 +8,11 @@ export const restaurantUpdateSchema = z.object({
   address: z.string().optional(),
   phone: z.string().optional(),
   email: z.string().email().optional(),
+  // Branding fields
+  logo_url: z.string().url().nullable().optional(),
+  primary_color: z.string().regex(/^#[0-9A-F]{6}$/i).nullable().optional(),
+  secondary_color: z.string().regex(/^#[0-9A-F]{6}$/i).nullable().optional(),
+  font_family: z.string().nullable().optional(),
 }).strict()
 
 export const restaurantCreateSchema = z.object({
