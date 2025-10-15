@@ -36,8 +36,8 @@ export default function LoginPage() {
         description: "Logged in successfully",
       })
 
-      router.push('/admin/dashboard')
-      router.refresh()
+      // Use window.location for reliable redirect after auth
+      window.location.href = '/admin/dashboard'
     } catch (error: any) {
       toast({
         variant: "destructive",
