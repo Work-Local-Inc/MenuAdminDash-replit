@@ -12,10 +12,14 @@ export const queryClient = new QueryClient({
 
 // API request helper for mutations
 export async function apiRequest(url: string, options?: RequestInit) {
+  // Detect FormData and let browser set Content-Type with multipart boundary
+  const isFormData = options?.body instanceof FormData
+  
   const response = await fetch(url, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
+      // Only set JSON Content-Type for non-FormData requests
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       ...options?.headers,
     },
   })
