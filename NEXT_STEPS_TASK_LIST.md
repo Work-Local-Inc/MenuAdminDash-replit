@@ -49,7 +49,220 @@
 
 ---
 
-## 🔥 CRITICAL TASKS (Must Do First)
+## 🛒 NEW: CUSTOMER ORDERING SYSTEM (PHASES 5-9)
+
+**GOAL:** Add customer-facing ordering system to the same Next.js app
+- **Admin Dashboard:** Stays at `/admin/*`
+- **Customer App:** Root `/` and `/r/[restaurant-slug]`
+- **Database:** Same `menuca_v3` schema (existing + 8 new tables)
+- **Reference:** `/CUSTOMER_ORDERING_APP_BUILD_PLAN.md`
+
+---
+
+### PHASE 5: Database Setup for Customer Ordering ⏳
+**Priority:** CRITICAL  
+**Estimated Time:** 3 hours  
+**Dependencies:** None  
+**Current Status:** ⏳ STARTING NOW
+
+#### New Tables to Create:
+- [ ] 5.1 - `cart_sessions` table (temporary cart storage)
+- [ ] 5.2 - `user_delivery_addresses` table (saved addresses)
+- [ ] 5.3 - `user_payment_methods` table (Stripe payment methods)
+- [ ] 5.4 - `payment_transactions` table (payment tracking)
+- [ ] 5.5 - `order_status_history` table (order tracking)
+- [ ] 5.6 - `stripe_webhook_events` table (webhook idempotency)
+- [ ] 5.7 - `user_favorite_dishes` table (customer favorites)
+- [ ] 5.8 - `restaurant_reviews` table (ratings/reviews)
+
+#### Update Existing Tables:
+- [ ] 5.9 - Add `stripe_customer_id` to `users` table
+- [ ] 5.10 - Add payment fields to `orders` table (stripe_payment_intent_id, payment_status, delivery_address)
+
+**Acceptance Criteria:**
+- All 8 new tables created successfully
+- Existing tables updated with new columns
+- Indexes and foreign keys properly configured
+
+---
+
+### PHASE 6: Restaurant Menu Page `/r/[slug]` ⏳
+**Priority:** CRITICAL  
+**Estimated Time:** 2 days  
+**Dependencies:** Phase 5 (database setup)  
+**Current Status:** ⏳ IN PROGRESS
+
+#### Subtasks:
+- [ ] 6.1 - Create `/r/[slug]` route with restaurant data fetching
+- [ ] 6.2 - Build restaurant header component (logo, name, rating, hours)
+- [ ] 6.3 - Implement menu category navigation (sticky sidebar)
+- [ ] 6.4 - Create dish card component (image, name, price, description)
+- [ ] 6.5 - Build dish detail modal (modifiers, combos, special instructions)
+- [ ] 6.6 - Implement "Add to Cart" functionality with Zustand
+- [ ] 6.7 - Create floating cart button (shows item count)
+- [ ] 6.8 - Build cart drawer/sheet component
+- [ ] 6.9 - Add quantity controls and item removal
+- [ ] 6.10 - Implement cart persistence (localStorage + API)
+- [ ] 6.11 - Add restaurant hours validation (closed/open)
+- [ ] 6.12 - Test menu browsing and cart operations
+
+**API Endpoints to Build:**
+- `GET /api/restaurants/[slug]` - Get restaurant details
+- `GET /api/restaurants/[slug]/menu` - Get full menu with categories
+- `POST /api/cart` - Save cart session
+- `GET /api/cart/[sessionId]` - Retrieve cart
+
+**Components to Create:**
+- `app/(public)/r/[slug]/page.tsx`
+- `components/restaurant/restaurant-header.tsx`
+- `components/restaurant/menu-category-nav.tsx`
+- `components/restaurant/dish-card.tsx`
+- `components/restaurant/dish-modal.tsx`
+- `components/cart/cart-drawer.tsx`
+- `components/cart/cart-item.tsx`
+- `components/cart/mini-cart-button.tsx`
+- `lib/stores/cart-store.ts` (Zustand)
+
+**Acceptance Criteria:**
+- Can browse restaurant menu by categories
+- Can view dish details with modifiers
+- Can add items to cart with customizations
+- Cart persists across page refreshes
+- Cart shows accurate totals
+- Mobile-responsive design
+
+---
+
+### PHASE 7: Homepage & Restaurant Search 📍
+**Priority:** HIGH  
+**Estimated Time:** 2 days  
+**Dependencies:** Phase 6 (menu page)  
+**Current Status:** ❌ Not started
+
+#### Subtasks:
+- [ ] 7.1 - Create `/` homepage route
+- [ ] 7.2 - Build hero section with location search
+- [ ] 7.3 - Implement Mapbox address autocomplete
+- [ ] 7.4 - Create restaurant grid/list view
+- [ ] 7.5 - Add filters (cuisine, delivery fee, rating, etc.)
+- [ ] 7.6 - Build restaurant card component
+- [ ] 7.7 - Implement search functionality
+- [ ] 7.8 - Add "Featured Restaurants" section
+- [ ] 7.9 - Create customer navbar (with cart icon)
+- [ ] 7.10 - Test search and filtering
+
+**API Endpoints:**
+- `GET /api/restaurants` - List restaurants (with filters)
+- `POST /api/restaurants/search` - Search by location
+
+**Components:**
+- `app/(public)/page.tsx`
+- `components/homepage/hero-section.tsx`
+- `components/homepage/location-search.tsx`
+- `components/homepage/restaurant-grid.tsx`
+- `components/restaurant/restaurant-card.tsx`
+- `components/layout/customer-navbar.tsx`
+
+**Acceptance Criteria:**
+- Can search restaurants by address
+- Filters work correctly
+- Restaurant cards link to menu pages
+- Mobile-responsive design
+- Fast performance (<2s load)
+
+---
+
+### PHASE 8: Checkout & Payment 💳
+**Priority:** HIGH  
+**Estimated Time:** 3 days  
+**Dependencies:** Phase 6 (cart), Stripe integration  
+**Current Status:** ❌ Not started
+
+#### Subtasks:
+- [ ] 8.1 - Install and configure Stripe
+- [ ] 8.2 - Create `/checkout` route
+- [ ] 8.3 - Build delivery type selector (delivery vs pickup)
+- [ ] 8.4 - Create address selector/form component
+- [ ] 8.5 - Implement Stripe Payment Element
+- [ ] 8.6 - Add tip selection component
+- [ ] 8.7 - Build order summary component
+- [ ] 8.8 - Create coupon code input
+- [ ] 8.9 - Implement order creation API
+- [ ] 8.10 - Handle Stripe Payment Intent
+- [ ] 8.11 - Create order confirmation page `/order-confirmation/[id]`
+- [ ] 8.12 - Build Stripe webhook handler
+- [ ] 8.13 - Test full checkout flow
+
+**API Endpoints:**
+- `POST /api/checkout/create-payment-intent`
+- `POST /api/checkout/confirm-order`
+- `POST /api/stripe/webhook`
+- `POST /api/cart/apply-coupon`
+
+**Components:**
+- `app/(public)/checkout/page.tsx`
+- `app/(public)/order-confirmation/[id]/page.tsx`
+- `components/checkout/delivery-type-selector.tsx`
+- `components/checkout/address-form.tsx`
+- `components/checkout/payment-element.tsx`
+- `components/checkout/order-summary.tsx`
+- `components/checkout/tip-selector.tsx`
+
+**Acceptance Criteria:**
+- Can select delivery/pickup
+- Address validation works
+- Stripe payment processes successfully
+- Coupons apply correctly
+- Order confirmation displays
+- Webhooks handle payment events
+
+---
+
+### PHASE 9: Customer Account Pages 👤
+**Priority:** MEDIUM  
+**Estimated Time:** 2 days  
+**Dependencies:** Phase 8 (orders created)  
+**Current Status:** ❌ Not started
+
+#### Subtasks:
+- [ ] 9.1 - Create customer authentication (signup/login)
+- [ ] 9.2 - Build `/account/orders` - Order history page
+- [ ] 9.3 - Create `/account/orders/[id]` - Order detail page
+- [ ] 9.4 - Build `/account/addresses` - Saved addresses
+- [ ] 9.5 - Create `/account/payments` - Saved cards
+- [ ] 9.6 - Build `/account/favorites` - Favorite dishes
+- [ ] 9.7 - Add real-time order tracking
+- [ ] 9.8 - Implement order reordering
+- [ ] 9.9 - Test account features
+
+**API Endpoints:**
+- `POST /api/auth/signup`
+- `POST /api/auth/login`
+- `GET /api/account/orders`
+- `GET /api/account/orders/[id]`
+- `GET /api/addresses`
+- `POST /api/addresses`
+
+**Components:**
+- `app/(customer)/account/orders/page.tsx`
+- `app/(customer)/account/orders/[id]/page.tsx`
+- `app/(customer)/account/addresses/page.tsx`
+- `app/(customer)/account/payments/page.tsx`
+- `app/(customer)/account/favorites/page.tsx`
+- `components/account/order-card.tsx`
+- `components/account/order-tracking.tsx`
+
+**Acceptance Criteria:**
+- Customers can sign up/login
+- Can view order history
+- Real-time order tracking works
+- Can save addresses and payment methods
+- Can reorder past orders
+- Mobile-responsive
+
+---
+
+## 🔥 CRITICAL TASKS (Admin Dashboard - Must Do First)
 
 ### TASK 1: Database Setup
 **Priority:** CRITICAL  
@@ -658,25 +871,26 @@
 
 ## 📊 SUMMARY
 
-**Total Tasks:** 18  
-**✅ COMPLETED:** 4 major phases + 2 tasks (Phases 1-4, Tasks 3-4)
-**Critical Remaining:** 2 (Tasks 1-2)  
-**High Priority:** 4 (Tasks 5-8)  
-**Medium Priority:** 4 (Tasks 9-12)  
-**Low Priority:** 4 (Tasks 13-16)  
-**Polish:** 2 (Tasks 17-18)
+**Total Work:** 23 Phases + Tasks  
+**✅ COMPLETED:** 4 phases (Admin: Phases 1-4)  
+**⏳ IN PROGRESS:** Phase 6 (Restaurant Menu Page)  
+**🛒 CUSTOMER ORDERING:** 5 new phases (5-9)  
+**🔧 ADMIN TASKS:** 18 remaining tasks (1-18)
 
-**Estimated Total Time:** 8-10 weeks  
-**Time Spent:** ~2-3 weeks (Phases 1-4 complete)
+**Estimated Total Time:** 12-14 weeks  
+**Time Spent:** ~2-3 weeks (Admin Phases 1-4 complete)
 
-**✅ MAJOR WORK COMPLETED:**
+---
+
+### ✅ ADMIN DASHBOARD COMPLETED (Phases 1-4)
+
 1. **Phase 1: Authentication & Layout** ✅
    - Login with MENU.CA brand logo
    - Sidebar navigation with theme toggle
    - Route protection middleware
    - User dropdown & logout
 
-2. **Phase 2: Restaurant Management** ✅ (BIGGEST SECTION!)
+2. **Phase 2: Restaurant Management** ✅ (BIGGEST!)
    - **15 fully functional management tabs**
    - Mapbox GL JS for delivery areas
    - Image management with Supabase Storage
@@ -684,13 +898,13 @@
    - Complete CRUD with validation
    - 15+ API routes built
 
-3. **Phase 3: Dashboard & Analytics** ✅ (Task 3)
+3. **Phase 3: Dashboard & Analytics** ✅
    - Real-time stats (revenue, orders, restaurants, users)
    - Revenue charts (Daily/Weekly/Monthly)
    - Recent orders widget (auto-refresh)
    - Top restaurants widget
 
-4. **Phase 4: Admin Users Management** ✅ (Task 4)
+4. **Phase 4: Admin Users Management** ✅
    - Secure authentication middleware
    - User CRUD with MFA support
    - RLS bypass solution
@@ -701,23 +915,50 @@
    - MENU.CA logo on login page
    - Logo in sidebar navigation
 
-**🚧 REMAINING CRITICAL:**
-- Task 1: Database Setup (new tables: blacklist, franchises, etc.)
-- Task 2: RBAC System (role-based permissions)
+---
 
-**📊 PROGRESS:**
-- **50+ API routes** built and working
+### 🛒 CUSTOMER ORDERING SYSTEM (NEW - Phases 5-9)
+
+**Phase 5:** Database Setup (8 new tables) ⏳ STARTING NOW
+**Phase 6:** Restaurant Menu `/r/[slug]` ⏳ IN PROGRESS
+**Phase 7:** Homepage & Search 📍 (not started)
+**Phase 8:** Checkout & Payment 💳 (not started)
+**Phase 9:** Customer Accounts 👤 (not started)
+
+---
+
+### 🔧 ADMIN TASKS REMAINING (Tasks 1-18)
+
+**Critical:** Tasks 1-2 (Database, RBAC)  
+**High Priority:** Tasks 5-8 (Coupons, Franchises, Accounting, Blacklist)  
+**Medium:** Tasks 9-12 (Filters, Wizard, Orders, Tablets)  
+**Low:** Tasks 13-16 (Content, Email, Cloning, Analytics)  
+**Polish:** Tasks 17-18 (UI/UX, Production)
+
+---
+
+### 📊 CURRENT PROGRESS
+
+**Built So Far:**
+- **50+ API routes** (admin dashboard)
 - **60+ components** created
+- **15 restaurant tabs** fully functional
 - **Connected to production DB** (32K+ users, 277 restaurants)
 - **Security hardened** with auth middleware
 - **E2E tested** critical flows
 
-**Recommended Next Steps:**
-1. **TASK 5** - Coupon Management (high business value)
-2. **TASK 11** - Order Management (enhance existing page)
-3. **TASK 7** - Accounting & Statements (financial operations)
-4. **TASK 1** - Database Setup (if new tables needed)
+**Next Steps (PRIORITIZED):**
+1. **🛒 Phase 5** - Customer DB Setup (STARTING NOW)
+2. **🛒 Phase 6** - Restaurant Menu Page `/r/[slug]` (IN PROGRESS)
+3. **🛒 Phase 7** - Homepage & Search
+4. **🛒 Phase 8** - Checkout & Payment
+5. **🛒 Phase 9** - Customer Accounts
+
+**Then Admin Tasks:**
+- Task 5: Coupon Management
+- Task 11: Order Management
+- Task 7: Accounting & Statements
 
 ---
 
-**Current Status:** 4 major phases complete (36% done), ready for Coupons/Orders next
+**Current Status:** Admin dashboard 36% complete, starting customer ordering system (Phases 5-9)
