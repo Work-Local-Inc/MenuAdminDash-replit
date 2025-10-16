@@ -89,12 +89,34 @@ Preferred communication style: Simple, everyday language.
 - **Mapbox GL JS**: Fully integrated for delivery area polygon drawing with MapboxDraw controls
 - **jsPDF/Puppeteer**: For PDF generation (statements, reports) - planned
 
+## Project Progress
+
+**Overall Status:** 4/11 Major Phases Complete (36% complete)
+
+See **PROGRESS.md** for detailed roadmap and remaining work.
+
 ## Recent Changes
 
-### Phase 3: Dashboard & Analytics (Completed - Oct 16, 2025)
-NOTE: Supabase service role key doesn't have access to menuca_v3 schema. Using regular server client (anon key) which works fine - RLS is either disabled or policies allow access.
+### Phase 1: Authentication & Layout ✅ (Completed - Oct 2025)
+- Supabase Auth integration with email/password
+- Login page with MENU.CA brand logo
+- Protected routes with middleware
+- Admin sidebar navigation with theme toggle
+- User dropdown with logout functionality
 
-### Phase 4: Admin Users Management (Completed - Oct 16, 2025)
+### Phase 2: Restaurant Management ✅ (Completed - Oct 2025)
+- Complete restaurant CRUD with 15 management tabs
+- Mapbox integration for delivery areas
+- Image management with Supabase Storage
+- Full API layer with validation
+
+### Phase 3: Dashboard & Analytics ✅ (Completed - Oct 16, 2025)
+- Real-time statistics (revenue, orders, restaurants, users)
+- Revenue charts with Recharts (Daily/Weekly/Monthly)
+- Recent orders widget (auto-refresh every 10s)
+- Top restaurants by order count
+
+### Phase 4: Admin Users Management ✅ (Completed - Oct 16, 2025)
 
 **✅ Security Implementation:**
 - Admin authentication/authorization middleware (`lib/auth/admin-check.ts`)
