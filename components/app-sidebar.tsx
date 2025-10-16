@@ -121,9 +121,11 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader className="border-b p-4">
         <Link href="/admin/dashboard" className="flex items-center gap-2" data-testid="link-logo">
-          <div className="text-2xl font-bold text-primary">
-            MENU<span className="text-foreground">.CA</span>
-          </div>
+          <img 
+            src="/menu-ca-logo.png" 
+            alt="MENU.CA" 
+            className="h-8 w-auto"
+          />
         </Link>
       </SidebarHeader>
       <SidebarContent>
