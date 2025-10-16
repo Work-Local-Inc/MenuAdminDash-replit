@@ -57,7 +57,7 @@ export async function GET(
         )
       `)
       .eq('id', restaurantId)
-      .eq('status', 'active') // Only fetch active restaurants
+      // No status filter - show all restaurants with menus regardless of admin status
       .single();
     
     if (restaurantError || !restaurant) {

@@ -21,6 +21,7 @@ export async function GET(
     }
     
     // Fetch menu with courses and dishes
+    // Note: is_active can be NULL for legacy data, so we include NULL as "active"
     const { data: courses, error: coursesError } = await supabase
       .from('courses')
       .select(`
@@ -41,7 +42,7 @@ export async function GET(
         )
       `)
       .eq('restaurant_id', restaurantId)
-      .eq('is_active', true)
+      .or('is_active.is.null,is_active.eq.true')
       .order('display_order', { ascending: true });
     
     if (coursesError) {
@@ -52,7 +53,7 @@ export async function GET(
     const coursesWithModifiers = await Promise.all(
       (courses || []).map(async (course) => {
         const dishesWithModifiers = await Promise.all(
-          (course.dishes || []).filter((dish: any) => dish.is_active).map(async (dish: any) => {
+          (course.dishes || []).filter((dish: any) => dish.is_active === true || dish.is_active === null).map(async (dish: any) => {
             if (dish.has_customization) {
               const { data: modifiers } = await supabase
                 .from('dish_modifiers')
