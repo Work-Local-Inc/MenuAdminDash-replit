@@ -92,6 +92,9 @@ Preferred communication style: Simple, everyday language.
 ## Recent Changes
 
 ### Phase 3: Dashboard & Analytics (Completed - Oct 16, 2025)
+NOTE: Supabase service role key doesn't have access to menuca_v3 schema. Using regular server client (anon key) which works fine - RLS is either disabled or policies allow access.
+
+### Phase 4: Admin Users Management (In Progress - Oct 16, 2025)
 - ✅ Built master admin dashboard at `/admin/dashboard`
 - ✅ 4 stat cards displaying real metrics:
   - Total Revenue (from orders)
