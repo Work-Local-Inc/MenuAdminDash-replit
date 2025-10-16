@@ -25,3 +25,15 @@ export function useRecentOrders(limit: number = 10) {
     refetchInterval: 10000, // Refetch every 10 seconds
   })
 }
+
+export function useRevenueHistory(timeRange: 'daily' | 'weekly' | 'monthly') {
+  return useQuery({
+    queryKey: ['/api/dashboard/revenue', timeRange],
+    queryFn: async () => {
+      const res = await fetch(`/api/dashboard/revenue?timeRange=${timeRange}`)
+      if (!res.ok) throw new Error('Failed to fetch revenue history')
+      return res.json()
+    },
+    refetchInterval: 30000, // Refetch every 30 seconds
+  })
+}

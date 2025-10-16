@@ -10,6 +10,12 @@ The application connects to an existing Supabase PostgreSQL database (`menuca_v3
 
 Preferred communication style: Simple, everyday language.
 
+## Test Credentials
+
+**Admin Login:**
+- Email: `brian+1@worklocal.ca`
+- Password: `WL!2w3e4r5t`
+
 ## System Architecture
 
 ### Frontend Framework
@@ -82,3 +88,20 @@ Preferred communication style: Simple, everyday language.
 ### Integrations
 - **Mapbox GL JS**: Fully integrated for delivery area polygon drawing with MapboxDraw controls
 - **jsPDF/Puppeteer**: For PDF generation (statements, reports) - planned
+
+## Recent Changes
+
+### Phase 3: Dashboard & Analytics (Completed - Oct 16, 2025)
+- ✅ Built master admin dashboard at `/admin/dashboard`
+- ✅ 4 stat cards displaying real metrics:
+  - Total Revenue (from orders)
+  - Total Orders count
+  - Active Restaurants (277)
+  - Total Users (32,349)
+- ✅ Revenue chart with Recharts (Daily/Weekly/Monthly views)
+- ✅ Real revenue history API with proper date aggregation (`/api/dashboard/revenue`)
+- ✅ Recent Orders widget (last 10 orders, auto-refresh every 10s)
+- ✅ Top Restaurants widget (top 5 by order count)
+- ✅ Auto-refresh: stats every 30s, orders every 10s
+- ✅ Fixed logo issue (text-based MENU.CA logo)
+- ✅ All endpoints returning 200 OK (ready for future order data)

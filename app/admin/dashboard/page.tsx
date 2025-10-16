@@ -8,42 +8,14 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { DollarSign, ShoppingCart, Store, Users, TrendingUp } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
-import { useDashboardStats, useRecentOrders } from "@/lib/hooks/use-dashboard"
+import { useDashboardStats, useRecentOrders, useRevenueHistory } from "@/lib/hooks/use-dashboard"
 
 export default function DashboardPage() {
   const [timeRange, setTimeRange] = useState<"daily" | "weekly" | "monthly">("daily")
   
   const { data: stats, isLoading: statsLoading } = useDashboardStats()
   const { data: recentOrders = [], isLoading: ordersLoading } = useRecentOrders(5)
-
-  // Note: Historical revenue data requires a separate API endpoint
-  // This is a placeholder visualization showing revenue distribution pattern
-  const totalRev = stats?.totalRevenue || 0
-  const revenueData = {
-    daily: [
-      { date: "Mon", revenue: totalRev * 0.12 },
-      { date: "Tue", revenue: totalRev * 0.13 },
-      { date: "Wed", revenue: totalRev * 0.14 },
-      { date: "Thu", revenue: totalRev * 0.15 },
-      { date: "Fri", revenue: totalRev * 0.16 },
-      { date: "Sat", revenue: totalRev * 0.18 },
-      { date: "Sun", revenue: totalRev * 0.12 },
-    ],
-    weekly: [
-      { date: "Week 1", revenue: totalRev * 0.23 },
-      { date: "Week 2", revenue: totalRev * 0.25 },
-      { date: "Week 3", revenue: totalRev * 0.22 },
-      { date: "Week 4", revenue: totalRev * 0.30 },
-    ],
-    monthly: [
-      { date: "Jan", revenue: totalRev * 0.15 },
-      { date: "Feb", revenue: totalRev * 0.17 },
-      { date: "Mar", revenue: totalRev * 0.18 },
-      { date: "Apr", revenue: totalRev * 0.16 },
-      { date: "May", revenue: totalRev * 0.19 },
-      { date: "Jun", revenue: totalRev * 0.15 },
-    ],
-  }
+  const { data: revenueData = [], isLoading: revenueLoading } = useRevenueHistory(timeRange)
 
   const statCards = [
     {
@@ -142,36 +114,42 @@ export default function DashboardPage() {
         </CardHeader>
         <CardContent>
           <div className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={revenueData[timeRange]}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis 
-                  dataKey="date" 
-                  className="text-xs"
-                  tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                />
-                <YAxis 
-                  className="text-xs"
-                  tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                  tickFormatter={(value) => `$${value / 1000}k`}
-                />
-                <Tooltip 
-                  formatter={(value: number) => formatCurrency(value, 'CAD')}
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '6px',
-                  }}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="revenue" 
-                  stroke="hsl(var(--primary))" 
-                  strokeWidth={2}
-                  dot={{ fill: 'hsl(var(--primary))' }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            {revenueLoading ? (
+              <div className="flex items-center justify-center h-full">
+                <Skeleton className="h-full w-full" />
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={revenueData}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis 
+                    dataKey="date" 
+                    className="text-xs"
+                    tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                  />
+                  <YAxis 
+                    className="text-xs"
+                    tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                    tickFormatter={(value) => value >= 1000 ? `$${value / 1000}k` : `$${value}`}
+                  />
+                  <Tooltip 
+                    formatter={(value: number) => formatCurrency(value, 'CAD')}
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '6px',
+                    }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="revenue" 
+                    stroke="hsl(var(--primary))" 
+                    strokeWidth={2}
+                    dot={{ fill: 'hsl(var(--primary))' }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </CardContent>
       </Card>

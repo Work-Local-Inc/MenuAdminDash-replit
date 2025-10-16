@@ -15,8 +15,6 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import Image from "next/image"
-import menuCaLogo from "@assets/image_1760624954309.png"
 
 import {
   Sidebar,
@@ -123,14 +121,9 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader className="border-b p-4">
         <Link href="/admin/dashboard" className="flex items-center gap-2" data-testid="link-logo">
-          <Image 
-            src={menuCaLogo} 
-            alt="Menu.ca Logo" 
-            width={120}
-            height={24}
-            className="h-6 w-auto"
-            priority
-          />
+          <div className="text-2xl font-bold text-primary">
+            MENU<span className="text-foreground">.CA</span>
+          </div>
         </Link>
       </SidebarHeader>
       <SidebarContent>
