@@ -9,7 +9,7 @@ export async function getRestaurants(filters?: {
   const supabase = await createClient()
   
   let query = supabase
-    .from('menuca_v3.restaurants')
+    .from('restaurants')
     .select('*')
     .order('id', { ascending: false })
 
@@ -39,7 +39,7 @@ export async function getRestaurantById(id: string) {
   const supabase = await createClient()
   
   const { data, error } = await supabase
-    .from('menuca_v3.restaurants')
+    .from('restaurants')
     .select('*')
     .eq('id', id)
     .single()
@@ -56,7 +56,7 @@ export async function getOrders(filters?: {
   const supabase = await createClient()
   
   let query = supabase
-    .from('menuca_v3.orders')
+    .from('orders')
     .select(`
       *,
       restaurants:restaurant_id (name),
@@ -87,25 +87,25 @@ export async function getDashboardStats() {
   
   // Get total orders count
   const { count: totalOrders } = await supabase
-    .from('menuca_v3.orders')
+    .from('orders')
     .select('*', { count: 'exact', head: true })
 
   // Get total revenue
   const { data: revenueData } = await supabase
-    .from('menuca_v3.orders')
+    .from('orders')
     .select('total')
     
   const totalRevenue = revenueData?.reduce((sum: number, order: any) => sum + (order.total || 0), 0) || 0
 
   // Get active restaurants count
   const { count: activeRestaurants } = await supabase
-    .from('menuca_v3.restaurants')
+    .from('restaurants')
     .select('*', { count: 'exact', head: true })
     .eq('status', 'active')
 
   // Get total users count
   const { count: totalUsers } = await supabase
-    .from('menuca_v3.users')
+    .from('users')
     .select('*', { count: 'exact', head: true })
 
   return {
@@ -120,7 +120,7 @@ export async function getCoupons() {
   const supabase = await createClient()
   
   const { data, error } = await supabase
-    .from('menuca_v3.promotional_coupons')
+    .from('promotional_coupons')
     .select('*')
     .order('created_at', { ascending: false })
 
@@ -135,7 +135,7 @@ export async function getUsers(filters?: {
   const supabase = await createClient()
   
   let query = supabase
-    .from('menuca_v3.users')
+    .from('users')
     .select('*')
     .order('created_at', { ascending: false })
 
