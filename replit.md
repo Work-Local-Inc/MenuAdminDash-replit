@@ -79,6 +79,6 @@ Preferred communication style: Simple, everyday language.
 - **Inter**: Primary sans-serif font via Google Fonts
 - **JetBrains Mono**: Monospace font for code/IDs
 
-### Planned Integrations
-- **Mapbox GL JS**: For delivery area polygon drawing (not yet implemented)
-- **jsPDF/Puppeteer**: For PDF generation (statements, reports)
+### Integrations
+- **Mapbox GL JS**: Fully integrated for delivery area polygon drawing with MapboxDraw controls
+- **jsPDF/Puppeteer**: For PDF generation (statements, reports) - planned
