@@ -94,29 +94,36 @@ Preferred communication style: Simple, everyday language.
 ### Phase 3: Dashboard & Analytics (Completed - Oct 16, 2025)
 NOTE: Supabase service role key doesn't have access to menuca_v3 schema. Using regular server client (anon key) which works fine - RLS is either disabled or policies allow access.
 
-### Phase 4: Admin Users Management (In Progress - Oct 16, 2025)
+### Phase 4: Admin Users Management (Completed - Oct 16, 2025)
 
-**Security Implementation Complete:**
-- ✅ Admin authentication/authorization middleware (`lib/auth/admin-check.ts`)
+**✅ Security Implementation:**
+- Admin authentication/authorization middleware (`lib/auth/admin-check.ts`)
   - Verifies Supabase Auth session (anon key)
   - Checks admin_users table with service role key (bypasses RLS)
+  - Rejects deleted admins (deleted_at != null)
   - Returns 401 for unauthenticated, 403 for non-admins
-- ✅ All API routes protected with `verifyAdminAuth()`:
-  - GET /api/admin-users
+- All API routes protected with `verifyAdminAuth()`:
+  - GET /api/admin-users (list, search, pagination)
   - POST /api/admin-users (server-side bcrypt hashing)
-  - GET /api/admin-users/[id]
+  - GET /api/admin-users/[id] (single user)
   - PATCH /api/admin-users/[id] (server-side bcrypt hashing)
-  - DELETE /api/admin-users/[id] (transactional delete)
-- ✅ First admin created: brian+1@worklocal.ca (ID 919)
-- ✅ E2E test: User creation working (ID 920 created successfully)
+  - DELETE /api/admin-users/[id] (soft delete, transactional)
 
-**Known Issue - RLS Frontend Access:**
-- ❌ Admin Users list page shows "No admin users found"
-- Root cause: Server Component uses anon key → RLS blocks admin_users SELECT
-- API works (POST /api/admin-users returns 200)
-- Solution needed: Either update RLS policies for SELECT or use API route for list page
+**✅ RLS Bypass Solution:**
+- List page (app/admin/users/page.tsx) fetches from API route with auth cookies
+- No direct Supabase queries from frontend
+- Service role used only in API routes for admin_users access
+- Query cache invalidation + router refresh after user creation
 
-**Next Steps:**
-1. Fix RLS policies to allow authenticated admins to read admin_users
-2. OR: Convert list page to use API route instead of direct Supabase query
-3. Add cache invalidation/refresh after user creation
+**✅ Security Model (Documented in code):**
+- Only admin users have Supabase Auth accounts
+- Customers use separate authentication system
+- Any authenticated Supabase user is verified against admin_users table
+- Future-proof: If customers ever use Supabase Auth, add supabase_user_id column
+
+**✅ E2E Testing:**
+- Unauthenticated access → 401 redirect to login
+- Admin login → full access to dashboard
+- User creation → appears in list with MFA badge
+- Unauthorized API access → 401 error
+- First admin: brian+1@worklocal.ca (ID 919)

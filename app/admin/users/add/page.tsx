@@ -21,6 +21,7 @@ import {
 import { useToast } from '@/hooks/use-toast'
 import { ArrowLeft, Save } from 'lucide-react'
 import Link from 'next/link'
+import { useQueryClient } from '@tanstack/react-query'
 
 const adminUserSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -39,6 +40,7 @@ type AdminUserFormData = z.infer<typeof adminUserSchema>
 export default function AddAdminUserPage() {
   const router = useRouter()
   const { toast } = useToast()
+  const queryClient = useQueryClient()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const form = useForm<AdminUserFormData>({
@@ -74,12 +76,16 @@ export default function AddAdminUserPage() {
         throw new Error(error.error || 'Failed to create admin user')
       }
 
+      // Invalidate admin users cache to refresh the list
+      queryClient.invalidateQueries({ queryKey: ['/api/admin-users'] })
+      
       toast({
         title: 'Success',
         description: 'Admin user created successfully',
       })
 
       router.push('/admin/users')
+      router.refresh() // Force server component to refetch
     } catch (error) {
       console.error('Error creating admin user:', error)
       toast({
