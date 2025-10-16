@@ -62,7 +62,13 @@ export function RestaurantFeedback({ restaurantId }: RestaurantFeedbackProps) {
       })
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/restaurants", restaurantId, "feedback"] })
+      // Invalidate all feedback queries for this restaurant (all rating filters)
+      queryClient.invalidateQueries({ 
+        predicate: (query) => 
+          query.queryKey[0] === "/api/restaurants" && 
+          query.queryKey[1] === restaurantId && 
+          query.queryKey[2] === "feedback"
+      })
       setResponseText({})
       toast({
         title: "Response submitted",
