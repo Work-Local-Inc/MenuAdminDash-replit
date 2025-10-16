@@ -17,8 +17,8 @@ export function DishCard({ dish, restaurantId }: DishCardProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const addItem = useCartStore((state) => state.addItem);
   
-  // Determine price to display
-  const displayPrice = dish.base_price ? (dish.base_price / 100).toFixed(2) : '0.00';
+  // Determine price to display - prices are already in dollars in the database
+  const displayPrice = dish.base_price ? Number(dish.base_price).toFixed(2) : '0.00';
   
   const handleQuickAdd = () => {
     // If dish has customizations, open modal; otherwise add directly to cart

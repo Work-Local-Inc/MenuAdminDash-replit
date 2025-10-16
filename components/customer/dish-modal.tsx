@@ -139,7 +139,7 @@ export function DishModal({ dish, restaurantId, isOpen, onClose }: DishModalProp
                     <Label htmlFor={`size-${idx}`} className="flex-1 cursor-pointer">
                       <span className="font-medium">{option.name}</span>
                       <span className="text-muted-foreground ml-2">
-                        ${(option.price / 100).toFixed(2)}
+                        ${Number(option.price).toFixed(2)}
                       </span>
                     </Label>
                   </div>
@@ -169,7 +169,7 @@ export function DishModal({ dish, restaurantId, isOpen, onClose }: DishModalProp
                         <span>{modifier.name}</span>
                         {modifier.price > 0 && (
                           <span className="text-sm text-muted-foreground">
-                            +${(modifier.price / 100).toFixed(2)}
+                            +${Number(modifier.price).toFixed(2)}
                           </span>
                         )}
                       </div>
@@ -234,7 +234,7 @@ export function DishModal({ dish, restaurantId, isOpen, onClose }: DishModalProp
               className="px-8"
               data-testid="button-add-to-cart"
             >
-              Add to Cart - ${(itemTotal / 100).toFixed(2)}
+              Add to Cart - ${Number(itemTotal).toFixed(2)}
             </Button>
           </div>
         </div>

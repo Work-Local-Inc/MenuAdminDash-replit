@@ -22,14 +22,13 @@ export function CartDrawer({ isOpen, onClose, restaurant }: CartDrawerProps) {
   const { items, updateQuantity, removeItem, clearCart } = useCartStore();
   
   const serviceConfig = restaurant.restaurant_service_configs?.[0];
-  const deliveryFeeCents = serviceConfig?.delivery_fee_cents || 500; // Default $5
+  const deliveryFeeCents = serviceConfig?.delivery_fee_cents || 500; // Default $5 in cents
   const HST_RATE = 0.13;
   
-  // Calculate totals
+  // Calculate totals - prices are in dollars, delivery fee is in cents
   const subtotal = items.reduce((sum, item) => sum + item.subtotal, 0);
-  
-  const deliveryFee = deliveryFeeCents;
-  const tax = Math.round((subtotal + deliveryFee) * HST_RATE);
+  const deliveryFee = deliveryFeeCents / 100; // Convert cents to dollars
+  const tax = (subtotal + deliveryFee) * HST_RATE;
   const total = subtotal + deliveryFee + tax;
   
   return (
@@ -81,7 +80,7 @@ export function CartDrawer({ isOpen, onClose, restaurant }: CartDrawerProps) {
                       {item.modifiers.length > 0 && (
                         <div className="text-sm text-muted-foreground mb-1">
                           {item.modifiers.map((mod, idx) => (
-                            <div key={idx}>+ {mod.name} (+${(mod.price / 100).toFixed(2)})</div>
+                            <div key={idx}>+ {mod.name} (+${Number(mod.price).toFixed(2)})</div>
                           ))}
                         </div>
                       )}
@@ -131,7 +130,7 @@ export function CartDrawer({ isOpen, onClose, restaurant }: CartDrawerProps) {
                     
                     <div className="text-right">
                       <p className="font-medium" data-testid={`text-item-total-${item.dishId}`}>
-                        ${(item.subtotal / 100).toFixed(2)}
+                        ${Number(item.subtotal).toFixed(2)}
                       </p>
                     </div>
                   </div>
@@ -144,24 +143,24 @@ export function CartDrawer({ isOpen, onClose, restaurant }: CartDrawerProps) {
               <div className="space-y-2 mb-4">
                 <div className="flex justify-between text-sm">
                   <span>Subtotal</span>
-                  <span data-testid="text-subtotal">${(subtotal / 100).toFixed(2)}</span>
+                  <span data-testid="text-subtotal">${Number(subtotal).toFixed(2)}</span>
                 </div>
                 
                 <div className="flex justify-between text-sm">
                   <span>Delivery Fee</span>
-                  <span data-testid="text-delivery-fee">${(deliveryFee / 100).toFixed(2)}</span>
+                  <span data-testid="text-delivery-fee">${Number(deliveryFee).toFixed(2)}</span>
                 </div>
                 
                 <div className="flex justify-between text-sm">
                   <span>Tax (HST 13%)</span>
-                  <span data-testid="text-tax">${(tax / 100).toFixed(2)}</span>
+                  <span data-testid="text-tax">${Number(tax).toFixed(2)}</span>
                 </div>
                 
                 <Separator />
                 
                 <div className="flex justify-between font-bold text-lg">
                   <span>Total</span>
-                  <span data-testid="text-total">${(total / 100).toFixed(2)}</span>
+                  <span data-testid="text-total">${Number(total).toFixed(2)}</span>
                 </div>
               </div>
               
