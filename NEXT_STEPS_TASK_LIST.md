@@ -93,18 +93,19 @@
 **Current Status:** ⏳ IN PROGRESS
 
 #### Subtasks:
-- [ ] 6.1 - Create `/r/[slug]` route with restaurant data fetching
-- [ ] 6.2 - Build restaurant header component (logo, name, rating, hours)
-- [ ] 6.3 - Implement menu category navigation (sticky sidebar)
-- [ ] 6.4 - Create dish card component (image, name, price, description)
-- [ ] 6.5 - Build dish detail modal (modifiers, combos, special instructions)
-- [ ] 6.6 - Implement "Add to Cart" functionality with Zustand
-- [ ] 6.7 - Create floating cart button (shows item count)
-- [ ] 6.8 - Build cart drawer/sheet component
-- [ ] 6.9 - Add quantity controls and item removal
-- [ ] 6.10 - Implement cart persistence (localStorage + API)
-- [ ] 6.11 - Add restaurant hours validation (closed/open)
-- [ ] 6.12 - Test menu browsing and cart operations
+- [ ] 6.1 - Create `/r/[slug]` route with nested Supabase queries (restaurant + locations + schedules + courses + dishes + prices + modifiers)
+- [ ] 6.2 - Build restaurant header component (logo, name, address, hours, delivery fee, min order)
+- [ ] 6.3 - Implement sticky category navigation sidebar (appetizers, mains, desserts)
+- [ ] 6.4 - Create dish card component - 2 columns desktop, 1 mobile (image, name, price, "+" button)
+- [ ] 6.5 - Build dish detail modal (size radio buttons, modifier checkboxes, special instructions textarea, quantity +/-)
+- [ ] 6.6 - Implement Zustand cart store with CartItem interface (dishId, size, modifiers, specialInstructions, subtotal)
+- [ ] 6.7 - Create floating cart button (bottom right, shows item count)
+- [ ] 6.8 - Build cart drawer/sheet (slides from right, full width mobile, sidebar desktop)
+- [ ] 6.9 - Add cart calculations: Subtotal + Delivery Fee + Tax (13% HST Ontario) = Total
+- [ ] 6.10 - Implement cart persistence (localStorage) + restaurant switch validation ("Clear cart?" dialog)
+- [ ] 6.11 - Add restaurant hours validation (closed/open status, schedule display)
+- [ ] 6.12 - Ensure touch-friendly UI (min 44px tap targets for mobile)
+- [ ] 6.13 - Test menu browsing, customization, and cart operations
 
 **API Endpoints to Build:**
 - `GET /api/restaurants/[slug]` - Get restaurant details
@@ -181,17 +182,19 @@
 #### Subtasks:
 - [ ] 8.1 - Install and configure Stripe
 - [ ] 8.2 - Create `/checkout` route
-- [ ] 8.3 - Build delivery type selector (delivery vs pickup)
-- [ ] 8.4 - Create address selector/form component
-- [ ] 8.5 - Implement Stripe Payment Element
-- [ ] 8.6 - Add tip selection component
-- [ ] 8.7 - Build order summary component
-- [ ] 8.8 - Create coupon code input
-- [ ] 8.9 - Implement order creation API
-- [ ] 8.10 - Handle Stripe Payment Intent
-- [ ] 8.11 - Create order confirmation page `/order-confirmation/[id]`
-- [ ] 8.12 - Build Stripe webhook handler
-- [ ] 8.13 - Test full checkout flow
+- [ ] 8.3 - Build delivery type selector (delivery vs pickup radio buttons)
+- [ ] 8.4 - Create address selector/form (street address, unit, city, postal code)
+- [ ] 8.5 - Add delivery time selector (ASAP default, or Schedule for later with date + time picker)
+- [ ] 8.6 - Implement Stripe Payment Element (card number, expiry, CVC, billing postal code)
+- [ ] 8.7 - Add tip selection component
+- [ ] 8.8 - Build order summary sidebar (items, delivery fee, tax 13% HST, total)
+- [ ] 8.9 - Create coupon code input and validation
+- [ ] 8.10 - Implement order creation API (creates order + order_items + payment_transaction)
+- [ ] 8.11 - Handle Stripe Payment Intent creation and confirmation
+- [ ] 8.12 - Create order confirmation page `/order-confirmation/[id]` with order number, estimated delivery time, "Track Order" button
+- [ ] 8.13 - Build Stripe webhook handler for payment events
+- [ ] 8.14 - Add "Save address" checkbox for logged-in users
+- [ ] 8.15 - Test full checkout flow (delivery/pickup, ASAP/scheduled, payment, order creation)
 
 **API Endpoints:**
 - `POST /api/checkout/create-payment-intent`
