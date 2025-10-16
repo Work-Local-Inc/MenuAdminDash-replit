@@ -28,9 +28,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Search, Filter, MoreVertical, Plus, Download, Edit, Trash2, Copy } from "lucide-react"
+import { Search, Filter, MoreVertical, Plus, Download, Edit, Trash2, Copy, ExternalLink } from "lucide-react"
 import Link from "next/link"
 import { formatCurrency } from "@/lib/utils"
+import { createRestaurantSlug } from "@/lib/utils/slugify"
 
 const provinces = ["All", "ON", "BC", "QC", "AB"]
 const cities = ["All", "Toronto", "Vancouver", "Montreal", "Calgary", "Ottawa"]
@@ -243,6 +244,12 @@ export default function RestaurantsPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem asChild data-testid={`menu-view-menu-${restaurant.id}`}>
+                            <Link href={`/r/${createRestaurantSlug(restaurant.id, restaurant.name)}`} target="_blank" rel="noopener noreferrer">
+                              <ExternalLink className="mr-2 h-4 w-4" />
+                              View Menu
+                            </Link>
+                          </DropdownMenuItem>
                           <DropdownMenuItem data-testid={`menu-edit-${restaurant.id}`}>
                             <Edit className="mr-2 h-4 w-4" />
                             Edit
