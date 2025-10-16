@@ -21,7 +21,6 @@ import {
 import { useToast } from '@/hooks/use-toast'
 import { ArrowLeft, Save } from 'lucide-react'
 import Link from 'next/link'
-import bcrypt from 'bcryptjs'
 
 const adminUserSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -57,9 +56,7 @@ export default function AddAdminUserPage() {
   const onSubmit = async (data: AdminUserFormData) => {
     setIsSubmitting(true)
     try {
-      // Hash password client-side
-      const password_hash = await bcrypt.hash(data.password, 10)
-
+      // Send password to server - server will hash it securely
       const response = await fetch('/api/admin-users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -67,7 +64,7 @@ export default function AddAdminUserPage() {
           email: data.email,
           first_name: data.first_name,
           last_name: data.last_name,
-          password_hash,
+          password: data.password,
           mfa_enabled: data.mfa_enabled,
         }),
       })

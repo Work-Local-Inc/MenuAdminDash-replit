@@ -1,11 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { verifyAdminAuth } from '@/lib/auth/admin-check'
+import bcrypt from 'bcryptjs'
 
 // GET /api/admin-users/[id] - Get single admin user
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  try {
+    await verifyAdminAuth(request)
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error.message },
+      { status: error.message.includes('Unauthorized') ? 401 : 403 }
+    )
+  }
+
   const supabase = createAdminClient()
   const { id } = await params
 
@@ -28,6 +39,15 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  try {
+    await verifyAdminAuth(request)
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error.message },
+      { status: error.message.includes('Unauthorized') ? 401 : 403 }
+    )
+  }
+
   const supabase = createAdminClient()
   const { id } = await params
   const body = await request.json()
@@ -40,9 +60,9 @@ export async function PATCH(
     updated_at: new Date().toISOString(),
   }
 
-  // Only update password if provided
-  if (body.password_hash) {
-    updateData.password_hash = body.password_hash
+  // Only update password if provided - hash server-side for security
+  if (body.password) {
+    updateData.password_hash = await bcrypt.hash(body.password, 10)
   }
 
   const { data, error } = await supabase
@@ -65,25 +85,50 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  try {
+    await verifyAdminAuth(request)
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error.message },
+      { status: error.message.includes('Unauthorized') ? 401 : 403 }
+    )
+  }
+
   const supabase = createAdminClient()
   const { id } = await params
 
-  // First delete related admin_user_restaurants records
-  await supabase
-    .from('admin_user_restaurants')
-    .delete()
-    .eq('admin_user_id', id)
+  try {
+    // First delete related admin_user_restaurants records
+    const { error: junctionError } = await supabase
+      .from('admin_user_restaurants')
+      .delete()
+      .eq('admin_user_id', id)
 
-  // Then delete the admin user
-  const { error } = await supabase
-    .from('admin_users')
-    .delete()
-    .eq('id', id)
+    if (junctionError) {
+      console.error('Error deleting admin_user_restaurants:', junctionError)
+      return NextResponse.json(
+        { error: 'Failed to delete admin user assignments' },
+        { status: 500 }
+      )
+    }
 
-  if (error) {
-    console.error('Error deleting admin user:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    // Then delete the admin user
+    const { error } = await supabase
+      .from('admin_users')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      console.error('Error deleting admin user:', error)
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (error: any) {
+    console.error('Error in DELETE /api/admin-users/[id]:', error)
+    return NextResponse.json(
+      { error: error.message || 'Failed to delete admin user' },
+      { status: 500 }
+    )
   }
-
-  return NextResponse.json({ success: true })
 }

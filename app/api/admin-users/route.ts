@@ -1,8 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { verifyAdminAuth } from '@/lib/auth/admin-check'
+import bcrypt from 'bcryptjs'
 
 // GET /api/admin-users - List all admin users with optional search
 export async function GET(request: NextRequest) {
+  try {
+    // Verify admin authentication
+    await verifyAdminAuth(request)
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error.message },
+      { status: error.message.includes('Unauthorized') ? 401 : 403 }
+    )
+  }
+
   const supabase = createAdminClient()
   const searchParams = request.nextUrl.searchParams
   const search = searchParams.get('search') || ''
@@ -37,25 +49,55 @@ export async function GET(request: NextRequest) {
 
 // POST /api/admin-users - Create new admin user  
 export async function POST(request: NextRequest) {
-  const supabase = createAdminClient()
-  const body = await request.json()
-
-  const { data, error } = await supabase
-    .from('admin_users')
-    .insert({
-      email: body.email,
-      first_name: body.first_name || null,
-      last_name: body.last_name || null,
-      password_hash: body.password_hash,
-      mfa_enabled: body.mfa_enabled || false,
-    } as any)
-    .select()
-    .single()
-
-  if (error) {
-    console.error('Error creating admin user:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  try {
+    // Verify admin authentication
+    await verifyAdminAuth(request)
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error.message },
+      { status: error.message.includes('Unauthorized') ? 401 : 403 }
+    )
   }
 
-  return NextResponse.json(data)
+  const supabase = createAdminClient()
+  
+  try {
+    const body = await request.json()
+
+    // Validate required fields
+    if (!body.email || !body.password) {
+      return NextResponse.json(
+        { error: 'Email and password are required' },
+        { status: 400 }
+      )
+    }
+
+    // Hash password server-side for security
+    const passwordHash = await bcrypt.hash(body.password, 10)
+
+    const { data, error } = await supabase
+      .from('admin_users')
+      .insert({
+        email: body.email,
+        first_name: body.first_name || null,
+        last_name: body.last_name || null,
+        password_hash: passwordHash,
+        mfa_enabled: body.mfa_enabled || false,
+      } as any)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error creating admin user:', error)
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    return NextResponse.json(data)
+  } catch (error: any) {
+    console.error('Error in POST /api/admin-users:', error)
+    return NextResponse.json(
+      { error: error.message || 'Failed to create admin user' },
+      { status: 500 }
+    )
+  }
 }

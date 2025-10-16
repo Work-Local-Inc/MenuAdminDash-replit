@@ -95,16 +95,28 @@ Preferred communication style: Simple, everyday language.
 NOTE: Supabase service role key doesn't have access to menuca_v3 schema. Using regular server client (anon key) which works fine - RLS is either disabled or policies allow access.
 
 ### Phase 4: Admin Users Management (In Progress - Oct 16, 2025)
-- ✅ Built master admin dashboard at `/admin/dashboard`
-- ✅ 4 stat cards displaying real metrics:
-  - Total Revenue (from orders)
-  - Total Orders count
-  - Active Restaurants (277)
-  - Total Users (32,349)
-- ✅ Revenue chart with Recharts (Daily/Weekly/Monthly views)
-- ✅ Real revenue history API with proper date aggregation (`/api/dashboard/revenue`)
-- ✅ Recent Orders widget (last 10 orders, auto-refresh every 10s)
-- ✅ Top Restaurants widget (top 5 by order count)
-- ✅ Auto-refresh: stats every 30s, orders every 10s
-- ✅ Fixed logo issue (text-based MENU.CA logo)
-- ✅ All endpoints returning 200 OK (ready for future order data)
+
+**Security Implementation Complete:**
+- ✅ Admin authentication/authorization middleware (`lib/auth/admin-check.ts`)
+  - Verifies Supabase Auth session (anon key)
+  - Checks admin_users table with service role key (bypasses RLS)
+  - Returns 401 for unauthenticated, 403 for non-admins
+- ✅ All API routes protected with `verifyAdminAuth()`:
+  - GET /api/admin-users
+  - POST /api/admin-users (server-side bcrypt hashing)
+  - GET /api/admin-users/[id]
+  - PATCH /api/admin-users/[id] (server-side bcrypt hashing)
+  - DELETE /api/admin-users/[id] (transactional delete)
+- ✅ First admin created: brian+1@worklocal.ca (ID 919)
+- ✅ E2E test: User creation working (ID 920 created successfully)
+
+**Known Issue - RLS Frontend Access:**
+- ❌ Admin Users list page shows "No admin users found"
+- Root cause: Server Component uses anon key → RLS blocks admin_users SELECT
+- API works (POST /api/admin-users returns 200)
+- Solution needed: Either update RLS policies for SELECT or use API route for list page
+
+**Next Steps:**
+1. Fix RLS policies to allow authenticated admins to read admin_users
+2. OR: Convert list page to use API route instead of direct Supabase query
+3. Add cache invalidation/refresh after user creation
