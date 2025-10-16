@@ -84,6 +84,12 @@ export const useCartStore = create<CartStore>()(
         
         // If switching to a different restaurant with items in cart, confirm clear
         if (currentRestaurantId && currentRestaurantId !== id && get().items.length > 0) {
+          // Only handle restaurant switching on client side
+          if (typeof window === 'undefined') {
+            // On server, don't auto-clear cart - just skip the update
+            return;
+          }
+          
           const confirmed = window.confirm(
             `Your cart contains items from ${get().restaurantName}. Clear cart and switch to ${name}?`
           );
