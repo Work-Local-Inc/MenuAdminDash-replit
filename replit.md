@@ -91,9 +91,9 @@ Preferred communication style: Simple, everyday language.
 
 ## Project Progress
 
-**Overall Status:** 4/11 Major Phases Complete (36% complete)
+**Overall Status:** 5/11 Major Phases Complete (45% complete)
 
-See **PROGRESS.md** for detailed roadmap and remaining work.
+See **PROGRESS.md** and **NEXT_STEPS_TASK_LIST.md** for detailed roadmap and remaining work.
 
 ## Recent Changes
 
@@ -149,3 +149,53 @@ See **PROGRESS.md** for detailed roadmap and remaining work.
 - User creation → appears in list with MFA badge
 - Unauthorized API access → 401 error
 - First admin: brian+1@worklocal.ca (ID 919)
+
+### Phase 5: Customer Ordering Database ✅ (Completed - Oct 16, 2025)
+- Created 8 new customer ordering tables in production Supabase:
+  - cart_sessions, user_delivery_addresses, user_payment_methods
+  - payment_transactions, order_status_history, stripe_webhook_events
+  - user_favorite_dishes, restaurant_reviews
+- Updated existing tables (users.stripe_customer_id, orders payment fields)
+- All tables created in menuca_v3 schema with proper foreign keys
+
+### Phase 6: Restaurant Menu Page ✅ (Completed - Oct 16, 2025)
+
+**✅ Public Customer-Facing Routes:**
+- `/r/[slug]` - Restaurant menu page with slug format: `{name}-{id}` (e.g., "joes-pizza-123")
+- Server components with loading.tsx (skeleton) and error.tsx (error boundary)
+- SSR-safe implementation with proper hydration handling
+
+**✅ Customer API Routes (3 endpoints):**
+- GET /api/customer/restaurants/[slug] - Fetch restaurant by ID extracted from slug
+- GET /api/customer/restaurants/[slug]/menu - Fetch courses with nested dishes
+- GET /api/customer/dishes/[id]/modifiers - Fetch dish modifiers
+
+**✅ Shopping Cart System:**
+- Zustand store with localStorage persistence (`menu-ca-cart` key)
+- CartItem interface: dishId, dishName, size, sizePrice, quantity, modifiers, specialInstructions, subtotal
+- SSR-safe restaurant switching with client-only confirmation dialog
+- Tax calculation: 13% HST on (subtotal + delivery fee)
+- Prevents cross-restaurant mixing with confirmation dialog
+
+**✅ UI Components (4 components):**
+- RestaurantMenu - Header, category nav, dish grid, floating cart button
+- DishCard - Responsive 2-col desktop/1-col mobile grid with quick add
+- DishModal - Full customization (sizes, modifiers, special instructions, quantity)
+- CartDrawer - Side sheet with items, calculations, checkout button
+
+**✅ UX Features:**
+- Empty menu fallback: "Menu Coming Soon" for restaurants without dishes
+- Loading skeleton screens during data fetch
+- Error boundaries with retry functionality
+- Touch-friendly UI (44px min touch targets)
+- Responsive grid layout
+
+**✅ Technical Implementation:**
+- Slug utility: `lib/utils/slugify.ts` (slugify, extractIdFromSlug, createRestaurantSlug)
+- SSR guards: `typeof window !== 'undefined'` checks prevent hydration errors
+- Error handling: Throws errors to Next.js error boundary instead of notFound()
+- All prices in cents for precision (base_price: 1299 = $12.99)
+
+**⏳ Pending E2E Testing:**
+- Functional testing requires restaurants with menu data (courses + dishes) in database
+- Architect-reviewed and approved, ready for testing with real data
