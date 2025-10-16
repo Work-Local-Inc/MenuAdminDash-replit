@@ -24,7 +24,7 @@ export default async function RestaurantPage({ params }: RestaurantPageProps) {
       id,
       name,
       status,
-      restaurant_locations!inner (
+      restaurant_locations (
         id,
         street_address,
         city_id,
@@ -50,8 +50,7 @@ export default async function RestaurantPage({ params }: RestaurantPageProps) {
         delivery_max_distance_km,
         takeout_enabled,
         takeout_time_minutes,
-        accepts_tips,
-        delivery_fee_cents
+        accepts_tips
       )
     `)
     .eq('id', restaurantId)

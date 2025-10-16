@@ -27,7 +27,7 @@ export async function GET(
         id,
         name,
         status,
-        restaurant_locations!inner (
+        restaurant_locations (
           id,
           street_address,
           city_id,

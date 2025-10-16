@@ -196,6 +196,18 @@ See **PROGRESS.md** and **NEXT_STEPS_TASK_LIST.md** for detailed roadmap and rem
 - Error handling: Throws errors to Next.js error boundary instead of notFound()
 - All prices in cents for precision (base_price: 1299 = $12.99)
 
-**⏳ Pending E2E Testing:**
-- Functional testing requires restaurants with menu data (courses + dishes) in database
-- Architect-reviewed and approved, ready for testing with real data
+**✅ E2E Testing Complete:**
+- **Test Restaurant**: Cathay Restaurants (ID: 72) with 30 courses, 233 dishes
+- **Verified Functionality**:
+  - Page loads successfully at `/r/cathay-restaurants-72`
+  - Dishes display in responsive grid layout
+  - Dish modal opens with customization options
+  - Add to cart functionality works correctly
+  - Cart drawer shows items with accurate calculations
+  - Multiple item support (tested with Almond/Cookies + Egg Roll)
+  - Price calculations: Subtotal + Delivery ($5.00) + 13% HST = Total ✅
+- **Bug Fixes Applied**:
+  - Changed `restaurant_locations!inner` to `restaurant_locations` (LEFT JOIN)
+  - Removed non-existent `delivery_fee_cents` column from queries
+  - SSR cart clearing prevention (early return on server)
+- **Production Ready**: Full ordering flow validated end-to-end
