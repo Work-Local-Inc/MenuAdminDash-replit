@@ -15,10 +15,13 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import Image from "next/image"
+import menuCaLogo from "@assets/image_1760624954309.png"
 
 import {
   Sidebar,
   SidebarContent,
+  SidebarHeader,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -118,9 +121,21 @@ export function AppSidebar() {
 
   return (
     <Sidebar>
+      <SidebarHeader className="border-b p-4">
+        <Link href="/admin/dashboard" className="flex items-center gap-2" data-testid="link-logo">
+          <Image 
+            src={menuCaLogo} 
+            alt="Menu.ca Logo" 
+            width={120}
+            height={24}
+            className="h-6 w-auto"
+            priority
+          />
+        </Link>
+      </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Menu.ca Admin</SidebarGroupLabel>
+          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {menuItems.map((item) => (
