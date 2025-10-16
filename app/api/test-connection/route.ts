@@ -1,17 +1,28 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
+
+// Use direct Supabase client (bypass auth)
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  {
+    db: { schema: 'menuca_v3' }
+  }
+)
 
 export async function GET() {
   try {
-    const supabase = await createClient()
+    console.log('🔍 Testing Supabase connection...')
+    console.log('URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
     
-    // Test restaurant query
+    // Test 1: Query restaurants from menuca_v3 schema
     const { data: restaurants, error: restaurantsError } = await supabase
       .from('restaurants')
       .select('id, name, status')
       .limit(5)
     
     if (restaurantsError) {
+      console.error('❌ Restaurant query error:', restaurantsError)
       return NextResponse.json({ 
         success: false,
         error: 'Restaurant query failed', 
@@ -19,7 +30,9 @@ export async function GET() {
       }, { status: 500 })
     }
     
-    // Get counts
+    console.log('✅ Found restaurants:', restaurants?.length)
+    
+    // Test 2: Get counts
     const { count: restaurantCount, error: rCountError } = await supabase
       .from('restaurants')
       .select('*', { count: 'exact', head: true })
@@ -28,20 +41,22 @@ export async function GET() {
       .from('users')
       .select('*', { count: 'exact', head: true })
     
+    console.log('✅ Restaurant count:', restaurantCount)
+    console.log('✅ User count:', userCount)
+    
     return NextResponse.json({
       success: true,
-      connection: 'CONNECTED',
+      connection: '✅ CONNECTED TO menuca_v3 SCHEMA',
+      schemaExposed: true,
       sampleRestaurants: restaurants,
       counts: {
         restaurants: restaurantCount || 0,
         users: userCount || 0
       },
-      errors: {
-        restaurantCount: rCountError,
-        userCount: uCountError
-      }
+      timestamp: new Date().toISOString()
     })
   } catch (error: any) {
+    console.error('❌ Connection test failed:', error)
     return NextResponse.json({ 
       success: false,
       error: 'Connection failed', 
