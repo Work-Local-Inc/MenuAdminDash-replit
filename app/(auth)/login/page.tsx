@@ -72,90 +72,110 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-4">
-          <div className="flex justify-center">
-            <img 
-              src="/menu-ca-logo.png" 
-              alt="MENU.CA" 
-              className="h-12 w-auto"
-            />
+    <div className="relative flex min-h-screen items-center justify-center p-4">
+      {/* Background Image with Dark Overlay */}
+      <div 
+        className="absolute inset-0 bg-cover bg-center"
+        style={{ 
+          backgroundImage: `url(/login-bg.jpg)`,
+        }}
+      >
+        <div className="absolute inset-0 bg-black/60" />
+      </div>
+
+      {/* Login Card */}
+      <div className="relative z-10 w-full max-w-md">
+        {/* Logo */}
+        <div className="flex justify-center mb-8">
+          <div className="bg-white px-6 py-3 rounded-lg shadow-lg">
+            <div className="flex items-center gap-1">
+              <span className="bg-red-600 text-white font-bold text-xl px-2 py-1 rounded">M</span>
+              <span className="text-black font-semibold text-xl">ENU.CA</span>
+            </div>
           </div>
-          <div className="space-y-1 text-center">
-            <CardTitle className="text-2xl font-bold">Admin Dashboard</CardTitle>
-            <CardDescription>
+        </div>
+
+        {/* Login Form Card */}
+        <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-2xl">
+          <CardHeader className="space-y-2 pb-4">
+            <CardTitle className="text-2xl font-bold text-center">Admin Dashboard</CardTitle>
+            <CardDescription className="text-center">
               Enter your credentials to access the dashboard
             </CardDescription>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4" autoComplete="on">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="admin@menu.ca"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                autoComplete="email"
-                required
-                data-testid="input-email"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleLogin} className="space-y-4" autoComplete="on">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
                 <Input
-                  id="password"
-                  name="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoComplete="current-password"
+                  id="email"
+                  name="email"
+                  type="email"
+                  placeholder="admin@menu.ca"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
                   required
-                  data-testid="input-password"
+                  data-testid="input-email"
                 />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-0 top-0 h-full px-3"
-                  onClick={() => setShowPassword(!showPassword)}
-                  data-testid="button-toggle-password"
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </Button>
               </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Checkbox 
-                id="remember" 
-                checked={rememberMe}
-                onCheckedChange={(checked) => setRememberMe(checked as boolean)}
-                data-testid="checkbox-remember-me"
-              />
-              <Label 
-                htmlFor="remember" 
-                className="text-sm font-normal cursor-pointer"
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoComplete="current-password"
+                    required
+                    data-testid="input-password"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full px-3"
+                    onClick={() => setShowPassword(!showPassword)}
+                    data-testid="button-toggle-password"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  id="remember" 
+                  checked={rememberMe}
+                  onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                  data-testid="checkbox-remember-me"
+                />
+                <Label 
+                  htmlFor="remember" 
+                  className="text-sm font-normal cursor-pointer"
+                >
+                  Remember me (stay signed in for 7 days)
+                </Label>
+              </div>
+              <Button 
+                type="submit" 
+                className="w-full bg-red-600 hover:bg-red-700 text-white" 
+                disabled={loading}
+                data-testid="button-login"
               >
-                Remember me (stay signed in for 7 days)
-              </Label>
-            </div>
-            <Button 
-              type="submit" 
-              className="w-full" 
-              disabled={loading}
-              data-testid="button-login"
-            >
-              {loading ? "Signing in..." : "Sign in"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+                {loading ? "Signing in..." : "Sign in"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        {/* Footer Text */}
+        <p className="text-center text-white/80 text-sm mt-6">
+          Manage your restaurant directory with confidence
+        </p>
+      </div>
     </div>
   )
 }
