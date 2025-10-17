@@ -9,12 +9,24 @@ export function createClient() {
       db: {
         schema: 'menuca_v3',
       },
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: true,
-        // Extended session: 7 days instead of default 1 hour
-        storageKey: 'menu-ca-admin-session',
+      cookies: {
+        getAll() {
+          // Only access document on the client side
+          if (typeof document === 'undefined') return []
+          
+          return document.cookie.split(';').map(cookie => {
+            const [name, value] = cookie.trim().split('=')
+            return { name, value }
+          }).filter(cookie => cookie.name) // Filter out empty cookies
+        },
+        setAll(cookiesToSet) {
+          // Only access document on the client side
+          if (typeof document === 'undefined') return
+          
+          cookiesToSet.forEach(({ name, value, options }) => {
+            document.cookie = `${name}=${value}; path=${options?.path || '/'}; max-age=${options?.maxAge || 604800}; ${options?.sameSite ? `samesite=${options.sameSite}` : ''}`
+          })
+        },
       },
     }
   )

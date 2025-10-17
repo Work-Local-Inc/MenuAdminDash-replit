@@ -38,10 +38,6 @@ export default function LoginPage() {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
-        options: {
-          // Remember Me: Keep session alive for 7 days instead of default 1 hour
-          persistSession: rememberMe,
-        }
       })
 
       if (error) throw error
@@ -58,8 +54,10 @@ export default function LoginPage() {
         description: "Logged in successfully",
       })
 
-      // Use window.location for reliable redirect after auth
-      window.location.href = '/admin/dashboard'
+      // Wait for cookies to sync, then force full page reload to update server session
+      setTimeout(() => {
+        window.location.href = '/admin/dashboard'
+      }, 100)
     } catch (error: any) {
       toast({
         variant: "destructive",

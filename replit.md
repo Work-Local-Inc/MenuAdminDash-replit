@@ -32,10 +32,13 @@ Preferred communication style: Simple, everyday language.
 ### Authentication & Authorization
 - **Supabase Auth** with email/password authentication
 - **Remember Me feature** - 7-day persistent sessions with email localStorage caching
+- **Session Persistence** - Cookies properly sync between client/server using Supabase SSR cookie handlers
 - Browser password autofill support via HTML5 autocomplete attributes
-- Middleware-based route protection (`middleware.ts`) redirecting unauthenticated users from `/admin/*` routes
+- Middleware-based route protection (`middleware.ts`) with automatic session refresh
+  - `/admin/*` without session → redirect to `/login`
+  - `/login` with valid session → redirect to `/admin/dashboard`
 - Server-side session management using `@supabase/ssr` for secure cookie handling
-- Extended session duration with automatic token refresh
+- Automatic token refresh (access token: 1 hour, refresh token: 7 days)
 - Custom `useAuth` hook for client-side auth state
 
 ### Data Layer
@@ -228,14 +231,17 @@ See **PROGRESS.md** and **NEXT_STEPS_TASK_LIST.md** for detailed roadmap and rem
   - `autoComplete="email"` and `autoComplete="current-password"` attributes
   - `name` attributes on form fields for password manager compatibility
   - Works with Chrome, Firefox, Safari built-in password managers
-- **Extended session configuration**
-  - `persistSession: true` and `autoRefreshToken: true` in Supabase client
-  - Custom storage key: `menu-ca-admin-session`
-  - Sessions persist across browser restarts when Remember Me is checked
+- **Session cookie synchronization** (Fixed Oct 17, 2025)
+  - Supabase SSR cookie handlers properly sync client/server sessions
+  - Middleware reads session cookies and auto-refreshes tokens
+  - SSR-safe guards prevent `document is not defined` errors
+  - Cookies: `sb-*-auth-token` and `menu-ca-admin-session`
+  - Sessions persist across browser restarts
 
 **✅ E2E Testing:**
 - Remember Me checkbox displays correctly
 - Email pre-fills on subsequent logins
-- Session persists across browser tabs
+- Session persists across browser tabs and page refreshes
 - 7-day session duration verified
 - Browser password manager integration confirmed
+- Middleware auto-redirect: `/login` → `/admin/dashboard` when logged in
