@@ -91,35 +91,40 @@ export async function getOrders(filters?: {
 export async function getDashboardStats() {
   const supabase = await createClient()
   
-  // Get total orders count
-  const { count: totalOrders } = await supabase
-    .from('orders')
-    .select('*', { count: 'exact', head: true })
-
-  // Get total revenue
-  const { data: revenueData } = await supabase
-    .from('orders')
-    .select('total')
+  // Run all queries in parallel for better performance
+  const [ordersResult, revenueResult, restaurantsResult, usersResult, topRestaurantsResult] = await Promise.all([
+    // Get total orders count
+    supabase
+      .from('orders')
+      .select('*', { count: 'exact', head: true }),
     
-  const totalRevenue = revenueData?.reduce((sum: number, order: any) => sum + (order.total || 0), 0) || 0
-
-  // Get active restaurants count
-  const { count: activeRestaurants } = await supabase
-    .from('restaurants')
-    .select('*', { count: 'exact', head: true })
-    .eq('status', 'active')
-
-  // Get total users count
-  const { count: totalUsers } = await supabase
-    .from('users')
-    .select('*', { count: 'exact', head: true })
-
-  // Get top restaurants by order count and revenue
-  const { data: ordersByRestaurant } = await supabase
-    .from('orders')
-    .select('restaurant_id, total, restaurants:restaurant_id (id, name)')
+    // Get total revenue - fetch only the total column (much lighter than full rows)
+    supabase
+      .from('orders')
+      .select('total'),
+    
+    // Get active restaurants count
+    supabase
+      .from('restaurants')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'active'),
+    
+    // Get total users count (use estimated for speed - exact count is slow on large tables)
+    supabase
+      .from('users')
+      .select('*', { count: 'estimated', head: true }),
+    
+    // Get top restaurants - fetch only last 30 days of orders for performance
+    supabase
+      .from('orders')
+      .select('restaurant_id, total, restaurants:restaurant_id (id, name)')
+      .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+  ])
   
-  // Aggregate orders and revenue by restaurant
+  // Calculate total revenue
+  const totalRevenue = revenueResult.data?.reduce((sum: number, order: any) => sum + (order.total || 0), 0) || 0
+  
+  // Aggregate top restaurants
   const restaurantStats = new Map<number, { 
     id: number, 
     name: string, 
@@ -127,7 +132,7 @@ export async function getDashboardStats() {
     revenue: number 
   }>()
   
-  ordersByRestaurant?.forEach((order: any) => {
+  topRestaurantsResult.data?.forEach((order: any) => {
     if (order.restaurant_id && order.restaurants) {
       const existing = restaurantStats.get(order.restaurant_id) || {
         id: order.restaurants.id,
@@ -141,16 +146,15 @@ export async function getDashboardStats() {
     }
   })
 
-  // Convert to array and sort by order count
   const topRestaurants = Array.from(restaurantStats.values())
     .sort((a, b) => b.orders - a.orders)
     .slice(0, 5)
 
   return {
-    totalOrders: totalOrders || 0,
+    totalOrders: ordersResult.count || 0,
     totalRevenue,
-    activeRestaurants: activeRestaurants || 0,
-    totalUsers: totalUsers || 0,
+    activeRestaurants: restaurantsResult.count || 0,
+    totalUsers: usersResult.count || 0,
     topRestaurants,
   }
 }
