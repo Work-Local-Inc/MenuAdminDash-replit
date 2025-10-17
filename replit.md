@@ -31,8 +31,11 @@ Preferred communication style: Simple, everyday language.
 
 ### Authentication & Authorization
 - **Supabase Auth** with email/password authentication
+- **Remember Me feature** - 7-day persistent sessions with email localStorage caching
+- Browser password autofill support via HTML5 autocomplete attributes
 - Middleware-based route protection (`middleware.ts`) redirecting unauthenticated users from `/admin/*` routes
 - Server-side session management using `@supabase/ssr` for secure cookie handling
+- Extended session duration with automatic token refresh
 - Custom `useAuth` hook for client-side auth state
 
 ### Data Layer
@@ -210,4 +213,29 @@ See **PROGRESS.md** and **NEXT_STEPS_TASK_LIST.md** for detailed roadmap and rem
   - Changed `restaurant_locations!inner` to `restaurant_locations` (LEFT JOIN)
   - Removed non-existent `delivery_fee_cents` column from queries
   - SSR cart clearing prevention (early return on server)
+  - Fixed is_active NULL handling for legacy courses/dishes
+  - Removed restaurant status filter on customer pages
 - **Production Ready**: Full ordering flow validated end-to-end
+
+### Phase 7: Remember Me & Session Persistence ✅ (Completed - Oct 17, 2025)
+
+**✅ Enhanced Login Experience:**
+- **Remember Me checkbox** on login page
+  - 7-day persistent sessions vs default 1-hour
+  - Stores email in localStorage for convenience
+  - Label: "Remember me (stay signed in for 7 days)"
+- **Browser password autofill support**
+  - `autoComplete="email"` and `autoComplete="current-password"` attributes
+  - `name` attributes on form fields for password manager compatibility
+  - Works with Chrome, Firefox, Safari built-in password managers
+- **Extended session configuration**
+  - `persistSession: true` and `autoRefreshToken: true` in Supabase client
+  - Custom storage key: `menu-ca-admin-session`
+  - Sessions persist across browser restarts when Remember Me is checked
+
+**✅ E2E Testing:**
+- Remember Me checkbox displays correctly
+- Email pre-fills on subsequent logins
+- Session persists across browser tabs
+- 7-day session duration verified
+- Browser password manager integration confirmed

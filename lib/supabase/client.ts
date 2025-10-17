@@ -9,6 +9,13 @@ export function createClient() {
       db: {
         schema: 'menuca_v3',
       },
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        // Extended session: 7 days instead of default 1 hour
+        storageKey: 'menu-ca-admin-session',
+      },
     }
   )
 }

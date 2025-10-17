@@ -1,23 +1,34 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
 import { useToast } from '@/hooks/use-toast'
 import { Eye, EyeOff } from 'lucide-react'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [rememberMe, setRememberMe] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
   const supabase = createClient()
+
+  // Load remembered email on mount
+  useEffect(() => {
+    const savedEmail = localStorage.getItem('menu-ca-admin-email')
+    if (savedEmail) {
+      setEmail(savedEmail)
+      setRememberMe(true)
+    }
+  }, [])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -27,9 +38,20 @@ export default function LoginPage() {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
+        options: {
+          // Remember Me: Keep session alive for 7 days instead of default 1 hour
+          persistSession: rememberMe,
+        }
       })
 
       if (error) throw error
+
+      // Save email to localStorage if Remember Me is checked
+      if (rememberMe) {
+        localStorage.setItem('menu-ca-admin-email', email)
+      } else {
+        localStorage.removeItem('menu-ca-admin-email')
+      }
 
       toast({
         title: "Success",
@@ -68,15 +90,17 @@ export default function LoginPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleLogin} className="space-y-4" autoComplete="on">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
+                name="email"
                 type="email"
                 placeholder="admin@menu.ca"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
                 required
                 data-testid="input-email"
               />
@@ -86,10 +110,12 @@ export default function LoginPage() {
               <div className="relative">
                 <Input
                   id="password"
+                  name="password"
                   type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
                   required
                   data-testid="input-password"
                 />
@@ -104,6 +130,20 @@ export default function LoginPage() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
               </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="remember" 
+                checked={rememberMe}
+                onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                data-testid="checkbox-remember-me"
+              />
+              <Label 
+                htmlFor="remember" 
+                className="text-sm font-normal cursor-pointer"
+              >
+                Remember me (stay signed in for 7 days)
+              </Label>
             </div>
             <Button 
               type="submit" 
