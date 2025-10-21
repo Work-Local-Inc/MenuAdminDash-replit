@@ -18,10 +18,18 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { useToast } from '@/hooks/use-toast'
 import { ArrowLeft, Save } from 'lucide-react'
 import Link from 'next/link'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { Role } from '@/lib/rbac'
 
 const adminUserSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -29,6 +37,7 @@ const adminUserSchema = z.object({
   last_name: z.string().min(1, 'Last name is required'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   confirm_password: z.string().min(8, 'Please confirm password'),
+  role_id: z.string().min(1, 'Please select a role'),
   mfa_enabled: z.boolean(),
 }).refine((data) => data.password === data.confirm_password, {
   message: "Passwords don't match",
@@ -51,9 +60,22 @@ export default function AddAdminUserPage() {
       last_name: '',
       password: '',
       confirm_password: '',
+      role_id: '',
       mfa_enabled: false,
     },
   })
+
+  // Fetch roles for the dropdown
+  const { data: rolesData, isLoading: isLoadingRoles } = useQuery({
+    queryKey: ['/api/roles'],
+    queryFn: async () => {
+      const res = await fetch('/api/roles')
+      if (!res.ok) throw new Error('Failed to fetch roles')
+      return res.json()
+    },
+  })
+
+  const roles: Role[] = rolesData?.data || []
 
   const onSubmit = async (data: AdminUserFormData) => {
     setIsSubmitting(true)
@@ -67,6 +89,7 @@ export default function AddAdminUserPage() {
           first_name: data.first_name,
           last_name: data.last_name,
           password: data.password,
+          role_id: parseInt(data.role_id),
           mfa_enabled: data.mfa_enabled,
         }),
       })
@@ -161,6 +184,42 @@ export default function AddAdminUserPage() {
                     </FormControl>
                     <FormDescription>
                       This will be used to log in to the admin dashboard
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="role_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Role</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                      disabled={isLoadingRoles}
+                    >
+                      <FormControl>
+                        <SelectTrigger data-testid="select-role">
+                          <SelectValue placeholder={isLoadingRoles ? "Loading roles..." : "Select a role"} />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {roles.map((role) => (
+                          <SelectItem 
+                            key={role.id} 
+                            value={role.id.toString()}
+                            data-testid={`option-role-${role.id}`}
+                          >
+                            {role.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      Assigns permissions and access levels for this admin user
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

@@ -23,7 +23,10 @@ export async function GET(request: NextRequest) {
 
   let query = supabase
     .from('admin_users')
-    .select('*', { count: 'exact' })
+    .select(`
+      *,
+      role:admin_roles(id, name, is_system_role)
+    `, { count: 'exact' })
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1)
 
@@ -65,9 +68,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
 
     // Validate required fields
-    if (!body.email || !body.password) {
+    if (!body.email || !body.password || !body.role_id) {
       return NextResponse.json(
-        { error: 'Email and password are required' },
+        { error: 'Email, password, and role are required' },
         { status: 400 }
       )
     }
@@ -82,6 +85,7 @@ export async function POST(request: NextRequest) {
         first_name: body.first_name || null,
         last_name: body.last_name || null,
         password_hash: passwordHash,
+        role_id: body.role_id,
         mfa_enabled: body.mfa_enabled || false,
       } as any)
       .select()

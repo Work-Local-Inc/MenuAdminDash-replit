@@ -26,6 +26,11 @@ interface AdminUser {
   last_login_at: string | null
   mfa_enabled: boolean
   created_at: string
+  role?: {
+    id: number
+    name: string
+    is_system_role: boolean
+  }
 }
 
 interface AdminUsersClientProps {
@@ -102,7 +107,7 @@ export function AdminUsersClient({ initialAdminUsers, initialCount }: AdminUsers
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
-                  <TableHead>Restaurants</TableHead>
+                  <TableHead>Role</TableHead>
                   <TableHead>MFA</TableHead>
                   <TableHead>Last Login</TableHead>
                   <TableHead>Created</TableHead>
@@ -132,7 +137,13 @@ export function AdminUsersClient({ initialAdminUsers, initialCount }: AdminUsers
                       </TableCell>
                       <TableCell data-testid={`text-email-${admin.id}`}>{admin.email}</TableCell>
                       <TableCell>
-                        <span className="text-muted-foreground text-sm">—</span>
+                        {admin.role ? (
+                          <Badge variant={admin.role.is_system_role ? "default" : "secondary"}>
+                            {admin.role.name}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">No role</span>
+                        )}
                       </TableCell>
                       <TableCell>
                         {admin.mfa_enabled ? (
