@@ -31,11 +31,18 @@ export async function verifyAdminAuth(request: NextRequest) {
   
   // Step 2: Verify user email exists in admin_users table (using service role to bypass RLS)
   // This ensures the authenticated user is actually an admin
-  // Query by email ensures exact match (case-insensitive in Postgres by default)
+  // Also fetch the user's role and permissions
   const adminSupabase = createAdminClient()
   const { data: adminUser, error: adminError } = await adminSupabase
     .from('admin_users')
-    .select('id, email, first_name, last_name')
+    .select(`
+      id,
+      email,
+      first_name,
+      last_name,
+      role_id,
+      role:admin_roles(id, name, permissions, is_system_role)
+    `)
     .eq('email', user.email)
     .is('deleted_at', null) // Only active admins
     .single()
@@ -48,6 +55,20 @@ export async function verifyAdminAuth(request: NextRequest) {
     throw new Error('Forbidden - admin access required')
   }
   
+  // Ensure user has a role assigned
+  if (!adminUser.role) {
+    console.error('[Admin Auth] User has no role assigned:', {
+      email: user.email,
+      adminUserId: adminUser.id
+    })
+    throw new Error('Forbidden - no role assigned')
+  }
+  
   // Email match is guaranteed by the .eq('email', user.email) query above
-  return { user, adminUser }
+  return { 
+    user, 
+    adminUser,
+    role: adminUser.role,
+    permissions: adminUser.role.permissions || {}
+  }
 }

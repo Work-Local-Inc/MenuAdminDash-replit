@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
+import { verifyAdminAuthWithPermission } from '@/lib/rbac'
 import bcrypt from 'bcryptjs'
 
 // GET /api/admin-users - List all admin users with optional search
@@ -53,8 +54,8 @@ export async function GET(request: NextRequest) {
 // POST /api/admin-users - Create new admin user  
 export async function POST(request: NextRequest) {
   try {
-    // Verify admin authentication
-    await verifyAdminAuth(request)
+    // Verify admin authentication and check for 'users:create' permission
+    await verifyAdminAuthWithPermission(request, 'users', 'create')
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message },
