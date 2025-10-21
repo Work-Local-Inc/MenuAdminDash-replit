@@ -31,18 +31,12 @@ export async function verifyAdminAuth(request: NextRequest) {
   
   // Step 2: Verify user email exists in admin_users table (using service role to bypass RLS)
   // This ensures the authenticated user is actually an admin
-  // Also fetch the user's role and permissions
   const adminSupabase = createAdminClient()
+  
+  // First, get the admin user
   const { data: adminUser, error: adminError } = await adminSupabase
     .from('admin_users')
-    .select(`
-      id,
-      email,
-      first_name,
-      last_name,
-      role_id,
-      role:admin_roles(id, name, permissions, is_system_role)
-    `)
+    .select('id, email, first_name, last_name, role_id')
     .eq('email', user.email)
     .is('deleted_at', null) // Only active admins
     .single()
@@ -55,20 +49,44 @@ export async function verifyAdminAuth(request: NextRequest) {
     throw new Error('Forbidden - admin access required')
   }
   
-  // Ensure user has a role assigned
-  if (!adminUser.role) {
-    console.error('[Admin Auth] User has no role assigned:', {
+  // Then, fetch the user's role (if they have one)
+  let role = null
+  let permissions = {}
+  
+  if (adminUser.role_id) {
+    const { data: roleData, error: roleError } = await adminSupabase
+      .from('admin_roles')
+      .select('id, name, permissions, is_system_role')
+      .eq('id', adminUser.role_id)
+      .single()
+    
+    if (roleError) {
+      console.error('[Admin Auth] Error fetching role:', {
+        role_id: adminUser.role_id,
+        error: roleError.message
+      })
+      // Don't throw - continue without role for backward compatibility
+    } else if (roleData) {
+      role = roleData
+      permissions = roleData.permissions || {}
+    }
+  }
+  
+  // For now, allow admins without roles (for backward compatibility during migration)
+  // In production, you might want to enforce role requirement
+  if (!role) {
+    console.warn('[Admin Auth] User has no role assigned - proceeding with empty permissions:', {
       email: user.email,
-      adminUserId: adminUser.id
+      adminUserId: adminUser.id,
+      role_id: adminUser.role_id
     })
-    throw new Error('Forbidden - no role assigned')
   }
   
   // Email match is guaranteed by the .eq('email', user.email) query above
   return { 
     user, 
-    adminUser,
-    role: adminUser.role,
-    permissions: adminUser.role.permissions || {}
+    adminUser: { ...adminUser, role },
+    role,
+    permissions
   }
 }

@@ -101,6 +101,32 @@ Preferred communication style: Simple, everyday language.
 
 See **PROGRESS.md** and **NEXT_STEPS_TASK_LIST.md** for detailed roadmap and remaining work.
 
+## Pending Database Migrations
+
+**⚠️ RBAC System - Database Schema Update Required:**
+
+The following SQL must be run on the production Supabase database to enable the RBAC system:
+
+```sql
+-- Add role_id column to admin_users table
+ALTER TABLE menuca_v3.admin_users 
+ADD COLUMN IF NOT EXISTS role_id INTEGER REFERENCES menuca_v3.admin_roles(id);
+
+-- Create index for performance
+CREATE INDEX IF NOT EXISTS idx_admin_users_role_id 
+ON menuca_v3.admin_users(role_id);
+
+-- Optionally: Assign all existing admin users to Super Admin role (ID: 1)
+UPDATE menuca_v3.admin_users 
+SET role_id = 1 
+WHERE role_id IS NULL AND deleted_at IS NULL;
+```
+
+**Status:** RBAC system is fully implemented in code but requires this database migration to function. Once the migration is applied, the system will allow:
+- Role management (create/edit/delete roles with granular permissions)
+- Role assignment when creating admin users
+- Permission-based access control for API routes
+
 ## Recent Changes
 
 ### Phase 1: Authentication & Layout ✅ (Completed - Oct 2025)

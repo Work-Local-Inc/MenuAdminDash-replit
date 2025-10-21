@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
-import { verifyAdminAuthWithPermission } from '@/lib/rbac'
+import { verifyAdminAuthWithPermission } from '@/lib/auth/permission-check'
 import bcrypt from 'bcryptjs'
 
 // GET /api/admin-users - List all admin users with optional search
