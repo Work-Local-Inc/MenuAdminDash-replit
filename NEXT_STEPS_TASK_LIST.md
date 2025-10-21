@@ -21,21 +21,26 @@
 
 ### ✅ Phase 2: Restaurant Management (COMPLETED)
 **15 Management Tabs - Fully Functional:**
-- [x] 1. Basic Info (name, description, logo, images)
-- [x] 2. Contact Info (phone, email, fax)
+- [x] 1. Basic Info (name, description, logo, images) → [📖 SEO Guide](lib/Documentation/Frontend-Guides/Restaurant%20Management/07-SEO-Full-Text-Search.md)
+- [x] 2. Contact Info (phone, email, fax) → [📖 Contact Management](lib/Documentation/Frontend-Guides/Restaurant%20Management/05-Contact-Management.md)
 - [x] 3. Locations (multiple addresses, primary location)
-- [x] 4. Delivery Areas (Mapbox GL JS polygon drawing)
+- [x] 4. Delivery Areas (Mapbox GL JS polygon drawing) → [📖 PostGIS Delivery Zones](lib/Documentation/Frontend-Guides/Restaurant%20Management/06-PostGIS-Delivery-Zones.md)
 - [x] 5. Hours & Schedules (operating hours, holidays)
 - [x] 6. Payment Methods (credit cards, cash, etc.)
 - [x] 7. Service Config (delivery, pickup, dine-in)
-- [x] 8. SEO Settings (meta tags, descriptions)
-- [x] 9. Menu Categories (organize menu structure)
-- [x] 10. Custom Domains (custom URLs)
+- [x] 8. SEO Settings (meta tags, descriptions) → [📖 SEO Guide](lib/Documentation/Frontend-Guides/Restaurant%20Management/07-SEO-Full-Text-Search.md)
+- [x] 9. Menu Categories (organize menu structure) → [📖 Categorization System](lib/Documentation/Frontend-Guides/Restaurant%20Management/08-Categorization-System.md)
+- [x] 10. Custom Domains (custom URLs) → [📖 Domain Verification](lib/Documentation/Frontend-Guides/Restaurant%20Management/11-Domain-Verification-SSL.md)
 - [x] 11. Custom CSS (branding/styling)
 - [x] 12. Integrations (POS systems, third-party)
 - [x] 13. Images (logo, banner, gallery with drag-drop reorder)
 - [x] 14. Feedback (reviews, ratings management)
-- [x] 15. Contacts (owner, manager details)
+- [x] 15. Contacts (owner, manager details) → [📖 Contact Management](lib/Documentation/Frontend-Guides/Restaurant%20Management/05-Contact-Management.md)
+
+**Backend Documentation:**
+- **Master Index:** [lib/Documentation/Frontend-Guides/BRIAN_MASTER_INDEX.md](lib/Documentation/Frontend-Guides/BRIAN_MASTER_INDEX.md)
+- **Restaurant Management Guide:** [lib/Documentation/Frontend-Guides/01-Restaurant-Management-Frontend-Guide.md](lib/Documentation/Frontend-Guides/01-Restaurant-Management-Frontend-Guide.md)
+- **Documentation Mapping:** [DOCUMENTATION_MAPPING.md](DOCUMENTATION_MAPPING.md) - Quick reference for all 11 components
 
 **Key Features:**
 - Full CRUD operations for all restaurant data
@@ -44,6 +49,7 @@
 - Drag-and-drop image reordering
 - Real-time validation with Zod schemas
 - Server-side API routes for all operations
+- **50+ SQL Functions** and **29 Edge Functions** available from Santiago's backend work
 
 **Files Created:** `app/admin/restaurants/page.tsx`, `app/admin/restaurants/[id]/page.tsx`, 15+ API routes under `app/api/restaurants/*`, restaurant components, validation schemas
 
@@ -480,13 +486,16 @@
 **Dependencies:** TASK 1 (franchises tables)  
 **Current Status:** ❌ Not started
 
+**📖 Documentation:** [Franchise/Chain Hierarchy Guide](lib/Documentation/Frontend-Guides/Restaurant%20Management/01-Franchise-Chain-Hierarchy.md)  
+**Backend APIs Available:** 13 SQL Functions + 3 Edge Functions
+
 #### Subtasks:
 - [ ] 6.1 - Build franchise list page
 - [ ] 6.2 - Create franchise form
 - [ ] 6.3 - Implement restaurant linking UI
 - [ ] 6.4 - Build commission rules editor
 - [ ] 6.5 - Create consolidated reporting page
-- [ ] 6.6 - Implement franchise API endpoints
+- [ ] 6.6 - Implement franchise API endpoints (use SQL functions from guide)
   - GET `/api/franchises` - List franchises
   - POST `/api/franchises` - Create franchise
   - PUT `/api/franchises/[id]` - Update franchise
@@ -602,13 +611,19 @@
 **Dependencies:** None  
 **Current Status:** ⚠️ Partially implemented
 
+**📖 Documentation:** 
+- [SEO & Full-Text Search Guide](lib/Documentation/Frontend-Guides/Restaurant%20Management/07-SEO-Full-Text-Search.md) - Full-text search functions
+- [Categorization System Guide](lib/Documentation/Frontend-Guides/Restaurant%20Management/08-Categorization-System.md) - Tag-based filtering  
+**Backend APIs Available:** 2 SQL Functions (search) + 3 SQL Functions (categorization)
+
 #### Subtasks:
 - [ ] 9.1 - Add vendor filter dropdown
-- [ ] 9.2 - Add cuisine type filter
+- [ ] 9.2 - Add cuisine type filter (use categorization SQL functions)
 - [ ] 9.3 - Add status filter (active/inactive)
 - [ ] 9.4 - Implement combined filter logic
 - [ ] 9.5 - Add filter reset button
-- [ ] 9.6 - Test all filter combinations
+- [ ] 9.6 - Add full-text search (use SEO SQL functions)
+- [ ] 9.7 - Test all filter combinations
 
 **Files to Update:**
 - `app/admin/restaurants/page.tsx`
@@ -616,6 +631,7 @@
 **Acceptance Criteria:**
 - All filters work independently
 - Filters can be combined
+- Full-text search works with ranking
 - Filter state persists in URL params
 - Reset button clears all filters
 
@@ -627,15 +643,18 @@
 **Dependencies:** None  
 **Current Status:** ❌ Not started
 
+**📖 Documentation:** [Restaurant Onboarding System Guide](lib/Documentation/Frontend-Guides/Restaurant%20Management/10-Restaurant-Onboarding-System.md)  
+**Backend APIs Available:** 9 SQL Functions + 4 Edge Functions
+
 #### Subtasks:
-- [ ] 10.1 - Design multi-step wizard flow
+- [ ] 10.1 - Design multi-step wizard flow (reference onboarding guide)
 - [ ] 10.2 - Build step 1: Basic Info
 - [ ] 10.3 - Build step 2: Location
 - [ ] 10.4 - Build step 3: Contact
 - [ ] 10.5 - Build step 4: Service Config
 - [ ] 10.6 - Build step 5: Review & Submit
-- [ ] 10.7 - Implement step navigation
-- [ ] 10.8 - Add form validation per step
+- [ ] 10.7 - Implement step navigation with progress tracking
+- [ ] 10.8 - Add form validation per step (use SQL validation functions)
 - [ ] 10.9 - Test wizard completion
 
 **Files to Create:**
@@ -651,44 +670,45 @@
 - Can navigate between steps
 - Form validation works per step
 - Can go back without losing data
+- Progress tracking displays completion percentage
 - Successfully creates restaurant
 
 ---
 
-### TASK 11: Order Management & Cancellation
+### TASK 11: Onboarding Status Dashboard
 **Priority:** MEDIUM  
-**Estimated Time:** 2 days  
-**Dependencies:** TASK 1 (order_cancellation_requests table)  
-**Current Status:** ⚠️ Basic orders page exists
+**Estimated Time:** 1 day  
+**Dependencies:** None  
+**Current Status:** ❌ Not started
+
+**📖 Documentation:** [Onboarding Status Tracking Guide](lib/Documentation/Frontend-Guides/Restaurant%20Management/09-Onboarding-Status-Tracking.md)  
+**Backend APIs Available:** 4 SQL Functions + 3 Edge Functions
 
 #### Subtasks:
-- [ ] 11.1 - Enhance orders list page
-- [ ] 11.2 - Add order filters (status, date, restaurant)
-- [ ] 11.3 - Build order detail page
-- [ ] 11.4 - Implement cancellation request workflow
-- [ ] 11.5 - Create cancellation approval UI
-- [ ] 11.6 - Add order API endpoints
-  - GET `/api/orders/[id]` - Get order details
-  - POST `/api/orders/[id]/cancel` - Request cancellation
-  - PUT `/api/orders/[id]/cancel/[requestId]` - Approve/reject
-- [ ] 11.7 - Test cancellation workflow
+- [ ] 11.1 - Build onboarding dashboard page
+- [ ] 11.2 - Create progress visualization component
+- [ ] 11.3 - Add completion percentage display
+- [ ] 11.4 - Implement step-by-step tracking (use SQL functions)
+- [ ] 11.5 - Build admin oversight view
+- [ ] 11.6 - Add onboarding API endpoints
+  - GET `/api/onboarding/status/[restaurantId]` - Get onboarding status
+  - PUT `/api/onboarding/status/[restaurantId]` - Update step completion
+  - GET `/api/onboarding/overview` - Get all restaurant onboarding statuses
+- [ ] 11.7 - Test onboarding tracking
 
 **Files to Create:**
-- `app/admin/orders/[id]/page.tsx`
-- `components/orders/order-detail.tsx`
-- `components/orders/cancellation-request.tsx`
-- `app/api/orders/[id]/route.ts`
-- `app/api/orders/[id]/cancel/route.ts`
-
-**Files to Update:**
-- `app/admin/orders/page.tsx` (enhance existing)
-- `app/api/orders/route.ts` (add filters)
+- `app/admin/onboarding/page.tsx`
+- `app/admin/onboarding/[restaurantId]/page.tsx`
+- `components/onboarding/progress-tracker.tsx`
+- `components/onboarding/step-checklist.tsx`
+- `app/api/onboarding/status/route.ts`
+- `app/api/onboarding/status/[restaurantId]/route.ts`
 
 **Acceptance Criteria:**
-- Can view order details
-- Cancellation requests can be submitted
-- Admin can approve/reject cancellations
-- Refunds are processed correctly
+- Can view onboarding progress for all restaurants
+- Completion percentage displays accurately
+- Step-by-step checklist shows what's complete/incomplete
+- Admin can track which restaurants need attention
 
 ---
 
@@ -725,61 +745,72 @@
 
 ## 💡 NICE TO HAVE TASKS
 
-### TASK 13: Content Management (Cities, Cuisines, Tags)
+### TASK 13: Soft Delete & Recovery UI
 **Priority:** LOW  
 **Estimated Time:** 1 day  
 **Dependencies:** None  
 **Current Status:** ❌ Not started
 
+**📖 Documentation:** [Soft Delete Infrastructure Guide](lib/Documentation/Frontend-Guides/Restaurant%20Management/02-Soft-Delete-Infrastructure.md)  
+**Backend APIs Available:** 3 SQL Functions + 3 Edge Functions
+
 #### Subtasks:
-- [ ] 13.1 - Build cities management page
-- [ ] 13.2 - Build cuisines management page
-- [ ] 13.3 - Build tags management page
-- [ ] 13.4 - Add CRUD operations for each
-- [ ] 13.5 - Test content management
+- [ ] 13.1 - Build deleted restaurants view page
+- [ ] 13.2 - Create recovery dialog component
+- [ ] 13.3 - Add 30-day recovery window display
+- [ ] 13.4 - Implement deletion audit trail view
+- [ ] 13.5 - Build soft delete API endpoints (use Edge functions from guide)
+  - GET `/api/restaurants/deleted` - List deleted restaurants
+  - POST `/api/restaurants/[id]/restore` - Restore deleted restaurant
+  - GET `/api/restaurants/[id]/deletion-audit` - View deletion history
+- [ ] 13.6 - Test soft delete and recovery workflow
 
 **Files to Create:**
-- `app/admin/content/cities/page.tsx`
-- `app/admin/content/cuisines/page.tsx`
-- `app/admin/content/tags/page.tsx`
-- `app/api/cities/[id]/route.ts`
-- `app/api/cuisines/route.ts`
-- `app/api/cuisines/[id]/route.ts`
-- `app/api/tags/route.ts`
+- `app/admin/restaurants/deleted/page.tsx`
+- `components/restaurant/recovery-dialog.tsx`
+- `components/restaurant/deletion-audit-trail.tsx`
+- `app/api/restaurants/deleted/route.ts`
+- `app/api/restaurants/[id]/restore/route.ts`
 
 **Acceptance Criteria:**
-- Can manage cities
-- Can manage cuisine types
-- Can manage tags
-- Changes reflect in filters
+- Can view all deleted restaurants
+- Can restore restaurants within 30-day window
+- Recovery window countdown displays accurately
+- Deletion audit trail shows complete history
+- Zero data loss on accidents
 
 ---
 
-### TASK 14: Email Template Editor
+### TASK 14: Restaurant Status Audit Trail
 **Priority:** LOW  
-**Estimated Time:** 2 days  
-**Dependencies:** TASK 1 (email_templates table)  
+**Estimated Time:** 4 hours  
+**Dependencies:** None  
 **Current Status:** ❌ Not started
 
+**📖 Documentation:** [Status Audit Trail Guide](lib/Documentation/Frontend-Guides/Restaurant%20Management/04-Status-Audit-Trail.md)  
+**Backend APIs Available:** 2 SQL Functions + 1 Edge Function
+
 #### Subtasks:
-- [ ] 14.1 - Build template list page
-- [ ] 14.2 - Create template editor (HTML + variables)
-- [ ] 14.3 - Add template preview
-- [ ] 14.4 - Implement template variables system
-- [ ] 14.5 - Test email sending
+- [ ] 14.1 - Build status audit trail view page
+- [ ] 14.2 - Create status history timeline component
+- [ ] 14.3 - Add compliance reporting features
+- [ ] 14.4 - Implement historical analytics view
+- [ ] 14.5 - Build audit trail API endpoints (use SQL functions from guide)
+  - GET `/api/restaurants/[id]/status-history` - Get complete status change history
+  - GET `/api/restaurants/status-audit` - Get audit report for compliance
+- [ ] 14.6 - Test audit trail display and reporting
 
 **Files to Create:**
-- `app/admin/content/email-templates/page.tsx`
-- `components/email/template-editor.tsx`
-- `components/email/template-preview.tsx`
-- `app/api/email-templates/route.ts`
-- `app/api/email-templates/[id]/route.ts`
+- `app/admin/restaurants/[id]/audit/page.tsx`
+- `components/restaurant/status-timeline.tsx`
+- `components/restaurant/audit-report.tsx`
+- `app/api/restaurants/[id]/status-history/route.ts`
 
 **Acceptance Criteria:**
-- Can edit email templates
-- Variables are replaced correctly
-- Preview shows rendered template
-- Emails send with correct content
+- Can view complete status change history for any restaurant
+- Timeline shows who changed what, when
+- Compliance reports generate correctly
+- Historical analytics display trends
 
 ---
 
