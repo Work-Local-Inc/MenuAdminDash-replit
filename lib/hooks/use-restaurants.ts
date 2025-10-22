@@ -99,3 +99,36 @@ export function useDeleteRestaurant() {
     },
   })
 }
+
+export function useToggleOnlineOrdering() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ 
+      restaurantId, 
+      enabled, 
+      reason 
+    }: { 
+      restaurantId: number
+      enabled: boolean
+      reason: string
+    }) => {
+      const res = await fetch('/api/restaurants/toggle-online-ordering', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ restaurant_id: restaurantId, enabled, reason }),
+      })
+      
+      if (!res.ok) {
+        const errorData = await res.json()
+        throw new Error(errorData.error || 'Failed to toggle online ordering')
+      }
+      
+      return res.json()
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/restaurants', variables.restaurantId.toString()] })
+      queryClient.invalidateQueries({ queryKey: ['/api/restaurants'] })
+    },
+  })
+}
