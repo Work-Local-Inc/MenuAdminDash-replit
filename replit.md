@@ -79,6 +79,13 @@ Preferred communication style: Simple, everyday language.
   - Franchise analytics dashboard with performance metrics, location rankings, and menu standardization
   - Proper React Query cache invalidation for chains/details/analytics after mutations
   - UI components: grid view of chains, create parent dialog, franchise details modal with Overview/Analytics tabs
+- **Categorization System**: Cuisine and tag-based restaurant discovery using Santiago's 2 SQL functions + 2 Edge Functions
+  - Add/remove cuisines with automatic primary/secondary logic using `add-restaurant-cuisine` Edge Function
+  - Add/remove tags for feature-based discovery using `add-restaurant-tag` Edge Function
+  - Support for 36 cuisine types (Pizza, Italian, Chinese, Lebanese, etc.)
+  - Support for 12 restaurant tags across 5 categories (dietary, service, atmosphere, feature, payment)
+  - UI components: cuisine management with primary indicator, tag management grouped by category
+  - Filters out already-assigned cuisines/tags in dropdown selectors
 
 ## External Dependencies
 
