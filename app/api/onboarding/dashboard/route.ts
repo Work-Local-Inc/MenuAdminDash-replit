@@ -1,0 +1,27 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
+
+export async function GET(request: NextRequest) {
+  try {
+    const supabase = await createClient();
+
+    // Get current session for authentication (admin only)
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Call Santiago's get-onboarding-dashboard Edge Function
+    const { data, error } = await supabase.functions.invoke('get-onboarding-dashboard');
+
+    if (error) throw error;
+
+    return NextResponse.json(data);
+  } catch (error: any) {
+    console.error('Error fetching onboarding dashboard:', error);
+    return NextResponse.json(
+      { error: error.message || 'Failed to fetch onboarding dashboard' },
+      { status: 500 }
+    );
+  }
+}

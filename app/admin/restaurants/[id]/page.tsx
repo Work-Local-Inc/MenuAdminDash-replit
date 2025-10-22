@@ -25,6 +25,7 @@ import { RestaurantImages } from "@/components/restaurant/tabs/images"
 import { RestaurantFeedback } from "@/components/restaurant/tabs/feedback"
 import { RestaurantCustomCSS } from "@/components/restaurant/tabs/custom-css"
 import { Categorization } from "@/components/restaurant/tabs/categorization"
+import { Onboarding } from "@/components/restaurant/tabs/onboarding"
 import { OnlineOrderingToggle } from "@/components/restaurant/online-ordering-toggle"
 
 export default function RestaurantDetailPage() {
@@ -104,6 +105,7 @@ export default function RestaurantDetailPage() {
           <TabsTrigger value="service-config" data-testid="tab-service-config">Service Config</TabsTrigger>
           <TabsTrigger value="delivery-areas" data-testid="tab-delivery-areas">Delivery Areas</TabsTrigger>
           <TabsTrigger value="categorization" data-testid="tab-categorization">Categorization</TabsTrigger>
+          <TabsTrigger value="onboarding" data-testid="tab-onboarding">Onboarding</TabsTrigger>
           <TabsTrigger value="menu-categories" data-testid="tab-menu-categories">Menu Categories</TabsTrigger>
           <TabsTrigger value="payment-methods" data-testid="tab-payment-methods">Payment Methods</TabsTrigger>
           <TabsTrigger value="integrations" data-testid="tab-integrations">Integrations</TabsTrigger>
@@ -144,6 +146,10 @@ export default function RestaurantDetailPage() {
 
         <TabsContent value="categorization">
           <Categorization restaurantId={parseInt(restaurantId)} />
+        </TabsContent>
+
+        <TabsContent value="onboarding">
+          <Onboarding restaurantId={parseInt(restaurantId)} />
         </TabsContent>
 
         <TabsContent value="menu-categories">
