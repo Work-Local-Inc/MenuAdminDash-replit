@@ -95,6 +95,15 @@ Preferred communication style: Simple, everyday language.
   - Dashboard shows overview stats, step bottlenecks, and at-risk restaurants sorted by priority
   - Individual restaurant tab with interactive checklist to toggle step completion
   - Proper cache invalidation after mutations
+- **Domain Verification & SSL Monitoring**: Automated SSL and DNS health monitoring using Santiago's 2 SQL views + 2 Edge Functions
+  - Dashboard at `/admin/domains` shows verification status for all restaurant domains
+  - Summary statistics: total domains, SSL verified %, expiring soon count, expired count
+  - Priority-sorted list of domains needing attention with urgency badges
+  - On-demand verification trigger using `verify-single-domain` Edge Function
+  - Automated daily verification via `verify-domains-cron` (background cron job)
+  - 30-day SSL expiration warnings to prevent downtime
+  - DNS health checks to detect configuration issues
+  - Real-time status updates via React Query with proper cache invalidation
 
 ## External Dependencies
 
