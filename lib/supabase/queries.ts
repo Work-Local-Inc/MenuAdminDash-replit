@@ -8,44 +8,6 @@ export async function getRestaurants(filters?: {
 }) {
   const supabase = await createClient()
   
-  if (filters?.search) {
-    const { data, error } = await supabase.rpc('search_restaurants', {
-      p_search_query: filters.search,
-      p_latitude: null,
-      p_longitude: null,
-      p_radius_km: null,
-      p_limit: 1000
-    } as any)
-    
-    if (error) throw error
-    
-    let results: any[] = data || []
-    
-    if (filters.province && filters.province !== 'All') {
-      results = results.filter((r: any) => r.province === filters.province)
-    }
-    
-    if (filters.city && filters.city !== 'All') {
-      results = results.filter((r: any) => r.city === filters.city)
-    }
-    
-    if (filters.status && filters.status !== 'All') {
-      results = results.filter((r: any) => r.status === filters.status)
-    }
-    
-    return results.map((r: any) => ({
-      id: r.restaurant_id,
-      name: r.restaurant_name,
-      slug: r.slug,
-      status: r.status || 'active',
-      province: r.province,
-      city: r.city,
-      cuisines: r.cuisines,
-      is_featured: r.is_featured,
-      relevance_rank: r.relevance_rank
-    }))
-  }
-  
   let query = supabase
     .from('restaurants')
     .select('*')
@@ -61,6 +23,10 @@ export async function getRestaurants(filters?: {
 
   if (filters?.status && filters.status !== 'All') {
     query = query.eq('status', filters.status)
+  }
+
+  if (filters?.search) {
+    query = query.or(`name.ilike.%${filters.search}%,slug.ilike.%${filters.search}%`)
   }
 
   const { data, error } = await query

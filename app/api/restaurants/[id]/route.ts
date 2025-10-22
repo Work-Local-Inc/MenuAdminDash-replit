@@ -73,21 +73,33 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { error } = await supabase
-      .from('menuca_v3.restaurants')
-      .update({ 
-        status: 'inactive',
-        online_ordering_enabled: false,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', params.id)
+    let reason = 'Restaurant deactivated by admin'
+    try {
+      const body = await request.json()
+      if (body.reason) {
+        reason = body.reason
+      }
+    } catch {
+      // No body or invalid JSON - use default reason
+    }
+
+    const { data, error } = await supabase.functions.invoke('update-restaurant-status', {
+      body: {
+        restaurant_id: parseInt(params.id),
+        new_status: 'inactive',
+        reason: reason
+      }
+    })
 
     if (error) throw error
 
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Restaurant status changed to inactive' 
-    })
+    if (!data?.success) {
+      return NextResponse.json({ 
+        error: data?.message || 'Failed to deactivate restaurant' 
+      }, { status: 400 })
+    }
+
+    return NextResponse.json(data)
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || 'Failed to deactivate restaurant' },
