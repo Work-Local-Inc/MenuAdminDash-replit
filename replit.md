@@ -108,9 +108,9 @@ See **PROGRESS.md** and **NEXT_STEPS_TASK_LIST.md** for detailed roadmap and rem
 The following SQL must be run on the production Supabase database to enable the RBAC system:
 
 ```sql
--- Add role_id column to admin_users table
+-- Add role_id column to admin_users table (references public.admin_roles)
 ALTER TABLE menuca_v3.admin_users 
-ADD COLUMN IF NOT EXISTS role_id INTEGER REFERENCES menuca_v3.admin_roles(id);
+ADD COLUMN IF NOT EXISTS role_id INTEGER REFERENCES public.admin_roles(id);
 
 -- Create index for performance
 CREATE INDEX IF NOT EXISTS idx_admin_users_role_id 
