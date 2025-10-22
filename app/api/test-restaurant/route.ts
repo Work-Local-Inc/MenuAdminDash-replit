@@ -12,16 +12,30 @@ export async function GET(request: NextRequest) {
     const checkTable = request.nextUrl.searchParams.get('check')
     
     if (checkTable === 'users') {
-      // Check admin_users table WITHOUT join
-      const { data: adminData, error: adminError, count: adminCount } = await supabase
+      // Try to query admin_roles table
+      const { data: rolesData, error: rolesError, count: rolesCount } = await supabase
+        .from('admin_roles')
+        .select('id, name, is_system_role', { count: 'exact' })
+        .limit(5)
+      
+      // Check admin_users with role join
+      const { data: adminData, error: adminError } = await supabase
         .from('admin_users')
-        .select('*', { count: 'exact' })
+        .select('id, email, first_name, last_name, role_id, role:admin_roles(id, name)', { count: 'exact' })
         .limit(3)
       
       return NextResponse.json({
         success: true,
-        admin_users: { count: adminCount, sample: adminData, error: adminError?.message },
-        note: "Check if role_id column exists in admin_users"
+        admin_roles: { 
+          exists: !rolesError,
+          count: rolesCount, 
+          data: rolesData, 
+          error: rolesError?.message 
+        },
+        admin_users: { 
+          data: adminData, 
+          error: adminError?.message 
+        }
       })
     }
     
