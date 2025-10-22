@@ -12,6 +12,7 @@ import {
   FileText,
   Settings,
   ChevronRight,
+  ClipboardCheck,
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -48,6 +49,8 @@ const menuItems = [
     items: [
       { title: "All Restaurants", url: "/admin/restaurants" },
       { title: "Add Restaurant", url: "/admin/restaurants/add" },
+      { title: "Onboarding Wizard", url: "/admin/onboarding/new" },
+      { title: "Onboarding Status", url: "/admin/onboarding" },
       { title: "Categories", url: "/admin/restaurants/categories" },
     ],
   },
