@@ -72,6 +72,13 @@ Preferred communication style: Simple, everyday language.
   - Soft delete pattern with 30-day recovery window
   - Correctly handles $0 minimum order zones (explicit null checks, not truthiness)
   - Custom polygon drawing via Mapbox (more flexible than Santiago's center+radius approach)
+- **Franchise Management**: Complete franchise chain hierarchy system using Santiago's 13 SQL functions + 3 Edge Functions
+  - Create franchise parents using `create-franchise-parent` Edge Function
+  - Link children using `convert-restaurant-to-franchise` Edge Function (supports single/batch)
+  - Bulk feature updates using `bulk-update-franchise-feature` Edge Function
+  - Franchise analytics dashboard with performance metrics, location rankings, and menu standardization
+  - Proper React Query cache invalidation for chains/details/analytics after mutations
+  - UI components: grid view of chains, create parent dialog, franchise details modal with Overview/Analytics tabs
 
 ## External Dependencies
 
