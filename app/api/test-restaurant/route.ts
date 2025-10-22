@@ -12,22 +12,16 @@ export async function GET(request: NextRequest) {
     const checkTable = request.nextUrl.searchParams.get('check')
     
     if (checkTable === 'users') {
-      // Check users table
-      const { data: usersData, error: usersError, count: usersCount } = await supabase
-        .from('users')
-        .select('id, name, email, phone, created_at', { count: 'exact' })
-        .limit(10)
-      
-      // Check admin_users table  
+      // Check admin_users table WITHOUT join
       const { data: adminData, error: adminError, count: adminCount } = await supabase
         .from('admin_users')
         .select('*', { count: 'exact' })
-        .limit(10)
+        .limit(3)
       
       return NextResponse.json({
         success: true,
-        users: { count: usersCount, data: usersData, error: usersError?.message },
-        admin_users: { count: adminCount, data: adminData, error: adminError?.message }
+        admin_users: { count: adminCount, sample: adminData, error: adminError?.message },
+        note: "Check if role_id column exists in admin_users"
       })
     }
     

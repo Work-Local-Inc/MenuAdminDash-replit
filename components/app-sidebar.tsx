@@ -54,6 +54,15 @@ const menuItems = [
       { title: "Domain Verification", url: "/admin/domains" },
     ],
   },
+  {
+    title: "Users",
+    icon: Users,
+    items: [
+      { title: "All Admin Users", url: "/admin/users" },
+      { title: "Add Admin User", url: "/admin/users/add" },
+      { title: "Roles & Permissions", url: "/admin/users/roles" },
+    ],
+  },
 ]
 
 export function AppSidebar() {
