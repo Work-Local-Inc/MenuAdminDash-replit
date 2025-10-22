@@ -43,8 +43,11 @@ Preferred communication style: Simple, everyday language.
 
 ### Data Layer
 - **Supabase PostgreSQL** database with auto-generated TypeScript types (`types/supabase-database.ts`)
-- Server-side data fetching via `lib/supabase/server.ts` for SSR/API routes
-- Client-side queries via `lib/supabase/client.ts` for interactive components
+- **CRITICAL:** Santiago documented 50+ SQL Functions and 29 Edge Functions for restaurant management
+  - SQL Functions: Use `supabase.rpc('function_name', params)` for reads
+  - Edge Functions: Use `supabase.functions.invoke('function-name', {body})` for writes
+  - Documentation: `lib/Documentation/Frontend-Guides/BRIAN_MASTER_INDEX.md`
+- ⚠️ **Current implementation does NOT use Santiago's functions** - needs rebuild (see RESTAURANT_MANAGEMENT_AUDIT.md)
 - React Query (`@tanstack/react-query`) for client-side caching and state synchronization
 
 ### State Management
@@ -54,10 +57,10 @@ Preferred communication style: Simple, everyday language.
 - Custom hooks in `lib/hooks/` for reusable data fetching patterns
 
 ### API Routes
-- Next.js Route Handlers under `/app/api/` for backend logic
-- RESTful endpoints: `/api/restaurants`, `/api/orders`, `/api/coupons`, `/api/users`
+- ⚠️ **ARCHITECTURE MISMATCH:** Current implementation uses custom Next.js API routes
+- **Should be using:** Santiago's SQL Functions (reads) and Edge Functions (writes)
 - Zod schemas (`lib/validations/`) for request/response validation
-- Server-side Supabase client for database queries in API routes
+- **Action required:** Replace custom routes with Santiago's documented functions
 
 ### Form Handling
 - **React Hook Form** for form state management
@@ -136,11 +139,32 @@ WHERE role_id IS NULL AND deleted_at IS NULL;
 - Admin sidebar navigation with theme toggle
 - User dropdown with logout functionality
 
-### Phase 2: Restaurant Management ✅ (Completed - Oct 2025)
-- Complete restaurant CRUD with 15 management tabs
-- Mapbox integration for delivery areas
-- Image management with Supabase Storage
-- Full API layer with validation
+### Phase 2: Restaurant Management 🔴 **ARCHITECTURE AUDIT - CRITICAL FINDINGS** (Oct 22, 2025)
+
+**⚠️ CRITICAL:** Existing implementation does NOT use Santiago's documented backend architecture.
+
+**UI Layer Status:** ✅ Complete
+- 15 tab components exist in `components/restaurant/tabs/`
+- List page and detail page with proper UI structure
+- Mapbox GL integration for delivery area drawing
+
+**Backend Integration Status:** ❌ INCORRECT - Needs Rebuild
+- **Current:** Uses custom Next.js API routes + direct Supabase queries
+- **Required:** Santiago's 50+ SQL Functions + 29 Edge Functions
+- **Missing:** 93% of documented backend (74 of 79 functions unused)
+- **Gaps:** No soft delete, no audit trails, inefficient search, no franchise management
+- **See:** `RESTAURANT_MANAGEMENT_AUDIT.md` for full gap analysis
+
+**Critical Issues Found:**
+1. ❌ Hard DELETE (permanent data loss) instead of soft delete
+2. ❌ ILIKE search (slow) instead of full-text search SQL function
+3. ❌ No audit trails for status changes
+4. ❌ Direct database writes bypass business logic
+5. ❌ Missing 13 franchise management functions
+6. ❌ Missing 8 PostGIS delivery zone functions
+7. ❌ Missing 9 onboarding system functions
+
+**Action Required:** Rebuild using Santiago's documented architecture (3-4 week effort)
 
 ### Phase 3: Dashboard & Analytics ✅ (Completed - Oct 16, 2025)
 - Real-time statistics (revenue, orders, restaurants, users)
