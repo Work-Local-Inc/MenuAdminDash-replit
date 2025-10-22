@@ -63,6 +63,16 @@ Preferred communication style: Simple, everyday language.
 - RLS bypass solution implemented via API routes using a service role for `admin_users` table access.
 - Security model ensures only admin users have Supabase Auth accounts and verifies against the `admin_users` table.
 
+### Restaurant Management Integration with Santiago's Backend
+- **Status Management**: Uses Santiago's `update-restaurant-status` Edge Function for proper soft deletes/status changes
+- **Online Ordering**: Uses Santiago's `toggle-online-ordering` Edge Function with audit logging
+- **Contacts Management**: Uses Santiago's 3 Edge Functions (`add-restaurant-contact`, `update-restaurant-contact`, `delete-restaurant-contact`) for hierarchy-aware contact management
+- **Delivery Areas**: Uses `menuca_v3.restaurant_delivery_zones` table with custom polygon support (extension to Santiago's circular zones)
+  - API routes handle dollar/cents conversion for fees and minimum orders
+  - Soft delete pattern with 30-day recovery window
+  - Correctly handles $0 minimum order zones (explicit null checks, not truthiness)
+  - Custom polygon drawing via Mapbox (more flexible than Santiago's center+radius approach)
+
 ## External Dependencies
 
 ### Backend Services
