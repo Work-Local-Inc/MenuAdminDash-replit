@@ -29,30 +29,29 @@ export async function PUT(
     const body = await request.json()
     const validatedData = updateDeliveryAreaSchema.parse(body)
     
-    // Fetch existing data to merge
     const { data: existing, error: fetchError } = await supabase
-      .from('delivery_areas')
+      .schema('menuca_v3')
+      .from('restaurant_delivery_zones')
       .select('*')
       .eq('id', parseInt(params.areaId))
       .eq('restaurant_id', parseInt(params.id))
+      .is('deleted_at', null)
       .single()
     
     if (fetchError || !existing) {
       return NextResponse.json({ error: 'Delivery area not found' }, { status: 404 })
     }
     
-    // Merge with existing data
-    const updateData = {
-      name: validatedData.name ?? existing.name,
-      description: validatedData.description ?? existing.description,
-      delivery_fee: validatedData.delivery_fee ?? existing.delivery_fee,
-      min_order: validatedData.min_order ?? existing.min_order,
-      polygon: validatedData.polygon ?? existing.polygon,
-      is_active: validatedData.is_active ?? existing.is_active,
-    }
+    const updateData: any = {}
+    if (validatedData.name !== undefined) updateData.zone_name = validatedData.name
+    if (validatedData.delivery_fee !== undefined) updateData.delivery_fee_cents = Math.round(validatedData.delivery_fee * 100)
+    if (validatedData.min_order !== undefined) updateData.minimum_order_cents = Math.round(validatedData.min_order * 100)
+    if (validatedData.polygon !== undefined) updateData.zone_geometry = validatedData.polygon
+    if (validatedData.is_active !== undefined) updateData.is_active = validatedData.is_active
     
     const { data, error } = await supabase
-      .from('delivery_areas')
+      .schema('menuca_v3')
+      .from('restaurant_delivery_zones')
       .update(updateData)
       .eq('id', parseInt(params.areaId))
       .eq('restaurant_id', parseInt(params.id))
@@ -63,7 +62,19 @@ export async function PUT(
       throw error
     }
     
-    return NextResponse.json(data)
+    const transformed = {
+      id: data.id,
+      restaurant_id: data.restaurant_id,
+      name: data.zone_name,
+      description: null,
+      delivery_fee: data.delivery_fee_cents / 100,
+      min_order: data.minimum_order_cents !== null ? data.minimum_order_cents / 100 : null,
+      polygon: data.zone_geometry,
+      is_active: data.is_active,
+      created_at: data.created_at
+    }
+    
+    return NextResponse.json(transformed)
   } catch (error: any) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ 
@@ -90,8 +101,9 @@ export async function DELETE(
     }
     
     const { error } = await supabase
-      .from('delivery_areas')
-      .delete()
+      .schema('menuca_v3')
+      .from('restaurant_delivery_zones')
+      .update({ deleted_at: new Date().toISOString() })
       .eq('id', parseInt(params.areaId))
       .eq('restaurant_id', parseInt(params.id))
     
