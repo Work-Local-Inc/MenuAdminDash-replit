@@ -7,18 +7,30 @@ export async function PATCH(
 ) {
   try {
     const supabase = await createClient()
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
     
-    const { data, error } = await supabase
-      .from('restaurant_contacts')
-      .update(body)
-      .eq('id', params.contactId)
-      .eq('restaurant_id', params.id)
-      .select()
-      .single()
-    
+    const { data, error } = await supabase.functions.invoke('update-restaurant-contact', {
+      body: {
+        restaurant_id: parseInt(params.id),
+        contact_id: parseInt(params.contactId),
+        ...body
+      }
+    })
+
     if (error) throw error
-    
+
+    if (!data?.success) {
+      return NextResponse.json({ 
+        error: data?.message || 'Failed to update contact' 
+      }, { status: 400 })
+    }
+
     return NextResponse.json(data)
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 })
@@ -31,16 +43,39 @@ export async function DELETE(
 ) {
   try {
     const supabase = await createClient()
-    
-    const { error } = await supabase
-      .from('restaurant_contacts')
-      .delete()
-      .eq('id', params.contactId)
-      .eq('restaurant_id', params.id)
-    
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    let reason = 'Deleted by admin'
+    try {
+      const body = await request.json()
+      if (body.reason) {
+        reason = body.reason
+      }
+    } catch {
+      // No body - use default reason
+    }
+
+    const { data, error } = await supabase.functions.invoke('delete-restaurant-contact', {
+      method: 'DELETE',
+      body: {
+        contact_id: parseInt(params.contactId),
+        reason: reason
+      }
+    })
+
     if (error) throw error
-    
-    return NextResponse.json({ success: true })
+
+    if (!data?.success) {
+      return NextResponse.json({ 
+        error: data?.message || 'Failed to delete contact' 
+      }, { status: 400 })
+    }
+
+    return NextResponse.json(data)
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }

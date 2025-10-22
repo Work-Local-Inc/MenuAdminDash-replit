@@ -9,10 +9,12 @@ export async function GET(
     const supabase = await createClient()
     
     const { data, error } = await supabase
+      .schema('menuca_v3')
       .from('restaurant_contacts')
       .select('*')
-      .eq('restaurant_id', params.id)
-      .order('created_at', { ascending: false })
+      .eq('restaurant_id', parseInt(params.id))
+      .is('deleted_at', null)
+      .order('contact_priority', { ascending: true })
     
     if (error) throw error
     
@@ -28,24 +30,34 @@ export async function POST(
 ) {
   try {
     const supabase = await createClient()
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
-    
-    // Remove restaurant_id from body if present, use params.id instead
-    const { restaurant_id, ...contactData } = body
-    
-    const { data, error } = await supabase
-      .from('restaurant_contacts')
-      .insert({
-        ...contactData,
+
+    const { data, error } = await supabase.functions.invoke('add-restaurant-contact', {
+      body: {
         restaurant_id: parseInt(params.id),
-      })
-      .select()
-      .single()
-    
+        ...body
+      }
+    })
+
     if (error) throw error
-    
+
+    if (!data?.success) {
+      return NextResponse.json({ 
+        error: data?.message || 'Failed to add contact' 
+      }, { status: 400 })
+    }
+
     return NextResponse.json(data)
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json(
+      { error: error.message || 'Failed to add contact' },
+      { status: 500 }
+    )
   }
 }
