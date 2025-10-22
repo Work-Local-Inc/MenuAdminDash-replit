@@ -8,6 +8,44 @@ export async function getRestaurants(filters?: {
 }) {
   const supabase = await createClient()
   
+  if (filters?.search) {
+    const { data, error } = await supabase.rpc('search_restaurants', {
+      p_search_query: filters.search,
+      p_latitude: null,
+      p_longitude: null,
+      p_radius_km: null,
+      p_limit: 1000
+    } as any)
+    
+    if (error) throw error
+    
+    let results: any[] = data || []
+    
+    if (filters.province && filters.province !== 'All') {
+      results = results.filter((r: any) => r.province === filters.province)
+    }
+    
+    if (filters.city && filters.city !== 'All') {
+      results = results.filter((r: any) => r.city === filters.city)
+    }
+    
+    if (filters.status && filters.status !== 'All') {
+      results = results.filter((r: any) => r.status === filters.status)
+    }
+    
+    return results.map((r: any) => ({
+      id: r.restaurant_id,
+      name: r.restaurant_name,
+      slug: r.slug,
+      status: r.status || 'active',
+      province: r.province,
+      city: r.city,
+      cuisines: r.cuisines,
+      is_featured: r.is_featured,
+      relevance_rank: r.relevance_rank
+    }))
+  }
+  
   let query = supabase
     .from('restaurants')
     .select('*')
@@ -23,10 +61,6 @@ export async function getRestaurants(filters?: {
 
   if (filters?.status && filters.status !== 'All') {
     query = query.eq('status', filters.status)
-  }
-
-  if (filters?.search) {
-    query = query.ilike('name', `%${filters.search}%`)
   }
 
   const { data, error } = await query
@@ -80,7 +114,6 @@ export async function getOrders(filters?: {
 
   if (error) throw error
   
-  // Transform data to ensure consistent structure
   return data?.map((order: any) => ({
     ...order,
     restaurant: order.restaurant || { id: order.restaurant_id, name: 'Unknown Restaurant' },
@@ -91,40 +124,32 @@ export async function getOrders(filters?: {
 export async function getDashboardStats() {
   const supabase = await createClient()
   
-  // Run all queries in parallel for better performance
   const [ordersResult, revenueResult, restaurantsResult, usersResult, topRestaurantsResult] = await Promise.all([
-    // Get total orders count
     supabase
       .from('orders')
       .select('*', { count: 'exact', head: true }),
     
-    // Get total revenue - fetch only the total column (much lighter than full rows)
     supabase
       .from('orders')
       .select('total'),
     
-    // Get active restaurants count
     supabase
       .from('restaurants')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'active'),
     
-    // Get total users count (use estimated for speed - exact count is slow on large tables)
     supabase
       .from('users')
       .select('*', { count: 'estimated', head: true }),
     
-    // Get top restaurants - fetch only last 30 days of orders for performance
     supabase
       .from('orders')
       .select('restaurant_id, total, restaurants:restaurant_id (id, name)')
       .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
   ])
   
-  // Calculate total revenue
   const totalRevenue = revenueResult.data?.reduce((sum: number, order: any) => sum + (order.total || 0), 0) || 0
   
-  // Aggregate top restaurants
   const restaurantStats = new Map<number, { 
     id: number, 
     name: string, 
@@ -162,13 +187,11 @@ export async function getDashboardStats() {
 export async function getRevenueHistory(timeRange: 'daily' | 'weekly' | 'monthly' = 'daily') {
   const supabase = await createClient()
   
-  // Determine date range based on time range
   const now = new Date()
   let startDate = new Date()
   let periods: { key: string, label: string }[] = []
   
   if (timeRange === 'daily') {
-    // Last 7 days using local calendar dates
     startDate.setDate(now.getDate() - 6)
     startDate.setHours(0, 0, 0, 0)
     
@@ -180,13 +203,12 @@ export async function getRevenueHistory(timeRange: 'daily' | 'weekly' | 'monthly
       const day = String(date.getDate()).padStart(2, '0')
       
       periods.push({
-        key: `${year}-${month}-${day}`, // Local YYYY-MM-DD
+        key: `${year}-${month}-${day}`,
         label: date.toLocaleDateString('en-US', { weekday: 'short' })
       })
     }
   } else if (timeRange === 'weekly') {
-    // Last 4 weeks using local calendar dates
-    startDate.setDate(now.getDate() - 27) // 4 weeks = 28 days
+    startDate.setDate(now.getDate() - 27)
     startDate.setHours(0, 0, 0, 0)
     
     for (let i = 0; i < 4; i++) {
@@ -199,12 +221,11 @@ export async function getRevenueHistory(timeRange: 'daily' | 'weekly' | 'monthly
       const endKey = `${weekEnd.getFullYear()}-${String(weekEnd.getMonth() + 1).padStart(2, '0')}-${String(weekEnd.getDate()).padStart(2, '0')}`
       
       periods.push({
-        key: `${startKey}_${endKey}`, // Local date range
+        key: `${startKey}_${endKey}`,
         label: `Week ${i + 1}`
       })
     }
   } else {
-    // Last 6 months using local calendar dates
     startDate.setMonth(now.getMonth() - 5)
     startDate.setDate(1)
     startDate.setHours(0, 0, 0, 0)
@@ -219,30 +240,25 @@ export async function getRevenueHistory(timeRange: 'daily' | 'weekly' | 'monthly
     }
   }
   
-  // Query orders for the date range
   const { data: orders } = await supabase
     .from('orders')
     .select('created_at, total')
     .gte('created_at', startDate.toISOString())
     .order('created_at', { ascending: true })
   
-  // Initialize revenue map with all periods set to 0
   const revenueMap = new Map<string, number>()
   periods.forEach(period => revenueMap.set(period.key, 0))
   
-  // Aggregate orders into periods using local time boundaries
   orders?.forEach((order: any) => {
     const orderDate = new Date(order.created_at)
     let periodKey: string
     
     if (timeRange === 'daily') {
-      // Use local date for bucketing
       const year = orderDate.getFullYear()
       const month = String(orderDate.getMonth() + 1).padStart(2, '0')
       const day = String(orderDate.getDate()).padStart(2, '0')
       periodKey = `${year}-${month}-${day}`
     } else if (timeRange === 'weekly') {
-      // Find which week this order belongs to using local dates
       const period = periods.find(p => {
         const [startKey, endKey] = p.key.split('_')
         const [sYear, sMonth, sDay] = startKey.split('-').map(Number)
@@ -255,7 +271,6 @@ export async function getRevenueHistory(timeRange: 'daily' | 'weekly' | 'monthly
       })
       periodKey = period?.key || ''
     } else {
-      // Use local year/month for bucketing
       const year = orderDate.getFullYear()
       const month = String(orderDate.getMonth() + 1).padStart(2, '0')
       periodKey = `${year}-${month}`
@@ -266,7 +281,6 @@ export async function getRevenueHistory(timeRange: 'daily' | 'weekly' | 'monthly
     }
   })
   
-  // Convert to array with proper labels
   return periods.map(period => ({
     date: period.label,
     revenue: revenueMap.get(period.key) || 0
@@ -279,7 +293,7 @@ export async function getCoupons() {
   const { data, error } = await supabase
     .from('promotional_coupons')
     .select('*')
-    .order('created_at', { ascending: false })
+    .order('created_at', { ascending: false})
 
   if (error) throw error
   return data

@@ -68,7 +68,6 @@ export async function DELETE(
   try {
     const supabase = await createClient()
 
-    // Check authentication
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -76,15 +75,22 @@ export async function DELETE(
 
     const { error } = await supabase
       .from('menuca_v3.restaurants')
-      .delete()
+      .update({ 
+        status: 'inactive',
+        online_ordering_enabled: false,
+        updated_at: new Date().toISOString()
+      })
       .eq('id', params.id)
 
     if (error) throw error
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Restaurant status changed to inactive' 
+    })
   } catch (error: any) {
     return NextResponse.json(
-      { error: error.message || 'Failed to delete restaurant' },
+      { error: error.message || 'Failed to deactivate restaurant' },
       { status: 500 }
     )
   }
