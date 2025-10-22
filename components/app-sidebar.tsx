@@ -13,6 +13,7 @@ import {
   Settings,
   ChevronRight,
   ClipboardCheck,
+  Shield,
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -52,6 +53,7 @@ const menuItems = [
       { title: "Onboarding Wizard", url: "/admin/onboarding/new" },
       { title: "Onboarding Status", url: "/admin/onboarding" },
       { title: "Categories", url: "/admin/restaurants/categories" },
+      { title: "Domain Verification", url: "/admin/domains" },
     ],
   },
   {
