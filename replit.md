@@ -86,6 +86,15 @@ Preferred communication style: Simple, everyday language.
   - Support for 12 restaurant tags across 5 categories (dietary, service, atmosphere, feature, payment)
   - UI components: cuisine management with primary indicator, tag management grouped by category
   - Filters out already-assigned cuisines/tags in dropdown selectors
+- **Onboarding Status Tracking**: 8-step onboarding process tracking using Santiago's 9 SQL functions + 4 Edge Functions
+  - Get restaurant onboarding status using `get-restaurant-onboarding` Edge Function
+  - Update step completion using `update-onboarding-step` Edge Function
+  - Dashboard analytics via SQL functions (`get_onboarding_summary`, `v_incomplete_onboarding_restaurants`, `v_onboarding_progress_stats`)
+  - 8 steps tracked: Basic Info, Location, Contact, Schedule, Menu, Payment, Delivery, Testing
+  - Auto-calculated completion percentage and days in onboarding
+  - Dashboard shows overview stats, step bottlenecks, and at-risk restaurants sorted by priority
+  - Individual restaurant tab with interactive checklist to toggle step completion
+  - Proper cache invalidation after mutations
 
 ## External Dependencies
 
