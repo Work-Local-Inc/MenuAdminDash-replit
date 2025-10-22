@@ -49,72 +49,9 @@ const menuItems = [
     icon: Store,
     items: [
       { title: "All Restaurants", url: "/admin/restaurants" },
-      { title: "Add Restaurant", url: "/admin/restaurants/add" },
       { title: "Onboarding Wizard", url: "/admin/onboarding/new" },
       { title: "Onboarding Status", url: "/admin/onboarding" },
-      { title: "Categories", url: "/admin/restaurants/categories" },
       { title: "Domain Verification", url: "/admin/domains" },
-    ],
-  },
-  {
-    title: "Users",
-    icon: Users,
-    items: [
-      { title: "All Users", url: "/admin/users" },
-      { title: "Admin Roles", url: "/admin/users/roles" },
-      { title: "Permissions", url: "/admin/users/permissions" },
-    ],
-  },
-  {
-    title: "Orders",
-    url: "/admin/orders",
-    icon: FileText,
-  },
-  {
-    title: "Coupons",
-    icon: Ticket,
-    items: [
-      { title: "All Coupons", url: "/admin/coupons" },
-      { title: "Create Coupon", url: "/admin/coupons/create" },
-      { title: "Campaigns", url: "/admin/coupons/campaigns" },
-    ],
-  },
-  {
-    title: "Franchises",
-    icon: Building2,
-    items: [
-      { title: "All Franchises", url: "/admin/franchises" },
-      { title: "Commission Rules", url: "/admin/franchises/commission" },
-      { title: "Reports", url: "/admin/franchises/reports" },
-    ],
-  },
-  {
-    title: "Accounting",
-    icon: Calculator,
-    items: [
-      { title: "Statements", url: "/admin/accounting/statements" },
-      { title: "Commissions", url: "/admin/accounting/commissions" },
-      { title: "Payments", url: "/admin/accounting/payments" },
-      { title: "Reconciliation", url: "/admin/accounting/reconciliation" },
-    ],
-  },
-  {
-    title: "Blacklist",
-    url: "/admin/blacklist",
-    icon: Ban,
-  },
-  {
-    title: "Tablets",
-    url: "/admin/tablets",
-    icon: Tablet,
-  },
-  {
-    title: "Content",
-    icon: Settings,
-    items: [
-      { title: "Cities", url: "/admin/content/cities" },
-      { title: "Cuisines", url: "/admin/content/cuisines" },
-      { title: "Email Templates", url: "/admin/content/email-templates" },
     ],
   },
 ]
