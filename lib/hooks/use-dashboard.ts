@@ -6,9 +6,22 @@ export function useDashboardStats() {
   return useQuery({
     queryKey: ['/api/dashboard/stats'],
     queryFn: async () => {
-      const res = await fetch('/api/dashboard/stats')
-      if (!res.ok) throw new Error('Failed to fetch dashboard stats')
-      return res.json()
+      console.log('Fetching dashboard stats...')
+      try {
+        const res = await fetch('/api/dashboard/stats')
+        console.log('Dashboard stats response:', res.status, res.ok)
+        if (!res.ok) {
+          const error = await res.text()
+          console.error('Dashboard stats error:', error)
+          throw new Error('Failed to fetch dashboard stats')
+        }
+        const data = await res.json()
+        console.log('Dashboard stats data:', data)
+        return data
+      } catch (error) {
+        console.error('Dashboard stats fetch error:', error)
+        throw error
+      }
     },
     refetchInterval: 30000, // Refetch every 30 seconds
   })

@@ -50,6 +50,20 @@ export default function DashboardPage() {
     },
   ]
 
+  const testFetch = async () => {
+    console.log('Manual fetch test starting...')
+    try {
+      const res = await fetch('/api/dashboard/stats')
+      console.log('Manual fetch response:', res.status)
+      const data = await res.json()
+      console.log('Manual fetch data:', data)
+      alert(`SUCCESS! Got ${data.activeRestaurants} restaurants and ${data.totalUsers} users`)
+    } catch (error) {
+      console.error('Manual fetch error:', error)
+      alert(`ERROR: ${error}`)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -57,6 +71,16 @@ export default function DashboardPage() {
         <p className="text-muted-foreground">
           Overview of your restaurant platform performance
         </p>
+        <button 
+          onClick={testFetch}
+          className="mt-2 px-4 py-2 bg-primary text-primary-foreground rounded"
+          data-testid="button-test-fetch"
+        >
+          TEST FETCH (Click Me)
+        </button>
+        <div className="mt-2 text-sm">
+          Stats Loading: {String(statsLoading)} | Has Data: {String(!!stats)} | Error: {String(!!statsError)}
+        </div>
       </div>
 
       {/* Stats Cards */}
