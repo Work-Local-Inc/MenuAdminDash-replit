@@ -5,7 +5,9 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   max: 20,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  connectionTimeoutMillis: 10000, // Increased to 10 seconds
+  query_timeout: 30000, // 30 second query timeout
+  statement_timeout: 30000, // 30 second statement timeout
 });
 
 export async function query(text: string, params?: any[]) {

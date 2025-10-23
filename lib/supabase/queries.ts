@@ -155,40 +155,6 @@ export async function getDashboardStats() {
       topRestaurants: []
     }
   }
-  
-  // Old Supabase code kept for reference
-  const restaurantStats = new Map<number, { 
-    id: number, 
-    name: string, 
-    orders: number, 
-    revenue: number 
-  }>()
-  
-  topRestaurantsResult.data?.forEach((order: any) => {
-    if (order.restaurant_id && order.restaurants) {
-      const existing = restaurantStats.get(order.restaurant_id) || {
-        id: order.restaurants.id,
-        name: order.restaurants.name,
-        orders: 0,
-        revenue: 0
-      }
-      existing.orders += 1
-      existing.revenue += order.total || 0
-      restaurantStats.set(order.restaurant_id, existing)
-    }
-  })
-
-  const topRestaurants = Array.from(restaurantStats.values())
-    .sort((a, b) => b.orders - a.orders)
-    .slice(0, 5)
-
-  return {
-    totalOrders: ordersResult.count || 0,
-    totalRevenue,
-    activeRestaurants: restaurantsResult.count || 0,
-    totalUsers: usersResult.count || 0,
-    topRestaurants,
-  }
 }
 
 export async function getRevenueHistory(timeRange: 'daily' | 'weekly' | 'monthly' = 'daily') {
