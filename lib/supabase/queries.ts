@@ -53,69 +53,110 @@ export async function getOrders(filters?: {
   status?: string
   limit?: number
 }) {
-  const supabase = await createClient()
+  // Use direct PostgreSQL connection for Replit database demo data
+  const { query } = await import('@/lib/db/postgres')
   
-  let query = supabase
-    .from('orders')
-    .select(`
-      *,
-      restaurant:restaurant_id (id, name),
-      user:user_id (id, email, first_name, last_name)
-    `)
-    .order('created_at', { ascending: false })
-
-  if (filters?.restaurant_id) {
-    query = query.eq('restaurant_id', filters.restaurant_id)
+  try {
+    let sql = `
+      SELECT 
+        o.*,
+        json_build_object('id', r.id, 'name', r.name) as restaurant,
+        json_build_object('id', u.id, 'email', u.email, 'first_name', u.first_name, 'last_name', u.last_name) as user
+      FROM orders o
+      LEFT JOIN restaurants r ON r.id = o.restaurant_id
+      LEFT JOIN users u ON u.id = o.user_id
+      WHERE 1=1
+    `
+    const params: any[] = []
+    
+    if (filters?.restaurant_id) {
+      params.push(filters.restaurant_id)
+      sql += ` AND o.restaurant_id = $${params.length}`
+    }
+    
+    if (filters?.status) {
+      params.push(filters.status)
+      sql += ` AND o.status = $${params.length}`
+    }
+    
+    sql += ' ORDER BY o.created_at DESC'
+    
+    if (filters?.limit) {
+      params.push(filters.limit)
+      sql += ` LIMIT $${params.length}`
+    }
+    
+    const result = await query(sql, params)
+    
+    return result.rows.map((order: any) => ({
+      ...order,
+      restaurant: order.restaurant || { id: order.restaurant_id, name: 'Unknown Restaurant' },
+      user: order.user || { id: order.user_id, email: 'Unknown User', first_name: '', last_name: '' }
+    }))
+  } catch (error) {
+    console.error('Get orders error:', error)
+    return []
   }
-
-  if (filters?.status) {
-    query = query.eq('status', filters.status)
-  }
-
-  if (filters?.limit) {
-    query = query.limit(filters.limit)
-  }
-
-  const { data, error } = await query
-
-  if (error) throw error
-  
-  return data?.map((order: any) => ({
-    ...order,
-    restaurant: order.restaurant || { id: order.restaurant_id, name: 'Unknown Restaurant' },
-    user: order.user || { id: order.user_id, email: 'Unknown User' }
-  })) || []
 }
 
 export async function getDashboardStats() {
-  const supabase = await createClient()
+  // Use direct PostgreSQL connection for Replit database demo data
+  const { query } = await import('@/lib/db/postgres')
   
-  const [ordersResult, revenueResult, restaurantsResult, usersResult, topRestaurantsResult] = await Promise.all([
-    supabase
-      .from('orders')
-      .select('*', { count: 'exact', head: true }),
+  try {
+    const [ordersCount, revenueSum, restaurantsCount, usersCount, topRestaurants] = await Promise.all([
+      query('SELECT COUNT(*)::int as count FROM orders'),
+      query('SELECT COALESCE(SUM(total), 0)::numeric as total FROM orders'),
+      query('SELECT COUNT(*)::int as count FROM restaurants WHERE status = $1', ['active']),
+      query('SELECT COUNT(*)::int as count FROM users'),
+      query(`
+        SELECT 
+          r.id,
+          r.name,
+          COUNT(o.id)::int as orders,
+          COALESCE(SUM(o.total), 0)::numeric as revenue
+        FROM restaurants r
+        LEFT JOIN orders o ON o.restaurant_id = r.id
+          AND o.created_at >= NOW() - INTERVAL '30 days'
+        GROUP BY r.id, r.name
+        HAVING COUNT(o.id) > 0
+        ORDER BY revenue DESC
+        LIMIT 10
+      `)
+    ])
     
-    supabase
-      .from('orders')
-      .select('total'),
+    const totalOrders = ordersCount.rows[0]?.count || 0
+    const totalRevenue = parseFloat(revenueSum.rows[0]?.total || '0')
+    const activeRestaurants = restaurantsCount.rows[0]?.count || 0
+    const totalUsers = usersCount.rows[0]?.count || 0
     
-    supabase
-      .from('restaurants')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'active'),
+    const topRestaurantsList = topRestaurants.rows.map(r => ({
+      id: r.id,
+      name: r.name,
+      orders: r.orders,
+      revenue: parseFloat(r.revenue || '0'),
+      rating: 4.5 + Math.random() * 0.5 // Mock rating for demo
+    }))
     
-    supabase
-      .from('users')
-      .select('*', { count: 'estimated', head: true }),
-    
-    supabase
-      .from('orders')
-      .select('restaurant_id, total, restaurants:restaurant_id (id, name)')
-      .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
-  ])
+    return {
+      totalOrders,
+      totalRevenue,
+      activeRestaurants,
+      totalUsers,
+      topRestaurants: topRestaurantsList
+    }
+  } catch (error) {
+    console.error('Dashboard stats error:', error)
+    return {
+      totalOrders: 0,
+      totalRevenue: 0,
+      activeRestaurants: 0,
+      totalUsers: 0,
+      topRestaurants: []
+    }
+  }
   
-  const totalRevenue = revenueResult.data?.reduce((sum: number, order: any) => sum + (order.total || 0), 0) || 0
-  
+  // Old Supabase code kept for reference
   const restaurantStats = new Map<number, { 
     id: number, 
     name: string, 
@@ -151,7 +192,8 @@ export async function getDashboardStats() {
 }
 
 export async function getRevenueHistory(timeRange: 'daily' | 'weekly' | 'monthly' = 'daily') {
-  const supabase = await createClient()
+  // Use direct PostgreSQL connection for Replit database demo data
+  const { query } = await import('@/lib/db/postgres')
   
   const now = new Date()
   let startDate = new Date()
@@ -206,16 +248,17 @@ export async function getRevenueHistory(timeRange: 'daily' | 'weekly' | 'monthly
     }
   }
   
-  const { data: orders } = await supabase
-    .from('orders')
-    .select('created_at, total')
-    .gte('created_at', startDate.toISOString())
-    .order('created_at', { ascending: true })
+  try {
+    const result = await query(
+      'SELECT created_at, total FROM orders WHERE created_at >= $1 ORDER BY created_at ASC',
+      [startDate.toISOString()]
+    )
+    const orders = result.rows
   
-  const revenueMap = new Map<string, number>()
-  periods.forEach(period => revenueMap.set(period.key, 0))
-  
-  orders?.forEach((order: any) => {
+    const revenueMap = new Map<string, number>()
+    periods.forEach(period => revenueMap.set(period.key, 0))
+    
+    orders?.forEach((order: any) => {
     const orderDate = new Date(order.created_at)
     let periodKey: string
     
@@ -242,15 +285,22 @@ export async function getRevenueHistory(timeRange: 'daily' | 'weekly' | 'monthly
       periodKey = `${year}-${month}`
     }
     
-    if (periodKey && revenueMap.has(periodKey)) {
-      revenueMap.set(periodKey, (revenueMap.get(periodKey) || 0) + (order.total || 0))
-    }
-  })
-  
-  return periods.map(period => ({
-    date: period.label,
-    revenue: revenueMap.get(period.key) || 0
-  }))
+      if (periodKey && revenueMap.has(periodKey)) {
+        revenueMap.set(periodKey, (revenueMap.get(periodKey) || 0) + (parseFloat(order.total) || 0))
+      }
+    })
+    
+    return periods.map(period => ({
+      date: period.label,
+      revenue: revenueMap.get(period.key) || 0
+    }))
+  } catch (error) {
+    console.error('Revenue history error:', error)
+    return periods.map(period => ({
+      date: period.label,
+      revenue: 0
+    }))
+  }
 }
 
 export async function getCoupons() {
