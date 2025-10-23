@@ -27,7 +27,11 @@ Preferred communication style: Simple, everyday language.
 - Automatic token refresh and a custom `useAuth` hook for client-side auth state.
 
 ### Data Layer
-- **Supabase PostgreSQL** database with auto-generated TypeScript types.
+- **Supabase PostgreSQL** production database connected via session pooler (`SUPABASE_BRANCH_DB_URL`)
+- Database connection in `lib/db/postgres.ts` using `pg` Pool for direct PostgreSQL queries
+- Schema: `menuca_v3` with 961 restaurants, 32,330+ users (production data)
+- All queries use schema-prefixed table names (e.g., `menuca_v3.restaurants`)
+- Production schema uses: `total_amount` (not `total`), `order_status` (not `status`), `tax_amount` (not `tax`)
 - Utilizes over 50 SQL Functions and 29 Edge Functions for restaurant management, with documentation in `lib/Documentation/Frontend-Guides/BRIAN_MASTER_INDEX.md`.
 - React Query (`@tanstack/react-query`) for client-side caching and state synchronization.
 

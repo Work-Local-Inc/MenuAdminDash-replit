@@ -53,7 +53,7 @@ export async function getOrders(filters?: {
   status?: string
   limit?: number
 }) {
-  // Use direct PostgreSQL connection for Replit database demo data
+  // Use direct PostgreSQL connection for Supabase production database
   const { query } = await import('@/lib/db/postgres')
   
   try {
@@ -62,9 +62,9 @@ export async function getOrders(filters?: {
         o.*,
         json_build_object('id', r.id, 'name', r.name) as restaurant,
         json_build_object('id', u.id, 'email', u.email, 'first_name', u.first_name, 'last_name', u.last_name) as user
-      FROM orders o
-      LEFT JOIN restaurants r ON r.id = o.restaurant_id
-      LEFT JOIN users u ON u.id = o.user_id
+      FROM menuca_v3.orders o
+      LEFT JOIN menuca_v3.restaurants r ON r.id = o.restaurant_id
+      LEFT JOIN menuca_v3.users u ON u.id = o.user_id
       WHERE 1=1
     `
     const params: any[] = []
@@ -76,7 +76,7 @@ export async function getOrders(filters?: {
     
     if (filters?.status) {
       params.push(filters.status)
-      sql += ` AND o.status = $${params.length}`
+      sql += ` AND o.order_status = $${params.length}`
     }
     
     sql += ' ORDER BY o.created_at DESC'
@@ -90,6 +90,15 @@ export async function getOrders(filters?: {
     
     return result.rows.map((order: any) => ({
       ...order,
+      // Map production column names to expected format
+      status: order.order_status,
+      total: order.total_amount,
+      subtotal: order.subtotal,
+      delivery_fee: order.delivery_fee,
+      tax: order.tax_amount,
+      tip: order.tip_amount,
+      delivery_address: order.delivery_address,
+      special_instructions: order.special_instructions,
       restaurant: order.restaurant || { id: order.restaurant_id, name: 'Unknown Restaurant' },
       user: order.user || { id: order.user_id, email: 'Unknown User', first_name: '', last_name: '' }
     }))
@@ -100,24 +109,25 @@ export async function getOrders(filters?: {
 }
 
 export async function getDashboardStats() {
-  // Use direct PostgreSQL connection for Replit database demo data
+  // Use direct PostgreSQL connection for Supabase production database
   const { query } = await import('@/lib/db/postgres')
   
   try {
     const [ordersCount, revenueSum, restaurantsCount, usersCount, topRestaurants] = await Promise.all([
-      query('SELECT COUNT(*)::int as count FROM orders'),
-      query('SELECT COALESCE(SUM(total), 0)::numeric as total FROM orders'),
-      query('SELECT COUNT(*)::int as count FROM restaurants WHERE status = $1', ['active']),
-      query('SELECT COUNT(*)::int as count FROM users'),
+      query('SELECT COUNT(*)::int as count FROM menuca_v3.orders'),
+      query('SELECT COALESCE(SUM(total_amount), 0)::numeric as total FROM menuca_v3.orders'),
+      query(`SELECT COUNT(*)::int as count FROM menuca_v3.restaurants WHERE status = 'active'`),
+      query('SELECT COUNT(*)::int as count FROM menuca_v3.users WHERE deleted_at IS NULL'),
       query(`
         SELECT 
           r.id,
           r.name,
           COUNT(o.id)::int as orders,
-          COALESCE(SUM(o.total), 0)::numeric as revenue
-        FROM restaurants r
-        LEFT JOIN orders o ON o.restaurant_id = r.id
+          COALESCE(SUM(o.total_amount), 0)::numeric as revenue
+        FROM menuca_v3.restaurants r
+        LEFT JOIN menuca_v3.orders o ON o.restaurant_id = r.id
           AND o.created_at >= NOW() - INTERVAL '30 days'
+        WHERE r.status = 'active'
         GROUP BY r.id, r.name
         HAVING COUNT(o.id) > 0
         ORDER BY revenue DESC
@@ -216,7 +226,7 @@ export async function getRevenueHistory(timeRange: 'daily' | 'weekly' | 'monthly
   
   try {
     const result = await query(
-      'SELECT created_at, total FROM orders WHERE created_at >= $1 ORDER BY created_at ASC',
+      'SELECT created_at, total_amount FROM menuca_v3.orders WHERE created_at >= $1 ORDER BY created_at ASC',
       [startDate.toISOString()]
     )
     const orders = result.rows
@@ -252,7 +262,7 @@ export async function getRevenueHistory(timeRange: 'daily' | 'weekly' | 'monthly
     }
     
       if (periodKey && revenueMap.has(periodKey)) {
-        revenueMap.set(periodKey, (revenueMap.get(periodKey) || 0) + (parseFloat(order.total) || 0))
+        revenueMap.set(periodKey, (revenueMap.get(periodKey) || 0) + (parseFloat(order.total_amount) || 0))
       }
     })
     
