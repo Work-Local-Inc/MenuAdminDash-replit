@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
+import { useEffect } from "react"
 import * as z from "zod"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
@@ -35,6 +36,16 @@ export function RestaurantBasicInfo({ restaurant }: RestaurantBasicInfoProps) {
       timezone: restaurant.timezone || "America/Toronto",
     },
   })
+
+  useEffect(() => {
+    if (restaurant) {
+      form.reset({
+        name: restaurant.name || "",
+        status: restaurant.status || "pending",
+        timezone: restaurant.timezone || "America/Toronto",
+      })
+    }
+  }, [restaurant, form])
 
   const onSubmit = async (data: FormValues) => {
     try {
