@@ -1,65 +1,56 @@
-import { createClient } from '@supabase/supabase-js'
-import { Database } from '../types/supabase-database'
-import * as dotenv from 'dotenv'
-import * as path from 'path'
+import { Pool } from 'pg';
 
-// Load .env.local
-dotenv.config({ path: path.join(__dirname, '..', '.env.local') })
+const pool = new Pool({
+  connectionString: 'postgresql://postgres:Gz35CPTom1RnsmGM@db.nthpbtdjhhnwfxqsxbvy.supabase.co:5432/postgres',
+});
 
-const supabase = createClient<Database>(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
-
-async function testConnection() {
-  console.log('🔍 Testing Supabase connection...')
-  console.log('URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
-  
+async function test() {
   try {
-    // Test: Count restaurants
-    const { data: restaurants, error: restError } = await supabase
-      .from('restaurants')
-      .select('id, name, status', { count: 'exact', head: false })
-      .limit(5)
+    console.log('🔌 Testing Supabase connection...\n');
     
-    if (restError) {
-      console.error('❌ Error fetching restaurants:', restError.message)
-      return
+    const client = await pool.connect();
+    console.log('✅ Connected to Supabase!\n');
+    
+    // Check schema
+    const schemaCheck = await client.query(`
+      SELECT schema_name 
+      FROM information_schema.schemata 
+      WHERE schema_name = 'menuca_v3'
+    `);
+    
+    if (schemaCheck.rows.length > 0) {
+      console.log('✅ menuca_v3 schema found!\n');
+      
+      // Count records
+      const restaurantsCount = await client.query('SELECT COUNT(*) FROM menuca_v3.restaurants');
+      const ordersCount = await client.query('SELECT COUNT(*) FROM menuca_v3.orders');
+      const usersCount = await client.query('SELECT COUNT(*) FROM menuca_v3.users');
+      
+      console.log('📈 Production Data Counts:');
+      console.log('   - Restaurants:', restaurantsCount.rows[0].count);
+      console.log('   - Orders:', ordersCount.rows[0].count);
+      console.log('   - Users:', usersCount.rows[0].count);
+      
+      // Sample data
+      const sampleRestaurant = await client.query('SELECT id, name, city, province, status FROM menuca_v3.restaurants LIMIT 3');
+      console.log('\n🍽️  Sample Restaurants:');
+      sampleRestaurant.rows.forEach(r => {
+        console.log(`   - ${r.name} (${r.city}, ${r.province}) - ${r.status}`);
+      });
+      
+    } else {
+      console.log('❌ menuca_v3 schema NOT found');
     }
     
-    console.log(`✅ Successfully connected! Found restaurants in database`)
-    console.log(`📊 Sample restaurants:`, restaurants?.map(r => `${r.id}: ${r.name} (${r.status})`))
+    client.release();
+    await pool.end();
+    console.log('\n✅ Connection test successful!');
     
-    // Test: Count users
-    const { count: userCount, error: userError } = await supabase
-      .from('users')
-      .select('*', { count: 'exact', head: true })
-    
-    if (userError) {
-      console.error('❌ Error counting users:', userError.message)
-      return
-    }
-    
-    console.log(`✅ Total users in database: ${userCount}`)
-    
-    // Test: Count dishes
-    const { count: dishCount, error: dishError } = await supabase
-      .from('dishes')
-      .select('*', { count: 'exact', head: true })
-    
-    if (dishError) {
-      console.error('❌ Error counting dishes:', dishError.message)
-      return
-    }
-    
-    console.log(`✅ Total dishes in database: ${dishCount}`)
-    
-    console.log('\n🎉 Database connection verified successfully!')
-    console.log('📋 Ready to build the admin dashboard!')
-    
-  } catch (error) {
-    console.error('❌ Connection test failed:', error)
+  } catch (error: any) {
+    console.error('❌ Error:', error.message);
+    console.error('Full error:', error);
+    process.exit(1);
   }
 }
 
-testConnection()
+test();
