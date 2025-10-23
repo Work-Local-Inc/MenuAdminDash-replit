@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { Metadata } from 'next';
 import { createClient } from '@/lib/supabase/server';
 import { extractIdFromSlug, createRestaurantSlug } from '@/lib/utils/slugify';
@@ -8,6 +8,11 @@ interface RestaurantPageProps {
   params: {
     slug: string;
   };
+}
+
+export default async function RestaurantPage({ params }: RestaurantPageProps) {
+  // TEMPORARY: Redirect restaurant menu to dashboard while debugging
+  redirect('/admin/dashboard');
 }
 
 export async function generateMetadata({ params }: RestaurantPageProps): Promise<Metadata> {
