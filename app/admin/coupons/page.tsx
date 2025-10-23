@@ -26,7 +26,7 @@ const couponSchema = z.object({
   min_order_value: z.coerce.number().optional(),
   max_uses: z.coerce.number().int().positive().optional(),
   expires_at: z.string().optional(),
-  is_global: z.boolean().default(true),
+  is_global: z.boolean().optional(),
 })
 
 type CouponFormValues = z.infer<typeof couponSchema>
@@ -42,9 +42,12 @@ export default function CouponsPage() {
     resolver: zodResolver(couponSchema),
     defaultValues: {
       code: "",
-      discount_type: "percentage",
+      discount_type: "percentage" as const,
       discount_value: 0,
       is_global: true,
+      min_order_value: undefined,
+      max_uses: undefined,
+      expires_at: undefined,
     },
   })
 
