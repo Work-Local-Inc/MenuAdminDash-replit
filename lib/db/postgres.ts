@@ -2,7 +2,7 @@ import { Pool } from 'pg';
 
 // Direct PostgreSQL connection for Supabase branch database (production data)
 const pool = new Pool({
-  connectionString: process.env.SUPABASE_DB_URL,
+  connectionString: process.env.SUPABASE_BRANCH_DB_URL,
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000, // Increased to 10 seconds
