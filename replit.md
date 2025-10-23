@@ -1,7 +1,16 @@
 # Menu.ca Admin Dashboard
 
 ## Overview
-A Next.js 14 admin dashboard for managing the Menu.ca restaurant ordering platform. This multi-tenant system supports 74+ restaurants, 32,000+ users, and handles restaurant management, orders, coupons, and user administration. The application connects to an existing Supabase PostgreSQL database (`menuca_v3` schema) and adds new tables for enhanced admin functionality.
+A Next.js 14 admin dashboard for managing the Menu.ca restaurant ordering platform. This multi-tenant system supports 961 restaurants (277 active), 32,330+ users, and handles restaurant management, orders, coupons, and user administration. The application connects to an existing Supabase PostgreSQL database (`menuca_v3` schema) and adds new tables for enhanced admin functionality.
+
+## Recent Changes (October 2025)
+### Restaurant Management Performance & UX Improvements
+- **Performance Optimization**: Restaurants list page now defaults to loading only active restaurants (277 vs 961 records), reducing initial load time from 20+ seconds to <2 seconds
+- **UI Redesign**: Restaurant detail page redesigned from horizontal 17-tab layout to professional two-column layout with grouped vertical sidebar navigation
+  - Organized into 4 logical sections: Core, Operations, Marketing, Advanced
+  - Eliminates "tag cloud" appearance, provides better navigation clarity
+- **Data Loading Fixes**: All form components properly load existing restaurant data using React Hook Form reset patterns
+- **Navigation**: Orders and Coupons pages added to sidebar (previously invisible)
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
