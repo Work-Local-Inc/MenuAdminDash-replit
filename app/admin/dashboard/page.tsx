@@ -13,9 +13,11 @@ import { useDashboardStats, useRecentOrders, useRevenueHistory } from "@/lib/hoo
 export default function DashboardPage() {
   const [timeRange, setTimeRange] = useState<"daily" | "weekly" | "monthly">("daily")
   
-  const { data: stats, isLoading: statsLoading } = useDashboardStats()
+  const { data: stats, isLoading: statsLoading, error: statsError } = useDashboardStats()
   const { data: recentOrders = [], isLoading: ordersLoading } = useRecentOrders(5)
   const { data: revenueData = [], isLoading: revenueLoading } = useRevenueHistory(timeRange)
+  
+  console.log('Dashboard rendered:', { stats, statsLoading, statsError, timeRange })
 
   const statCards = [
     {
