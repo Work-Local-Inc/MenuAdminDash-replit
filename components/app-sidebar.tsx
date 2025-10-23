@@ -14,6 +14,8 @@ import {
   ChevronRight,
   ClipboardCheck,
   Shield,
+  ShoppingCart,
+  Tag,
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -53,6 +55,16 @@ const menuItems = [
       { title: "Onboarding Status", url: "/admin/onboarding" },
       { title: "Domain Verification", url: "/admin/domains" },
     ],
+  },
+  {
+    title: "Orders",
+    url: "/admin/orders",
+    icon: ShoppingCart,
+  },
+  {
+    title: "Coupons",
+    url: "/admin/coupons",
+    icon: Tag,
   },
   {
     title: "Users",

@@ -250,9 +250,11 @@ export default function RestaurantsPage() {
                               View Menu
                             </Link>
                           </DropdownMenuItem>
-                          <DropdownMenuItem data-testid={`menu-edit-${restaurant.id}`}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit
+                          <DropdownMenuItem asChild data-testid={`menu-edit-${restaurant.id}`}>
+                            <Link href={`/admin/restaurants/${restaurant.id}`}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit
+                            </Link>
                           </DropdownMenuItem>
                           <DropdownMenuItem data-testid={`menu-clone-${restaurant.id}`}>
                             <Copy className="mr-2 h-4 w-4" />
