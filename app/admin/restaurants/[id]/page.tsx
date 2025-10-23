@@ -94,95 +94,228 @@ export default function RestaurantDetailPage() {
         />
       </div>
 
-      {/* Tabs */}
-      <Tabs defaultValue="basic-info" className="space-y-4">
-        <TabsList className="flex flex-wrap h-auto gap-1">
-          <TabsTrigger value="basic-info" data-testid="tab-basic-info">Basic Info</TabsTrigger>
-          <TabsTrigger value="locations" data-testid="tab-locations">Locations</TabsTrigger>
-          <TabsTrigger value="contacts" data-testid="tab-contacts">Contacts</TabsTrigger>
-          <TabsTrigger value="domains" data-testid="tab-domains">Domains</TabsTrigger>
-          <TabsTrigger value="hours" data-testid="tab-hours">Hours</TabsTrigger>
-          <TabsTrigger value="service-config" data-testid="tab-service-config">Service Config</TabsTrigger>
-          <TabsTrigger value="delivery-areas" data-testid="tab-delivery-areas">Delivery Areas</TabsTrigger>
-          <TabsTrigger value="categorization" data-testid="tab-categorization">Categorization</TabsTrigger>
-          <TabsTrigger value="onboarding" data-testid="tab-onboarding">Onboarding</TabsTrigger>
-          <TabsTrigger value="menu-categories" data-testid="tab-menu-categories">Menu Categories</TabsTrigger>
-          <TabsTrigger value="payment-methods" data-testid="tab-payment-methods">Payment Methods</TabsTrigger>
-          <TabsTrigger value="integrations" data-testid="tab-integrations">Integrations</TabsTrigger>
-          <TabsTrigger value="branding" data-testid="tab-branding">Branding</TabsTrigger>
-          <TabsTrigger value="seo" data-testid="tab-seo">SEO</TabsTrigger>
-          <TabsTrigger value="images" data-testid="tab-images">Images</TabsTrigger>
-          <TabsTrigger value="feedback" data-testid="tab-feedback">Feedback</TabsTrigger>
-          <TabsTrigger value="custom-css" data-testid="tab-custom-css">Custom CSS</TabsTrigger>
+      {/* Two-Column Layout */}
+      <Tabs defaultValue="basic-info" className="flex gap-6 items-start">
+        {/* Left Sidebar Navigation */}
+        <TabsList className="flex flex-col h-auto w-64 p-4 gap-6 shrink-0 bg-card">
+          {/* Core Section */}
+          <div className="w-full space-y-1">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 pb-2">
+              Core
+            </h3>
+            <TabsTrigger 
+              value="basic-info" 
+              data-testid="tab-basic-info"
+              className="w-full justify-start"
+            >
+              Basic Info
+            </TabsTrigger>
+            <TabsTrigger 
+              value="locations" 
+              data-testid="tab-locations"
+              className="w-full justify-start"
+            >
+              Locations
+            </TabsTrigger>
+            <TabsTrigger 
+              value="contacts" 
+              data-testid="tab-contacts"
+              className="w-full justify-start"
+            >
+              Contacts
+            </TabsTrigger>
+            <TabsTrigger 
+              value="hours" 
+              data-testid="tab-hours"
+              className="w-full justify-start"
+            >
+              Hours
+            </TabsTrigger>
+          </div>
+
+          {/* Operations Section */}
+          <div className="w-full space-y-1">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 pb-2">
+              Operations
+            </h3>
+            <TabsTrigger 
+              value="service-config" 
+              data-testid="tab-service-config"
+              className="w-full justify-start"
+            >
+              Service Config
+            </TabsTrigger>
+            <TabsTrigger 
+              value="delivery-areas" 
+              data-testid="tab-delivery-areas"
+              className="w-full justify-start"
+            >
+              Delivery Areas
+            </TabsTrigger>
+            <TabsTrigger 
+              value="payment-methods" 
+              data-testid="tab-payment-methods"
+              className="w-full justify-start"
+            >
+              Payment Methods
+            </TabsTrigger>
+            <TabsTrigger 
+              value="menu-categories" 
+              data-testid="tab-menu-categories"
+              className="w-full justify-start"
+            >
+              Menu Categories
+            </TabsTrigger>
+          </div>
+
+          {/* Marketing Section */}
+          <div className="w-full space-y-1">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 pb-2">
+              Marketing
+            </h3>
+            <TabsTrigger 
+              value="categorization" 
+              data-testid="tab-categorization"
+              className="w-full justify-start"
+            >
+              Categorization
+            </TabsTrigger>
+            <TabsTrigger 
+              value="branding" 
+              data-testid="tab-branding"
+              className="w-full justify-start"
+            >
+              Branding
+            </TabsTrigger>
+            <TabsTrigger 
+              value="seo" 
+              data-testid="tab-seo"
+              className="w-full justify-start"
+            >
+              SEO
+            </TabsTrigger>
+            <TabsTrigger 
+              value="images" 
+              data-testid="tab-images"
+              className="w-full justify-start"
+            >
+              Images
+            </TabsTrigger>
+          </div>
+
+          {/* Advanced Section */}
+          <div className="w-full space-y-1">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 pb-2">
+              Advanced
+            </h3>
+            <TabsTrigger 
+              value="domains" 
+              data-testid="tab-domains"
+              className="w-full justify-start"
+            >
+              Domains
+            </TabsTrigger>
+            <TabsTrigger 
+              value="integrations" 
+              data-testid="tab-integrations"
+              className="w-full justify-start"
+            >
+              Integrations
+            </TabsTrigger>
+            <TabsTrigger 
+              value="onboarding" 
+              data-testid="tab-onboarding"
+              className="w-full justify-start"
+            >
+              Onboarding
+            </TabsTrigger>
+            <TabsTrigger 
+              value="feedback" 
+              data-testid="tab-feedback"
+              className="w-full justify-start"
+            >
+              Feedback
+            </TabsTrigger>
+            <TabsTrigger 
+              value="custom-css" 
+              data-testid="tab-custom-css"
+              className="w-full justify-start"
+            >
+              Custom CSS
+            </TabsTrigger>
+          </div>
         </TabsList>
 
-        <TabsContent value="basic-info">
-          <RestaurantBasicInfo restaurant={restaurant} />
-        </TabsContent>
+        {/* Right Content Area */}
+        <div className="flex-1 min-w-0">
+          <TabsContent value="basic-info" className="mt-0">
+            <RestaurantBasicInfo restaurant={restaurant} />
+          </TabsContent>
 
-        <TabsContent value="locations">
-          <RestaurantLocations restaurantId={restaurantId} />
-        </TabsContent>
+          <TabsContent value="locations" className="mt-0">
+            <RestaurantLocations restaurantId={restaurantId} />
+          </TabsContent>
 
-        <TabsContent value="contacts">
-          <RestaurantContacts restaurantId={restaurantId} />
-        </TabsContent>
+          <TabsContent value="contacts" className="mt-0">
+            <RestaurantContacts restaurantId={restaurantId} />
+          </TabsContent>
 
-        <TabsContent value="domains">
-          <RestaurantDomains restaurantId={restaurantId} />
-        </TabsContent>
+          <TabsContent value="domains" className="mt-0">
+            <RestaurantDomains restaurantId={restaurantId} />
+          </TabsContent>
 
-        <TabsContent value="hours">
-          <RestaurantHours restaurantId={restaurantId} />
-        </TabsContent>
+          <TabsContent value="hours" className="mt-0">
+            <RestaurantHours restaurantId={restaurantId} />
+          </TabsContent>
 
-        <TabsContent value="service-config">
-          <RestaurantServiceConfig restaurantId={restaurantId} />
-        </TabsContent>
+          <TabsContent value="service-config" className="mt-0">
+            <RestaurantServiceConfig restaurantId={restaurantId} />
+          </TabsContent>
 
-        <TabsContent value="delivery-areas">
-          <RestaurantDeliveryAreas restaurantId={restaurantId} />
-        </TabsContent>
+          <TabsContent value="delivery-areas" className="mt-0">
+            <RestaurantDeliveryAreas restaurantId={restaurantId} />
+          </TabsContent>
 
-        <TabsContent value="categorization">
-          <Categorization restaurantId={parseInt(restaurantId)} />
-        </TabsContent>
+          <TabsContent value="categorization" className="mt-0">
+            <Categorization restaurantId={parseInt(restaurantId)} />
+          </TabsContent>
 
-        <TabsContent value="onboarding">
-          <Onboarding restaurantId={parseInt(restaurantId)} />
-        </TabsContent>
+          <TabsContent value="onboarding" className="mt-0">
+            <Onboarding restaurantId={parseInt(restaurantId)} />
+          </TabsContent>
 
-        <TabsContent value="menu-categories">
-          <RestaurantMenuCategories restaurantId={restaurantId} />
-        </TabsContent>
+          <TabsContent value="menu-categories" className="mt-0">
+            <RestaurantMenuCategories restaurantId={restaurantId} />
+          </TabsContent>
 
-        <TabsContent value="payment-methods">
-          <RestaurantPaymentMethods restaurantId={restaurantId} />
-        </TabsContent>
+          <TabsContent value="payment-methods" className="mt-0">
+            <RestaurantPaymentMethods restaurantId={restaurantId} />
+          </TabsContent>
 
-        <TabsContent value="integrations">
-          <RestaurantIntegrations restaurantId={restaurantId} />
-        </TabsContent>
+          <TabsContent value="integrations" className="mt-0">
+            <RestaurantIntegrations restaurantId={restaurantId} />
+          </TabsContent>
 
-        <TabsContent value="branding">
-          <RestaurantBranding restaurantId={restaurantId} />
-        </TabsContent>
+          <TabsContent value="branding" className="mt-0">
+            <RestaurantBranding restaurantId={restaurantId} />
+          </TabsContent>
 
-        <TabsContent value="seo">
-          <RestaurantSEO restaurantId={restaurantId} />
-        </TabsContent>
+          <TabsContent value="seo" className="mt-0">
+            <RestaurantSEO restaurantId={restaurantId} />
+          </TabsContent>
 
-        <TabsContent value="images">
-          <RestaurantImages restaurantId={restaurantId} />
-        </TabsContent>
+          <TabsContent value="images" className="mt-0">
+            <RestaurantImages restaurantId={restaurantId} />
+          </TabsContent>
 
-        <TabsContent value="feedback">
-          <RestaurantFeedback restaurantId={restaurantId} />
-        </TabsContent>
+          <TabsContent value="feedback" className="mt-0">
+            <RestaurantFeedback restaurantId={restaurantId} />
+          </TabsContent>
 
-        <TabsContent value="custom-css">
-          <RestaurantCustomCSS restaurantId={restaurantId} />
-        </TabsContent>
+          <TabsContent value="custom-css" className="mt-0">
+            <RestaurantCustomCSS restaurantId={restaurantId} />
+          </TabsContent>
+        </div>
       </Tabs>
     </div>
   )

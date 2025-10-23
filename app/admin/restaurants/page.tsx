@@ -42,7 +42,7 @@ export default function RestaurantsPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [provinceFilter, setProvinceFilter] = useState("All")
   const [cityFilter, setCityFilter] = useState("All")
-  const [statusFilter, setStatusFilter] = useState("All")
+  const [statusFilter, setStatusFilter] = useState("active")
 
   const { data: restaurants = [], isLoading } = useRestaurants({
     province: provinceFilter !== "All" ? provinceFilter : undefined,
