@@ -6,17 +6,21 @@ const nextConfig = {
 
   // Security headers - Critical for production
   async headers() {
+    const isDev = process.env.NODE_ENV === 'development'
+    
     return [
       {
         source: '/:path*',
         headers: [
           // Content Security Policy - Prevent XSS attacks
-          // Note: 'unsafe-inline' needed for Next.js styles - use nonce-based CSP in production
+          // Note: 'unsafe-eval' and 'unsafe-inline' needed for Next.js dev mode
           {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' https://js.stripe.com https://api.mapbox.com",
+              isDev 
+                ? "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.stripe.com https://api.mapbox.com"
+                : "script-src 'self' 'unsafe-inline' https://js.stripe.com https://api.mapbox.com",
               "style-src 'self' 'unsafe-inline' https://api.mapbox.com",
               "img-src 'self' data: blob: https://*.supabase.co https://api.mapbox.com",
               "font-src 'self' data:",
