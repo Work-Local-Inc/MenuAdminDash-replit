@@ -33,11 +33,12 @@ export async function middleware(request: NextRequest) {
   // Refresh session if expired - required for Server Components
   const { data: { session } } = await supabase.auth.getSession()
 
+  // TEMPORARY: Bypass login for demo
   // If accessing /admin routes without a session, redirect to login
-  if (request.nextUrl.pathname.startsWith('/admin') && !session) {
-    const redirectUrl = new URL('/login', request.url)
-    return NextResponse.redirect(redirectUrl)
-  }
+  // if (request.nextUrl.pathname.startsWith('/admin') && !session) {
+  //   const redirectUrl = new URL('/login', request.url)
+  //   return NextResponse.redirect(redirectUrl)
+  // }
 
   // If accessing /login with a valid session, redirect to dashboard
   if (request.nextUrl.pathname === '/login' && session) {
