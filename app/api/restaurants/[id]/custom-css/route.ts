@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { verifyAdminAuth } from '@/lib/auth/admin-check'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { z } from 'zod'
 
@@ -12,6 +13,8 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    await verifyAdminAuth(request)
+    
     const supabase = createAdminClient()
     
     const { data, error } = await supabase
@@ -43,13 +46,9 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = createAdminClient()
+    await verifyAdminAuth(request)
     
-    // Check authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const supabase = createAdminClient()
     
     const body = await request.json()
     const validatedData = customCssSchema.parse(body)

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export async function DELETE(
   request: NextRequest,
@@ -16,7 +16,7 @@ export async function DELETE(
       );
     }
 
-    const supabase = await createClient();
+    const supabase = createAdminClient();
 
     // Get current session for authentication
     const { data: { session } } = await supabase.auth.getSession();

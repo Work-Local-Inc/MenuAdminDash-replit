@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { z } from 'zod';
 
 const scheduleTemplateSchema = z.object({
@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = scheduleTemplateSchema.parse(body);
 
-    const supabase = await createClient();
+    const supabase = createAdminClient();
 
     // Check authentication
     const { data: { session } } = await supabase.auth.getSession();

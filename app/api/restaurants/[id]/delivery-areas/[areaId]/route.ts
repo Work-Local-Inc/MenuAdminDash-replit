@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { verifyAdminAuth } from '@/lib/auth/admin-check'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { z } from 'zod'
 
@@ -19,6 +20,8 @@ export async function PUT(
   { params }: { params: { id: string; areaId: string } }
 ) {
   try {
+    await verifyAdminAuth(request)
+    
     const supabase = createAdminClient()
     
     const body = await request.json()
@@ -88,12 +91,9 @@ export async function DELETE(
   { params }: { params: { id: string; areaId: string } }
 ) {
   try {
-    const supabase = createAdminClient()
+    await verifyAdminAuth(request)
     
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const supabase = createAdminClient()
     
     const { error } = await supabase
       .schema('menuca_v3')

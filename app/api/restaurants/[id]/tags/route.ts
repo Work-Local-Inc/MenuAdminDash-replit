@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { z } from 'zod';
 
 const addTagSchema = z.object({
@@ -16,7 +16,7 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid restaurant ID' }, { status: 400 });
     }
 
-    const supabase = await createClient();
+    const supabase = createAdminClient();
 
     // Get tags for the restaurant
     const { data: tags, error } = await supabase
@@ -56,7 +56,7 @@ export async function POST(
     const body = await request.json();
     const validatedData = addTagSchema.parse(body);
 
-    const supabase = await createClient();
+    const supabase = createAdminClient();
 
     // Get current session for authentication
     const { data: { session } } = await supabase.auth.getSession();

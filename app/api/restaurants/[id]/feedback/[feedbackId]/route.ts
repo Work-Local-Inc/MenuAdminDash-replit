@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { verifyAdminAuth } from '@/lib/auth/admin-check'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { z } from 'zod'
 
 const responseSchema = z.object({
@@ -11,19 +12,17 @@ export async function PATCH(
   { params }: { params: { id: string; feedbackId: string } }
 ) {
   try {
-    const supabase = await createClient()
+    await verifyAdminAuth(request)
     
-    // Check authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const supabase = createAdminClient()
     
     // TODO: Add role-based access control check once RBAC is implemented (Phase 3)
     // Only admin users should be able to submit admin responses
     
     let body
     try {
+    await verifyAdminAuth(request)
+    
       body = await request.json()
     } catch {
       return NextResponse.json(

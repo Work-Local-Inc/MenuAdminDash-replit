@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { verifyAdminAuth } from '@/lib/auth/admin-check'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { z } from 'zod'
 
 const linkChildrenSchema = z.object({
@@ -13,12 +14,8 @@ const linkChildrenSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
+    const supabase = createAdminClient()
     
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
     
     const body = await request.json()
     const validatedData = linkChildrenSchema.parse(body)

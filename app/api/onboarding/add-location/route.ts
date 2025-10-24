@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { z } from 'zod';
 
 const addLocationSchema = z.object({
@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = addLocationSchema.parse(body);
 
-    const supabase = await createClient();
+    const supabase = createAdminClient();
 
     // Call Santiago's SQL function directly
     const { data, error } = await supabase.rpc('add_restaurant_location_onboarding', {

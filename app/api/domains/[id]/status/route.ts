@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function GET(
   request: NextRequest,
@@ -14,7 +14,7 @@ export async function GET(
       )
     }
 
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     // Get single domain verification status
     const { data, error } = await supabase.rpc('get_domain_verification_status', {

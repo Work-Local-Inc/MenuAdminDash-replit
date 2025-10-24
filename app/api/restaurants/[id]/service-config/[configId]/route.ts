@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { verifyAdminAuth } from '@/lib/auth/admin-check'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string; configId: string } }
 ) {
   try {
-    const supabase = await createClient()
+    const supabase = createAdminClient()
     const body = await request.json()
     
     const { data, error } = await supabase
@@ -30,7 +31,7 @@ export async function DELETE(
   { params }: { params: { id: string; configId: string } }
 ) {
   try {
-    const supabase = await createClient()
+    const supabase = createAdminClient()
     
     const { error } = await supabase
       .from('restaurant_service_configs')

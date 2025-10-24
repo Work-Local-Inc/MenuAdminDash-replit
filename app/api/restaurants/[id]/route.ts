@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { verifyAdminAuth } from '@/lib/auth/admin-check'
 import { getRestaurantById } from '@/lib/supabase/queries'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { restaurantUpdateSchema } from '@/lib/validations/restaurant'
+import { AuthError } from '@/lib/errors'
 import { z } from 'zod'
 
 export async function GET(
@@ -24,13 +26,9 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = await createClient()
+    await verifyAdminAuth(request)
     
-    // Check authentication
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const supabase = createAdminClient()
 
     const body = await request.json()
     
@@ -48,6 +46,12 @@ export async function PATCH(
 
     return NextResponse.json(data)
   } catch (error: any) {
+    if (error instanceof AuthError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.statusCode }
+      )
+    }
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Validation failed', details: error.errors },
@@ -66,12 +70,9 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = await createClient()
-
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    await verifyAdminAuth(request)
+    
+    const supabase = createAdminClient()
 
     let reason = 'Restaurant deactivated by admin'
     try {
@@ -101,6 +102,12 @@ export async function DELETE(
 
     return NextResponse.json(data)
   } catch (error: any) {
+    if (error instanceof AuthError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.statusCode }
+      )
+    }
     return NextResponse.json(
       { error: error.message || 'Failed to deactivate restaurant' },
       { status: 500 }

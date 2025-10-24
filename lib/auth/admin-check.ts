@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { UnauthorizedError, ForbiddenError } from '@/lib/errors'
 
 /**
  * Verify the request is from an authenticated admin user
@@ -26,7 +27,7 @@ export async function verifyAdminAuth(request: NextRequest) {
   
   if (authError || !user || !user.email) {
     console.error('[Admin Auth] Not authenticated:', authError)
-    throw new Error('Unauthorized - authentication required')
+    throw new UnauthorizedError('Unauthorized - authentication required')
   }
   
   // Step 2: Verify user email exists in admin_users table (using service role to bypass RLS)
@@ -46,7 +47,7 @@ export async function verifyAdminAuth(request: NextRequest) {
       email: user.email,
       error: adminError?.message
     })
-    throw new Error('Forbidden - admin access required')
+    throw new ForbiddenError('Forbidden - admin access required')
   }
   
   // Then, fetch the user's role (if they have one)
