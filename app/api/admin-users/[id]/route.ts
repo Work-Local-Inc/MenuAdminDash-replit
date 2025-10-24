@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { AuthError } from '@/lib/errors'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
 import bcrypt from 'bcryptjs'
 
@@ -11,6 +12,9 @@ export async function GET(
   try {
     await verifyAdminAuth(request)
   } catch (error: any) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode })
+    }
     return NextResponse.json(
       { error: error.message },
       { status: error.message.includes('Unauthorized') ? 401 : 403 }
@@ -42,6 +46,9 @@ export async function PATCH(
   try {
     await verifyAdminAuth(request)
   } catch (error: any) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode })
+    }
     return NextResponse.json(
       { error: error.message },
       { status: error.message.includes('Unauthorized') ? 401 : 403 }
@@ -88,6 +95,9 @@ export async function DELETE(
   try {
     await verifyAdminAuth(request)
   } catch (error: any) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode })
+    }
     return NextResponse.json(
       { error: error.message },
       { status: error.message.includes('Unauthorized') ? 401 : 403 }
@@ -125,6 +135,9 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode })
+    }
     console.error('Error in DELETE /api/admin-users/[id]:', error)
     return NextResponse.json(
       { error: error.message || 'Failed to delete admin user' },

@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyAdminAuth } from '@/lib/auth/admin-check'
+import { AuthError } from '@/lib/errors'
 import { createAdminClient } from '@/lib/supabase/admin';
 import { z } from 'zod';
 
@@ -11,6 +13,8 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    await verifyAdminAuth(request)
+
     const restaurantId = parseInt(params.id);
     if (isNaN(restaurantId)) {
       return NextResponse.json({ error: 'Invalid restaurant ID' }, { status: 400 });
@@ -35,6 +39,9 @@ export async function GET(
 
     return NextResponse.json(tags || []);
   } catch (error: any) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode })
+    }
     console.error('Error fetching restaurant tags:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to fetch tags' },
@@ -76,6 +83,9 @@ export async function POST(
 
     return NextResponse.json(data, { status: 201 });
   } catch (error: any) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode })
+    }
     console.error('Error adding tag:', error);
     
     if (error instanceof z.ZodError) {

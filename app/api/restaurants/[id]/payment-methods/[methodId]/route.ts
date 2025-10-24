@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { AuthError } from '@/lib/errors'
 import { z } from 'zod'
 
 const paymentMethodUpdateSchema = z.object({
@@ -32,6 +33,9 @@ export async function PATCH(
     
     return NextResponse.json(data)
   } catch (error: any) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode })
+    }
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Validation failed', details: error.errors },
@@ -59,6 +63,9 @@ export async function DELETE(
     
     return NextResponse.json({ success: true })
   } catch (error: any) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode })
+    }
     return NextResponse.json({ error: error.message || 'Failed to delete payment method' }, { status: 500 })
   }
 }

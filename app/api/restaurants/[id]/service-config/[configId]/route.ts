@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { AuthError } from '@/lib/errors'
 
 export async function PATCH(
   request: NextRequest,
@@ -22,6 +23,9 @@ export async function PATCH(
     
     return NextResponse.json(data)
   } catch (error: any) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode })
+    }
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
@@ -43,6 +47,9 @@ export async function DELETE(
     
     return NextResponse.json({ success: true })
   } catch (error: any) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode })
+    }
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

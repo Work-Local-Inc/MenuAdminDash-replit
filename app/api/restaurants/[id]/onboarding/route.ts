@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyAdminAuth } from '@/lib/auth/admin-check'
+import { AuthError } from '@/lib/errors'
 import { createAdminClient } from '@/lib/supabase/admin';
 
 export async function GET(
@@ -6,6 +8,8 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    await verifyAdminAuth(request)
+
     const restaurantId = parseInt(params.id);
     if (isNaN(restaurantId)) {
       return NextResponse.json({ error: 'Invalid restaurant ID' }, { status: 400 });
@@ -22,6 +26,9 @@ export async function GET(
 
     return NextResponse.json(data);
   } catch (error: any) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode })
+    }
     console.error('Error fetching onboarding status:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to fetch onboarding status' },

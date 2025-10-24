@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { AuthError } from '@/lib/errors'
 import { z } from 'zod'
 
 const verifySchema = z.object({
@@ -49,6 +50,9 @@ export async function POST(
 
     return NextResponse.json(data)
   } catch (error: any) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode })
+    }
     console.error('[Verify Domain] Unexpected error:', error)
     
     if (error instanceof z.ZodError) {

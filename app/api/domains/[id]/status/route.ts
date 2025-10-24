@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { verifyAdminAuth } from '@/lib/auth/admin-check'
+import { AuthError } from '@/lib/errors'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function GET(
@@ -6,6 +8,8 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    await verifyAdminAuth(request)
+
     const domainId = parseInt(params.id)
     if (isNaN(domainId)) {
       return NextResponse.json(
@@ -38,6 +42,9 @@ export async function GET(
 
     return NextResponse.json(data[0])
   } catch (error: any) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode })
+    }
     console.error('[Domain Status] Unexpected error:', error)
     return NextResponse.json(
       { error: error.message },

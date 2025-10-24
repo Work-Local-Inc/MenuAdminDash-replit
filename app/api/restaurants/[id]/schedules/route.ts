@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { verifyAdminAuth } from '@/lib/auth/admin-check'
+import { AuthError } from '@/lib/errors'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function GET(
@@ -6,6 +8,8 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    await verifyAdminAuth(request)
+
     const supabase = createAdminClient()
     
     const { data, error } = await supabase
@@ -19,6 +23,9 @@ export async function GET(
     
     return NextResponse.json(data || [])
   } catch (error: any) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode })
+    }
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
@@ -47,6 +54,9 @@ export async function POST(
     
     return NextResponse.json(data)
   } catch (error: any) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode })
+    }
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

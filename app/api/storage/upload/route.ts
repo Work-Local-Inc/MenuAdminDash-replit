@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { AuthError } from '@/lib/errors'
 
 // Whitelist of allowed storage buckets
 const ALLOWED_BUCKETS = ['restaurant-logos', 'restaurant-images']
@@ -90,6 +91,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ url: publicUrl, path: data.path })
   } catch (error: any) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode })
+    }
     return NextResponse.json(
       { error: error.message || 'Failed to upload file' },
       { status: 500 }

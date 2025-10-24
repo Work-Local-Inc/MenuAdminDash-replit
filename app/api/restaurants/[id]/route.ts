@@ -11,9 +11,17 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    await verifyAdminAuth(request)
+    
     const restaurant = await getRestaurantById(params.id)
     return NextResponse.json(restaurant)
   } catch (error: any) {
+    if (error instanceof AuthError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.statusCode }
+      )
+    }
     return NextResponse.json(
       { error: error.message || 'Failed to fetch restaurant' },
       { status: 500 }

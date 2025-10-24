@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { AuthError } from '@/lib/errors'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
 import { verifyAdminAuthWithPermission } from '@/lib/auth/permission-check'
 import bcrypt from 'bcryptjs'
@@ -10,6 +11,9 @@ export async function GET(request: NextRequest) {
     // Verify admin authentication
     await verifyAdminAuth(request)
   } catch (error: any) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode })
+    }
     return NextResponse.json(
       { error: error.message },
       { status: error.message.includes('Unauthorized') ? 401 : 403 }
@@ -57,6 +61,9 @@ export async function POST(request: NextRequest) {
     // Verify admin authentication and check for 'users:create' permission
     await verifyAdminAuthWithPermission(request, 'users', 'create')
   } catch (error: any) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode })
+    }
     return NextResponse.json(
       { error: error.message },
       { status: error.message.includes('Unauthorized') ? 401 : 403 }
@@ -99,6 +106,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(data)
   } catch (error: any) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode })
+    }
     console.error('Error in POST /api/admin-users:', error)
     return NextResponse.json(
       { error: error.message || 'Failed to create admin user' },

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { AuthError } from '@/lib/errors'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
 import { validatePermissionMatrix, PermissionMatrix } from '@/lib/rbac'
 
@@ -8,6 +9,9 @@ export async function GET(request: NextRequest) {
   try {
     await verifyAdminAuth(request)
   } catch (error: any) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode })
+    }
     return NextResponse.json(
       { error: error.message },
       { status: error.message.includes('Unauthorized') ? 401 : 403 }
@@ -53,6 +57,9 @@ export async function POST(request: NextRequest) {
   try {
     await verifyAdminAuth(request)
   } catch (error: any) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode })
+    }
     return NextResponse.json(
       { error: error.message },
       { status: error.message.includes('Unauthorized') ? 401 : 403 }
@@ -107,6 +114,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(data, { status: 201 })
   } catch (error: any) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode })
+    }
     console.error('Error in POST /api/roles:', error)
     return NextResponse.json(
       { error: error.message || 'Failed to create role' },

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { AuthError } from '@/lib/errors'
 import { z } from 'zod'
 
 const createParentSchema = z.object({
@@ -32,6 +33,9 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json(data)
   } catch (error: any) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode })
+    }
     if (error instanceof z.ZodError) {
       return NextResponse.json({ 
         error: 'Validation error', 

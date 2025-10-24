@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { AuthError } from '@/lib/errors'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
 import { validatePermissionMatrix } from '@/lib/rbac'
 
@@ -11,6 +12,9 @@ export async function GET(
   try {
     await verifyAdminAuth(request)
   } catch (error: any) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode })
+    }
     return NextResponse.json(
       { error: error.message },
       { status: error.message.includes('Unauthorized') ? 401 : 403 }
@@ -49,6 +53,9 @@ export async function PATCH(
   try {
     await verifyAdminAuth(request)
   } catch (error: any) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode })
+    }
     return NextResponse.json(
       { error: error.message },
       { status: error.message.includes('Unauthorized') ? 401 : 403 }
@@ -135,6 +142,9 @@ export async function PATCH(
 
     return NextResponse.json(data)
   } catch (error: any) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode })
+    }
     console.error('Error in PATCH /api/roles/[id]:', error)
     return NextResponse.json(
       { error: error.message || 'Failed to update role' },
@@ -151,6 +161,9 @@ export async function DELETE(
   try {
     await verifyAdminAuth(request)
   } catch (error: any) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode })
+    }
     return NextResponse.json(
       { error: error.message },
       { status: error.message.includes('Unauthorized') ? 401 : 403 }
@@ -220,6 +233,9 @@ export async function DELETE(
       { status: 200 }
     )
   } catch (error: any) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode })
+    }
     console.error('Error in DELETE /api/roles/[id]:', error)
     return NextResponse.json(
       { error: error.message || 'Failed to delete role' },

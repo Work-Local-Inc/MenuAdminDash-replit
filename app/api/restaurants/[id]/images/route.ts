@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { verifyAdminAuth } from '@/lib/auth/admin-check'
+import { AuthError } from '@/lib/errors'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { z } from 'zod'
 
@@ -18,6 +20,8 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    await verifyAdminAuth(request)
+
     const supabase = createAdminClient()
     
     const { data, error } = await supabase
@@ -31,6 +35,9 @@ export async function GET(
     
     return NextResponse.json(data || [])
   } catch (error: any) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode })
+    }
     return NextResponse.json({ error: error.message || 'Failed to fetch images' }, { status: 500 })
   }
 }
@@ -68,6 +75,9 @@ export async function POST(
     
     return NextResponse.json(data)
   } catch (error: any) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode })
+    }
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Validation failed', details: error.errors },
@@ -126,6 +136,9 @@ export async function PATCH(
     
     return NextResponse.json(data)
   } catch (error: any) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode })
+    }
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Validation failed', details: error.errors },
@@ -195,6 +208,9 @@ export async function DELETE(
     
     return NextResponse.json({ success: true })
   } catch (error: any) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode })
+    }
     return NextResponse.json({ error: error.message || 'Failed to delete image' }, { status: 500 })
   }
 }
