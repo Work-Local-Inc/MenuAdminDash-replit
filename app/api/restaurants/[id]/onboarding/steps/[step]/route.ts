@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyAdminAuth } from '@/lib/auth/admin-check';
+import { AuthError } from '@/lib/errors';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { z } from 'zod';
 
@@ -22,6 +24,8 @@ export async function PATCH(
   { params }: { params: { id: string; step: string } }
 ) {
   try {
+    await verifyAdminAuth(request);
+
     const restaurantId = parseInt(params.id);
     const step = params.step;
 
@@ -41,12 +45,6 @@ export async function PATCH(
 
     const supabase = createAdminClient();
 
-    // Get current session for authentication
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     // Call Santiago's update-onboarding-step Edge Function
     const { data, error } = await supabase.functions.invoke('update-onboarding-step', {
       body: {
@@ -60,6 +58,9 @@ export async function PATCH(
 
     return NextResponse.json(data);
   } catch (error: any) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
     console.error('Error updating onboarding step:', error);
     
     if (error instanceof z.ZodError) {

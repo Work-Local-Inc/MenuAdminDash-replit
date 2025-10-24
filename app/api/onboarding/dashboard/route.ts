@@ -9,10 +9,6 @@ export async function GET(request: NextRequest) {
 
     const supabase = createAdminClient();
 
-    // Get current session for authentication (admin only)
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Call Santiago's get-onboarding-dashboard Edge Function

@@ -55,6 +55,8 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    await verifyAdminAuth(request);
+
     const restaurantId = parseInt(params.id);
     if (isNaN(restaurantId)) {
       return NextResponse.json({ error: 'Invalid restaurant ID' }, { status: 400 });
@@ -64,12 +66,6 @@ export async function POST(
     const validatedData = addTagSchema.parse(body);
 
     const supabase = createAdminClient();
-
-    // Get current session for authentication
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
 
     // Call Santiago's add-restaurant-tag Edge Function
     const { data, error } = await supabase.functions.invoke('add-restaurant-tag', {

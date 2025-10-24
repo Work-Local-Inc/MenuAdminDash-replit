@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyAdminAuth } from '@/lib/auth/admin-check';
+import { AuthError } from '@/lib/errors';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 export async function DELETE(
@@ -6,6 +8,8 @@ export async function DELETE(
   { params }: { params: { id: string; cuisineId: string } }
 ) {
   try {
+    await verifyAdminAuth(request);
+
     const restaurantId = parseInt(params.id);
     const cuisineId = parseInt(params.cuisineId);
     
@@ -18,12 +22,6 @@ export async function DELETE(
 
     const supabase = createAdminClient();
 
-    // Get current session for authentication
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     // Remove cuisine assignment
     const { error } = await supabase
       .schema('menuca_v3').from('restaurant_cuisines')
@@ -35,6 +33,9 @@ export async function DELETE(
 
     return NextResponse.json({ success: true, message: 'Cuisine removed successfully' });
   } catch (error: any) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
     console.error('Error removing cuisine:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to remove cuisine' },
