@@ -23,7 +23,7 @@ export async function GET(
     // Fetch menu with courses and dishes
     // Note: is_active can be NULL for legacy data, so we include NULL as "active"
     const { data: courses, error: coursesError } = await supabase
-      .from('courses')
+      .schema('menuca_v3').from('courses')
       .select(`
         id,
         name,
@@ -56,7 +56,7 @@ export async function GET(
           (course.dishes || []).filter((dish: any) => dish.is_active === true || dish.is_active === null).map(async (dish: any) => {
             if (dish.has_customization) {
               const { data: modifiers } = await supabase
-                .from('dish_modifiers')
+                .schema('menuca_v3').from('dish_modifiers')
                 .select('id, name, price, is_required, display_order')
                 .eq('dish_id', dish.id)
                 .eq('is_active', true)

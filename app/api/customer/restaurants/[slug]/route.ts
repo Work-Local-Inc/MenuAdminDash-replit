@@ -22,7 +22,7 @@ export async function GET(
     
     // Fetch restaurant with nested related data
     const { data: restaurant, error: restaurantError } = await supabase
-      .from('restaurants')
+      .schema('menuca_v3').from('restaurants')
       .select(`
         id,
         name,

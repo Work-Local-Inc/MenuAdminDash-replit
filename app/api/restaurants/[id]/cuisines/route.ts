@@ -25,7 +25,7 @@ export async function GET(
 
     // Get cuisines for the restaurant
     const { data: cuisines, error } = await supabase
-      .from('restaurant_cuisines')
+      .schema('menuca_v3').from('restaurant_cuisines')
       .select(`
         is_primary,
         cuisine_types (

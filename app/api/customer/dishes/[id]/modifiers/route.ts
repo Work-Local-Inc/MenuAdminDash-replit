@@ -18,7 +18,7 @@ export async function GET(
     
     // Fetch modifiers for the dish
     const { data: modifiers, error } = await supabase
-      .from('dish_modifiers')
+      .schema('menuca_v3').from('dish_modifiers')
       .select('id, name, price, is_required, display_order')
       .eq('dish_id', dishId)
       .eq('is_active', true)

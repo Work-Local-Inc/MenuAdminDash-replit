@@ -31,7 +31,7 @@ export async function PUT(
     
     const { data: existing, error: fetchError } = await supabase
       .schema('menuca_v3')
-      .from('restaurant_delivery_zones')
+      .schema('menuca_v3').from('restaurant_delivery_zones')
       .select('*')
       .eq('id', parseInt(params.areaId))
       .eq('restaurant_id', parseInt(params.id))
@@ -51,7 +51,7 @@ export async function PUT(
     
     const { data, error } = await supabase
       .schema('menuca_v3')
-      .from('restaurant_delivery_zones')
+      .schema('menuca_v3').from('restaurant_delivery_zones')
       .update(updateData)
       .eq('id', parseInt(params.areaId))
       .eq('restaurant_id', parseInt(params.id))
@@ -103,7 +103,7 @@ export async function DELETE(
     
     const { error } = await supabase
       .schema('menuca_v3')
-      .from('restaurant_delivery_zones')
+      .schema('menuca_v3').from('restaurant_delivery_zones')
       .update({ deleted_at: new Date().toISOString() })
       .eq('id', parseInt(params.areaId))
       .eq('restaurant_id', parseInt(params.id))

@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
 
     // Get domains needing attention from view (priority-sorted)
     const { data, error } = await supabase
-      .from('v_domains_needing_attention')
+      .schema('menuca_v3').from('v_domains_needing_attention')
       .select('*')
       .order('priority_score', { ascending: false })
       .order('days_until_ssl_expires', { ascending: true })

@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     const provinceId = searchParams.get('province_id')
     
     let query = supabase
-      .from('cities')
+      .schema('menuca_v3').from('cities')
       .select('*')
       .order('name', { ascending: true })
     

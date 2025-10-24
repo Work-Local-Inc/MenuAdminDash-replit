@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
 
     // Step 1: Insert default roles
     const { data: insertedRoles, error: insertRolesError } = await supabase
-      .from('admin_roles')
+      .schema('menuca_v3').from('admin_roles')
       .insert([
         {
           name: 'Super Admin',
@@ -74,14 +74,14 @@ export async function POST(request: NextRequest) {
 
     // Step 2: Assign Super Admin role to all existing admin users
     const { data: superAdminRole } = await supabase
-      .from('admin_roles')
+      .schema('menuca_v3').from('admin_roles')
       .select('id')
       .eq('name', 'Super Admin')
       .single()
 
     if (superAdminRole) {
       const { error: updateError } = await supabase
-        .from('admin_users')
+        .schema('menuca_v3').from('admin_users')
         .update({ role_id: superAdminRole.id })
         .is('role_id', null)
       
@@ -92,11 +92,11 @@ export async function POST(request: NextRequest) {
 
     // Verify the migration
     const { count: rolesCount } = await supabase
-      .from('admin_roles')
+      .schema('menuca_v3').from('admin_roles')
       .select('*', { count: 'exact', head: true })
 
     const { count: usersWithRoles } = await supabase
-      .from('admin_users')
+      .schema('menuca_v3').from('admin_users')
       .select('*', { count: 'exact', head: true })
       .not('role_id', 'is', null)
 

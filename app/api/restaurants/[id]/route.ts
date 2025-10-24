@@ -46,7 +46,7 @@ export async function PATCH(
     const validatedData = restaurantUpdateSchema.parse(body)
 
     const { data, error } = await supabase
-      .from('menuca_v3.restaurants')
+      .schema('menuca_v3').from('menuca_v3.restaurants')
       .update(validatedData)
       .eq('id', params.id)
       .select()

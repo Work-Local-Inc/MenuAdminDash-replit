@@ -39,7 +39,7 @@ export async function PATCH(
     
     // Update the feedback with admin response
     const { data, error } = await supabase
-      .from('restaurant_feedback')
+      .schema('menuca_v3').from('restaurant_feedback')
       .update({
         admin_response: validatedData.admin_response,
         response_at: new Date().toISOString(),

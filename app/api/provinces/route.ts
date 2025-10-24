@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient()
     
     const { data, error } = await supabase
-      .from('provinces')
+      .schema('menuca_v3').from('provinces')
       .select('*')
       .order('name', { ascending: true })
     

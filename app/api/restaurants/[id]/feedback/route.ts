@@ -18,7 +18,7 @@ export async function GET(
     const ratingFilter = searchParams.get('rating')
     
     let query = supabase
-      .from('restaurant_feedback')
+      .schema('menuca_v3').from('restaurant_feedback')
       .select(`
         *,
         users:user_id (

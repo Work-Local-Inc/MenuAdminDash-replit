@@ -10,7 +10,7 @@ export async function PATCH(
     const body = await request.json()
     
     const { data, error } = await supabase
-      .from('restaurant_schedules')
+      .schema('menuca_v3').from('restaurant_schedules')
       .update(body)
       .eq('id', params.scheduleId)
       .eq('restaurant_id', params.id)
@@ -33,7 +33,7 @@ export async function DELETE(
     const supabase = createAdminClient()
     
     const { error } = await supabase
-      .from('restaurant_schedules')
+      .schema('menuca_v3').from('restaurant_schedules')
       .delete()
       .eq('id', params.scheduleId)
       .eq('restaurant_id', params.id)

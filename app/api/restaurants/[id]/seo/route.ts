@@ -24,7 +24,7 @@ export async function GET(
     const supabase = createAdminClient()
     
     const { data, error } = await supabase
-      .from('restaurant_seo')
+      .schema('menuca_v3').from('restaurant_seo')
       .select('*')
       .eq('restaurant_id', parseInt(params.id))
       .single()
@@ -81,7 +81,7 @@ export async function POST(
     
     // Fetch existing SEO data to merge with updates (prevents overwriting unmodified fields)
     const { data: existingData } = await supabase
-      .from('restaurant_seo')
+      .schema('menuca_v3').from('restaurant_seo')
       .select('*')
       .eq('restaurant_id', parseInt(params.id))
       .single()
@@ -99,7 +99,7 @@ export async function POST(
     }
     
     const { data, error } = await supabase
-      .from('restaurant_seo')
+      .schema('menuca_v3').from('restaurant_seo')
       .upsert(mergedData)
       .select()
       .single()

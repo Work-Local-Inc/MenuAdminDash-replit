@@ -17,23 +17,23 @@ export async function GET() {
     
     // Try to get sample restaurants
     const { data: restaurants, error: rError } = await supabase
-      .from('restaurants')
+      .schema('menuca_v3').from('restaurants')
       .select('id, name, status')
       .limit(5)
     
     // Try to get sample users
     const { data: users, error: uError } = await supabase
-      .from('users')
+      .schema('menuca_v3').from('users')
       .select('id, email')
       .limit(5)
     
     // Get counts
     const { count: rCount } = await supabase
-      .from('restaurants')
+      .schema('menuca_v3').from('restaurants')
       .select('*', { count: 'exact', head: true })
       
     const { count: uCount } = await supabase
-      .from('users')
+      .schema('menuca_v3').from('users')
       .select('*', { count: 'exact', head: true })
     
     return NextResponse.json({

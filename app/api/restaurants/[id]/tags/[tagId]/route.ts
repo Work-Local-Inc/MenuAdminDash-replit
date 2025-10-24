@@ -26,7 +26,7 @@ export async function DELETE(
 
     // Remove tag assignment
     const { error } = await supabase
-      .from('restaurant_tag_assignments')
+      .schema('menuca_v3').from('restaurant_tag_assignments')
       .delete()
       .eq('restaurant_id', restaurantId)
       .eq('tag_id', tagId);

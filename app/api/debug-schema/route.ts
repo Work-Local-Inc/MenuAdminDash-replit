@@ -7,7 +7,7 @@ export async function GET() {
     
     // Try to get list of tables from information_schema
     const { data: tables, error: tablesError } = await supabase
-      .from('information_schema.tables')
+      .schema('menuca_v3').from('information_schema.tables')
       .select('table_name, table_schema')
       .eq('table_schema', 'public')
     

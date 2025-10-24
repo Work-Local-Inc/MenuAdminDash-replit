@@ -26,7 +26,7 @@ export async function DELETE(
 
     // Remove cuisine assignment
     const { error } = await supabase
-      .from('restaurant_cuisines')
+      .schema('menuca_v3').from('restaurant_cuisines')
       .delete()
       .eq('restaurant_id', restaurantId)
       .eq('cuisine_id', cuisineId);

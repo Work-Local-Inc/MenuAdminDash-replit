@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
   const offset = parseInt(searchParams.get('offset') || '0')
 
   let query = supabase
-    .from('admin_users')
+    .schema('menuca_v3').from('admin_users')
     .select(`
       *,
       role:admin_roles(id, name, is_system_role)
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
     const passwordHash = await bcrypt.hash(body.password, 10)
 
     const { data, error } = await supabase
-      .from('admin_users')
+      .schema('menuca_v3').from('admin_users')
       .insert({
         email: body.email,
         first_name: body.first_name || null,

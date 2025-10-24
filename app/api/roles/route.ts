@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
   const includeSystem = searchParams.get('includeSystem') !== 'false' // default true
 
   let query = supabase
-    .from('admin_roles')
+    .schema('menuca_v3').from('admin_roles')
     .select('*', { count: 'exact' })
     .order('is_system_role', { ascending: false }) // System roles first
     .order('name', { ascending: true })
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
 
     // Create new role (is_system_role defaults to false for custom roles)
     const { data, error } = await supabase
-      .from('admin_roles')
+      .schema('menuca_v3').from('admin_roles')
       .insert({
         name: body.name,
         description: body.description || null,
