@@ -136,42 +136,47 @@ export function RestaurantDeliveryAreas({ restaurantId }: RestaurantDeliveryArea
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return
 
-    const map = new mapboxgl.Map({
-      container: mapContainerRef.current,
-      style: "mapbox://styles/mapbox/streets-v12",
-      center: [-79.3832, 43.6532], // Toronto center
-      zoom: 10,
-    })
+    try {
+      const map = new mapboxgl.Map({
+        container: mapContainerRef.current,
+        style: "mapbox://styles/mapbox/streets-v12",
+        center: [-79.3832, 43.6532], // Toronto center
+        zoom: 10,
+      })
 
-    const draw = new MapboxDraw({
-      displayControlsDefault: false,
-      controls: {
-        polygon: true,
-        trash: true,
-      },
-      defaultMode: "simple_select",
-    })
+      const draw = new MapboxDraw({
+        displayControlsDefault: false,
+        controls: {
+          polygon: true,
+          trash: true,
+        },
+        defaultMode: "simple_select",
+      })
 
-    map.addControl(draw)
-    map.addControl(new mapboxgl.NavigationControl(), "top-right")
+      map.addControl(draw)
+      map.addControl(new mapboxgl.NavigationControl(), "top-right")
 
-    map.on("draw.create", (e) => {
-      const feature = e.features[0]
-      setDrawnPolygon(feature)
-      setIsDrawing(false)
-      setShowAreaDialog(true)
-    })
+      map.on("draw.create", (e) => {
+        const feature = e.features[0]
+        setDrawnPolygon(feature)
+        setIsDrawing(false)
+        setShowAreaDialog(true)
+      })
 
-    map.on("draw.update", (e) => {
-      const feature = e.features[0]
-      setDrawnPolygon(feature)
-    })
+      map.on("draw.update", (e) => {
+        const feature = e.features[0]
+        setDrawnPolygon(feature)
+      })
 
-    mapRef.current = map
-    drawRef.current = draw
+      mapRef.current = map
+      drawRef.current = draw
 
-    return () => {
-      map.remove()
+      return () => {
+        map.remove()
+      }
+    } catch (error) {
+      console.error("Failed to initialize Mapbox:", error)
+      // WebGL not available - component will show table view only
     }
   }, [])
 
