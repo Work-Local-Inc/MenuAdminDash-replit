@@ -18,15 +18,13 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    // TODO: Re-enable auth after admin_users table is created
-    // await verifyAdminAuth(request)
+    await verifyAdminAuth(request)
     
     const supabase = createAdminClient()
     
     let body
     try {
-    // TODO: Re-enable auth after admin_users table is created
-    // await verifyAdminAuth(request)
+    await verifyAdminAuth(request)
     
       body = await request.json()
     } catch {

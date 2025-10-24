@@ -5,8 +5,7 @@ import { getRevenueHistory } from '@/lib/supabase/queries'
 
 export async function GET(request: NextRequest) {
   try {
-    // TODO: Re-enable auth after admin_users table is created
-    // await verifyAdminAuth(request)
+    await verifyAdminAuth(request)
 
     const searchParams = request.nextUrl.searchParams
     const timeRange = (searchParams.get('timeRange') || 'daily') as 'daily' | 'weekly' | 'monthly'

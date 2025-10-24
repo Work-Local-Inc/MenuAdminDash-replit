@@ -5,8 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 
 export async function GET(request: NextRequest) {
   try {
-    // TODO: Re-enable auth after admin_users table is created
-    // await verifyAdminAuth(request)
+    await verifyAdminAuth(request)
 
     const supabase = createAdminClient();
 

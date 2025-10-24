@@ -14,8 +14,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    // TODO: Re-enable auth after admin_users table is created
-    // await verifyAdminAuth(request)
+    await verifyAdminAuth(request)
     
     const supabase = createAdminClient()
     
@@ -51,8 +50,7 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    // TODO: Re-enable auth after admin_users table is created
-    // await verifyAdminAuth(request)
+    await verifyAdminAuth(request)
     
     const supabase = createAdminClient()
     

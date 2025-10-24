@@ -8,8 +8,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    // TODO: Re-enable auth after admin_users table is created
-    // await verifyAdminAuth(request)
+    await verifyAdminAuth(request)
 
     const domainId = parseInt(params.id)
     if (isNaN(domainId)) {

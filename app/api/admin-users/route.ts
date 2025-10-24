@@ -9,8 +9,7 @@ import bcrypt from 'bcryptjs'
 export async function GET(request: NextRequest) {
   try {
     // Verify admin authentication
-    // TODO: Re-enable auth after admin_users table is created
-    // await verifyAdminAuth(request)
+    await verifyAdminAuth(request)
   } catch (error: any) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode })
