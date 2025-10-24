@@ -6,7 +6,8 @@ export async function getRestaurants(filters?: {
   status?: string
   search?: string
 }) {
-  const supabase = await createClient()
+  const { createAdminClient } = await import('@/lib/supabase/admin')
+  const supabase = createAdminClient()
   
   let query = supabase
     .from('restaurants')
