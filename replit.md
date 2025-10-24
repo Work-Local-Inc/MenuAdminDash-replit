@@ -15,6 +15,14 @@ A Next.js 14 admin dashboard for managing the Menu.ca restaurant ordering platfo
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
+## CRITICAL: Development Guidelines
+**MANDATORY:** ALL development MUST follow the architecture documented in `lib/Documentation/Frontend-Guides/BRIAN_MASTER_INDEX.md`
+- **SQL Functions** for READ operations (50+ documented functions)
+- **Edge Functions** for WRITE operations (29 documented functions)
+- **NEVER** write custom queries without checking the guide first
+- **ALWAYS** use Santiago's documented backend functions
+- See: `lib/Documentation/Frontend-Guides/01-Restaurant-Management-Frontend-Guide.md` for complete API reference
+
 ## System Architecture
 
 ### Frontend
