@@ -31,11 +31,6 @@ export async function POST(
   try {
     const supabase = createAdminClient()
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     const body = await request.json()
 
     const { data, error } = await supabase.functions.invoke('add-restaurant-contact', {

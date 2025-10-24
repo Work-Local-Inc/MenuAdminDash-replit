@@ -8,11 +8,6 @@ export async function PATCH(
   try {
     const supabase = createAdminClient()
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     const body = await request.json()
     
     const { data, error } = await supabase.functions.invoke('update-restaurant-contact', {
@@ -43,11 +38,6 @@ export async function DELETE(
 ) {
   try {
     const supabase = createAdminClient()
-
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
 
     let reason = 'Deleted by admin'
     try {

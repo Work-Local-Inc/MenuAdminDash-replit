@@ -21,11 +21,6 @@ export async function GET(
   try {
     const supabase = createAdminClient()
     
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-    
     const { data, error } = await supabase
       .schema('menuca_v3')
       .from('restaurant_delivery_zones')
@@ -64,11 +59,6 @@ export async function POST(
 ) {
   try {
     const supabase = createAdminClient()
-    
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
     
     const body = await request.json()
     const validatedData = deliveryAreaSchema.parse(body)

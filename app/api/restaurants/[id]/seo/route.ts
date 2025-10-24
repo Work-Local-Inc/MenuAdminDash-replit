@@ -18,12 +18,6 @@ export async function GET(
   try {
     const supabase = createAdminClient()
     
-    // Check authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-    
     const { data, error } = await supabase
       .from('restaurant_seo')
       .select('*')
@@ -46,12 +40,6 @@ export async function POST(
 ) {
   try {
     const supabase = createAdminClient()
-    
-    // Check authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
     
     let body
     try {

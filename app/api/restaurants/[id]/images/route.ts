@@ -20,12 +20,6 @@ export async function GET(
   try {
     const supabase = createAdminClient()
     
-    // Check authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-    
     const { data, error } = await supabase
       .from('restaurant_images')
       .select('*')
@@ -47,12 +41,6 @@ export async function POST(
 ) {
   try {
     const supabase = createAdminClient()
-    
-    // Check authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
     
     let body
     try {
@@ -96,12 +84,6 @@ export async function PATCH(
 ) {
   try {
     const supabase = createAdminClient()
-    
-    // Check authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
     
     let body
     try {
@@ -160,12 +142,6 @@ export async function DELETE(
 ) {
   try {
     const supabase = createAdminClient()
-    
-    // Check authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
     
     const { searchParams } = new URL(request.url)
     const imageId = searchParams.get('image_id')

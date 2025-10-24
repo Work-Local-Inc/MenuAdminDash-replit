@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { z } from 'zod'
 
 const updateDeliveryAreaSchema = z.object({
@@ -19,12 +19,7 @@ export async function PUT(
   { params }: { params: { id: string; areaId: string } }
 ) {
   try {
-    const supabase = await createClient()
-    
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const supabase = createAdminClient()
     
     const body = await request.json()
     const validatedData = updateDeliveryAreaSchema.parse(body)
@@ -93,7 +88,7 @@ export async function DELETE(
   { params }: { params: { id: string; areaId: string } }
 ) {
   try {
-    const supabase = await createClient()
+    const supabase = createAdminClient()
     
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
