@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Store, MapPin, Clock, Phone, ShoppingCart } from 'lucide-react';
+import { Store, MapPin, Clock, Phone, ShoppingCart, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { DishCard } from './dish-card';
 import { CartDrawer } from './cart-drawer';
 import { useCartStore } from '@/lib/stores/cart-store';
+import Link from 'next/link';
 
 interface RestaurantMenuProps {
   restaurant: any;
@@ -49,6 +50,18 @@ export default function RestaurantMenu({ restaurant, courses, hasMenu = true }: 
   
   return (
     <div className="min-h-screen bg-background">
+      {/* Admin Home Button */}
+      <div className="border-b bg-muted/50">
+        <div className="container mx-auto px-4 py-2">
+          <Link href="/admin/dashboard">
+            <Button variant="ghost" size="sm" data-testid="button-back-to-admin">
+              <Home className="mr-2 h-4 w-4" />
+              Back to Admin Dashboard
+            </Button>
+          </Link>
+        </div>
+      </div>
+      
       {/* Restaurant Header */}
       <div className="border-b bg-card">
         <div className="container mx-auto px-4 py-6">
