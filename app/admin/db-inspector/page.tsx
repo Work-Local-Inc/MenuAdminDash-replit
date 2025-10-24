@@ -28,6 +28,11 @@ export default function DatabaseInspectorPage() {
   
   const { data: schemaInfo, isLoading, error } = useQuery<SchemaInfo>({
     queryKey: ['/api/admin/db-inspector'],
+    queryFn: async () => {
+      const res = await fetch('/api/admin/db-inspector')
+      if (!res.ok) throw new Error('Failed to fetch schema')
+      return res.json()
+    },
   })
 
   if (isLoading) {
