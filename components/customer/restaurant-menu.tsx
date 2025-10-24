@@ -37,15 +37,15 @@ export default function RestaurantMenu({ restaurant, courses, hasMenu = true }: 
   
   // Set first course as selected by default
   useEffect(() => {
-    if (courses.length > 0 && !selectedCourse) {
+    if (courses && courses.length > 0 && !selectedCourse) {
       setSelectedCourse(courses[0].id.toString());
     }
   }, [courses, selectedCourse]);
   
   // Filter dishes by selected course
   const displayedDishes = selectedCourse
-    ? courses.find(c => c.id.toString() === selectedCourse)?.dishes || []
-    : courses.flatMap(c => c.dishes || []);
+    ? courses?.find(c => c.id.toString() === selectedCourse)?.dishes || []
+    : courses?.flatMap(c => c.dishes || []) || [];
   
   return (
     <div className="min-h-screen bg-background">
@@ -119,7 +119,7 @@ export default function RestaurantMenu({ restaurant, courses, hasMenu = true }: 
             >
               All Items
             </Button>
-            {courses.map((course) => (
+            {courses?.map((course) => (
               <Button
                 key={course.id}
                 variant={selectedCourse === course.id.toString() ? 'default' : 'ghost'}

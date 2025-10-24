@@ -62,5 +62,16 @@ export default async function RestaurantPage({ params }: RestaurantPageProps) {
     redirect(`/r/${correctSlug}`);
   }
   
-  return <RestaurantMenu restaurant={restaurant} />;
+  // Fetch menu categories and dishes
+  const { data: courses } = await supabase
+    .from('courses')
+    .select(`
+      *,
+      dishes (*)
+    `)
+    .eq('restaurant_id', restaurantId)
+    .eq('is_active', true)
+    .order('display_order', { ascending: true });
+  
+  return <RestaurantMenu restaurant={restaurant} courses={courses || []} />;
 }
