@@ -64,6 +64,9 @@ export default function DatabaseInspectorPage() {
     table.toLowerCase().includes(searchTerm.toLowerCase())
   ) || []
 
+  // Calculate total columns across all tables
+  const totalColumns = schemaInfo ? Object.values(schemaInfo.schemaDetails).reduce((sum, cols) => sum + cols.length, 0) : 0
+
   return (
     <div className="p-8 space-y-6">
       <div>
@@ -77,7 +80,7 @@ export default function DatabaseInspectorPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Schema</CardTitle>
@@ -93,13 +96,26 @@ export default function DatabaseInspectorPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Tables</CardTitle>
+            <CardTitle className="text-sm font-medium">Tables</CardTitle>
             <TableIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{schemaInfo?.tableCount}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              In menuca_v3 schema
+              Total tables
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Columns</CardTitle>
+            <Columns className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalColumns}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Total columns
             </p>
           </CardContent>
         </Card>
@@ -132,8 +148,8 @@ export default function DatabaseInspectorPage() {
       {/* Tables List */}
       <div className="space-y-4">
         <h2 className="text-xl font-semibold flex items-center gap-2">
-          <Columns className="h-5 w-5" />
-          Tables & Columns ({filteredTables.length})
+          <TableIcon className="h-5 w-5" />
+          Tables ({filteredTables.length})
         </h2>
 
         {filteredTables.map(tableName => {
