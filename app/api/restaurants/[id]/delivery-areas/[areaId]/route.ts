@@ -21,9 +21,7 @@ export async function PUT(
   { params }: { params: { id: string; areaId: string } }
 ) {
   try {
-    // TODO: Re-enable auth after admin_users table is created
-    // await verifyAdminAuth(request)
-    
+    const { user } = await verifyAdminAuth(request)
     const supabase = createAdminClient()
     
     const body = await request.json()
@@ -96,23 +94,53 @@ export async function DELETE(
   { params }: { params: { id: string; areaId: string } }
 ) {
   try {
-    // TODO: Re-enable auth after admin_users table is created
-    // await verifyAdminAuth(request)
+    const { user } = await verifyAdminAuth(request)
     
-    const supabase = createAdminClient()
-    
-    const { error } = await supabase
-      .schema('menuca_v3')
-      .schema('menuca_v3').from('restaurant_delivery_zones')
-      .update({ deleted_at: new Date().toISOString() })
-      .eq('id', parseInt(params.areaId))
-      .eq('restaurant_id', parseInt(params.id))
-    
-    if (error) {
-      throw error
+    let reason = 'Deleted by admin'
+    try {
+      const body = await request.json()
+      if (body.reason) {
+        reason = body.reason
+      }
+    } catch {
+      // No body - use default reason
     }
     
-    return NextResponse.json({ success: true })
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Missing Supabase environment variables')
+    }
+    
+    const url = new URL(`${supabaseUrl}/functions/v1/delete-delivery-zone`)
+    url.searchParams.set('zone_id', params.areaId)
+    url.searchParams.set('reason', reason)
+    
+    const response = await fetch(url.toString(), {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${supabaseServiceKey}`,
+        'Content-Type': 'application/json'
+      }
+    })
+    
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Failed to delete delivery zone' }))
+      return NextResponse.json({ 
+        error: error.message || 'Failed to delete delivery zone' 
+      }, { status: response.status })
+    }
+    
+    const data = await response.json()
+    
+    if (!data?.success) {
+      return NextResponse.json({ 
+        error: data?.message || 'Failed to delete delivery zone' 
+      }, { status: 400 })
+    }
+    
+    return NextResponse.json(data)
   } catch (error: any) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode })

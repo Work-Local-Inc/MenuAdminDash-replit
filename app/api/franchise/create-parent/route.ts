@@ -12,8 +12,8 @@ const createParentSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    const { user } = await verifyAdminAuth(request)
     const supabase = createAdminClient()
-    
     
     const body = await request.json()
     const validatedData = createParentSchema.parse(body)

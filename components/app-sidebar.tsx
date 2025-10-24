@@ -51,6 +51,7 @@ const menuItems = [
     icon: Store,
     items: [
       { title: "All Restaurants", url: "/admin/restaurants" },
+      { title: "Franchise Management", url: "/admin/franchises" },
       { title: "Onboarding Wizard", url: "/admin/onboarding/new" },
       { title: "Onboarding Status", url: "/admin/onboarding" },
       { title: "Domain Verification", url: "/admin/domains" },
