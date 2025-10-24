@@ -3,11 +3,13 @@ import { query } from '@/lib/db/postgres'
 
 export async function GET(request: NextRequest) {
   try {
-    // Get all tables in menuca_v3 schema
+    // Get all BASE TABLES ONLY in menuca_v3 schema (excludes views and partitions)
     const tablesResult = await query(`
       SELECT table_name 
       FROM information_schema.tables 
       WHERE table_schema = 'menuca_v3' 
+        AND table_type = 'BASE TABLE'
+        AND table_name NOT LIKE '%\\_202%'
       ORDER BY table_name;
     `)
 
