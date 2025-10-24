@@ -39,6 +39,28 @@ export async function generateMetadata({ params }: RestaurantPageProps): Promise
 }
 
 export default async function RestaurantPage({ params }: RestaurantPageProps) {
-  // TEMPORARY: Redirect to dashboard to prevent cached URL issue
-  redirect('/admin/dashboard');
+  const supabase = await createClient();
+  const restaurantId = extractIdFromSlug(params.slug);
+  
+  if (!restaurantId) {
+    notFound();
+  }
+  
+  const { data: restaurant } = await supabase
+    .from('restaurants')
+    .select('*')
+    .eq('id', restaurantId)
+    .single();
+  
+  if (!restaurant) {
+    notFound();
+  }
+  
+  // Redirect to correct slug if needed
+  const correctSlug = createRestaurantSlug(restaurant.id, restaurant.name);
+  if (params.slug !== correctSlug) {
+    redirect(`/r/${correctSlug}`);
+  }
+  
+  return <RestaurantMenu restaurant={restaurant} />;
 }
