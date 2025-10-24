@@ -11,7 +11,14 @@ export async function GET(request: NextRequest) {
       ORDER BY table_name;
     `)
 
+    console.log('DB Inspector - Tables query result:', {
+      rowCount: tablesResult.rowCount,
+      rows: tablesResult.rows.length,
+      sampleRows: tablesResult.rows.slice(0, 5)
+    })
+
     const tables = tablesResult.rows.map(row => row.table_name)
+    console.log('DB Inspector - Total tables found:', tables.length)
 
     // Get columns for each table
     const schemaDetails: Record<string, any[]> = {}
