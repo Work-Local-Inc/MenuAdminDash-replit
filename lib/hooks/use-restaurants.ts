@@ -19,7 +19,7 @@ export function useRestaurants(filters?: RestaurantFilters) {
   if (filters?.search) queryParams.set('search', filters.search)
 
   return useQuery({
-    queryKey: ['/api/restaurants', filters],
+    queryKey: ['/api/restaurants', 'v2', filters],
     queryFn: async () => {
       const res = await fetch(`/api/restaurants?${queryParams}`)
       if (!res.ok) throw new Error('Failed to fetch restaurants')
