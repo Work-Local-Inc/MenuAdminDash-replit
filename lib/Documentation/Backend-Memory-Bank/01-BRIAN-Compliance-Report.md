@@ -1,6 +1,6 @@
 # BRIAN Compliance Report
 
-**Date:** October 24, 2025  
+**Date:** October 27, 2025  
 **Auditor:** Replit Agent  
 **Status:** ✅ 100% Compliant with BRIAN_MASTER_INDEX.md
 
@@ -33,12 +33,12 @@ Comprehensive audit of all 11 restaurant management components to ensure 100% co
   - `bulk-update-franchise-feature` - Update child features
 
 **API Routes:**
-- `/api/franchises` (GET) → `get_franchise_chains`
-- `/api/franchises/[id]` (GET) → `get_franchise_details`
-- `/api/franchises/[id]/analytics` (GET) → `get_franchise_analytics`
-- `/api/franchises/create-parent` (POST) → `create-franchise-parent`
-- `/api/franchises/convert` (POST) → `convert-restaurant-to-franchise`
-- `/api/franchises/bulk-update-feature` (POST) → `bulk-update-franchise-feature`
+- `/api/franchise/chains` (GET) → `get_franchise_chains`
+- `/api/franchise/[id]` (GET) → `get_franchise_details`
+- `/api/franchise/[id]/analytics` (GET) → `get_franchise_analytics`
+- `/api/franchise/create-parent` (POST) → `create-franchise-parent`
+- `/api/franchise/link-children` (POST) → `convert-restaurant-to-franchise`
+- `/api/franchise/bulk-feature` (POST) → `bulk-update-franchise-feature`
 
 **Compliance:** ✅ All routes use documented functions
 
@@ -68,7 +68,7 @@ Comprehensive audit of all 11 restaurant management components to ensure 100% co
   - `toggle-online-ordering` - Toggle online ordering with audit
 
 **API Routes:**
-- `/api/restaurants/[id]/online-ordering` (PATCH) → `toggle-online-ordering`
+- `/api/restaurants/toggle-online-ordering` (PATCH) → `toggle-online-ordering`
 
 **Compliance:** ✅ Uses Edge Function with audit logging
 

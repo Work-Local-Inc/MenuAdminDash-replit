@@ -16,7 +16,6 @@ interface RestaurantMenuProps {
 }
 
 export default function RestaurantMenu({ restaurant, courses, hasMenu = true }: RestaurantMenuProps) {
-  const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const cartItemCount = useCartStore((state) => 
     state.items.reduce((sum, item) => sum + item.quantity, 0)
@@ -35,17 +34,13 @@ export default function RestaurantMenu({ restaurant, courses, hasMenu = true }: 
     setRestaurant(restaurant.id, restaurant.name, slug, deliveryFeeCents, minOrder);
   }, [restaurant.id, restaurant.name, serviceConfig, setRestaurant]);
   
-  // Set first course as selected by default
-  useEffect(() => {
-    if (courses && courses.length > 0 && !selectedCourse) {
-      setSelectedCourse(courses[0].id.toString());
+  // Scroll to category section
+  const scrollToCategory = (courseId: string) => {
+    const element = document.getElementById(`category-${courseId}`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
-  }, [courses, selectedCourse]);
-  
-  // Filter dishes by selected course
-  const displayedDishes = selectedCourse
-    ? courses?.find(c => c.id.toString() === selectedCourse)?.dishes || []
-    : courses?.flatMap(c => c.dishes || []) || [];
+  };
   
   return (
     <div className="min-h-screen bg-background">
@@ -107,34 +102,28 @@ export default function RestaurantMenu({ restaurant, courses, hasMenu = true }: 
         </div>
       </div>
       
-      {/* Category Navigation */}
-      <div className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
-        <div className="container mx-auto px-4">
-          <div className="flex gap-2 py-3 overflow-x-auto">
-            <Button
-              variant={!selectedCourse ? 'default' : 'ghost'}
-              onClick={() => setSelectedCourse(null)}
-              size="sm"
-              data-testid="button-category-all"
-            >
-              All Items
-            </Button>
-            {courses?.map((course) => (
-              <Button
-                key={course.id}
-                variant={selectedCourse === course.id.toString() ? 'default' : 'ghost'}
-                onClick={() => setSelectedCourse(course.id.toString())}
-                size="sm"
-                data-testid={`button-category-${course.id}`}
-              >
-                {course.name}
-              </Button>
-            ))}
+      {/* Category Navigation - Quick Jump Links */}
+      {courses && courses.length > 1 && (
+        <div className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
+          <div className="container mx-auto px-4">
+            <div className="flex gap-2 py-3 overflow-x-auto">
+              {courses.map((course) => (
+                <Button
+                  key={course.id}
+                  variant="ghost"
+                  onClick={() => scrollToCategory(course.id.toString())}
+                  size="sm"
+                  data-testid={`button-category-${course.id}`}
+                >
+                  {course.name}
+                </Button>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      )}
       
-      {/* Menu Items Grid */}
+      {/* Menu Items - All Categories Shown */}
       <div className="container mx-auto px-4 py-8">
         {!hasMenu ? (
           <div className="text-center py-12">
@@ -144,19 +133,31 @@ export default function RestaurantMenu({ restaurant, courses, hasMenu = true }: 
             </p>
           </div>
         ) : (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {displayedDishes.map((dish: any) => (
-                <DishCard key={dish.id} dish={dish} restaurantId={restaurant.id} />
-              ))}
-            </div>
+          <div className="space-y-12">
+            {courses?.map((course) => {
+              const courseDishes = course.dishes || [];
+              if (courseDishes.length === 0) return null;
+              
+              return (
+                <div key={course.id} id={`category-${course.id}`} className="scroll-mt-24">
+                  <h2 className="text-2xl font-bold mb-6 border-b pb-2" data-testid={`heading-category-${course.id}`}>
+                    {course.name}
+                  </h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {courseDishes.map((dish: any) => (
+                      <DishCard key={dish.id} dish={dish} restaurantId={restaurant.id} />
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
             
-            {displayedDishes.length === 0 && (
+            {(!courses || courses.length === 0) && (
               <div className="text-center py-12 text-muted-foreground">
-                No dishes available in this category
+                No menu items available
               </div>
             )}
-          </>
+          </div>
         )}
       </div>
       

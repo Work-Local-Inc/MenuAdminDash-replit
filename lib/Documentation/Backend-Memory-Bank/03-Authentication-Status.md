@@ -1,6 +1,6 @@
 # Authentication Status Report
 
-**Date:** October 24, 2025  
+**Date:** October 27, 2025  
 **Status:** ✅ 100% Coverage - All Routes Secured
 
 ## Executive Summary
@@ -103,12 +103,12 @@ export async function HANDLER(request: NextRequest) {
 
 | Route | Method | Auth | Status |
 |-------|--------|------|--------|
-| `/api/franchises` | GET | ✅ | Secured |
-| `/api/franchises/[id]` | GET | ✅ | Secured |
-| `/api/franchises/[id]/analytics` | GET | ✅ | Secured |
-| `/api/franchises/create-parent` | POST | ✅ | Secured |
-| `/api/franchises/convert` | POST | ✅ | Secured |
-| `/api/franchises/bulk-update-feature` | POST | ✅ | Secured |
+| `/api/franchise/chains` | GET | ✅ | Secured |
+| `/api/franchise/[id]` | GET | ✅ | Secured |
+| `/api/franchise/[id]/analytics` | GET | ✅ | Secured |
+| `/api/franchise/create-parent` | POST | ✅ | Secured |
+| `/api/franchise/link-children` | POST | ✅ | Secured |
+| `/api/franchise/bulk-feature` | POST | ✅ | Secured |
 
 ---
 
@@ -118,7 +118,7 @@ export async function HANDLER(request: NextRequest) {
 |-------|--------|------|--------|
 | `/api/restaurants/[id]/status` | PATCH | ✅ | Secured |
 | `/api/restaurants/[id]/status-history` | GET | ✅ | Secured |
-| `/api/restaurants/[id]/online-ordering` | PATCH | ✅ | Secured |
+| `/api/restaurants/toggle-online-ordering` | PATCH | ✅ | Secured |
 
 ---
 

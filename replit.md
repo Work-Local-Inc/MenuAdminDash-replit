@@ -4,6 +4,17 @@
 A Next.js 14 admin dashboard for managing the Menu.ca restaurant ordering platform. This multi-tenant system supports 961 restaurants (277 active), 32,330+ users, and handles restaurant management, orders, coupons, and user administration. The application connects to an existing Supabase PostgreSQL database (`menuca_v3` schema) and adds new tables for enhanced admin functionality.
 
 ## Recent Changes (October 2025)
+### UX FIX: Restaurant Menu Display - Show All Items (Oct 27, 2025)
+- **ISSUE**: Categories acted as "gatekeepers" - users had to click through 20+ categories to find dishes (terrible UX)
+- **ROOT CAUSE**: Menu defaulted to showing only first category, forcing users to filter one category at a time
+- **FIX**: Complete redesign of menu display in `components/customer/restaurant-menu.tsx`
+  - Show ALL dishes at once, grouped by category
+  - Categories now act as helpful jump links (smooth scroll to sections)
+  - Removed category filtering/selection logic entirely
+  - No more gatekeeping - everything visible on page load
+- **UX PRINCIPLE**: Categories should be helpers (navigation aids), NOT gatekeepers (filters)
+- **STATUS**: ✅ FIXED - All menu items now visible at once with category quick-jump navigation
+
 ### REGRESSION FIX: Restaurant Menu Redirect Loop (Oct 27, 2025)
 - **ISSUE**: "View Menu" button was redirecting back to dashboard in an infinite loop
 - **ROOT CAUSE**: Malicious redirect script in `app/layout.tsx` that redirected all `/r/*` routes to `/admin/dashboard` in dev environment

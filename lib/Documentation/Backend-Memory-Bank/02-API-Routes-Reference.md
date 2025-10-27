@@ -1,6 +1,6 @@
 # API Routes Reference
 
-**Last Updated:** October 24, 2025
+**Last Updated:** October 27, 2025
 
 Complete mapping of all 80+ API routes to their corresponding Santiago Edge Functions, SQL Functions, or database tables.
 
@@ -9,16 +9,16 @@ Complete mapping of all 80+ API routes to their corresponding Santiago Edge Func
 | Route | Method | Backend Function | Type | Auth Required |
 |-------|--------|-----------------|------|---------------|
 | **Franchises** |
-| `/api/franchises` | GET | `get_franchise_chains` | SQL Function | ✅ |
-| `/api/franchises/[id]` | GET | `get_franchise_details` | SQL Function | ✅ |
-| `/api/franchises/[id]/analytics` | GET | `get_franchise_analytics` | SQL Function | ✅ |
-| `/api/franchises/create-parent` | POST | `create-franchise-parent` | Edge Function | ✅ |
-| `/api/franchises/convert` | POST | `convert-restaurant-to-franchise` | Edge Function | ✅ |
-| `/api/franchises/bulk-update-feature` | POST | `bulk-update-franchise-feature` | Edge Function | ✅ |
+| `/api/franchise/chains` | GET | `get_franchise_chains` | SQL Function | ✅ |
+| `/api/franchise/[id]` | GET | `get_franchise_details` | SQL Function | ✅ |
+| `/api/franchise/[id]/analytics` | GET | `get_franchise_analytics` | SQL Function | ✅ |
+| `/api/franchise/create-parent` | POST | `create-franchise-parent` | Edge Function | ✅ |
+| `/api/franchise/link-children` | POST | `convert-restaurant-to-franchise` | Edge Function | ✅ |
+| `/api/franchise/bulk-feature` | POST | `bulk-update-franchise-feature` | Edge Function | ✅ |
 | **Restaurant Status** |
 | `/api/restaurants/[id]/status` | PATCH | `update-restaurant-status` | Edge Function | ✅ |
 | `/api/restaurants/[id]/status-history` | GET | `get_restaurant_status_history` | SQL Function | ✅ |
-| `/api/restaurants/[id]/online-ordering` | PATCH | `toggle-online-ordering` | Edge Function | ✅ |
+| `/api/restaurants/toggle-online-ordering` | PATCH | `toggle-online-ordering` | Edge Function | ✅ |
 | **Contacts** |
 | `/api/restaurants/[id]/contacts` | GET | `get_restaurant_contacts` | SQL Function | ✅ |
 | `/api/restaurants/[id]/contacts` | POST | `add-restaurant-contact` | Edge Function | ✅ |
@@ -69,7 +69,7 @@ Complete mapping of all 80+ API routes to their corresponding Santiago Edge Func
 
 ### Franchise Routes
 
-#### GET /api/franchises
+#### GET /api/franchise/chains
 **Purpose:** List all franchise chains
 
 **Backend Integration:**
@@ -93,7 +93,7 @@ const { data } = await supabase.rpc('get_franchise_chains');
 
 ---
 
-#### GET /api/franchises/[id]
+#### GET /api/franchise/[id]
 **Purpose:** Get franchise chain details
 
 **Backend Integration:**
@@ -111,7 +111,7 @@ const { data } = await supabase.rpc('get_franchise_details', {
 
 ---
 
-#### GET /api/franchises/[id]/analytics
+#### GET /api/franchise/[id]/analytics
 **Purpose:** Get franchise performance analytics
 
 **Backend Integration:**
@@ -129,7 +129,7 @@ const { data } = await supabase.rpc('get_franchise_analytics', {
 
 ---
 
-#### POST /api/franchises/create-parent
+#### POST /api/franchise/create-parent
 **Purpose:** Create a new franchise parent restaurant
 
 **Backend Integration:**
@@ -148,7 +148,7 @@ const { data } = await supabase.functions.invoke('create-franchise-parent', {
 
 ---
 
-#### POST /api/franchises/convert
+#### POST /api/franchise/link-children
 **Purpose:** Convert restaurant(s) to franchise children
 
 **Backend Integration:**
@@ -169,7 +169,7 @@ const { data } = await supabase.functions.invoke('convert-restaurant-to-franchis
 
 ---
 
-#### POST /api/franchises/bulk-update-feature
+#### POST /api/franchise/bulk-feature
 **Purpose:** Update feature across all franchise children
 
 **Backend Integration:**
@@ -234,7 +234,7 @@ const { data } = await supabase.rpc('get_restaurant_status_history', {
 
 ---
 
-#### PATCH /api/restaurants/[id]/online-ordering
+#### PATCH /api/restaurants/toggle-online-ordering
 **Purpose:** Toggle online ordering on/off
 
 **Backend Integration:**
