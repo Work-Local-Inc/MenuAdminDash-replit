@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db/postgres'
+import { verifyAdminAuth } from '@/lib/auth/admin-check'
+import { AuthError } from '@/lib/errors'
 
 export async function GET(request: NextRequest) {
   try {
+    await verifyAdminAuth(request)
     // Get all BASE TABLES ONLY in menuca_v3 schema (excludes views and partitions)
     const tablesResult = await query(`
       SELECT table_name 
@@ -61,6 +64,9 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString()
     })
   } catch (error: any) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode })
+    }
     console.error('DB Inspector Error:', error)
     return NextResponse.json(
       { error: error.message || 'Failed to inspect database schema' },
