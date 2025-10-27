@@ -26,23 +26,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                if (typeof window !== 'undefined' && window.location.hostname.includes('replit')) {
-                  const path = window.location.pathname;
-                  const isDev = !window.location.hostname.includes('replit.app');
-                  if (isDev && path.startsWith('/r/')) {
-                    window.location.href = '/admin/dashboard';
-                  }
-                }
-              })();
-            `,
-          }}
-        />
-      </head>
       <body className={`${inter.variable} ${jetbrainsMono.variable} font-sans`}>
         <Providers>{children}</Providers>
       </body>

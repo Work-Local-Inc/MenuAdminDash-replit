@@ -4,6 +4,13 @@
 A Next.js 14 admin dashboard for managing the Menu.ca restaurant ordering platform. This multi-tenant system supports 961 restaurants (277 active), 32,330+ users, and handles restaurant management, orders, coupons, and user administration. The application connects to an existing Supabase PostgreSQL database (`menuca_v3` schema) and adds new tables for enhanced admin functionality.
 
 ## Recent Changes (October 2025)
+### REGRESSION FIX: Restaurant Menu Redirect Loop (Oct 27, 2025)
+- **ISSUE**: "View Menu" button was redirecting back to dashboard in an infinite loop
+- **ROOT CAUSE**: Malicious redirect script in `app/layout.tsx` that redirected all `/r/*` routes to `/admin/dashboard` in dev environment
+- **FIX**: Removed the inline script (lines 30-44) that was forcing the redirect
+- **PREVENTION**: **NEVER** add client-side redirects for `/r/*` routes in `app/layout.tsx` - these are customer-facing restaurant menu pages and must be accessible
+- **STATUS**: ✅ FIXED - Restaurant menus now load correctly without redirecting
+
 ### CRITICAL FIX: Admin Authentication Infrastructure (Oct 27, 2025)
 - **BLOCKER RESOLVED**: Fixed missing `admin_users` and `admin_roles` tables in `menuca_v3` schema
   - Created `menuca_v3.admin_roles` with 3 default roles (Super Admin, Restaurant Manager, Staff)
