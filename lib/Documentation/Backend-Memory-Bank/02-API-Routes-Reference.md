@@ -1,6 +1,7 @@
 # API Routes Reference
 
-**Last Updated:** October 27, 2025
+**Last Updated:** October 27, 2025  
+**✅ UPDATED:** Now follows Santiago's REST conventions (plural routes, nested resources)
 
 Complete mapping of all 80+ API routes to their corresponding Santiago Edge Functions, SQL Functions, or database tables.
 
@@ -8,17 +9,17 @@ Complete mapping of all 80+ API routes to their corresponding Santiago Edge Func
 
 | Route | Method | Backend Function | Type | Auth Required |
 |-------|--------|-----------------|------|---------------|
-| **Franchises** |
-| `/api/franchise/chains` | GET | `get_franchise_chains` | SQL Function | ✅ |
-| `/api/franchise/[id]` | GET | `get_franchise_details` | SQL Function | ✅ |
-| `/api/franchise/[id]/analytics` | GET | `get_franchise_analytics` | SQL Function | ✅ |
-| `/api/franchise/create-parent` | POST | `create-franchise-parent` | Edge Function | ✅ |
-| `/api/franchise/link-children` | POST | `convert-restaurant-to-franchise` | Edge Function | ✅ |
-| `/api/franchise/bulk-feature` | POST | `bulk-update-franchise-feature` | Edge Function | ✅ |
+| **Franchises** *(Updated to PLURAL per Santiago's recommendation)* |
+| `/api/franchises` | GET | `get_franchise_chains` | SQL Function | ✅ |
+| `/api/franchises/[id]` | GET | `get_franchise_details` | SQL Function | ✅ |
+| `/api/franchises/[id]/analytics` | GET | `get_franchise_analytics` | SQL Function | ✅ |
+| `/api/franchises` | POST | `create-franchise-parent` | Edge Function | ✅ |
+| `/api/franchises/convert` | POST | `convert-restaurant-to-franchise` | Edge Function | ✅ |
+| `/api/franchises/[id]/features` | PATCH | `bulk-update-franchise-feature` | Edge Function | ✅ |
 | **Restaurant Status** |
 | `/api/restaurants/[id]/status` | PATCH | `update-restaurant-status` | Edge Function | ✅ |
 | `/api/restaurants/[id]/status-history` | GET | `get_restaurant_status_history` | SQL Function | ✅ |
-| `/api/restaurants/toggle-online-ordering` | PATCH | `toggle-online-ordering` | Edge Function | ✅ |
+| `/api/restaurants/[id]/online-ordering` | PATCH | `toggle-online-ordering` | Edge Function | ✅ |
 | **Contacts** |
 | `/api/restaurants/[id]/contacts` | GET | `get_restaurant_contacts` | SQL Function | ✅ |
 | `/api/restaurants/[id]/contacts` | POST | `add-restaurant-contact` | Edge Function | ✅ |
@@ -69,7 +70,9 @@ Complete mapping of all 80+ API routes to their corresponding Santiago Edge Func
 
 ### Franchise Routes
 
-#### GET /api/franchise/chains
+**✅ UPDATED:** All routes now use PLURAL `/api/franchises/*` per Santiago's REST convention
+
+#### GET /api/franchises
 **Purpose:** List all franchise chains
 
 **Backend Integration:**
@@ -93,7 +96,7 @@ const { data } = await supabase.rpc('get_franchise_chains');
 
 ---
 
-#### GET /api/franchise/[id]
+#### GET /api/franchises/[id]
 **Purpose:** Get franchise chain details
 
 **Backend Integration:**
@@ -111,7 +114,7 @@ const { data } = await supabase.rpc('get_franchise_details', {
 
 ---
 
-#### GET /api/franchise/[id]/analytics
+#### GET /api/franchises/[id]/analytics
 **Purpose:** Get franchise performance analytics
 
 **Backend Integration:**
@@ -129,7 +132,7 @@ const { data } = await supabase.rpc('get_franchise_analytics', {
 
 ---
 
-#### POST /api/franchise/create-parent
+#### POST /api/franchises
 **Purpose:** Create a new franchise parent restaurant
 
 **Backend Integration:**
@@ -148,7 +151,7 @@ const { data } = await supabase.functions.invoke('create-franchise-parent', {
 
 ---
 
-#### POST /api/franchise/link-children
+#### POST /api/franchises/convert
 **Purpose:** Convert restaurant(s) to franchise children
 
 **Backend Integration:**
@@ -167,9 +170,11 @@ const { data } = await supabase.functions.invoke('convert-restaurant-to-franchis
 
 **Authentication:** Required
 
+**✅ Route Updated:** Changed from `/api/franchise/link-children` to `/api/franchises/convert` (REST noun-based pattern)
+
 ---
 
-#### POST /api/franchise/bulk-feature
+#### PATCH /api/franchises/[id]/features
 **Purpose:** Update feature across all franchise children
 
 **Backend Integration:**
@@ -186,6 +191,8 @@ const { data } = await supabase.functions.invoke('bulk-update-franchise-feature'
 **Edge Function:** `bulk-update-franchise-feature`
 
 **Authentication:** Required
+
+**✅ Route Updated:** Changed from `/api/franchise/bulk-feature` to `/api/franchises/[id]/features` (nested resource pattern)
 
 ---
 
@@ -234,14 +241,14 @@ const { data } = await supabase.rpc('get_restaurant_status_history', {
 
 ---
 
-#### PATCH /api/restaurants/toggle-online-ordering
+#### PATCH /api/restaurants/[id]/online-ordering
 **Purpose:** Toggle online ordering on/off
 
 **Backend Integration:**
 ```typescript
 const { data } = await supabase.functions.invoke('toggle-online-ordering', {
   body: {
-    restaurant_id: number,
+    restaurant_id: id, // From URL path parameter
     online_ordering_enabled: boolean
   }
 });
@@ -252,6 +259,8 @@ const { data } = await supabase.functions.invoke('toggle-online-ordering', {
 **Features:** Audit logging
 
 **Authentication:** Required
+
+**✅ Route Updated:** Changed from `/api/restaurants/toggle-online-ordering` (flat with ID in body) to `/api/restaurants/[id]/online-ordering` (nested RESTful resource)
 
 ---
 

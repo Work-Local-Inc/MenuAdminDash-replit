@@ -3,6 +3,15 @@
 ## Overview
 A Next.js 14 admin dashboard for Menu.ca, a multi-tenant restaurant ordering platform. It supports 961 restaurants and 32,330+ users, enabling comprehensive management of restaurants, orders, coupons, and user administration. The system extends an existing Supabase PostgreSQL database (`menuca_v3` schema) to provide enhanced admin functionalities. The project's ambition is to streamline restaurant operations and improve administrative efficiency for a large-scale food ordering service.
 
+## Recent Changes
+**October 27, 2025:**
+- **API Routing Standards Updated**: All documentation now follows Santiago's REST conventions from `API-ROUTE-IMPLEMENTAITON.md`:
+  - **Franchise routes**: Changed to PLURAL `/api/franchises/*` (was `/api/franchise/*`)
+  - **Convert route**: Changed to `/api/franchises/convert` (was `/api/franchise/link-children`) using noun-based pattern
+  - **Bulk features**: Changed to `/api/franchises/[id]/features` (was `/api/franchise/bulk-feature`) using nested resource pattern
+  - **Online ordering**: Changed to `/api/restaurants/[id]/online-ordering` (was `/api/restaurants/toggle-online-ordering`) with ID in URL path instead of body
+- **Backend Memory Bank**: Updated `02-API-Routes-Reference.md` to reflect all new route patterns with ✅ markers
+
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
