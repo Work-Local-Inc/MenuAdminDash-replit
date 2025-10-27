@@ -1,193 +1,49 @@
 # Menu.ca Admin Dashboard
 
 ## Overview
-A Next.js 14 admin dashboard for managing the Menu.ca restaurant ordering platform. This multi-tenant system supports 961 restaurants (277 active), 32,330+ users, and handles restaurant management, orders, coupons, and user administration. The application connects to an existing Supabase PostgreSQL database (`menuca_v3` schema) and adds new tables for enhanced admin functionality.
-
-## Recent Changes (October 2025)
-### UX FIX: Restaurant Menu Display - Show All Items (Oct 27, 2025)
-- **ISSUE**: Categories acted as "gatekeepers" - users had to click through 20+ categories to find dishes (terrible UX)
-- **ROOT CAUSE**: Menu defaulted to showing only first category, forcing users to filter one category at a time
-- **FIX**: Complete redesign of menu display in `components/customer/restaurant-menu.tsx`
-  - Show ALL dishes at once, grouped by category
-  - Categories now act as helpful jump links (smooth scroll to sections)
-  - Removed category filtering/selection logic entirely
-  - No more gatekeeping - everything visible on page load
-- **UX PRINCIPLE**: Categories should be helpers (navigation aids), NOT gatekeepers (filters)
-- **STATUS**: ✅ FIXED - All menu items now visible at once with category quick-jump navigation
-
-### REGRESSION FIX: Restaurant Menu Redirect Loop (Oct 27, 2025)
-- **ISSUE**: "View Menu" button was redirecting back to dashboard in an infinite loop
-- **ROOT CAUSE**: Malicious redirect script in `app/layout.tsx` that redirected all `/r/*` routes to `/admin/dashboard` in dev environment
-- **FIX**: Removed the inline script (lines 30-44) that was forcing the redirect
-- **PREVENTION**: **NEVER** add client-side redirects for `/r/*` routes in `app/layout.tsx` - these are customer-facing restaurant menu pages and must be accessible
-- **STATUS**: ✅ FIXED - Restaurant menus now load correctly without redirecting
-
-### CRITICAL FIX: Admin Authentication Infrastructure (Oct 27, 2025)
-- **BLOCKER RESOLVED**: Fixed missing `admin_users` and `admin_roles` tables in `menuca_v3` schema
-  - Created `menuca_v3.admin_roles` with 3 default roles (Super Admin, Restaurant Manager, Staff)
-  - Created `menuca_v3.admin_users` with complete schema (email, first_name, last_name, role_id, mfa_enabled, etc.)
-  - Created `menuca_v3.admin_user_restaurants` junction table for multi-tenant access
-  - Added brian+1@worklocal.ca as Super Admin (ID: 924)
-- **Impact**: Resolved 100% of 403 Forbidden errors across all API routes
-- **Verification**: Dashboard now loads successfully with 277 active restaurants and 32,317 users
-- **Root Cause**: Migration files referenced `admin_users` table but never created it, blocking all authentication
-
-### Restaurant Management Performance & UX Improvements
-- **Performance Optimization**: Restaurants list page now defaults to loading only active restaurants (277 vs 961 records), reducing initial load time from 20+ seconds to <2 seconds
-- **UI Redesign**: Restaurant detail page redesigned from horizontal 17-tab layout to professional two-column layout with grouped vertical sidebar navigation
-  - Organized into 4 logical sections: Core, Operations, Marketing, Advanced
-  - Eliminates "tag cloud" appearance, provides better navigation clarity
-- **Data Loading Fixes**: All form components properly load existing restaurant data using React Hook Form reset patterns
-- **Navigation**: Orders and Coupons pages added to sidebar (previously invisible)
+A Next.js 14 admin dashboard for Menu.ca, a multi-tenant restaurant ordering platform. It supports 961 restaurants and 32,330+ users, enabling comprehensive management of restaurants, orders, coupons, and user administration. The system extends an existing Supabase PostgreSQL database (`menuca_v3` schema) to provide enhanced admin functionalities. The project's ambition is to streamline restaurant operations and improve administrative efficiency for a large-scale food ordering service.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
-## CRITICAL: Development Guidelines
-**MANDATORY:** ALL development MUST follow the architecture documented in `lib/Documentation/Frontend-Guides/BRIAN_MASTER_INDEX.md`
-- **SQL Functions** for READ operations (50+ documented functions)
-- **Edge Functions** for WRITE operations (29 documented functions)
-- **NEVER** write custom queries without checking the guide first
-- **ALWAYS** use Santiago's documented backend functions
-- See: `lib/Documentation/Frontend-Guides/01-Restaurant-Management-Frontend-Guide.md` for complete API reference
-
-## Backend Memory Bank
-**Location:** `lib/Documentation/Backend-Memory-Bank/`  
-**Purpose:** Permanent reference documentation ensuring all backend integration follows Santiago's documented functions.
-
-**Key Documents:**
-- **BRIAN-Compliance-Report.md**: Complete audit of all 11 restaurant management components with 100% compliance verification
-- **API-Routes-Reference.md**: Comprehensive mapping of 80+ API routes to their Edge Functions/SQL Functions
-- **Authentication-Status.md**: Security audit showing 100% authentication coverage across all routes
-- **Testing-Results.md**: End-to-end test results for all features (updated as tests are executed)
-
-**Critical Stats:**
-- ✅ 80/80 API routes fully authenticated (100%)
-- ✅ 11/11 components BRIAN-compliant (100%)
-- ✅ 29 Edge Functions used correctly
-- ✅ 50+ SQL Functions used correctly
-- ✅ 0 security vulnerabilities remaining
-
 ## System Architecture
 
 ### Frontend
-- **Next.js 14** with App Router, TypeScript, Server Components for data fetching, and client components for interactivity.
-- Route-based organization with grouped routes for authentication and protected admin pages.
+- **Next.js 14**: Utilizing App Router, TypeScript, Server Components for data fetching, and Client Components for interactivity.
+- **UI & Styling**: Tailwind CSS with a custom design system, shadcn/ui component library (Radix UI primitives), and `next-themes` for light/dark mode.
+- **Authentication & Authorization**: Supabase Auth for email/password, "Remember Me" functionality, middleware-based route protection, server-side session management (`@supabase/ssr`), and a custom `useAuth` hook.
+- **State Management**: React Query for server state and caching, React Hook Form with Zod for form management and validation, and local component state.
+- **API Routes**: Thin wrappers around Supabase Edge Functions for write operations and direct Supabase queries for reads, with Zod validation.
+- **Form Handling**: React Hook Form with Zod schemas for validation and shadcn/ui components.
+- **Utility Functions**: `lib/utils.ts` for helpers, consistent Canadian locale formatting (CAD, en-CA dates).
+- **Customer-Facing Menu Page**: Public routes (`/r/[slug]`) using Server Components, Zustand for shopping cart state with localStorage persistence, and comprehensive UI components for menu display and ordering.
 
-### UI & Styling
-- **Tailwind CSS** with a custom design system.
-- **shadcn/ui** component library (Radix UI primitives).
-- Custom theme system supporting light/dark modes via `next-themes`.
-- Design tokens defined in CSS variables for consistent styling.
+### Backend & Data Layer
+- **Supabase PostgreSQL**: Production database (`menuca_v3` schema) connected via session pooler.
+- **Direct PostgreSQL Queries**: Handled by `lib/db/postgres.ts` using `pg` Pool.
+- **Schema Management**: Uses `menuca_v3` schema with schema-prefixed table names and specific production field names (e.g., `total_amount`).
+- **Data Operations**: Relies heavily on over 50 SQL Functions for READ operations and 29 Edge Functions for WRITE operations as defined in `lib/Documentation/Frontend-Guides/BRIAN_MASTER_INDEX.md`.
+- **Admin Users Management**: Custom tables (`admin_users`, `admin_roles`, `admin_user_restaurants`) within `menuca_v3` for granular admin control. RLS bypass for `admin_users` via service role client (`createAdminClient()`).
 
-### Authentication & Authorization
-- **Supabase Auth** with email/password authentication.
-- "Remember Me" feature for 7-day persistent sessions.
-- Session persistence and synchronization between client/server using Supabase SSR cookie handlers.
-- Middleware-based route protection and automatic session refresh.
-- Server-side session management using `@supabase/ssr`.
-- Automatic token refresh and a custom `useAuth` hook for client-side auth state.
-
-### Data Layer
-- **Supabase PostgreSQL** production database connected via session pooler (`SUPABASE_BRANCH_DB_URL`)
-- Database connection in `lib/db/postgres.ts` using `pg` Pool for direct PostgreSQL queries
-- Schema: `menuca_v3` with 961 restaurants, 32,330+ users (production data)
-- All queries use schema-prefixed table names (e.g., `menuca_v3.restaurants`)
-- Production schema uses: `total_amount` (not `total`), `order_status` (not `status`), `tax_amount` (not `tax`)
-- Utilizes over 50 SQL Functions and 29 Edge Functions for restaurant management, with documentation in `lib/Documentation/Frontend-Guides/BRIAN_MASTER_INDEX.md`.
-- React Query (`@tanstack/react-query`) for client-side caching and state synchronization.
-
-### State Management
-- **React Query** for server state, caching, and mutations.
-- React Hook Form with Zod validation for form state.
-- Local component state via `useState`.
-- Custom hooks in `lib/hooks/` for reusable data fetching patterns.
-
-### API Routes
-- API routes are designed as thin wrappers around Santiago's Edge Functions for writes (handling audit logging, business logic, soft deletes) and direct Supabase queries for reads where appropriate.
-- Zod schemas (`lib/validations/`) for request/response validation.
-
-### Form Handling
-- **React Hook Form** for form state management.
-- **Zod** schemas for validation, integrated via `@hookform/resolvers/zod`.
-- Reusable form components from shadcn/ui.
-
-### Utility Functions
-- `lib/utils.ts`: Core helpers for class names, currency formatting, date/time formatting, and status color mapping.
-- Consistent Canadian locale formatting (CAD currency, en-CA dates).
-
-### Restaurant Menu Page (Customer-Facing)
-- Public customer-facing routes (`/r/[slug]`) for restaurant menus.
-- Server components with loading and error boundaries.
-- Shopping cart system using Zustand with localStorage persistence, handling item customization, quantity, and tax calculation.
-- UI components include RestaurantMenu, DishCard, DishModal, and CartDrawer.
-- UX features like empty menu fallback, loading skeletons, error handling, and responsive design.
-
-### Admin Users Management
-- Admin authentication/authorization middleware (`lib/auth/admin-check.ts`) verifying Supabase Auth sessions and `admin_users` table status.
-- All API routes are protected with `verifyAdminAuth()`.
-- Database tables in `menuca_v3` schema:
-  - `admin_users` (ID: 924 for brian+1@worklocal.ca with Super Admin role)
-  - `admin_roles` (3 roles: Super Admin, Restaurant Manager, Staff)
-  - `admin_user_restaurants` (junction table for multi-tenant restaurant access)
-- RLS bypass solution implemented via API routes using service role client (`createAdminClient()`) for `admin_users` table access.
-- Security model ensures only admin users have Supabase Auth accounts and verifies against the `admin_users` table.
-
-### Restaurant Management Integration with Santiago's Backend
-- **Status Management**: Uses Santiago's `update-restaurant-status` Edge Function for proper soft deletes/status changes
-- **Online Ordering**: Uses Santiago's `toggle-online-ordering` Edge Function with audit logging
-- **Contacts Management**: Uses Santiago's 3 Edge Functions (`add-restaurant-contact`, `update-restaurant-contact`, `delete-restaurant-contact`) for hierarchy-aware contact management
-- **Delivery Areas**: Uses `menuca_v3.restaurant_delivery_zones` table with custom polygon support (extension to Santiago's circular zones)
-  - API routes handle dollar/cents conversion for fees and minimum orders
-  - Soft delete pattern with 30-day recovery window
-  - Correctly handles $0 minimum order zones (explicit null checks, not truthiness)
-  - Custom polygon drawing via Mapbox (more flexible than Santiago's center+radius approach)
-- **Franchise Management**: Complete franchise chain hierarchy system using Santiago's 13 SQL functions + 3 Edge Functions
-  - Create franchise parents using `create-franchise-parent` Edge Function
-  - Link children using `convert-restaurant-to-franchise` Edge Function (supports single/batch)
-  - Bulk feature updates using `bulk-update-franchise-feature` Edge Function
-  - Franchise analytics dashboard with performance metrics, location rankings, and menu standardization
-  - Proper React Query cache invalidation for chains/details/analytics after mutations
-  - UI components: grid view of chains, create parent dialog, franchise details modal with Overview/Analytics tabs
-- **Categorization System**: Cuisine and tag-based restaurant discovery using Santiago's 2 SQL functions + 2 Edge Functions
-  - Add/remove cuisines with automatic primary/secondary logic using `add-restaurant-cuisine` Edge Function
-  - Add/remove tags for feature-based discovery using `add-restaurant-tag` Edge Function
-  - Support for 36 cuisine types (Pizza, Italian, Chinese, Lebanese, etc.)
-  - Support for 12 restaurant tags across 5 categories (dietary, service, atmosphere, feature, payment)
-  - UI components: cuisine management with primary indicator, tag management grouped by category
-  - Filters out already-assigned cuisines/tags in dropdown selectors
-- **Onboarding Status Tracking**: 8-step onboarding process tracking using Santiago's 9 SQL functions + 4 Edge Functions
-  - Get restaurant onboarding status using `get-restaurant-onboarding` Edge Function
-  - Update step completion using `update-onboarding-step` Edge Function
-  - Dashboard analytics via SQL functions (`get_onboarding_summary`, `v_incomplete_onboarding_restaurants`, `v_onboarding_progress_stats`)
-  - 8 steps tracked: Basic Info, Location, Contact, Schedule, Menu, Payment, Delivery, Testing
-  - Auto-calculated completion percentage and days in onboarding
-  - Dashboard shows overview stats, step bottlenecks, and at-risk restaurants sorted by priority
-  - Individual restaurant tab with interactive checklist to toggle step completion
-  - Proper cache invalidation after mutations
-- **Domain Verification & SSL Monitoring**: Automated SSL and DNS health monitoring using Santiago's 2 SQL views + 2 Edge Functions
-  - Dashboard at `/admin/domains` shows verification status for all restaurant domains
-  - Summary statistics: total domains, SSL verified %, expiring soon count, expired count
-  - Priority-sorted list of domains needing attention with urgency badges
-  - On-demand verification trigger using `verify-single-domain` Edge Function
-  - Automated daily verification via `verify-domains-cron` (background cron job)
-  - 30-day SSL expiration warnings to prevent downtime
-  - DNS health checks to detect configuration issues
-  - Real-time status updates via React Query with proper cache invalidation
+### Core Features & Implementations
+- **Restaurant Management**: Includes status management (`update-restaurant-status`), online ordering toggle (`toggle-online-ordering`), contact management, and delivery area configuration (custom polygons via Mapbox).
+- **Franchise Management**: Comprehensive hierarchy system using specific SQL and Edge Functions for parent creation, child linking, and bulk feature updates. Includes analytics.
+- **Categorization System**: Cuisine and tag-based discovery using dedicated SQL and Edge Functions, supporting 36 cuisine types and 12 tags.
+- **Onboarding Status Tracking**: An 8-step process with progress tracking, analytics, and interactive checklists, utilizing specific SQL and Edge Functions.
+- **Domain Verification & SSL Monitoring**: Automated health checks for restaurant domains, including SSL verification and DNS health, with on-demand verification and cron jobs.
 
 ## External Dependencies
 
 ### Backend Services
 - **Supabase**: PostgreSQL database, authentication, and real-time subscriptions.
-  - Schema: `menuca_v3` with 74 existing tables + 15 new tables.
 
 ### UI Libraries
 - **Radix UI**: Headless component primitives.
 - **Lucide React**: Icon library.
-- **Recharts**: Charting library for dashboard visualizations.
+- **Recharts**: Charting library.
 
 ### Development Tools
-- **TypeScript**: For type safety.
+- **TypeScript**: Type safety.
 - **Tailwind CSS**: Utility-first styling.
 - **class-variance-authority**: Type-safe component variants.
 - **clsx** + **tailwind-merge**: Class name composition.
