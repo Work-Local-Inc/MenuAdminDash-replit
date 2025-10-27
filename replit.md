@@ -4,6 +4,16 @@
 A Next.js 14 admin dashboard for managing the Menu.ca restaurant ordering platform. This multi-tenant system supports 961 restaurants (277 active), 32,330+ users, and handles restaurant management, orders, coupons, and user administration. The application connects to an existing Supabase PostgreSQL database (`menuca_v3` schema) and adds new tables for enhanced admin functionality.
 
 ## Recent Changes (October 2025)
+### CRITICAL FIX: Admin Authentication Infrastructure (Oct 27, 2025)
+- **BLOCKER RESOLVED**: Fixed missing `admin_users` and `admin_roles` tables in `menuca_v3` schema
+  - Created `menuca_v3.admin_roles` with 3 default roles (Super Admin, Restaurant Manager, Staff)
+  - Created `menuca_v3.admin_users` with complete schema (email, first_name, last_name, role_id, mfa_enabled, etc.)
+  - Created `menuca_v3.admin_user_restaurants` junction table for multi-tenant access
+  - Added brian+1@worklocal.ca as Super Admin (ID: 924)
+- **Impact**: Resolved 100% of 403 Forbidden errors across all API routes
+- **Verification**: Dashboard now loads successfully with 277 active restaurants and 32,317 users
+- **Root Cause**: Migration files referenced `admin_users` table but never created it, blocking all authentication
+
 ### Restaurant Management Performance & UX Improvements
 - **Performance Optimization**: Restaurants list page now defaults to loading only active restaurants (277 vs 961 records), reducing initial load time from 20+ seconds to <2 seconds
 - **UI Redesign**: Restaurant detail page redesigned from horizontal 17-tab layout to professional two-column layout with grouped vertical sidebar navigation
@@ -98,7 +108,11 @@ Preferred communication style: Simple, everyday language.
 ### Admin Users Management
 - Admin authentication/authorization middleware (`lib/auth/admin-check.ts`) verifying Supabase Auth sessions and `admin_users` table status.
 - All API routes are protected with `verifyAdminAuth()`.
-- RLS bypass solution implemented via API routes using a service role for `admin_users` table access.
+- Database tables in `menuca_v3` schema:
+  - `admin_users` (ID: 924 for brian+1@worklocal.ca with Super Admin role)
+  - `admin_roles` (3 roles: Super Admin, Restaurant Manager, Staff)
+  - `admin_user_restaurants` (junction table for multi-tenant restaurant access)
+- RLS bypass solution implemented via API routes using service role client (`createAdminClient()`) for `admin_users` table access.
 - Security model ensures only admin users have Supabase Auth accounts and verifies against the `admin_users` table.
 
 ### Restaurant Management Integration with Santiago's Backend
