@@ -6,52 +6,41 @@ export async function getRestaurants(filters?: {
   status?: string
   search?: string
 }) {
-  const { createAdminClient } = await import('@/lib/supabase/admin')
-  const supabase = createAdminClient()
+  // Use direct PostgreSQL connection to get restaurants with location data
+  const { query } = await import('@/lib/db/postgres')
   
-  let query = supabase
-    .from('restaurants')
-    .select(`
-      *,
-      restaurant_locations!inner (
-        city_id,
-        province_id,
-        cities (
-          id,
-          name
-        ),
-        provinces (
-          id,
-          name,
-          short_name
-        )
-      )
-    `)
-    .eq('restaurant_locations.is_primary', true)
-    .order('id', { ascending: false })
-
-  if (filters?.status && filters.status !== 'All') {
-    query = query.eq('status', filters.status)
-  }
-
-  if (filters?.search) {
-    query = query.or(`name.ilike.%${filters.search}%,slug.ilike.%${filters.search}%`)
-  }
-
-  const { data, error } = await query
-
-  if (error) throw error
-  
-  // Transform data to include city and province at root level
-  return data?.map((restaurant: any) => {
-    const location = restaurant.restaurant_locations?.[0]
-    return {
-      ...restaurant,
-      city: location?.cities?.name || null,
-      province: location?.provinces?.short_name || null,
-      restaurant_locations: undefined // Remove nested data
+  try {
+    let sql = `
+      SELECT 
+        r.*,
+        c.name as city,
+        p.short_name as province
+      FROM menuca_v3.restaurants r
+      LEFT JOIN menuca_v3.restaurant_locations rl ON rl.restaurant_id = r.id AND rl.is_primary = true
+      LEFT JOIN menuca_v3.cities c ON c.id = rl.city_id
+      LEFT JOIN menuca_v3.provinces p ON p.id = rl.province_id
+      WHERE 1=1
+    `
+    const params: any[] = []
+    
+    if (filters?.status && filters.status !== 'All') {
+      params.push(filters.status)
+      sql += ` AND r.status = $${params.length}`
     }
-  })
+    
+    if (filters?.search) {
+      params.push(`%${filters.search}%`)
+      sql += ` AND (r.name ILIKE $${params.length} OR r.slug ILIKE $${params.length})`
+    }
+    
+    sql += ' ORDER BY r.id DESC'
+    
+    const result = await query(sql, params)
+    return result.rows
+  } catch (error) {
+    console.error('Get restaurants error:', error)
+    return []
+  }
 }
 
 export async function getRestaurantById(id: string) {
