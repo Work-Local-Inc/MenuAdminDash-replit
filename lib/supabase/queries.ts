@@ -10,18 +10,25 @@ export async function getRestaurants(filters?: {
   const supabase = createAdminClient()
   
   let query = supabase
-    .schema('menuca_v3')
     .from('restaurants')
-    .select('*')
+    .select(`
+      *,
+      restaurant_locations!inner (
+        city_id,
+        province_id,
+        cities (
+          id,
+          name
+        ),
+        provinces (
+          id,
+          name,
+          short_name
+        )
+      )
+    `)
+    .eq('restaurant_locations.is_primary', true)
     .order('id', { ascending: false })
-
-  if (filters?.province && filters.province !== 'All') {
-    query = query.eq('province', filters.province)
-  }
-
-  if (filters?.city && filters.city !== 'All') {
-    query = query.eq('city', filters.city)
-  }
 
   if (filters?.status && filters.status !== 'All') {
     query = query.eq('status', filters.status)
@@ -34,14 +41,23 @@ export async function getRestaurants(filters?: {
   const { data, error } = await query
 
   if (error) throw error
-  return data
+  
+  // Transform data to include city and province at root level
+  return data?.map((restaurant: any) => {
+    const location = restaurant.restaurant_locations?.[0]
+    return {
+      ...restaurant,
+      city: location?.cities?.name || null,
+      province: location?.provinces?.short_name || null,
+      restaurant_locations: undefined // Remove nested data
+    }
+  })
 }
 
 export async function getRestaurantById(id: string) {
   const supabase = await createClient()
   
   const { data, error } = await supabase
-    .schema('menuca_v3')
     .from('restaurants')
     .select('*')
     .eq('id', id)
