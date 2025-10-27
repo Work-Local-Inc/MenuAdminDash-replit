@@ -10,6 +10,7 @@ export async function getRestaurants(filters?: {
   const supabase = createAdminClient()
   
   let query = supabase
+    .schema('menuca_v3')
     .from('restaurants')
     .select('*')
     .order('id', { ascending: false })
@@ -40,6 +41,7 @@ export async function getRestaurantById(id: string) {
   const supabase = await createClient()
   
   const { data, error } = await supabase
+    .schema('menuca_v3')
     .from('restaurants')
     .select('*')
     .eq('id', id)
