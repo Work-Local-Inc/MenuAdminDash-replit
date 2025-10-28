@@ -1,0 +1,236 @@
+"use client"
+
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useCreateAdminUser } from '@/lib/hooks/use-admin-users'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import { ArrowLeft, AlertCircle, CheckCircle2 } from 'lucide-react'
+import Link from 'next/link'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+
+export default function CreateAdminUserPage() {
+  const router = useRouter()
+  const createAdmin = useCreateAdminUser()
+  const [formData, setFormData] = useState({
+    email: '',
+    first_name: '',
+    last_name: '',
+    phone: '',
+  })
+  const [result, setResult] = useState<any>(null)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const data = await createAdmin.mutateAsync(formData)
+    setResult(data)
+  }
+
+  if (result) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Link href="/admin/users/admin-users">
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-3xl font-bold">Admin User Created</h1>
+            <p className="text-muted-foreground">Follow the manual steps below to complete setup</p>
+          </div>
+        </div>
+
+        <Alert>
+          <CheckCircle2 className="h-4 w-4" />
+          <AlertTitle>Admin Request Created Successfully!</AlertTitle>
+          <AlertDescription>
+            Admin user ID: {result[0]?.admin_user_id || 'N/A'} • Status: {result[0]?.status || 'pending'}
+          </AlertDescription>
+        </Alert>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Manual Setup Required</CardTitle>
+            <CardDescription>
+              Supabase doesn't allow creating auth users via client-side API. Complete these steps:
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-4">
+              <div className="p-4 bg-muted rounded-lg">
+                <h3 className="font-semibold mb-2">Step 1: Create Auth Account in Supabase Dashboard</h3>
+                <ol className="list-decimal list-inside space-y-2 text-sm">
+                  <li>
+                    Go to:{' '}
+                    <a
+                      href="https://supabase.com/dashboard/project/nthpbtdjhhnwfxqsxbvy/auth/users"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline"
+                    >
+                      Supabase Auth Users Dashboard
+                    </a>
+                  </li>
+                  <li>Click "Add User" → "Create new user"</li>
+                  <li>Enter email: <code className="bg-background px-2 py-1 rounded">{formData.email}</code></li>
+                  <li>Set a temporary password</li>
+                  <li>Check "Auto Confirm User"</li>
+                  <li>Click "Create user"</li>
+                  <li><strong>Copy the UUID</strong> of the newly created user</li>
+                </ol>
+              </div>
+
+              <div className="p-4 bg-muted rounded-lg">
+                <h3 className="font-semibold mb-2">Step 2: Link Auth Account to Admin User</h3>
+                <p className="text-sm mb-2">Run this SQL in Supabase SQL Editor:</p>
+                <pre className="bg-background p-3 rounded text-xs overflow-x-auto">
+{`UPDATE menuca_v3.admin_users
+SET 
+  auth_user_id = '<PASTE_UUID_HERE>',
+  status = 'active'
+WHERE email = '${formData.email}';`}
+                </pre>
+              </div>
+
+              <div className="p-4 bg-muted rounded-lg">
+                <h3 className="font-semibold mb-2">Step 3: Assign Restaurants (Optional)</h3>
+                <p className="text-sm">
+                  After activation, you can assign restaurants to this admin in the admin users list.
+                </p>
+              </div>
+
+              <div className="p-4 bg-muted rounded-lg">
+                <h3 className="font-semibold mb-2">Step 4: Send Credentials</h3>
+                <p className="text-sm">Send the new admin:</p>
+                <ul className="list-disc list-inside text-sm mt-2 space-y-1">
+                  <li>Email: {formData.email}</li>
+                  <li>Temporary password (from Step 1)</li>
+                  <li>Login URL with instructions to reset password on first login</li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="flex gap-4">
+              <Link href="/admin/users/admin-users" className="flex-1">
+                <Button variant="outline" className="w-full">
+                  Back to Admin Users
+                </Button>
+              </Link>
+              <Button onClick={() => {
+                setResult(null)
+                setFormData({ email: '', first_name: '', last_name: '', phone: '' })
+              }} className="flex-1">
+                Create Another Admin
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <Link href="/admin/users/admin-users">
+          <Button variant="ghost" size="icon">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        </Link>
+        <div>
+          <h1 className="text-3xl font-bold">Create Admin User</h1>
+          <p className="text-muted-foreground">Create a new admin user request (requires manual setup)</p>
+        </div>
+      </div>
+
+      <Alert>
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Manual Process Required</AlertTitle>
+        <AlertDescription>
+          Creating admin users requires manual steps in Supabase Dashboard to create the auth account.
+          You'll receive detailed instructions after submitting this form.
+        </AlertDescription>
+      </Alert>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Admin User Details</CardTitle>
+          <CardDescription>Enter the information for the new admin user</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email *</Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                required
+                data-testid="input-email"
+                placeholder="admin@menu.ca"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="first_name">First Name *</Label>
+                <Input
+                  id="first_name"
+                  value={formData.first_name}
+                  onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                  required
+                  data-testid="input-first-name"
+                  placeholder="John"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="last_name">Last Name *</Label>
+                <Input
+                  id="last_name"
+                  value={formData.last_name}
+                  onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                  required
+                  data-testid="input-last-name"
+                  placeholder="Doe"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone (Optional)</Label>
+              <Input
+                id="phone"
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                data-testid="input-phone"
+                placeholder="+1234567890"
+              />
+            </div>
+
+            <div className="flex gap-4 pt-4">
+              <Link href="/admin/users/admin-users" className="flex-1">
+                <Button type="button" variant="outline" className="w-full">
+                  Cancel
+                </Button>
+              </Link>
+              <Button
+                type="submit"
+                disabled={createAdmin.isPending}
+                className="flex-1"
+                data-testid="button-submit"
+              >
+                {createAdmin.isPending ? 'Creating...' : 'Create Admin Request'}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}

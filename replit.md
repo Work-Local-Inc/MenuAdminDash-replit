@@ -4,13 +4,18 @@
 A Next.js 14 admin dashboard for Menu.ca, a multi-tenant restaurant ordering platform. It supports 961 restaurants and 32,330+ users, enabling comprehensive management of restaurants, orders, coupons, and user administration. The system extends an existing Supabase PostgreSQL database (`menuca_v3` schema) to provide enhanced admin functionalities. The project's ambition is to streamline restaurant operations and improve administrative efficiency for a large-scale food ordering service.
 
 ## Recent Changes
+**October 28, 2025:**
+- **Users & Access Management Implemented**: Complete admin and customer user management system following Santiago's documentation
+  - **Admin Users**: List/search/filter by role/status, create workflow with manual Supabase setup instructions, role-based access control
+  - **Customer Users**: List/search customer accounts, view delivery addresses and favorite restaurants
+  - **API Routes**: 8 new endpoints using Santiago's SQL functions (assign_restaurants_to_admin, create_admin_user_request, get_my_admin_info)
+  - **React Hooks**: useAdminUsers, useCustomerUsers with comprehensive CRUD operations
+  - **Pages**: `/admin/users/admin-users`, `/admin/users/admin-users/create`, `/admin/users/customers`, `/admin/users/customers/[id]`
+
 **October 27, 2025:**
-- **API Routing Standards Updated**: All documentation now follows Santiago's REST conventions from `API-ROUTE-IMPLEMENTAITON.md`:
-  - **Franchise routes**: Changed to PLURAL `/api/franchises/*` (was `/api/franchise/*`)
-  - **Convert route**: Changed to `/api/franchises/convert` (was `/api/franchise/link-children`) using noun-based pattern
-  - **Bulk features**: Changed to `/api/franchises/[id]/features` (was `/api/franchise/bulk-feature`) using nested resource pattern
-  - **Online ordering**: Changed to `/api/restaurants/[id]/online-ordering` (was `/api/restaurants/toggle-online-ordering`) with ID in URL path instead of body
-- **Backend Memory Bank**: Updated `02-API-Routes-Reference.md` to reflect all new route patterns with ✅ markers
+- **API Routing Standards Updated**: All documentation now follows Santiago's REST conventions from `API-ROUTE-IMPLEMENTAITON.md`
+- **Restaurant Locations Bug Fixed**: Removed duplicate `.schema('menuca_v3')` calls causing "NA, NA" display
+- **Database Query Strategy**: Switched to direct PostgreSQL queries for reliability with complex JOINs
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
