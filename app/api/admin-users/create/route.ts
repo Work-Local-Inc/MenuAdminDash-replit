@@ -178,17 +178,33 @@ export async function POST(request: NextRequest) {
     }
 
     // Get current admin's info to check permissions
-    // @ts-ignore - RPC function exists in Supabase but not in generated types
-    const { data: currentAdmin, error: adminError } = await supabase.rpc('get_my_admin_info')
+    // Note: Using direct query instead of get_my_admin_info() RPC due to type mismatch in production
+    const { data: { user } } = await supabase.auth.getUser()
     
-    if (adminError || !currentAdmin || (Array.isArray(currentAdmin) && (currentAdmin as any[]).length === 0)) {
+    if (!user) {
       return NextResponse.json(
-        { error: 'Unable to verify admin permissions' },
+        { error: 'Not authenticated' },
+        { status: 401 }
+      )
+    }
+
+    const { data: currentAdmin, error: adminError } = await supabase
+      .schema('menuca_v3')
+      .from('admin_users')
+      .select('id, email, role_id, status')
+      .eq('auth_user_id', user.id)
+      .eq('status', 'active')
+      .single()
+    
+    if (adminError || !currentAdmin) {
+      console.error('Admin verification failed:', { adminError, currentAdmin, userId: user.id })
+      return NextResponse.json(
+        { error: `Unable to verify admin permissions: ${adminError?.message || 'No admin record found'}` },
         { status: 403 }
       )
     }
 
-    const currentRoleId = ((currentAdmin as any[])[0] || (currentAdmin as any)).role_id as number
+    const currentRoleId = currentAdmin.role_id
 
     // Permission check: determine if current admin can create this role
     const canCreateRole = (currentRole: number, targetRole: number): boolean => {
