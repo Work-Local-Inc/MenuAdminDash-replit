@@ -34,13 +34,13 @@ import { TableSkeleton } from '@/components/ui/loading-skeletons'
 
 export default function AdminUsersPage() {
   const [search, setSearch] = useState('')
-  const [roleFilter, setRoleFilter] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
+  const [roleFilter, setRoleFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState('all')
 
   const { data, isLoading } = useAdminUsers({
     search,
-    role_id: roleFilter,
-    status: statusFilter,
+    role_id: roleFilter !== 'all' ? roleFilter : undefined,
+    status: statusFilter !== 'all' ? statusFilter : undefined,
   })
 
   const deleteAdmin = useDeleteAdminUser()
@@ -97,7 +97,7 @@ export default function AdminUsersPage() {
                 <SelectValue placeholder="Filter by role" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Roles</SelectItem>
+                <SelectItem value="all">All Roles</SelectItem>
                 <SelectItem value="1">Super Admin</SelectItem>
                 <SelectItem value="5">Restaurant Manager</SelectItem>
                 <SelectItem value="2">Manager</SelectItem>
@@ -110,7 +110,7 @@ export default function AdminUsersPage() {
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Statuses</SelectItem>
+                <SelectItem value="all">All Statuses</SelectItem>
                 <SelectItem value="active">Active</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
                 <SelectItem value="suspended">Suspended</SelectItem>
