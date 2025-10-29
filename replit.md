@@ -3,6 +3,29 @@
 ## Overview
 A Next.js 14 admin dashboard for Menu.ca, a multi-tenant restaurant ordering platform. It supports 961 restaurants and 32,330+ users, enabling comprehensive management of restaurants, orders, coupons, and user administration. The system extends an existing Supabase PostgreSQL database (`menuca_v3` schema) to provide enhanced admin functionalities. The project's ambition is to streamline restaurant operations and improve administrative efficiency for a large-scale food ordering service.
 
+## CRITICAL: Database & Schema Rules
+**⚠️ NEVER USE LOCAL REPLIT DATABASE - ALWAYS USE PRODUCTION SUPABASE**
+
+### Database Architecture
+- **Production Database**: Supabase PostgreSQL (nthpbtdjhhnwfxqsxbvy.supabase.co)
+- **Connection**: Use `SUPABASE_SERVICE_ROLE_KEY` + `NEXT_PUBLIC_SUPABASE_URL` for admin operations
+- **Execute SQL**: Use `psql` with `$SUPABASE_DB_URL` OR Node.js with `@supabase/supabase-js` client
+
+### Schema Rules
+1. **Admin/Auth Tables**: Use `menuca_v3` schema
+   - `menuca_v3.admin_users`
+   - `menuca_v3.admin_roles`
+   - `menuca_v3.admin_user_restaurants`
+2. **Auth Users**: Use `auth.users` schema (Supabase Auth)
+3. **Restaurant Data**: Use `menuca_v3` schema (all existing restaurant/order/menu tables)
+
+### Supabase Client Configuration
+```typescript
+// ALWAYS specify schema for admin operations
+const supabase = createClient(...)
+await supabase.schema('menuca_v3').from('admin_users')...
+```
+
 ## Recent Changes
 **October 28, 2025:**
 - **Users & Access Management Implemented**: Complete admin and customer user management system following Santiago's documentation
