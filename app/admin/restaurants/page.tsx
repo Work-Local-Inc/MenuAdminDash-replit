@@ -32,6 +32,7 @@ import { Search, Filter, MoreVertical, Plus, Download, Edit, Trash2, Copy, Exter
 import Link from "next/link"
 import { formatCurrency } from "@/lib/utils"
 import { createRestaurantSlug } from "@/lib/utils/slugify"
+import { TableSkeleton } from "@/components/ui/loading-skeletons"
 
 const provinces = ["All", "ON", "BC", "QC", "AB"]
 const cities = ["All", "Toronto", "Vancouver", "Montreal", "Calgary", "Ottawa"]
@@ -178,34 +179,31 @@ export default function RestaurantsPage() {
           )}
 
           {/* Data Table */}
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12">
-                    <Checkbox
-                      checked={selectedRestaurants.length === filteredRestaurants.length}
-                      onCheckedChange={toggleAll}
-                      data-testid="checkbox-select-all"
-                    />
-                  </TableHead>
-                  <TableHead>ID</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead className="text-right">Orders</TableHead>
-                  <TableHead className="text-right">Revenue</TableHead>
-                  <TableHead className="w-12"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
+          {isLoading ? (
+            <TableSkeleton rows={8} columns={8} />
+          ) : (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8">
-                      Loading restaurants...
-                    </TableCell>
+                    <TableHead className="w-12">
+                      <Checkbox
+                        checked={selectedRestaurants.length === filteredRestaurants.length}
+                        onCheckedChange={toggleAll}
+                        data-testid="checkbox-select-all"
+                      />
+                    </TableHead>
+                    <TableHead>ID</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Location</TableHead>
+                    <TableHead className="text-right">Orders</TableHead>
+                    <TableHead className="text-right">Revenue</TableHead>
+                    <TableHead className="w-12"></TableHead>
                   </TableRow>
-                ) : filteredRestaurants.length === 0 ? (
+                </TableHeader>
+                <TableBody>
+                  {filteredRestaurants.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                       No restaurants found
@@ -276,9 +274,10 @@ export default function RestaurantsPage() {
                     </TableCell>
                   </TableRow>
                 ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
