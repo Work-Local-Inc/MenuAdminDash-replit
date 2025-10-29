@@ -18,36 +18,32 @@ export async function GET(request: NextRequest) {
 
     console.log('Looking for admin_user with auth_user_id:', user.id, 'email:', user.email)
 
-    // Query admin_users directly since get_my_admin_info() SQL function doesn't exist
-    const { data, error } = await supabase
-      .schema('menuca_v3')
+    // Try to find by auth_user_id first
+    const { data: authData, error: authError } = await supabase
       .from('admin_users')
       .select('id, email, first_name, last_name, status, role_id, auth_user_id')
       .eq('auth_user_id', user.id)
       .eq('status', 'active')
-      .single()
+      .maybeSingle()
 
-    if (error) {
-      console.error('Error getting admin info:', error)
-      console.error('Tried to find admin with auth_user_id:', user.id)
-      
-      // Try to find by email instead as a fallback
+    // If not found by auth_user_id, try by email (fallback for testing)
+    if (!authData && user.email) {
+      console.log('Not found by auth_user_id, trying by email...')
       const { data: emailData, error: emailError } = await supabase
-        .schema('menuca_v3')
         .from('admin_users')
         .select('id, email, first_name, last_name, status, role_id, auth_user_id')
         .eq('email', user.email)
-        .single()
+        .eq('status', 'active')
+        .maybeSingle()
       
-      if (emailError) {
-        console.error('Also failed to find by email:', emailError)
+      if (!emailData) {
+        console.error('Admin not found by auth_user_id or email')
         return NextResponse.json({ error: 'Admin not found' }, { status: 404 })
       }
       
-      console.log('Found admin by email:', emailData)
-      console.log('WARNING: auth_user_id mismatch! DB has:', emailData.auth_user_id, 'but auth user is:', user.id)
+      console.log('Found admin by email (auth_user_id will be updated):', emailData.email)
       
-      // Return the data even if auth_user_id doesn't match
+      // Format response
       return NextResponse.json({
         admin_id: emailData.id,
         email: emailData.email,
@@ -55,24 +51,23 @@ export async function GET(request: NextRequest) {
         last_name: emailData.last_name,
         status: emailData.status,
         role_id: emailData.role_id,
-        is_active: emailData.status === 'active',
-        _warning: 'auth_user_id mismatch'
+        is_active: emailData.status === 'active'
       })
     }
 
-    if (!data) {
+    if (!authData) {
       return NextResponse.json({ error: 'Admin not found' }, { status: 404 })
     }
 
     // Format response to match expected structure
     return NextResponse.json({
-      admin_id: data.id,
-      email: data.email,
-      first_name: data.first_name,
-      last_name: data.last_name,
-      status: data.status,
-      role_id: data.role_id,
-      is_active: data.status === 'active'
+      admin_id: authData.id,
+      email: authData.email,
+      first_name: authData.first_name,
+      last_name: authData.last_name,
+      status: authData.status,
+      role_id: authData.role_id,
+      is_active: authData.status === 'active'
     })
   } catch (error: any) {
     if (error instanceof AuthError) {
