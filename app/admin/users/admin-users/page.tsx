@@ -30,6 +30,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { MoreVertical } from 'lucide-react'
+import { TableSkeleton } from '@/components/ui/loading-skeletons'
 
 export default function AdminUsersPage() {
   const [search, setSearch] = useState('')
@@ -119,9 +120,7 @@ export default function AdminUsersPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="text-center py-8 text-muted-foreground">
-              Loading admin users...
-            </div>
+            <TableSkeleton rows={5} columns={8} />
           ) : data?.data?.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               No admin users found
