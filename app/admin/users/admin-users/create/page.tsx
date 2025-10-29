@@ -2,33 +2,103 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useCreateAdminUser } from '@/lib/hooks/use-admin-users'
+import { useCreateAdminUser, useMyAdminInfo } from '@/lib/hooks/use-admin-users'
+import { useAdminRoles, getAssignableRoles, canCreateAdmins } from '@/lib/hooks/use-admin-roles'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { ArrowLeft, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { ArrowLeft, AlertCircle, CheckCircle2, Shield } from 'lucide-react'
 import Link from 'next/link'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 export default function CreateAdminUserPage() {
   const router = useRouter()
   const createAdmin = useCreateAdminUser()
+  const { data: currentAdmin, isLoading: loadingAdmin } = useMyAdminInfo()
+  const { data: allRoles, isLoading: loadingRoles } = useAdminRoles()
+  
   const [formData, setFormData] = useState({
     email: '',
     first_name: '',
     last_name: '',
     phone: '',
+    role_id: '',
   })
   const [result, setResult] = useState<any>(null)
 
+  // Check if current user can create admins
+  const currentRoleId = currentAdmin?.role_id
+  const hasPermission = canCreateAdmins(currentRoleId)
+  
+  // Get assignable roles for current admin
+  const assignableRoles = allRoles ? getAssignableRoles(currentRoleId, allRoles) : []
+
+  // Show loading state while checking permissions
+  if (loadingAdmin) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Link href="/admin/users/admin-users">
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-3xl font-bold">Create Admin User</h1>
+            <p className="text-muted-foreground">Loading permissions...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const data = await createAdmin.mutateAsync(formData)
+    const data = await createAdmin.mutateAsync({
+      ...formData,
+      role_id: parseInt(formData.role_id)
+    })
     setResult(data)
   }
 
+  if (!hasPermission) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Link href="/admin/users/admin-users">
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-3xl font-bold">Permission Denied</h1>
+            <p className="text-muted-foreground">You do not have permission to create admin users</p>
+          </div>
+        </div>
+
+        <Alert variant="destructive">
+          <Shield className="h-4 w-4" />
+          <AlertTitle>Insufficient Permissions</AlertTitle>
+          <AlertDescription>
+            Only Super Admins, Managers, and Support staff can create new admin users.
+            Restaurant Managers and Staff do not have this permission.
+          </AlertDescription>
+        </Alert>
+      </div>
+    )
+  }
+
   if (result) {
+    const selectedRole = allRoles?.find(r => r.id === parseInt(formData.role_id))
+    
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-4">
@@ -47,7 +117,7 @@ export default function CreateAdminUserPage() {
           <CheckCircle2 className="h-4 w-4" />
           <AlertTitle>Admin Request Created Successfully!</AlertTitle>
           <AlertDescription>
-            Admin user ID: {result[0]?.admin_user_id || 'N/A'} • Status: {result[0]?.status || 'pending'}
+            Admin user ID: {result[0]?.admin_user_id || 'N/A'} • Role: {selectedRole?.name || 'N/A'} • Status: {result[0]?.status || 'pending'}
           </AlertDescription>
         </Alert>
 
@@ -98,7 +168,7 @@ WHERE email = '${formData.email}';`}
               <div className="p-4 bg-muted rounded-lg">
                 <h3 className="font-semibold mb-2">Step 3: Assign Restaurants (Optional)</h3>
                 <p className="text-sm">
-                  After activation, you can assign restaurants to this admin in the admin users list.
+                  After activation, you can assign restaurants to this {selectedRole?.name || 'admin'} in the admin users list.
                 </p>
               </div>
 
@@ -107,6 +177,7 @@ WHERE email = '${formData.email}';`}
                 <p className="text-sm">Send the new admin:</p>
                 <ul className="list-disc list-inside text-sm mt-2 space-y-1">
                   <li>Email: {formData.email}</li>
+                  <li>Role: {selectedRole?.name || 'N/A'}</li>
                   <li>Temporary password (from Step 1)</li>
                   <li>Login URL with instructions to reset password on first login</li>
                 </ul>
@@ -121,7 +192,7 @@ WHERE email = '${formData.email}';`}
               </Link>
               <Button onClick={() => {
                 setResult(null)
-                setFormData({ email: '', first_name: '', last_name: '', phone: '' })
+                setFormData({ email: '', first_name: '', last_name: '', phone: '', role_id: '' })
               }} className="flex-1">
                 Create Another Admin
               </Button>
@@ -213,6 +284,39 @@ WHERE email = '${formData.email}';`}
               />
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="role">Role *</Label>
+              <Select
+                value={formData.role_id}
+                onValueChange={(value) => setFormData({ ...formData, role_id: value })}
+                required
+              >
+                <SelectTrigger data-testid="select-role">
+                  <SelectValue placeholder="Select a role" />
+                </SelectTrigger>
+                <SelectContent>
+                  {loadingRoles ? (
+                    <SelectItem value="loading" disabled>Loading roles...</SelectItem>
+                  ) : assignableRoles.length === 0 ? (
+                    <SelectItem value="none" disabled>No roles available</SelectItem>
+                  ) : (
+                    assignableRoles.map((role) => (
+                      <SelectItem key={role.id} value={role.id.toString()}>
+                        {role.is_system_role && <Shield className="inline h-3 w-3 mr-1" />}
+                        {role.name}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {currentRoleId === 1 
+                  ? "As a Super Admin, you can assign any role"
+                  : "You can only assign Staff and Restaurant Manager roles"
+                }
+              </p>
+            </div>
+
             <div className="flex gap-4 pt-4">
               <Link href="/admin/users/admin-users" className="flex-1">
                 <Button type="button" variant="outline" className="w-full">
@@ -221,7 +325,7 @@ WHERE email = '${formData.email}';`}
               </Link>
               <Button
                 type="submit"
-                disabled={createAdmin.isPending}
+                disabled={createAdmin.isPending || !formData.role_id}
                 className="flex-1"
                 data-testid="button-submit"
               >

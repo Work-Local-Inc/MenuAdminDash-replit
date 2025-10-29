@@ -63,6 +63,7 @@ export function useCreateAdminUser() {
       first_name: string
       last_name: string
       phone?: string
+      role_id: number
     }) => {
       const res = await fetch('/api/admin-users/create', {
         method: 'POST',
