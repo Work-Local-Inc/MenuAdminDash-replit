@@ -721,23 +721,73 @@ Verify that the Restaurant Management implementation matches Santiago's document
 
 ## Overall Summary
 
-### Implementation Statistics
-- **Total Features:** 0/80+ (0%)
-- **Components Complete:** 0/11 (0%)
-- **SQL Functions Integrated:** 0/50+ (0%)
-- **Edge Functions Used:** 0/29 (0%)
-- **API Routes Created:** 0/? (0%)
-- **Frontend Hooks:** 0/? (0%)
-- **Pages/UI:** 0/? (0%)
+### Implementation Statistics (Updated: Oct 29, 2025)
+- **API Routes Created:** 50+ routes ✅ (Excellent coverage!)
+  - Franchise Management: 5/5 routes ✅
+  - Onboarding System: 11/11 routes ✅
+  - Restaurant CRUD: 20+ routes ✅
+  - Contacts, Cuisines, Tags, Delivery Areas, Domains, etc. ✅
+- **Edge Function Integration:** ~95% correct ✅
+  - Write operations (POST/PATCH/DELETE) → Almost ALL use Edge Functions ✅
+  - Read operations (GET) → Direct SQL queries (per spec) ✅
+- **Frontend Hooks:** ~0% implemented ❌ **CRITICAL GAP**
+  - Only 3 generic hooks exist (use-auth, use-mobile, use-toast)
+  - No restaurant-specific React Query hooks
+  - No `useFranchises()`, `useRestaurants()`, `useOnboarding()`, etc.
+- **Admin Pages/UI:** ~5% implemented ⚠️ **MAJOR GAP**
+  - app/admin/restaurants: Only 2 pages (list + detail stub)
+  - app/admin/franchises: Only 1 page (list stub)
+  - app/admin/onboarding: Only 2 pages (list + new stub)
+  - No forms, no detailed views, no interactive features
 
 ### Critical Blockers
-- None identified yet
+- **None!** Backend architecture is excellent and unblocked
 
 ### Deviations from Spec
-- None identified yet
+1. **Delivery Areas POST** ⚠️ **app/api/restaurants/[id]/delivery-areas/route.ts**
+   - **Current:** Uses direct `.insert()` into `restaurant_delivery_zones` table
+   - **Should:** Call `supabase.functions.invoke('create-delivery-zone')`
+   - **Impact:** Low (functionality works, but deviates from write-ops-use-Edge-Functions pattern)
+   - **Recommendation:** Refactor to use Edge Function for consistency
 
 ### Recommendations
-- Will be added as audit progresses
+
+**Priority 1: Build Frontend Hooks Layer (Critical)**
+- Create React Query hooks for all 50+ API routes
+- Implement hooks following pattern:
+  ```typescript
+  // hooks/use-restaurants.ts
+  export function useRestaurants() { ... }
+  export function useRestaurant(id) { ... }
+  export function useCreateRestaurant() { ... }
+  export function useUpdateRestaurant() { ... }
+  export function useDeleteRestaurant() { ... }
+  ```
+- Suggested hook files:
+  - `hooks/use-franchises.ts` (franchise hierarchy management)
+  - `hooks/use-restaurants.ts` (restaurant CRUD)
+  - `hooks/use-onboarding.ts` (onboarding system)
+  - `hooks/use-contacts.ts` (contact management)
+  - `hooks/use-delivery-zones.ts` (delivery area management)
+  - `hooks/use-cuisines.ts` (cuisine categorization)
+  - `hooks/use-tags.ts` (tag categorization)
+  - `hooks/use-domains.ts` (domain verification)
+  
+**Priority 2: Build Admin UI Pages (High)**
+- Complete restaurant management pages with full CRUD
+- Add franchise management dashboard with analytics
+- Build interactive onboarding checklist UI
+- Implement delivery zone mapping interface (Mapbox)
+- Create contact management forms
+- Add domain verification dashboard
+
+**Priority 3: Fix Deviation (Medium)**
+- Refactor delivery-areas POST to use `create-delivery-zone` Edge Function
+
+**Priority 4: Test & Validate (Medium)**
+- End-to-end tests for onboarding flow
+- Franchise hierarchy creation/linking tests
+- Domain verification tests
 
 ---
 
