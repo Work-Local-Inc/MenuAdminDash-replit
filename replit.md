@@ -27,6 +27,13 @@ await supabase.schema('menuca_v3').from('admin_users')...
 ```
 
 ## Recent Changes
+**October 29, 2025:**
+- **Dual-Track Admin Creation System Implemented**: Automated Restaurant Owner creation + Manual Super Admin flow
+  - **Automated Flow** (Restaurant Owner role_id=5): Uses Supabase Admin API to create auth user, admin_users record, and assign restaurants in one transaction with rollback on failure. Returns temporary password.
+  - **Manual Flow** (Super Admin/Manager/Support/Staff roles 1,2,3,6): Creates pending admin_users record, displays 3-step Supabase Dashboard instructions with SQL commands for auth creation and role assignment.
+  - **Fixed Production Issues**: Replaced broken `get_my_admin_info()` and `create_admin_user_request()` RPC functions with direct Supabase queries due to type mismatches (varchar vs text, ambiguous status column).
+  - **admin_users Table Schema**: No `phone` column exists - only stores: id, email, first_name, last_name, auth_user_id, role_id, status, created_at, updated_at, and other admin-specific fields.
+
 **October 28, 2025:**
 - **Users & Access Management Implemented**: Complete admin and customer user management system following Santiago's documentation
   - **Admin Users**: List/search/filter by role/status, create workflow with manual Supabase setup instructions, role-based access control

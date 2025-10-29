@@ -239,16 +239,23 @@ export async function POST(request: NextRequest) {
     }
 
     // MANUAL FLOW: All other roles (Super Admin, Manager, Support, Staff)
-    // Use Santiago's create_admin_user_request() RPC function
-    // Note: This creates a pending admin user without role_id
-    // Role will be assigned in manual SQL UPDATE step after auth account creation
-    // @ts-ignore - RPC function exists in Supabase but not in generated types
-    const { data: result, error } = await supabase.rpc('create_admin_user_request', {
-      p_email: email,
-      p_first_name: first_name,
-      p_last_name: last_name,
-      p_phone: phone || null
-    })
+    // Create admin user directly (bypassing broken RPC function)
+    // Note: auth_user_id will be NULL until manual auth creation step
+    const { data: result, error } = await supabase
+      .schema('menuca_v3')
+      .from('admin_users')
+      .insert({
+        email,
+        first_name,
+        last_name,
+        status: 'active', // Database only allows 'active' status
+        // Note: role_id is NOT set here - will be set in manual SQL UPDATE step
+        // This allows the manual instructions to include the role_id assignment
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .select('id, email, first_name, last_name, status, created_at')
+      .single()
 
     if (error) {
       console.error('Error creating admin user request:', error)
@@ -256,10 +263,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Add role_id to response for frontend to include in manual UPDATE step
-    const data = (Array.isArray(result) ? result : [result]).map((r: any) => ({
-      ...r,
+    const data = [{
+      ...result,
       role_id: role_id // Include role_id for manual SQL UPDATE instructions
-    }))
+    }]
 
     return NextResponse.json(data)
   } catch (error: any) {
