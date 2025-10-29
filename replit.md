@@ -45,7 +45,7 @@ Preferred communication style: Simple, everyday language.
 
 ## Test Credentials
 **Admin Account for Testing:**
-- Email: brian@worklocal.ca
+- Email: brian+1@worklocal.ca
 - Password: WL!2w3e4r5t
 
 ## System Architecture
