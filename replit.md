@@ -20,6 +20,11 @@ A Next.js 14 admin dashboard for Menu.ca, a multi-tenant restaurant ordering pla
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
+## Test Credentials
+**Admin Account for Testing:**
+- Email: brian@worklocal.ca
+- Password: WL!2w3e4r5t
+
 ## System Architecture
 
 ### Frontend
