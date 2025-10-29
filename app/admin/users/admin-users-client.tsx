@@ -70,7 +70,7 @@ export function AdminUsersClient({ initialAdminUsers, initialCount }: AdminUsers
           <p className="text-muted-foreground">Manage admin users and their permissions</p>
         </div>
         <Button asChild data-testid="button-add-admin">
-          <Link href="/admin/users/add">
+          <Link href="/admin/users/admin-users/create">
             <Plus className="h-4 w-4 mr-2" />
             Add Admin User
           </Link>

@@ -72,7 +72,7 @@ const menuItems = [
     icon: Users,
     items: [
       { title: "All Admin Users", url: "/admin/users" },
-      { title: "Add Admin User", url: "/admin/users/add" },
+      { title: "Add Admin User", url: "/admin/users/admin-users/create" },
       { title: "Roles & Permissions", url: "/admin/users/roles" },
     ],
   },
