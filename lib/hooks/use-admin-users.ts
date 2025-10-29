@@ -64,6 +64,7 @@ export function useCreateAdminUser() {
       last_name: string
       phone?: string
       role_id: number
+      restaurant_ids?: number[]
     }) => {
       const res = await fetch('/api/admin-users/create', {
         method: 'POST',
@@ -76,11 +77,14 @@ export function useCreateAdminUser() {
       }
       return res.json()
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin-users'] })
+      const isAutomated = data && data[0]?.automated === true
       toast({
         title: "Success",
-        description: "Admin user request created successfully. Follow manual steps to complete setup.",
+        description: isAutomated 
+          ? "Restaurant Owner created successfully with full access!"
+          : "Admin user request created successfully. Follow manual steps to complete setup.",
       })
     },
     onError: (error: Error) => {

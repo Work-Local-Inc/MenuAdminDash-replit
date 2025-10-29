@@ -4,11 +4,13 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCreateAdminUser, useMyAdminInfo } from '@/lib/hooks/use-admin-users'
 import { useAdminRoles, getAssignableRoles, canCreateAdmins } from '@/lib/hooks/use-admin-roles'
+import { useRestaurants } from '@/lib/hooks/use-restaurants'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { ArrowLeft, AlertCircle, CheckCircle2, Shield } from 'lucide-react'
+import { Checkbox } from '@/components/ui/checkbox'
+import { ArrowLeft, AlertCircle, CheckCircle2, Shield, Store } from 'lucide-react'
 import Link from 'next/link'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
@@ -24,6 +26,7 @@ export default function CreateAdminUserPage() {
   const createAdmin = useCreateAdminUser()
   const { data: currentAdmin, isLoading: loadingAdmin } = useMyAdminInfo()
   const { data: allRoles, isLoading: loadingRoles } = useAdminRoles()
+  const { data: restaurants, isLoading: loadingRestaurants } = useRestaurants({ status: 'active' })
   
   const [formData, setFormData] = useState({
     email: '',
@@ -31,6 +34,7 @@ export default function CreateAdminUserPage() {
     last_name: '',
     phone: '',
     role_id: '',
+    restaurant_ids: [] as number[],
   })
   const [result, setResult] = useState<any>(null)
 
@@ -64,9 +68,19 @@ export default function CreateAdminUserPage() {
     e.preventDefault()
     const data = await createAdmin.mutateAsync({
       ...formData,
-      role_id: parseInt(formData.role_id)
+      role_id: parseInt(formData.role_id),
+      restaurant_ids: formData.restaurant_ids
     })
     setResult(data)
+  }
+
+  const toggleRestaurant = (restaurantId: number) => {
+    setFormData(prev => ({
+      ...prev,
+      restaurant_ids: prev.restaurant_ids.includes(restaurantId)
+        ? prev.restaurant_ids.filter(id => id !== restaurantId)
+        : [...prev.restaurant_ids, restaurantId]
+    }))
   }
 
   if (!hasPermission) {
@@ -98,7 +112,100 @@ export default function CreateAdminUserPage() {
 
   if (result) {
     const selectedRole = allRoles?.find(r => r.id === parseInt(formData.role_id))
+    const isAutomated = result[0]?.automated === true
     
+    // AUTOMATED FLOW: Restaurant Owner created successfully
+    if (isAutomated) {
+      return (
+        <div className="space-y-6">
+          <div className="flex items-center gap-4">
+            <Link href="/admin/users/admin-users">
+              <Button variant="ghost" size="icon">
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            </Link>
+            <div>
+              <h1 className="text-3xl font-bold">Restaurant Owner Created!</h1>
+              <p className="text-muted-foreground">Account created and activated successfully</p>
+            </div>
+          </div>
+
+          <Alert>
+            <CheckCircle2 className="h-4 w-4" />
+            <AlertTitle>✅ Restaurant Owner Created Successfully!</AlertTitle>
+            <AlertDescription>
+              The account is fully activated and restaurants have been assigned automatically.
+            </AlertDescription>
+          </Alert>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Account Details</CardTitle>
+              <CardDescription>Send these credentials to the new restaurant owner</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <div className="p-4 bg-muted rounded-lg space-y-3">
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Admin ID</Label>
+                    <p className="font-mono text-sm">{result[0]?.admin_user_id}</p>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Email</Label>
+                    <p className="font-medium">{result[0]?.email}</p>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Temporary Password</Label>
+                    <code className="bg-background px-3 py-2 rounded block font-mono text-sm">
+                      {result[0]?.temp_password}
+                    </code>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      ⚠️ Save this password securely - it won't be shown again
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Status</Label>
+                    <p className="text-sm"><span className="text-green-600 font-semibold">Active</span></p>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Restaurants Assigned</Label>
+                    <p className="text-sm">{result[0]?.restaurants_assigned} restaurant(s)</p>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                  <h3 className="font-semibold mb-2 flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4" />
+                    Next Steps
+                  </h3>
+                  <ol className="list-decimal list-inside space-y-2 text-sm">
+                    <li>Send the email and temporary password to: {result[0]?.email}</li>
+                    <li>Instruct them to login and change their password immediately</li>
+                    <li>They will have access to {result[0]?.restaurants_assigned} assigned restaurant(s)</li>
+                  </ol>
+                </div>
+              </div>
+
+              <div className="flex gap-4">
+                <Link href="/admin/users/admin-users" className="flex-1">
+                  <Button variant="outline" className="w-full">
+                    Back to Admin Users
+                  </Button>
+                </Link>
+                <Button onClick={() => {
+                  setResult(null)
+                  setFormData({ email: '', first_name: '', last_name: '', phone: '', role_id: '', restaurant_ids: [] })
+                }} className="flex-1">
+                  Create Another Owner
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )
+    }
+
+    // MANUAL FLOW: Super Admin / Other roles
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-4">
@@ -154,12 +261,13 @@ export default function CreateAdminUserPage() {
               </div>
 
               <div className="p-4 bg-muted rounded-lg">
-                <h3 className="font-semibold mb-2">Step 2: Link Auth Account to Admin User</h3>
+                <h3 className="font-semibold mb-2">Step 2: Link Auth Account & Assign Role</h3>
                 <p className="text-sm mb-2">Run this SQL in Supabase SQL Editor:</p>
                 <pre className="bg-background p-3 rounded text-xs overflow-x-auto">
 {`UPDATE menuca_v3.admin_users
 SET 
   auth_user_id = '<PASTE_UUID_HERE>',
+  role_id = ${formData.role_id},
   status = 'active'
 WHERE email = '${formData.email}';`}
                 </pre>
@@ -192,7 +300,7 @@ WHERE email = '${formData.email}';`}
               </Link>
               <Button onClick={() => {
                 setResult(null)
-                setFormData({ email: '', first_name: '', last_name: '', phone: '', role_id: '' })
+                setFormData({ email: '', first_name: '', last_name: '', phone: '', role_id: '', restaurant_ids: [] })
               }} className="flex-1">
                 Create Another Admin
               </Button>
@@ -317,6 +425,55 @@ WHERE email = '${formData.email}';`}
               </p>
             </div>
 
+            {/* Restaurant Selection - Only for Restaurant Managers */}
+            {formData.role_id === "5" && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Store className="h-4 w-4" />
+                  <Label>Assign Restaurants *</Label>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Select which restaurant(s) this manager will have access to:
+                </p>
+                
+                {loadingRestaurants ? (
+                  <div className="text-sm text-muted-foreground">Loading restaurants...</div>
+                ) : restaurants && restaurants.restaurants && restaurants.restaurants.length > 0 ? (
+                  <div className="border rounded-lg p-4 max-h-60 overflow-y-auto space-y-2">
+                    {restaurants.restaurants.map((restaurant: any) => (
+                      <div key={restaurant.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`restaurant-${restaurant.id}`}
+                          checked={formData.restaurant_ids.includes(restaurant.id)}
+                          onCheckedChange={() => toggleRestaurant(restaurant.id)}
+                          data-testid={`checkbox-restaurant-${restaurant.id}`}
+                        />
+                        <Label 
+                          htmlFor={`restaurant-${restaurant.id}`} 
+                          className="text-sm font-normal cursor-pointer flex-1"
+                        >
+                          {restaurant.name} {restaurant.city && `• ${restaurant.city}`}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      No active restaurants found. Please ensure there are active restaurants before creating a Restaurant Manager.
+                    </AlertDescription>
+                  </Alert>
+                )}
+                
+                {formData.restaurant_ids.length > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    {formData.restaurant_ids.length} restaurant(s) selected
+                  </p>
+                )}
+              </div>
+            )}
+
             <div className="flex gap-4 pt-4">
               <Link href="/admin/users/admin-users" className="flex-1">
                 <Button type="button" variant="outline" className="w-full">
@@ -325,11 +482,17 @@ WHERE email = '${formData.email}';`}
               </Link>
               <Button
                 type="submit"
-                disabled={createAdmin.isPending || !formData.role_id}
+                disabled={
+                  createAdmin.isPending || 
+                  !formData.role_id ||
+                  (formData.role_id === "5" && formData.restaurant_ids.length === 0)
+                }
                 className="flex-1"
                 data-testid="button-submit"
               >
-                {createAdmin.isPending ? 'Creating...' : 'Create Admin Request'}
+                {createAdmin.isPending ? 'Creating...' : (
+                  formData.role_id === "5" ? 'Create Restaurant Owner' : 'Create Admin Request'
+                )}
               </Button>
             </div>
           </form>
