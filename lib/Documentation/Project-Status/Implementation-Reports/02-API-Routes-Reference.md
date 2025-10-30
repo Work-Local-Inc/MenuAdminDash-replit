@@ -1,9 +1,10 @@
 # API Routes Reference
 
-**Last Updated:** October 27, 2025  
-**✅ UPDATED:** Now follows Santiago's REST conventions (plural routes, nested resources)
+**Last Updated:** October 30, 2025  
+**✅ UPDATED:** Now follows Santiago's REST conventions (plural routes, nested resources)  
+**✅ NEW:** Added Menu Management routes (Phase 1 + Phase 2+)
 
-Complete mapping of all 80+ API routes to their corresponding Santiago Edge Functions, SQL Functions, or database tables.
+Complete mapping of all 98 API routes to their corresponding Santiago Edge Functions, SQL Functions, or database tables.
 
 ## Quick Reference Table
 
@@ -16,6 +17,31 @@ Complete mapping of all 80+ API routes to their corresponding Santiago Edge Func
 | `/api/franchises` | POST | `create-franchise-parent` | Edge Function | ✅ |
 | `/api/franchises/convert` | POST | `convert-restaurant-to-franchise` | Edge Function | ✅ |
 | `/api/franchises/[id]/features` | PATCH | `bulk-update-franchise-feature` | Edge Function | ✅ |
+| **Menu Management - Courses (Categories)** |
+| `/api/menu/courses` | GET | Direct DB (`menu_courses`) | Table Read | ✅ |
+| `/api/menu/courses` | POST | Direct DB (`menu_courses`) | Table Write | ✅ |
+| `/api/menu/courses/[id]` | PATCH | Direct DB (`menu_courses`) | Table Write | ✅ |
+| `/api/menu/courses/[id]` | DELETE | Direct DB (`menu_courses`) | Table Write | ✅ |
+| `/api/menu/courses/reorder` | POST | Direct DB (`menu_courses`) | Table Write | ✅ |
+| **Menu Management - Dishes** |
+| `/api/menu/dishes` | GET | Direct DB (`dishes`) | Table Read | ✅ |
+| `/api/menu/dishes` | POST | Direct DB (`dishes`) | Table Write | ✅ |
+| `/api/menu/dishes/[id]` | PATCH | Direct DB (`dishes`) | Table Write | ✅ |
+| `/api/menu/dishes/[id]` | DELETE | Direct DB (`dishes`) | Table Write | ✅ |
+| **Menu Management - Modifier Groups** |
+| `/api/menu/dishes/[id]/modifier-groups` | GET | Direct DB (`dish_modifier_groups`) | Table Read | ✅ |
+| `/api/menu/dishes/[id]/modifier-groups` | POST | Direct DB (`dish_modifier_groups`) | Table Write | ✅ |
+| `/api/menu/dishes/[id]/modifier-groups/[groupId]` | PATCH | Direct DB (`dish_modifier_groups`) | Table Write | ✅ |
+| `/api/menu/dishes/[id]/modifier-groups/[groupId]` | DELETE | Direct DB (`dish_modifier_groups`) | Table Write | ✅ |
+| `/api/menu/dishes/[id]/modifier-groups/reorder` | POST | Direct DB (`dish_modifier_groups`) | Table Write | ✅ |
+| **Menu Management - Modifiers** |
+| `/api/menu/modifier-groups/[groupId]/modifiers` | GET | Direct DB (`dish_modifier_items`) | Table Read | ✅ |
+| `/api/menu/modifier-groups/[groupId]/modifiers` | POST | Direct DB (`dish_modifier_items`) | Table Write | ✅ |
+| `/api/menu/modifier-groups/[groupId]/modifiers/[modifierId]` | PATCH | Direct DB (`dish_modifier_items`) | Table Write | ✅ |
+| `/api/menu/modifier-groups/[groupId]/modifiers/[modifierId]` | DELETE | Direct DB (`dish_modifier_items`) | Table Write | ✅ |
+| `/api/menu/modifier-groups/[groupId]/modifiers/reorder` | POST | Direct DB (`dish_modifier_items`) | Table Write | ✅ |
+| **Menu Management - Inventory** |
+| `/api/menu/dishes/[id]/inventory` | PATCH | Direct DB (`dishes.is_available`) | Table Write | ✅ |
 | **Restaurant Status** |
 | `/api/restaurants/[id]/status` | PATCH | `update-restaurant-status` | Edge Function | ✅ |
 | `/api/restaurants/[id]/status-history` | GET | `get_restaurant_status_history` | SQL Function | ✅ |
@@ -193,6 +219,741 @@ const { data } = await supabase.functions.invoke('bulk-update-franchise-feature'
 **Authentication:** Required
 
 **✅ Route Updated:** Changed from `/api/franchise/bulk-feature` to `/api/franchises/[id]/features` (nested resource pattern)
+
+---
+
+### Menu Management Routes
+
+**✅ NEW:** Complete menu management system (Phase 1 + Phase 2+)
+
+**Phase 1 Scope:** Core CRUD for menu categories (courses) and dishes  
+**Phase 2+ Scope:** Modifier groups, modifiers, inventory tracking, bulk operations
+
+**Database Tables:**
+- `menu_courses` - Menu categories
+- `dishes` - Menu items
+- `dish_modifier_groups` - Modifier groups (sizes, toppings, etc.)
+- `dish_modifier_items` - Individual modifiers within groups
+- `dishes.is_available` - Inventory tracking field
+- `dishes.pricing_rules` - JSON field for advanced pricing (not yet implemented in UI)
+
+#### GET /api/menu/courses
+**Purpose:** Get all menu categories for a restaurant
+
+**Backend Integration:**
+```typescript
+const { data } = await supabase
+  .schema('menuca_v3')
+  .from('menu_courses')
+  .select('*')
+  .eq('restaurant_id', restaurantId)
+  .order('display_order');
+```
+
+**Direct DB:** Read from `menu_courses` table
+
+**Query Parameters:**
+- `restaurant_id` (required)
+
+**Returns:**
+```typescript
+{
+  id: number;
+  restaurant_id: number;
+  name: string;
+  description: string | null;
+  display_order: number;
+  is_active: boolean;
+}[]
+```
+
+**Authentication:** Required
+
+---
+
+#### POST /api/menu/courses
+**Purpose:** Create new menu category
+
+**Backend Integration:**
+```typescript
+const { data } = await supabase
+  .schema('menuca_v3')
+  .from('menu_courses')
+  .insert({
+    restaurant_id: number,
+    name: string,
+    description?: string,
+    display_order: number,
+    is_active: boolean
+  })
+  .select()
+  .single();
+```
+
+**Direct DB:** Insert to `menu_courses` table
+
+**Request Body:**
+```typescript
+{
+  restaurant_id: number;
+  name: string;
+  description?: string;
+  is_active?: boolean;
+}
+```
+
+**Features:**
+- Auto-calculates display_order (max + 1)
+- Validates restaurant ownership
+
+**Authentication:** Required
+
+---
+
+#### PATCH /api/menu/courses/[id]
+**Purpose:** Update menu category
+
+**Backend Integration:**
+```typescript
+const { data } = await supabase
+  .schema('menuca_v3')
+  .from('menu_courses')
+  .update({
+    name?: string,
+    description?: string,
+    is_active?: boolean
+  })
+  .eq('id', courseId)
+  .eq('restaurant_id', restaurantId)
+  .select()
+  .single();
+```
+
+**Direct DB:** Update `menu_courses` table
+
+**Request Body:**
+```typescript
+{
+  restaurant_id: number; // For validation
+  name?: string;
+  description?: string;
+  is_active?: boolean;
+}
+```
+
+**Security:** Restaurant ownership validation via compound WHERE clause
+
+**Authentication:** Required
+
+---
+
+#### DELETE /api/menu/courses/[id]
+**Purpose:** Delete menu category (hard delete)
+
+**Backend Integration:**
+```typescript
+const { error } = await supabase
+  .schema('menuca_v3')
+  .from('menu_courses')
+  .delete()
+  .eq('id', courseId)
+  .eq('restaurant_id', restaurantId);
+```
+
+**Direct DB:** Delete from `menu_courses` table
+
+**Request Body:**
+```typescript
+{
+  restaurant_id: number; // For validation
+}
+```
+
+**Security:** Restaurant ownership validation
+
+**Authentication:** Required
+
+---
+
+#### POST /api/menu/courses/reorder
+**Purpose:** Bulk reorder menu categories (drag-and-drop)
+
+**Backend Integration:**
+```typescript
+// Updates multiple courses in single transaction
+const updates = courseIds.map((id, index) => ({
+  id,
+  display_order: index
+}));
+
+const { error } = await supabase
+  .schema('menuca_v3')
+  .from('menu_courses')
+  .upsert(updates);
+```
+
+**Direct DB:** Bulk update `menu_courses.display_order`
+
+**Request Body:**
+```typescript
+{
+  restaurant_id: number; // For validation
+  course_ids: number[]; // Ordered array
+}
+```
+
+**Features:**
+- Atomic bulk update
+- Maintains drag-drop order
+
+**Authentication:** Required
+
+---
+
+#### GET /api/menu/dishes
+**Purpose:** Get all dishes for a restaurant with optional filtering
+
+**Backend Integration:**
+```typescript
+let query = supabase
+  .schema('menuca_v3')
+  .from('dishes')
+  .select('*')
+  .eq('restaurant_id', restaurantId);
+
+// Optional filters
+if (course_id) query = query.eq('course_id', course_id);
+if (is_active !== undefined) query = query.eq('is_active', is_active);
+
+const { data } = await query.order('name');
+```
+
+**Direct DB:** Read from `dishes` table
+
+**Query Parameters:**
+- `restaurant_id` (required)
+- `course_id` (optional) - Filter by category
+- `is_active` (optional) - Filter by active status
+
+**Returns:**
+```typescript
+{
+  id: number;
+  restaurant_id: number;
+  course_id: number | null;
+  name: string;
+  description: string | null;
+  price: number;
+  image_url: string | null;
+  is_active: boolean;
+  is_featured: boolean;
+  is_available: boolean; // Inventory tracking
+  pricing_rules: object | null; // JSON field
+}[]
+```
+
+**Authentication:** Required
+
+---
+
+#### POST /api/menu/dishes
+**Purpose:** Create new dish
+
+**Backend Integration:**
+```typescript
+const { data } = await supabase
+  .schema('menuca_v3')
+  .from('dishes')
+  .insert({
+    restaurant_id: number,
+    name: string,
+    description?: string,
+    price: number,
+    course_id?: number,
+    image_url?: string,
+    is_active: boolean,
+    is_featured: boolean,
+    is_available: boolean
+  })
+  .select()
+  .single();
+```
+
+**Direct DB:** Insert to `dishes` table
+
+**Request Body:**
+```typescript
+{
+  restaurant_id: number;
+  name: string;
+  description?: string;
+  price: number;
+  course_id?: number;
+  image_url?: string;
+  is_active?: boolean;
+  is_featured?: boolean;
+}
+```
+
+**Features:**
+- Validates course_id belongs to restaurant
+- Defaults: is_active=true, is_featured=false, is_available=true
+
+**Authentication:** Required
+
+---
+
+#### PATCH /api/menu/dishes/[id]
+**Purpose:** Update dish (supports partial updates)
+
+**Backend Integration:**
+```typescript
+const { data } = await supabase
+  .schema('menuca_v3')
+  .from('dishes')
+  .update({
+    name?: string,
+    description?: string,
+    price?: number,
+    course_id?: number,
+    image_url?: string,
+    is_active?: boolean,
+    is_featured?: boolean,
+    is_available?: boolean
+  })
+  .eq('id', dishId)
+  .eq('restaurant_id', restaurantId)
+  .select()
+  .single();
+```
+
+**Direct DB:** Update `dishes` table
+
+**Request Body:**
+```typescript
+{
+  restaurant_id: number; // For validation
+  name?: string;
+  description?: string;
+  price?: number;
+  course_id?: number;
+  image_url?: string;
+  is_active?: boolean;
+  is_featured?: boolean;
+  is_available?: boolean;
+}
+```
+
+**Security:** Restaurant ownership validation
+
+**Authentication:** Required
+
+---
+
+#### DELETE /api/menu/dishes/[id]
+**Purpose:** Delete dish (hard delete)
+
+**Backend Integration:**
+```typescript
+const { error } = await supabase
+  .schema('menuca_v3')
+  .from('dishes')
+  .delete()
+  .eq('id', dishId)
+  .eq('restaurant_id', restaurantId);
+```
+
+**Direct DB:** Delete from `dishes` table
+
+**Request Body:**
+```typescript
+{
+  restaurant_id: number; // For validation
+}
+```
+
+**Security:** Restaurant ownership validation
+
+**Authentication:** Required
+
+---
+
+#### GET /api/menu/dishes/[id]/modifier-groups
+**Purpose:** Get all modifier groups for a dish
+
+**Backend Integration:**
+```typescript
+const { data } = await supabase
+  .schema('menuca_v3')
+  .from('dish_modifier_groups')
+  .select('*')
+  .eq('dish_id', dishId)
+  .order('display_order');
+```
+
+**Direct DB:** Read from `dish_modifier_groups` table
+
+**Returns:**
+```typescript
+{
+  id: number;
+  dish_id: number;
+  name: string;
+  min_selections: number;
+  max_selections: number;
+  display_order: number;
+  is_required: boolean;
+}[]
+```
+
+**Authentication:** Required
+
+**Security:** Validates dish belongs to restaurant via ownership chain
+
+---
+
+#### POST /api/menu/dishes/[id]/modifier-groups
+**Purpose:** Create modifier group for a dish
+
+**Backend Integration:**
+```typescript
+const { data } = await supabase
+  .schema('menuca_v3')
+  .from('dish_modifier_groups')
+  .insert({
+    dish_id: number,
+    name: string,
+    min_selections: number,
+    max_selections: number,
+    display_order: number,
+    is_required: boolean
+  })
+  .select()
+  .single();
+```
+
+**Direct DB:** Insert to `dish_modifier_groups` table
+
+**Request Body:**
+```typescript
+{
+  name: string;
+  min_selections?: number; // Default: 0
+  max_selections?: number; // Default: 1
+  is_required?: boolean; // Default: false
+}
+```
+
+**Features:**
+- Auto-calculates display_order
+- Validates min <= max selections
+- Ownership chain validation (dish→restaurant)
+
+**Special Workflow - Quick Create Size:**
+```typescript
+// "Quick Create Size" button uses this endpoint to create:
+{
+  name: "Size",
+  min_selections: 1,
+  max_selections: 1,
+  is_required: true,
+  // Then auto-creates modifiers: Small, Medium, Large
+}
+```
+
+**Authentication:** Required
+
+---
+
+#### PATCH /api/menu/dishes/[id]/modifier-groups/[groupId]
+**Purpose:** Update modifier group
+
+**Backend Integration:**
+```typescript
+const { data } = await supabase
+  .schema('menuca_v3')
+  .from('dish_modifier_groups')
+  .update({
+    name?: string,
+    min_selections?: number,
+    max_selections?: number,
+    is_required?: boolean
+  })
+  .eq('id', groupId)
+  .eq('dish_id', dishId)
+  .select()
+  .single();
+```
+
+**Direct DB:** Update `dish_modifier_groups` table
+
+**Request Body:**
+```typescript
+{
+  name?: string;
+  min_selections?: number;
+  max_selections?: number;
+  is_required?: boolean;
+}
+```
+
+**Validation:**
+- Server-side: min <= max
+- Ownership chain: modifier-group→dish→restaurant
+
+**Authentication:** Required
+
+---
+
+#### DELETE /api/menu/dishes/[id]/modifier-groups/[groupId]
+**Purpose:** Delete modifier group and all its modifiers (cascade)
+
+**Backend Integration:**
+```typescript
+const { error } = await supabase
+  .schema('menuca_v3')
+  .from('dish_modifier_groups')
+  .delete()
+  .eq('id', groupId)
+  .eq('dish_id', dishId);
+```
+
+**Direct DB:** Delete from `dish_modifier_groups` table (cascades to modifiers)
+
+**Features:**
+- Cascading delete removes all child modifiers
+- Ownership validation
+
+**Authentication:** Required
+
+---
+
+#### POST /api/menu/dishes/[id]/modifier-groups/reorder
+**Purpose:** Bulk reorder modifier groups (drag-and-drop)
+
+**Backend Integration:**
+```typescript
+const updates = groupIds.map((id, index) => ({
+  id,
+  display_order: index
+}));
+
+const { error } = await supabase
+  .schema('menuca_v3')
+  .from('dish_modifier_groups')
+  .upsert(updates);
+```
+
+**Direct DB:** Bulk update `dish_modifier_groups.display_order`
+
+**Request Body:**
+```typescript
+{
+  group_ids: number[]; // Ordered array
+}
+```
+
+**Features:**
+- Atomic bulk update
+- Maintains drag-drop order
+
+**Authentication:** Required
+
+---
+
+#### GET /api/menu/modifier-groups/[groupId]/modifiers
+**Purpose:** Get all modifiers within a modifier group
+
+**Backend Integration:**
+```typescript
+const { data } = await supabase
+  .schema('menuca_v3')
+  .from('dish_modifier_items')
+  .select('*')
+  .eq('modifier_group_id', groupId)
+  .order('display_order');
+```
+
+**Direct DB:** Read from `dish_modifier_items` table
+
+**Returns:**
+```typescript
+{
+  id: number;
+  modifier_group_id: number;
+  name: string;
+  price_adjustment: number;
+  display_order: number;
+  is_default: boolean;
+}[]
+```
+
+**Authentication:** Required
+
+**Security:** Validates group→dish→restaurant ownership chain
+
+---
+
+#### POST /api/menu/modifier-groups/[groupId]/modifiers
+**Purpose:** Create modifier within a group
+
+**Backend Integration:**
+```typescript
+const { data } = await supabase
+  .schema('menuca_v3')
+  .from('dish_modifier_items')
+  .insert({
+    modifier_group_id: number,
+    name: string,
+    price_adjustment: number,
+    display_order: number,
+    is_default: boolean
+  })
+  .select()
+  .single();
+```
+
+**Direct DB:** Insert to `dish_modifier_items` table
+
+**Request Body:**
+```typescript
+{
+  name: string;
+  price_adjustment?: number; // Default: 0 (in cents)
+  is_default?: boolean; // Default: false
+}
+```
+
+**Features:**
+- Auto-calculates display_order
+- Price adjustment in cents (e.g., 200 = $2.00)
+- Ownership chain validation
+
+**Authentication:** Required
+
+---
+
+#### PATCH /api/menu/modifier-groups/[groupId]/modifiers/[modifierId]
+**Purpose:** Update modifier
+
+**Backend Integration:**
+```typescript
+const { data } = await supabase
+  .schema('menuca_v3')
+  .from('dish_modifier_items')
+  .update({
+    name?: string,
+    price_adjustment?: number,
+    is_default?: boolean
+  })
+  .eq('id', modifierId)
+  .eq('modifier_group_id', groupId)
+  .select()
+  .single();
+```
+
+**Direct DB:** Update `dish_modifier_items` table
+
+**Request Body:**
+```typescript
+{
+  name?: string;
+  price_adjustment?: number;
+  is_default?: boolean;
+}
+```
+
+**Security:** Ownership chain validation (modifier→group→dish→restaurant)
+
+**Authentication:** Required
+
+---
+
+#### DELETE /api/menu/modifier-groups/[groupId]/modifiers/[modifierId]
+**Purpose:** Delete modifier
+
+**Backend Integration:**
+```typescript
+const { error } = await supabase
+  .schema('menuca_v3')
+  .from('dish_modifier_items')
+  .delete()
+  .eq('id', modifierId)
+  .eq('modifier_group_id', groupId);
+```
+
+**Direct DB:** Delete from `dish_modifier_items` table
+
+**Security:** Ownership validation
+
+**Authentication:** Required
+
+---
+
+#### POST /api/menu/modifier-groups/[groupId]/modifiers/reorder
+**Purpose:** Bulk reorder modifiers within a group (drag-and-drop)
+
+**Backend Integration:**
+```typescript
+const updates = modifierIds.map((id, index) => ({
+  id,
+  display_order: index
+}));
+
+const { error } = await supabase
+  .schema('menuca_v3')
+  .from('dish_modifier_items')
+  .upsert(updates);
+```
+
+**Direct DB:** Bulk update `dish_modifier_items.display_order`
+
+**Request Body:**
+```typescript
+{
+  modifier_ids: number[]; // Ordered array
+}
+```
+
+**Features:**
+- Atomic bulk update
+- Maintains drag-drop order
+
+**Authentication:** Required
+
+---
+
+#### PATCH /api/menu/dishes/[id]/inventory
+**Purpose:** Toggle dish availability (inventory tracking)
+
+**Backend Integration:**
+```typescript
+const { data } = await supabase
+  .schema('menuca_v3')
+  .from('dishes')
+  .update({
+    is_available: boolean
+  })
+  .eq('id', dishId)
+  .select()
+  .single();
+```
+
+**Direct DB:** Update `dishes.is_available` field
+
+**Request Body:**
+```typescript
+{
+  is_available: boolean; // true = in stock, false = sold out
+}
+```
+
+**Features:**
+- UI shows "Sold Out" badge when is_available=false
+- Supports bulk operations via multiple PATCH calls
+- Real-time inventory status across all views
+
+**Authentication:** Required
 
 ---
 
