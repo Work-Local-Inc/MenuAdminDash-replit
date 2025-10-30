@@ -148,6 +148,7 @@ export default function MenuDishesPage() {
     if (editingDish) {
       await updateDish.mutateAsync({
         id: editingDish.id,
+        restaurant_id: parseInt(selectedRestaurantId),
         data: dishData,
       })
     } else {
@@ -163,22 +164,31 @@ export default function MenuDishesPage() {
   }
 
   const handleDelete = async () => {
-    if (deletingDishId) {
-      await deleteDish.mutateAsync(deletingDishId)
+    if (deletingDishId && selectedRestaurantId) {
+      await deleteDish.mutateAsync({
+        id: deletingDishId,
+        restaurant_id: parseInt(selectedRestaurantId),
+      })
       setDeletingDishId(null)
     }
   }
 
   const handleToggleActive = async (dish: MenuDish) => {
+    if (!selectedRestaurantId) return
+    
     await updateDish.mutateAsync({
       id: dish.id,
+      restaurant_id: parseInt(selectedRestaurantId),
       data: { is_active: !dish.is_active },
     })
   }
 
   const handleToggleFeatured = async (dish: MenuDish) => {
+    if (!selectedRestaurantId) return
+    
     await updateDish.mutateAsync({
       id: dish.id,
+      restaurant_id: parseInt(selectedRestaurantId),
       data: { is_featured: !dish.is_featured },
     })
   }

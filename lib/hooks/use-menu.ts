@@ -85,7 +85,7 @@ export function useUpdateCourse() {
   const { toast } = useToast()
 
   return useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: UpdateCourseData }) => {
+    mutationFn: async ({ id, data, restaurant_id }: { id: number; data: UpdateCourseData; restaurant_id: number }) => {
       const res = await fetch(`/api/menu/courses/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -97,8 +97,10 @@ export function useUpdateCourse() {
       }
       return res.json()
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/menu/courses'] })
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ 
+        queryKey: ['/api/menu/courses', { restaurant_id: variables.restaurant_id }] 
+      })
       toast({
         title: "Success",
         description: "Menu category updated successfully",
@@ -119,7 +121,7 @@ export function useDeleteCourse() {
   const { toast } = useToast()
 
   return useMutation({
-    mutationFn: async (id: number) => {
+    mutationFn: async ({ id, restaurant_id }: { id: number; restaurant_id: number }) => {
       const res = await fetch(`/api/menu/courses/${id}`, {
         method: 'DELETE',
       })
@@ -129,8 +131,10 @@ export function useDeleteCourse() {
       }
       return res.json()
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/menu/courses'] })
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ 
+        queryKey: ['/api/menu/courses', { restaurant_id: variables.restaurant_id }] 
+      })
       toast({
         title: "Success",
         description: "Menu category deleted successfully",
@@ -290,9 +294,15 @@ export function useCreateDish() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ 
-        queryKey: ['/api/menu/dishes', { restaurant_id: variables.restaurant_id }] 
+        predicate: (query) => {
+          const [key, filters] = query.queryKey
+          return key === '/api/menu/dishes' && 
+                 typeof filters === 'object' && 
+                 filters !== null &&
+                 'restaurant_id' in filters && 
+                 filters.restaurant_id === variables.restaurant_id
+        }
       })
-      queryClient.invalidateQueries({ queryKey: ['/api/menu/dishes'] })
       toast({
         title: "Success",
         description: "Dish created successfully",
@@ -313,7 +323,7 @@ export function useUpdateDish() {
   const { toast } = useToast()
 
   return useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: UpdateDishData }) => {
+    mutationFn: async ({ id, data, restaurant_id }: { id: number; data: UpdateDishData; restaurant_id: number }) => {
       const res = await fetch(`/api/menu/dishes/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -325,8 +335,17 @@ export function useUpdateDish() {
       }
       return res.json()
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/menu/dishes'] })
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          const [key, filters] = query.queryKey
+          return key === '/api/menu/dishes' && 
+                 typeof filters === 'object' && 
+                 filters !== null &&
+                 'restaurant_id' in filters && 
+                 filters.restaurant_id === variables.restaurant_id
+        }
+      })
       toast({
         title: "Success",
         description: "Dish updated successfully",
@@ -347,7 +366,7 @@ export function useDeleteDish() {
   const { toast } = useToast()
 
   return useMutation({
-    mutationFn: async (id: number) => {
+    mutationFn: async ({ id, restaurant_id }: { id: number; restaurant_id: number }) => {
       const res = await fetch(`/api/menu/dishes/${id}`, {
         method: 'DELETE',
       })
@@ -357,8 +376,17 @@ export function useDeleteDish() {
       }
       return res.json()
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/menu/dishes'] })
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          const [key, filters] = query.queryKey
+          return key === '/api/menu/dishes' && 
+                 typeof filters === 'object' && 
+                 filters !== null &&
+                 'restaurant_id' in filters && 
+                 filters.restaurant_id === variables.restaurant_id
+        }
+      })
       toast({
         title: "Success",
         description: "Dish deleted successfully",

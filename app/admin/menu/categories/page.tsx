@@ -115,6 +115,7 @@ export default function MenuCategoriesPage() {
     if (editingCourse) {
       await updateCourse.mutateAsync({
         id: editingCourse.id,
+        restaurant_id: parseInt(selectedRestaurantId),
         data: {
           name: formData.name,
           description: formData.description || null,
@@ -136,15 +137,21 @@ export default function MenuCategoriesPage() {
   }
 
   const handleDelete = async () => {
-    if (deletingCourseId) {
-      await deleteCourse.mutateAsync(deletingCourseId)
+    if (deletingCourseId && selectedRestaurantId) {
+      await deleteCourse.mutateAsync({
+        id: deletingCourseId,
+        restaurant_id: parseInt(selectedRestaurantId),
+      })
       setDeletingCourseId(null)
     }
   }
 
   const handleToggleActive = async (course: MenuCourse) => {
+    if (!selectedRestaurantId) return
+    
     await updateCourse.mutateAsync({
       id: course.id,
+      restaurant_id: parseInt(selectedRestaurantId),
       data: { is_active: !course.is_active },
     })
   }
