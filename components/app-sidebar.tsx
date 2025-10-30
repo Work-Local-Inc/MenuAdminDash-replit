@@ -16,6 +16,7 @@ import {
   Shield,
   ShoppingCart,
   Tag,
+  UtensilsCrossed,
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -55,6 +56,14 @@ const menuItems = [
       { title: "Onboarding Wizard", url: "/admin/onboarding/new" },
       { title: "Onboarding Status", url: "/admin/onboarding" },
       { title: "Domain Verification", url: "/admin/domains" },
+    ],
+  },
+  {
+    title: "Menu Management",
+    icon: UtensilsCrossed,
+    items: [
+      { title: "Menu Categories", url: "/admin/menu/categories" },
+      { title: "Dishes", url: "/admin/menu/dishes" },
     ],
   },
   {
