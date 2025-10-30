@@ -27,6 +27,20 @@ await supabase.schema('menuca_v3').from('admin_users')...
 ```
 
 ## Recent Changes
+**October 30, 2025:**
+- **✅ Menu Management Phase 1 (Core CRUD) Implemented & Production-Ready**: Complete menu categories and dishes management system
+  - **Backend API Routes**: 5 route files with full CRUD operations
+    - Courses: GET/POST `/api/menu/courses`, PATCH/DELETE `/api/menu/courses/[id]`, POST `/api/menu/courses/reorder`
+    - Dishes: GET/POST `/api/menu/dishes`, PATCH/DELETE `/api/menu/dishes/[id]`
+  - **React Query Hooks**: `lib/hooks/use-menu.ts` with 11 comprehensive hooks (useMenuCourses, useCreateCourse, useUpdateCourse, useDeleteCourse, useReorderCourses, useMenuDishes, useCreateDish, useUpdateDish, useDeleteDish, useToggleDishActive, useToggleDishFeatured)
+  - **Admin UI Pages**:
+    - `/admin/menu/categories`: Restaurant selector, drag-drop reordering (@hello-pangea/dnd), create/edit dialogs, toggle active status
+    - `/admin/menu/dishes`: Multiple view modes (Grid/List/By Category), search & filters (course, active status), create/edit forms, toggle active/featured
+  - **Critical Bug Fix**: Implemented predicate-based cache invalidation for all dish mutations to handle filtered queries (restaurant_id + course_id + is_active combinations)
+  - **Architect Approval**: Production-ready with comprehensive cache invalidation, no security concerns
+  - **Phase 1 Scope**: Core CRUD only - modifiers, sizes, inventory, and advanced features deferred to Phase 2+
+  - **Navigation**: Added Menu Management section to sidebar with Categories and Dishes links
+
 **October 29, 2025:**
 - **🎉 Restaurant Management Hooks Layer Complete**: Created 6 comprehensive React Query hook files (1,600+ lines)
   - **NEW FILES**: use-restaurants.ts (1,200+ lines), use-franchises.ts, use-onboarding.ts, use-cuisines.ts, use-tags.ts, use-domains.ts
@@ -93,6 +107,7 @@ Preferred communication style: Simple, everyday language.
 
 ### Core Features & Implementations
 - **Restaurant Management**: Includes status management (`update-restaurant-status`), online ordering toggle (`toggle-online-ordering`), contact management, and delivery area configuration (custom polygons via Mapbox).
+- **Menu Management**: Full CRUD for menu categories (courses) and dishes with restaurant-scoped operations, drag-drop reordering, search/filtering, and status toggles (active/featured).
 - **Franchise Management**: Comprehensive hierarchy system using specific SQL and Edge Functions for parent creation, child linking, and bulk feature updates. Includes analytics.
 - **Categorization System**: Cuisine and tag-based discovery using dedicated SQL and Edge Functions, supporting 36 cuisine types and 12 tags.
 - **Onboarding Status Tracking**: An 8-step process with progress tracking, analytics, and interactive checklists, utilizing specific SQL and Edge Functions.
@@ -120,4 +135,5 @@ Preferred communication style: Simple, everyday language.
 
 ### Integrations
 - **Mapbox GL JS**: For delivery area polygon drawing.
+- **@hello-pangea/dnd**: For drag-and-drop reordering (menu categories, and future features).
 - **jsPDF/Puppeteer**: Planned for PDF generation.
