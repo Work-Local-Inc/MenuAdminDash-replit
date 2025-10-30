@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -67,7 +67,8 @@ import {
   useToggleDishAvailability,
   MenuDish,
 } from "@/lib/hooks/use-menu"
-import { PackageX } from "lucide-react"
+import { PackageX, CheckSquare, Square } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
 
 export default function MenuDishesPage() {
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string>('')
@@ -77,6 +78,8 @@ export default function MenuDishesPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [editingDish, setEditingDish] = useState<MenuDish | null>(null)
   const [deletingDishId, setDeletingDishId] = useState<number | null>(null)
+  const [selectedDishIds, setSelectedDishIds] = useState<Set<number>>(new Set())
+  const [bulkActionInProgress, setBulkActionInProgress] = useState(false)
 
   const { data: restaurants = [], isLoading: loadingRestaurants } = useRestaurants()
   const { data: courses = [] } = useMenuCourses(
@@ -90,6 +93,11 @@ export default function MenuDishesPage() {
   const updateDish = useUpdateDish()
   const deleteDish = useDeleteDish()
   const toggleAvailability = useToggleDishAvailability()
+
+  // Clear selections when restaurant or filters change to prevent stale selections
+  useEffect(() => {
+    setSelectedDishIds(new Set())
+  }, [selectedRestaurantId, searchQuery, selectedCourseFilter, activeFilter])
 
   const [formData, setFormData] = useState({
     name: '',
@@ -204,6 +212,96 @@ export default function MenuDishesPage() {
     })
   }
 
+  // Bulk selection handlers
+  const toggleSelectDish = (dishId: number) => {
+    const newSelection = new Set(selectedDishIds)
+    if (newSelection.has(dishId)) {
+      newSelection.delete(dishId)
+    } else {
+      newSelection.add(dishId)
+    }
+    setSelectedDishIds(newSelection)
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedDishIds.size === filteredDishes.length) {
+      setSelectedDishIds(new Set())
+    } else {
+      setSelectedDishIds(new Set(filteredDishes.map(d => d.id)))
+    }
+  }
+
+  const clearSelection = () => setSelectedDishIds(new Set())
+
+  // Bulk action handlers
+  const handleBulkDelete = async () => {
+    if (!selectedRestaurantId || selectedDishIds.size === 0) return
+    setBulkActionInProgress(true)
+    try {
+      await Promise.all(
+        Array.from(selectedDishIds).map(id =>
+          deleteDish.mutateAsync({ id, restaurant_id: parseInt(selectedRestaurantId) })
+        )
+      )
+      clearSelection()
+    } finally {
+      setBulkActionInProgress(false)
+    }
+  }
+
+  const handleBulkActivate = async (activate: boolean) => {
+    if (!selectedRestaurantId || selectedDishIds.size === 0) return
+    setBulkActionInProgress(true)
+    try {
+      await Promise.all(
+        Array.from(selectedDishIds).map(id =>
+          updateDish.mutateAsync({
+            id,
+            restaurant_id: parseInt(selectedRestaurantId),
+            data: { is_active: activate }
+          })
+        )
+      )
+      clearSelection()
+    } finally {
+      setBulkActionInProgress(false)
+    }
+  }
+
+  const handleBulkFeature = async (feature: boolean) => {
+    if (!selectedRestaurantId || selectedDishIds.size === 0) return
+    setBulkActionInProgress(true)
+    try {
+      await Promise.all(
+        Array.from(selectedDishIds).map(id =>
+          updateDish.mutateAsync({
+            id,
+            restaurant_id: parseInt(selectedRestaurantId),
+            data: { is_featured: feature }
+          })
+        )
+      )
+      clearSelection()
+    } finally {
+      setBulkActionInProgress(false)
+    }
+  }
+
+  const handleBulkAvailability = async (available: boolean) => {
+    if (selectedDishIds.size === 0) return
+    setBulkActionInProgress(true)
+    try {
+      await Promise.all(
+        Array.from(selectedDishIds).map(id =>
+          toggleAvailability.mutateAsync({ dishId: id, isAvailable: available })
+        )
+      )
+      clearSelection()
+    } finally {
+      setBulkActionInProgress(false)
+    }
+  }
+
   // Filter dishes
   const filteredDishes = useMemo(() => {
     return dishes.filter((dish) => {
@@ -304,13 +402,90 @@ export default function MenuDishesPage() {
                 <CardTitle>Dishes</CardTitle>
                 <CardDescription>
                   {filteredDishes.length} {filteredDishes.length === 1 ? 'dish' : 'dishes'}
+                  {selectedDishIds.size > 0 && ` • ${selectedDishIds.size} selected`}
                 </CardDescription>
               </div>
-              <Button onClick={handleCreate} data-testid="button-create-dish">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Dish
-              </Button>
+              <div className="flex gap-2">
+                {selectedDishIds.size > 0 && (
+                  <Button variant="outline" size="sm" onClick={clearSelection} data-testid="button-clear-selection">
+                    Clear Selection
+                  </Button>
+                )}
+                <Button onClick={handleCreate} data-testid="button-create-dish">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Dish
+                </Button>
+              </div>
             </div>
+
+            {/* Bulk Actions Toolbar */}
+            {selectedDishIds.size > 0 && (
+              <div className="flex items-center gap-2 p-3 mb-4 border rounded-lg bg-muted/50">
+                <span className="text-sm font-medium">{selectedDishIds.size} selected</span>
+                <div className="h-4 w-px bg-border mx-2" />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleBulkActivate(true)}
+                  disabled={bulkActionInProgress}
+                  data-testid="button-bulk-activate"
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  Activate
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleBulkActivate(false)}
+                  disabled={bulkActionInProgress}
+                  data-testid="button-bulk-deactivate"
+                >
+                  <EyeOff className="h-4 w-4 mr-2" />
+                  Deactivate
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleBulkFeature(true)}
+                  disabled={bulkActionInProgress}
+                  data-testid="button-bulk-feature"
+                >
+                  <Star className="h-4 w-4 mr-2" />
+                  Feature
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleBulkAvailability(true)}
+                  disabled={bulkActionInProgress}
+                  data-testid="button-bulk-in-stock"
+                >
+                  <PackageX className="h-4 w-4 mr-2" />
+                  Mark In Stock
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleBulkAvailability(false)}
+                  disabled={bulkActionInProgress}
+                  data-testid="button-bulk-sold-out"
+                >
+                  <PackageX className="h-4 w-4 mr-2" />
+                  Mark Sold Out
+                </Button>
+                <div className="flex-1" />
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleBulkDelete}
+                  disabled={bulkActionInProgress}
+                  data-testid="button-bulk-delete"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete {selectedDishIds.size}
+                </Button>
+              </div>
+            )}
 
             {/* Filters */}
             <div className="flex flex-col sm:flex-row gap-3">
@@ -391,11 +566,33 @@ export default function MenuDishesPage() {
                   <TabsTrigger value="by-category">By Category</TabsTrigger>
                 </TabsList>
 
+                {/* Select All Button */}
+                {filteredDishes.length > 0 && (
+                  <div className="mb-4 flex items-center gap-2">
+                    <Checkbox
+                      checked={selectedDishIds.size === filteredDishes.length && filteredDishes.length > 0}
+                      onCheckedChange={toggleSelectAll}
+                      data-testid="checkbox-select-all"
+                    />
+                    <span className="text-sm text-muted-foreground">
+                      Select all {filteredDishes.length} dishes
+                    </span>
+                  </div>
+                )}
+
                 {/* Grid View */}
                 <TabsContent value="grid" className="space-y-0">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {filteredDishes.map((dish) => (
-                      <Card key={dish.id} className="overflow-hidden" data-testid={`dish-card-${dish.id}`}>
+                      <Card key={dish.id} className="overflow-hidden relative" data-testid={`dish-card-${dish.id}`}>
+                        <div className="absolute top-3 left-3 z-10">
+                          <Checkbox
+                            checked={selectedDishIds.has(dish.id)}
+                            onCheckedChange={() => toggleSelectDish(dish.id)}
+                            className="bg-background border-2"
+                            data-testid={`checkbox-select-dish-${dish.id}`}
+                          />
+                        </div>
                         {dish.image_url && (
                           <div className="aspect-video bg-muted">
                             <img
