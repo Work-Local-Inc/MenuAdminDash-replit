@@ -64,8 +64,10 @@ import {
   useCreateDish,
   useUpdateDish,
   useDeleteDish,
+  useToggleDishAvailability,
   MenuDish,
 } from "@/lib/hooks/use-menu"
+import { PackageX } from "lucide-react"
 
 export default function MenuDishesPage() {
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string>('')
@@ -87,6 +89,7 @@ export default function MenuDishesPage() {
   const createDish = useCreateDish()
   const updateDish = useUpdateDish()
   const deleteDish = useDeleteDish()
+  const toggleAvailability = useToggleDishAvailability()
 
   const [formData, setFormData] = useState({
     name: '',
@@ -190,6 +193,14 @@ export default function MenuDishesPage() {
       id: dish.id,
       restaurant_id: parseInt(selectedRestaurantId),
       data: { is_featured: !dish.is_featured },
+    })
+  }
+
+  const handleToggleAvailability = async (dish: MenuDish) => {
+    const currentlyAvailable = (dish as any).is_available !== false
+    await toggleAvailability.mutateAsync({
+      dishId: dish.id,
+      isAvailable: !currentlyAvailable,
     })
   }
 
@@ -406,6 +417,11 @@ export default function MenuDishesPage() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleToggleAvailability(dish)}>
+                                  <PackageX className="h-4 w-4 mr-2" />
+                                  {(dish as any).is_available === false ? 'Mark In Stock' : 'Mark Sold Out'}
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
                                 <DropdownMenuItem onClick={() => handleToggleActive(dish)}>
                                   {dish.is_active ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
                                   {dish.is_active ? 'Deactivate' : 'Activate'}
@@ -441,6 +457,9 @@ export default function MenuDishesPage() {
                               {formatPrice(dish.price)}
                             </span>
                             <div className="flex gap-1">
+                              {(dish as any).is_available === false && (
+                                <Badge variant="destructive" className="text-xs">Sold Out</Badge>
+                              )}
                               {!dish.is_active && (
                                 <Badge variant="secondary" className="text-xs">Inactive</Badge>
                               )}
@@ -478,6 +497,7 @@ export default function MenuDishesPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <h4 className="font-medium truncate">{dish.name}</h4>
+                          {(dish as any).is_available === false && <Badge variant="destructive" className="text-xs">Sold Out</Badge>}
                           {!dish.is_active && <Badge variant="secondary" className="text-xs">Inactive</Badge>}
                           {dish.is_featured && <Badge variant="default" className="text-xs">Featured</Badge>}
                         </div>
@@ -500,6 +520,11 @@ export default function MenuDishesPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleToggleAvailability(dish)}>
+                            <PackageX className="h-4 w-4 mr-2" />
+                            {(dish as any).is_available === false ? 'Mark In Stock' : 'Mark Sold Out'}
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
                           <DropdownMenuItem onClick={() => handleToggleActive(dish)}>
                             {dish.is_active ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
                             {dish.is_active ? 'Deactivate' : 'Activate'}
@@ -541,6 +566,7 @@ export default function MenuDishesPage() {
                             <div className="flex-1">
                               <div className="flex items-center gap-2">
                                 <span className="font-medium">{dish.name}</span>
+                                {(dish as any).is_available === false && <Badge variant="destructive" className="text-xs">Sold Out</Badge>}
                                 {!dish.is_active && <Badge variant="secondary" className="text-xs">Inactive</Badge>}
                                 {dish.is_featured && <Badge variant="default" className="text-xs">Featured</Badge>}
                               </div>
@@ -589,6 +615,7 @@ export default function MenuDishesPage() {
                               <div className="flex-1">
                                 <div className="flex items-center gap-2">
                                   <span className="font-medium">{dish.name}</span>
+                                  {(dish as any).is_available === false && <Badge variant="destructive" className="text-xs">Sold Out</Badge>}
                                   {!dish.is_active && <Badge variant="secondary" className="text-xs">Inactive</Badge>}
                                   {dish.is_featured && <Badge variant="default" className="text-xs">Featured</Badge>}
                                 </div>
