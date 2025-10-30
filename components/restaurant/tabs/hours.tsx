@@ -133,6 +133,32 @@ export function RestaurantHours({ restaurantId }: RestaurantHoursProps) {
     },
   })
 
+  // Apply schedule template
+  const applyTemplate = useMutation({
+    mutationFn: async (templateName: string) => {
+      const res = await fetch(`/api/restaurants/${restaurantId}/schedules/apply-template`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ template_name: templateName }),
+      })
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || 'Failed to apply template')
+      }
+      return res.json()
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/restaurants', restaurantId, 'schedules'] })
+      toast({ 
+        title: "Template Applied", 
+        description: data.message || "Schedule template applied successfully" 
+      })
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" })
+    },
+  })
+
   const onSubmit = async (data: ScheduleFormValues) => {
     if (editingSchedule) {
       await updateSchedule.mutateAsync({ id: editingSchedule.id, data })
@@ -434,6 +460,50 @@ export function RestaurantHours({ restaurantId }: RestaurantHoursProps) {
         </div>
       </CardHeader>
       <CardContent>
+        {/* Quick Templates */}
+        <div className="mb-6 p-4 rounded-lg bg-muted/50">
+          <h3 className="text-sm font-semibold mb-3">Quick Templates</h3>
+          <p className="text-sm text-muted-foreground mb-3">Apply pre-built schedules to both delivery and takeout</p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => applyTemplate.mutate("24/7")}
+              disabled={applyTemplate.isPending}
+              data-testid="button-template-24-7"
+            >
+              24/7
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => applyTemplate.mutate("Mon-Fri 9-5")}
+              disabled={applyTemplate.isPending}
+              data-testid="button-template-mon-fri-9-5"
+            >
+              Mon-Fri 9-5
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => applyTemplate.mutate("Mon-Fri 11-9, Sat-Sun 11-10")}
+              disabled={applyTemplate.isPending}
+              data-testid="button-template-restaurant-hours"
+            >
+              Restaurant Hours
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => applyTemplate.mutate("Lunch & Dinner")}
+              disabled={applyTemplate.isPending}
+              data-testid="button-template-lunch-dinner"
+            >
+              Lunch & Dinner
+            </Button>
+          </div>
+        </div>
+
         {isLoading ? (
           <div className="space-y-4">
             {Array(3).fill(0).map((_, i) => (
