@@ -401,3 +401,115 @@ export function useDeleteDish() {
     },
   })
 }
+
+// ============================================
+// DISH INVENTORY
+// ============================================
+
+export interface DishInventory {
+  dish_id: number
+  is_available: boolean
+  unavailable_until: string | null
+  reason: string | null
+  notes: string | null
+  updated_by_admin_id?: number
+  updated_at?: string
+}
+
+export interface UpdateInventoryData {
+  is_available?: boolean
+  unavailable_until?: string | null
+  reason?: string | null
+  notes?: string | null
+}
+
+export function useDishInventory(dishId: number) {
+  return useQuery<DishInventory>({
+    queryKey: ['/api/menu/dishes', dishId, 'inventory'],
+    enabled: !!dishId,
+  })
+}
+
+export function useUpdateInventory() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async ({ dishId, data }: { dishId: number; data: UpdateInventoryData }) => {
+      const res = await fetch(`/api/menu/dishes/${dishId}/inventory`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
+      if (!res.ok) {
+        const errorData = await res.json()
+        throw new Error(errorData.error || 'Failed to update inventory')
+      }
+      return res.json()
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ['/api/menu/dishes', variables.dishId, 'inventory'],
+      })
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          const [key] = query.queryKey
+          return key === '/api/menu/dishes'
+        },
+      })
+      toast({
+        title: "Success",
+        description: "Inventory updated successfully",
+      })
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message,
+      })
+    },
+  })
+}
+
+export function useToggleDishAvailability() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async ({ dishId, isAvailable }: { dishId: number; isAvailable: boolean }) => {
+      const res = await fetch(`/api/menu/dishes/${dishId}/inventory`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_available: isAvailable }),
+      })
+      if (!res.ok) {
+        const errorData = await res.json()
+        throw new Error(errorData.error || 'Failed to toggle availability')
+      }
+      return res.json()
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ['/api/menu/dishes', variables.dishId, 'inventory'],
+      })
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          const [key] = query.queryKey
+          return key === '/api/menu/dishes'
+        },
+      })
+      toast({
+        title: "Success",
+        description: variables.isAvailable ? "Dish marked as available" : "Dish marked as sold out",
+      })
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message,
+      })
+    },
+  })
+}
