@@ -1518,8 +1518,9 @@ const { data, error } = await supabase.functions.invoke('create-admin-user', {
     first_name: 'Jane',
     last_name: 'Smith',
     phone: '+1234567890',
-    role_id: 2,
-    restaurant_ids: [349, 350, 55] // Optional: assign during creation
+    role_id: 2, // Optional: 1=Super Admin, 2=Manager, 5=Restaurant Manager (default)
+    restaurant_ids: [349, 350, 55], // Optional: assign during creation
+    mfa_enabled: false // Optional: Enable 2FA (default: false)
   }
 });
 

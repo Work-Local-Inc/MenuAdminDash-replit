@@ -154,7 +154,9 @@ export function CreateAdminForm() {
         first_name: values.firstName,
         last_name: values.lastName,
         phone: values.phone,
-        role_id: 2
+        role_id: 2, // 1=Super Admin, 2=Manager, 5=Restaurant Manager (default)
+        restaurant_ids: [349, 350], // Optional: assign restaurants on creation
+        mfa_enabled: false // Optional: enable 2FA (default: false)
       }
     });
 
@@ -369,6 +371,52 @@ if (error) {
 // Success!
 toast.success(`Admin created: ${data.email}`);
 ```
+
+---
+
+## 👥 Admin Roles & Permissions
+
+When creating an admin, you can specify their role using `role_id`:
+
+| Role ID | Role Name | Permissions |
+|---------|-----------|-------------|
+| **1** | Super Admin | Full system access, can create admins, manage all restaurants |
+| **2** | Manager | Limited admin access, assigned restaurants only |
+| **5** | Restaurant Manager | **Default** - Restaurant-level management only |
+
+**Example**:
+```typescript
+const { data } = await supabase.functions.invoke('create-admin-user', {
+  body: {
+    email: 'manager@menu.ca',
+    password: 'SecureP@ss123',
+    role_id: 2, // Manager role
+    restaurant_ids: [349, 350]
+  }
+});
+```
+
+**Default Behavior**: If `role_id` is not specified, the admin will be created with role **5 (Restaurant Manager)**.
+
+---
+
+## 🔐 Two-Factor Authentication (MFA)
+
+You can enable 2FA for enhanced security:
+
+```typescript
+const { data } = await supabase.functions.invoke('create-admin-user', {
+  body: {
+    email: 'admin@menu.ca',
+    password: 'SecureP@ss123',
+    mfa_enabled: true // Enable 2FA
+  }
+});
+```
+
+**Default**: `mfa_enabled: false`
+
+**Note**: When MFA is enabled, the admin will need to set up their 2FA method (authenticator app) on first login.
 
 ---
 
