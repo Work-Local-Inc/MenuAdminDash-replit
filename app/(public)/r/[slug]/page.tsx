@@ -67,10 +67,11 @@ export default async function RestaurantPage({ params }: RestaurantPageProps) {
     .from('courses')
     .select(`
       *,
-      dishes (*)
+      dishes!dishes_course_id_fkey (*)
     `)
     .eq('restaurant_id', restaurantId)
     .eq('is_active', true)
+    .eq('dishes.is_active', true)
     .order('display_order', { ascending: true });
   
   return <RestaurantMenu restaurant={restaurant} courses={courses || []} />;
