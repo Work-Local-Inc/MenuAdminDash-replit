@@ -22,7 +22,7 @@ export async function POST(
 
     for (let i = 0; i < group_ids.length; i++) {
       await client.query(
-        `UPDATE menuca_v3.dish_modifier_groups 
+        `UPDATE menuca_v3.modifier_groups 
          SET display_order = $1, updated_at = NOW()
          WHERE id = $2 AND dish_id = $3`,
         [i, group_ids[i], dishId]

@@ -19,7 +19,7 @@ export async function GET(
         max_selections,
         created_at,
         updated_at
-      FROM menuca_v3.dish_modifier_groups
+      FROM menuca_v3.modifier_groups
       WHERE dish_id = $1
       ORDER BY display_order ASC, created_at ASC`,
       [dishId]
@@ -53,13 +53,13 @@ export async function POST(
     }
 
     const maxDisplayOrder = await pool.query(
-      'SELECT COALESCE(MAX(display_order), -1) as max_order FROM menuca_v3.dish_modifier_groups WHERE dish_id = $1',
+      'SELECT COALESCE(MAX(display_order), -1) as max_order FROM menuca_v3.modifier_groups WHERE dish_id = $1',
       [dishId]
     );
     const nextOrder = maxDisplayOrder.rows[0].max_order + 1;
 
     const result = await pool.query(
-      `INSERT INTO menuca_v3.dish_modifier_groups (
+      `INSERT INTO menuca_v3.modifier_groups (
         dish_id,
         name,
         display_order,

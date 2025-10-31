@@ -65,7 +65,7 @@ export async function PATCH(
     values.push(dishId);
 
     const result = await pool.query(
-      `UPDATE menuca_v3.dish_modifier_groups 
+      `UPDATE menuca_v3.modifier_groups 
        SET ${updates.join(', ')}
        WHERE id = $${paramCount} AND dish_id = $${paramCount + 1}
        RETURNING *`,
@@ -98,7 +98,7 @@ export async function DELETE(
     const groupId = parseInt(params.groupId);
 
     const result = await pool.query(
-      'DELETE FROM menuca_v3.dish_modifier_groups WHERE id = $1 AND dish_id = $2 RETURNING id',
+      'DELETE FROM menuca_v3.modifier_groups WHERE id = $1 AND dish_id = $2 RETURNING id',
       [groupId, dishId]
     );
 

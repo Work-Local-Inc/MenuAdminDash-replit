@@ -10,7 +10,6 @@ export async function GET(
     const supabase = await createClient();
     const slug = params.slug;
     
-    // Extract restaurant ID from slug
     const restaurantId = extractIdFromSlug(slug);
     
     if (!restaurantId) {
@@ -20,69 +19,24 @@ export async function GET(
       );
     }
     
-    // Fetch menu with courses and dishes
-    // Note: is_active can be NULL for legacy data, so we include NULL as "active"
-    const { data: courses, error: coursesError } = await supabase
-      .schema('menuca_v3').from('courses')
-      .select(`
-        id,
-        name,
-        description,
-        display_order,
-        dishes (
-          id,
-          name,
-          description,
-          base_price,
-          image_url,
-          has_customization,
-          is_active,
-          prices,
-          size_options
-        )
-      `)
-      .eq('restaurant_id', restaurantId)
-      .or('is_active.is.null,is_active.eq.true')
-      .order('display_order', { ascending: true });
+    const language = request.nextUrl.searchParams.get('language') || 'en';
     
-    if (coursesError) {
-      throw coursesError;
+    const { data, error } = await supabase
+      .schema('menuca_v3')
+      .rpc('get_restaurant_menu', {
+        p_restaurant_id: restaurantId,
+        p_language_code: language
+      });
+    
+    if (error) {
+      throw error;
     }
     
-    // For each dish, fetch modifiers if has_customization is true
-    const coursesWithModifiers = await Promise.all(
-      (courses || []).map(async (course) => {
-        const dishesWithModifiers = await Promise.all(
-          (course.dishes || []).filter((dish: any) => dish.is_active === true || dish.is_active === null).map(async (dish: any) => {
-            if (dish.has_customization) {
-              const { data: modifiers } = await supabase
-                .schema('menuca_v3').from('dish_modifiers')
-                .select('id, name, price, is_required, display_order')
-                .eq('dish_id', dish.id)
-                .eq('is_active', true)
-                .order('display_order', { ascending: true });
-              
-              return {
-                ...dish,
-                modifiers: modifiers || [],
-              };
-            }
-            
-            return {
-              ...dish,
-              modifiers: [],
-            };
-          })
-        );
-        
-        return {
-          ...course,
-          dishes: dishesWithModifiers,
-        };
-      })
-    );
+    if (!data) {
+      return NextResponse.json({ restaurant_id: restaurantId, courses: [] });
+    }
     
-    return NextResponse.json(coursesWithModifiers);
+    return NextResponse.json(data);
   } catch (error: any) {
     console.error('Error fetching menu:', error);
     return NextResponse.json(
