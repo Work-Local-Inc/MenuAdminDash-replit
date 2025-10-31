@@ -14,10 +14,10 @@
 | 2 | Customer Delivery Addresses | ✅ COMPLETE | 1 | 0 | 4 | 2025-10-28 |
 | 3 | Customer Favorite Restaurants | ✅ COMPLETE | 2 | 0 | 2 | 2025-10-28 |
 | 4 | Admin Authentication & RBAC | ✅ COMPLETE | 5 | 0 | 4 | 2025-10-28 |
-| 5 | Admin User Management (JWT-Based) | ✅ COMPLETE | 3 | 0 | 3 | 2025-10-28 |
+| 5 | Admin User Management (JWT-Based) | ✅ COMPLETE | 1 | 2 | 3 | 2025-10-30 |
 | 6 | Legacy User Migration | ✅ COMPLETE | 0 | 3 | 3 | 2025-10-23 |
 
-**Totals:** 18 SQL Functions | 3 Edge Functions | 20 API Endpoints
+**Totals:** 16 SQL Functions | 5 Edge Functions | 20 API Endpoints
 
 ---
 
@@ -1381,35 +1381,39 @@ function AdminDashboard() {
 ## ✅ FEATURE 5: Admin User Management (JWT-Based)
 
 **Status:** ✅ COMPLETE
-**Completed:** 2025-10-28
+**Completed:** 2025-10-30
 **Type:** Restaurant Admin
 **User Type:** Super Admins & Managers
 
 ### Implementation Checklist
 
-- [x] Create public schema functions (REST API accessible)
-- [x] Implement get_my_admin_info() for current admin
-- [x] Build assign_restaurants_to_admin() with add/remove/replace
-- [x] Build create_admin_user_request() for pending admins
+- [x] Create Edge Functions for admin user creation
+- [x] Implement get_my_admin_info() SQL function for current admin
+- [x] Build create-admin-user Edge Function (fully automated auth account creation)
+- [x] Build assign-admin-restaurants Edge Function
 - [x] Add JWT authentication via auth.uid()
-- [x] Validate caller is active admin
+- [x] Implement enhanced password validation (8+ chars, complexity, no common passwords)
+- [x] Validate caller is active Super Admin
 - [x] Validate target admin status and restaurant IDs
-- [x] Return before/after audit counts
+- [x] Add comprehensive audit logging to admin_audit_log table
 - [x] Grant EXECUTE to authenticated users
-- [x] No service role exposure required
+- [x] Delete legacy create_admin_user_request() SQL functions
 
 ### Business Value
 
 **What it enables:**
-- Secure admin user management from frontend
-- JWT-based (no service role keys in client)
-- Create admin accounts (with manual auth step)
+- Secure admin user creation with automatic auth account setup
+- JWT-based Super Admin authentication (no service role keys in client)
+- **Fully automated admin creation** - No manual Supabase Dashboard steps required
+- **Enhanced password security** with comprehensive validation
+- Complete audit trail for compliance (all actions logged)
 - Assign/remove/replace restaurant access
-- Complete audit trail (before/after counts)
+- Protection against weak/common passwords
 
 **Performance:**
-- < 20ms per operation
-- No Edge Functions needed
+- < 2s for complete admin creation (includes auth account)
+- < 20ms per restaurant assignment operation
+- Comprehensive audit logging with no performance impact
 - Better security architecture
 - Simplified admin lifecycle
 
@@ -1418,21 +1422,27 @@ function AdminDashboard() {
 ### Quick Test
 
 ```bash
-# Verify functions exist in public schema (REST API accessible)
+# Verify SQL function exists in public schema (REST API accessible)
 "C:\Program Files\PostgreSQL\17\bin\psql.exe" "postgresql://postgres:Gz35CPTom1RnsmGM@db.nthpbtdjhhnwfxqsxbvy.supabase.co:5432/postgres" -c "\df public.get_my_admin_info"
-"C:\Program Files\PostgreSQL\17\bin\psql.exe" "postgresql://postgres:Gz35CPTom1RnsmGM@db.nthpbtdjhhnwfxqsxbvy.supabase.co:5432/postgres" -c "\df public.assign_restaurants_to_admin"
-"C:\Program Files\PostgreSQL\17\bin\psql.exe" "postgresql://postgres:Gz35CPTom1RnsmGM@db.nthpbtdjhhnwfxqsxbvy.supabase.co:5432/postgres" -c "\df public.create_admin_user_request"
+
+# Verify Edge Functions are deployed
+supabase functions list --project-ref nthpbtdjhhnwfxqsxbvy | grep -E "(create-admin-user|assign-admin-restaurants)"
 
 # Check admin user count
 "C:\Program Files\PostgreSQL\17\bin\psql.exe" "postgresql://postgres:Gz35CPTom1RnsmGM@db.nthpbtdjhhnwfxqsxbvy.supabase.co:5432/postgres" -c "SELECT COUNT(*) FROM menuca_v3.admin_users WHERE status = 'active' AND deleted_at IS NULL;"
 
 # Check restaurant assignments
 "C:\Program Files\PostgreSQL\17\bin\psql.exe" "postgresql://postgres:Gz35CPTom1RnsmGM@db.nthpbtdjhhnwfxqsxbvy.supabase.co:5432/postgres" -c "SELECT admin_user_id, COUNT(*) as restaurant_count FROM menuca_v3.admin_user_restaurants GROUP BY admin_user_id ORDER BY restaurant_count DESC LIMIT 10;"
+
+# Check audit log
+"C:\Program Files\PostgreSQL\17\bin\psql.exe" "postgresql://postgres:Gz35CPTom1RnsmGM@db.nthpbtdjhhnwfxqsxbvy.supabase.co:5432/postgres" -c "SELECT COUNT(*) FROM menuca_v3.admin_audit_log;"
 ```
 
 ---
 
-### SQL Functions (3 Total - JWT Authentication 🔐)
+### What Was Built
+
+**1 SQL Function + 2 Edge Functions:**
 
 #### 1. `get_my_admin_info()` - Get Current Admin
 
@@ -1475,50 +1485,222 @@ AND a.deleted_at IS NULL;
 - Performance: < 5ms
 - Location: `public` schema (REST API accessible)
 
+
 ---
 
-#### 2. `assign_restaurants_to_admin()` - Manage Assignments
+### Edge Functions (2 Total - Super Admin Only 🔐)
+
+#### 2. `create-admin-user` Edge Function - Create Admin User (Fully Automated)
 
 **Code First:**
 ```typescript
-// ADD restaurants to admin
-const { data } = await supabase.rpc('assign_restaurants_to_admin', {
-  p_admin_user_id: 928,
-  p_restaurant_ids: [349, 350, 55],
-  p_action: 'add'
+// Step 1: Login as Super Admin to get JWT token
+const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+  email: 'santiago@worklocal.ca',
+  password: 'your-password'
 });
 
-console.log(data[0].message);
-console.log(`Assignments: ${data[0].assignments_before} → ${data[0].assignments_after}`);
-console.log(`Added: ${data[0].affected_count} restaurant(s)`);
+if (authError) {
+  console.error('Authentication failed:', authError.message);
+  return;
+}
 
-// REMOVE restaurants from admin
-const { data } = await supabase.rpc('assign_restaurants_to_admin', {
-  p_admin_user_id: 928,
-  p_restaurant_ids: [349],
-  p_action: 'remove'
+const superAdminToken = authData.session.access_token;
+
+// Step 2: Create new admin user (fully automated)
+const { data, error } = await supabase.functions.invoke('create-admin-user', {
+  headers: {
+    Authorization: `Bearer ${superAdminToken}`
+  },
+  body: {
+    email: 'newadmin@menu.ca',
+    password: 'SecureP@ss123', // See password requirements below
+    first_name: 'Jane',
+    last_name: 'Smith',
+    phone: '+1234567890',
+    role_id: 2,
+    restaurant_ids: [349, 350, 55] // Optional: assign during creation
+  }
 });
 
-// REPLACE all assignments
-const { data } = await supabase.rpc('assign_restaurants_to_admin', {
-  p_admin_user_id: 928,
-  p_restaurant_ids: [55, 273, 109],
-  p_action: 'replace'
-});
+if (error) {
+  console.error('Admin creation failed:', error.message);
+} else {
+  console.log('✅ Admin created successfully!');
+  console.log(`Admin ID: ${data.admin_user_id}`);
+  console.log(`Auth UUID: ${data.auth_user_id}`);
+  console.log(`Email: ${data.email}`);
+  console.log(`Status: ${data.status}`);
+  console.log(`Restaurants assigned: ${data.restaurant_count}`);
+}
 ```
+
+**✅ ENHANCED PASSWORD VALIDATION (CRITICAL FOR FRONTEND)**
+
+The password must meet ALL of the following requirements:
+1. **Minimum 8 characters**
+2. **Must contain:**
+   - At least one uppercase letter (A-Z)
+   - At least one lowercase letter (a-z)
+   - At least one number (0-9)
+   - At least one special character (!@#$%^&*()_+-=[]{}|;:,.<>?)
+3. **Rejects 30+ common passwords** including:
+   - password, 123456, 12345678, qwerty, abc123
+   - password123, letmein, welcome, admin, etc.
+4. **No sequential characters:**
+   - Rejects: 123, abc, 789, xyz, etc.
+5. **No repeated characters:**
+   - Rejects: aaa, 111, 222, etc.
+
+**Password Strength Scoring:**
+- **Weak**: Meets minimum requirements only
+- **Medium**: 10+ characters with good complexity
+- **Strong**: 12+ characters with excellent complexity
+
+**Frontend Implementation Example:**
+```typescript
+function validatePassword(password: string): { isValid: boolean; errors: string[] } {
+  const errors: string[] = [];
+  
+  // Length check
+  if (password.length < 8) {
+    errors.push('Password must be at least 8 characters long');
+  }
+  
+  // Complexity checks
+  if (!/[A-Z]/.test(password)) {
+    errors.push('Password must contain at least one uppercase letter');
+  }
+  if (!/[a-z]/.test(password)) {
+    errors.push('Password must contain at least one lowercase letter');
+  }
+  if (!/[0-9]/.test(password)) {
+    errors.push('Password must contain at least one number');
+  }
+  if (!/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(password)) {
+    errors.push('Password must contain at least one special character');
+  }
+  
+  // Common passwords check (sample - full list has 30+)
+  const commonPasswords = [
+    'password', '123456', '12345678', 'qwerty', 'abc123',
+    'password123', 'letmein', 'welcome', 'admin', 'passw0rd'
+  ];
+  if (commonPasswords.includes(password.toLowerCase())) {
+    errors.push('Password is too common. Please choose a stronger password');
+  }
+  
+  // Sequential characters check
+  if (/(?:abc|bcd|cde|def|efg|fgh|ghi|hij|ijk|jkl|klm|lmn|mno|nop|opq|pqr|qrs|rst|stu|tuv|uvw|vwx|wxy|xyz|012|123|234|345|456|567|678|789)/i.test(password)) {
+    errors.push('Password cannot contain sequential characters (like "123" or "abc")');
+  }
+  
+  // Repeated characters check
+  if (/(.)\1{2,}/.test(password)) {
+    errors.push('Password cannot contain repeated characters (like "aaa" or "111")');
+  }
+  
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+}
+```
+
+**What it does:**
+- **Fully automated admin creation** - No manual Supabase Dashboard steps
+- Creates Supabase auth account automatically
+- Creates admin user record in `menuca_v3.admin_users`
+- Links auth account to admin record via `auth_user_id`
+- **Validates password security** with comprehensive checks
+- **Optional restaurant assignment** during creation
+- **Automatic email confirmation** - No verification email required
+- **Audit logging** - All creation attempts logged to `admin_audit_log` table
+- Performance: < 2s (includes auth account creation)
+- **Location:** Supabase Dashboard → Edge Functions → `create-admin-user`
 
 **Verify:**
 ```sql
--- Check assignments before operation
-SELECT COUNT(*) as current_count
-FROM menuca_v3.admin_user_restaurants
-WHERE admin_user_id = 928;
+-- Check admin was created
+SELECT id, email, first_name, last_name, status, auth_user_id, role_id, created_at
+FROM menuca_v3.admin_users
+WHERE email = 'newadmin@menu.ca';
 
--- Run the function, then check after
-SELECT COUNT(*) as new_count
-FROM menuca_v3.admin_user_restaurants
-WHERE admin_user_id = 928;
+-- Check auth account
+SELECT id, email, confirmed_at, created_at
+FROM auth.users
+WHERE email = 'newadmin@menu.ca';
 
+-- Check audit log
+SELECT * FROM menuca_v3.admin_audit_log
+WHERE target_email = 'newadmin@menu.ca'
+ORDER BY created_at DESC;
+```
+
+---
+
+#### 3. `assign-admin-restaurants` Edge Function - Manage Restaurant Assignments
+
+**Code First:**
+```typescript
+// Step 1: Get Super Admin JWT token (same as above)
+const { data: authData } = await supabase.auth.signInWithPassword({
+  email: 'santiago@worklocal.ca',
+  password: 'your-password'
+});
+
+const superAdminToken = authData.session.access_token;
+
+// Step 2: ADD restaurants to admin
+const { data, error } = await supabase.functions.invoke('assign-admin-restaurants', {
+  headers: {
+    Authorization: `Bearer ${superAdminToken}`
+  },
+  body: {
+    admin_user_id: 937,
+    restaurant_ids: [349, 350, 55],
+    action: 'add' // 'add', 'remove', or 'replace'
+  }
+});
+
+console.log(`✅ ${data.message}`);
+console.log(`Assignments: ${data.assignments_before} → ${data.assignments_after}`);
+console.log(`Affected: ${data.affected_count} restaurant(s)`);
+
+// Step 3: REMOVE restaurants from admin
+const { data } = await supabase.functions.invoke('assign-admin-restaurants', {
+  headers: { Authorization: `Bearer ${superAdminToken}` },
+  body: {
+    admin_user_id: 937,
+    restaurant_ids: [349],
+    action: 'remove'
+  }
+});
+
+// Step 4: REPLACE all assignments
+const { data } = await supabase.functions.invoke('assign-admin-restaurants', {
+  headers: { Authorization: `Bearer ${superAdminToken}` },
+  body: {
+    admin_user_id: 937,
+    restaurant_ids: [55, 273, 109],
+    action: 'replace'
+  }
+});
+```
+
+**What it does:**
+- Manages restaurant assignments for admin users
+- Actions: `'add'` (add new), `'remove'` (remove specific), `'replace'` (replace all)
+- Validates caller is active Super Admin via JWT
+- Validates target admin exists and is active
+- Validates restaurant IDs exist and aren't deleted
+- Returns before/after counts for audit trail
+- **Audit logging** - All changes logged to `admin_audit_log`
+- Performance: < 20ms
+- **Location:** Supabase Dashboard → Edge Functions → `assign-admin-restaurants`
+
+**Verify:**
+```sql
 -- View all assignments for admin
 SELECT
   aur.admin_user_id,
@@ -1527,101 +1709,31 @@ SELECT
   aur.created_at as assigned_at
 FROM menuca_v3.admin_user_restaurants aur
 JOIN menuca_v3.restaurants r ON aur.restaurant_id = r.id
-WHERE aur.admin_user_id = 928
+WHERE aur.admin_user_id = 937
 ORDER BY aur.created_at DESC;
-```
 
-**What it does:**
-- Manages restaurant assignments for admin users
-- Actions: `'add'` (add new), `'remove'` (remove specific), `'replace'` (replace all)
-- Validates caller is active admin via JWT
-- Validates target admin and restaurant IDs
-- Returns before/after counts for audit trail
-- Performance: < 20ms
-- Location: `public` schema (REST API accessible)
+-- Check audit log
+SELECT * FROM menuca_v3.admin_audit_log
+WHERE target_admin_id = 937
+ORDER BY created_at DESC;
+```
 
 ---
 
-#### 3. `create_admin_user_request()` - Create Pending Admin
+### Admin Creation Workflow (FULLY AUTOMATED ✅)
 
-**Code First:**
-```typescript
-// Create new admin user (pending status)
-const { data, error } = await supabase.rpc('create_admin_user_request', {
-  p_email: 'newadmin@menu.ca',
-  p_first_name: 'Jane',
-  p_last_name: 'Smith',
-  p_phone: '+1234567890'
-});
+**Streamlined Process:**
 
-if (!error && data.length > 0) {
-  const result = data[0];
-  console.log(`✅ Admin created: ID ${result.admin_user_id}`);
-  console.log(`Status: ${result.status}`);
-  console.log(`Next steps: ${result.message}`);
+1. **Super Admin Login:** Authenticate to get JWT token
+2. **Create Admin:** Call `create-admin-user` Edge Function (fully automated)
+3. **Optional:** Assign restaurants during creation OR use `assign-admin-restaurants` later
 
-  // Display instructions to user
-  showModal({
-    title: 'Admin User Created',
-    message: result.message,
-    adminId: result.admin_user_id,
-    email: result.email
-  });
-}
-```
-
-**Verify:**
-```sql
--- Check admin was created with pending status
-SELECT id, email, first_name, last_name, status, auth_user_id, created_at
-FROM menuca_v3.admin_users
-WHERE email = 'newadmin@menu.ca';
-
--- Should show:
--- - status: 'pending'
--- - auth_user_id: NULL (needs manual linking)
-
--- After manual auth creation and linking, verify:
-SELECT id, email, status, auth_user_id
-FROM menuca_v3.admin_users
-WHERE email = 'newadmin@menu.ca';
-
--- Should show:
--- - status: 'active'
--- - auth_user_id: (UUID from auth.users)
-```
-
-**What it does:**
-- Creates pending admin user record
-- Does NOT create auth account (manual Supabase Dashboard step required)
-- Validates email format and uniqueness
-- Returns clear workflow instructions
-- Performance: < 10ms
-- Location: `public` schema (REST API accessible)
-
-**Manual Steps Required:**
-1. Call function (creates pending record)
-2. Create auth account in Supabase Dashboard
-3. Update `auth_user_id` and set status to 'active'
-4. Assign restaurants using `assign_restaurants_to_admin()`
-
-**0 Edge Functions:** All replaced with PostgreSQL functions
-
----
-
-### Admin Creation Workflow
-
-**Manual Process Required:**
-
-1. **Step 1:** Call `create_admin_user_request()` via REST API (creates pending record)
-2. **Step 2:** Manually create auth account in Supabase Dashboard
-3. **Step 3:** Link auth UUID to admin record in database
-4. **Step 4:** Call `assign_restaurants_to_admin()` to assign restaurants
-
-**Why Manual?**
-- Supabase doesn't allow creating auth users via client-side API (security feature)
-- Service role key exposure is dangerous in client applications
-- Manual auth creation ensures proper validation and security
+**Benefits:**
+- ✅ **No manual Supabase Dashboard steps** - Everything automated
+- ✅ **Comprehensive password validation** - Prevents weak passwords
+- ✅ **Audit logging** - All actions tracked in `admin_audit_log`
+- ✅ **JWT-based security** - No service role key exposure in client
+- ✅ **Restaurant assignment** - Optional during creation or later
 
 ---
 

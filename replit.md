@@ -24,7 +24,7 @@ Preferred communication style: Simple, everyday language.
 - **Direct PostgreSQL Queries**: Handled by `lib/db/postgres.ts` using `pg` Pool.
 - **Schema Management**: Strict adherence to `menuca_v3` schema.
 - **Data Operations**: Primarily uses SQL Functions (50+) for reads and Edge Functions (29) for writes.
-- **Admin Users Management**: Custom tables (`admin_users`, `admin_roles`, `admin_user_restaurants`) within `menuca_v3` for granular control, with RLS bypass via service role client.
+- **Admin Users Management**: Custom tables (`admin_users`, `admin_roles`, `admin_user_restaurants`) within `menuca_v3` for granular control, with RLS bypass via service role client. **Enhanced password validation** (Oct 2025): Minimum 8 chars, requires uppercase/lowercase/number/special char, blocks 30+ common passwords, no sequential/repeated chars.
 
 ### Core Features & Implementations
 - **Restaurant Management**: Status, online ordering toggle, contact, delivery area configuration (Mapbox).
