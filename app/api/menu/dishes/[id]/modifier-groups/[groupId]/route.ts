@@ -8,6 +8,14 @@ export async function PATCH(
   try {
     const dishId = parseInt(params.id);
     const groupId = parseInt(params.groupId);
+    
+    if (isNaN(dishId) || dishId <= 0 || isNaN(groupId) || groupId <= 0) {
+      return NextResponse.json(
+        { error: 'Invalid dish ID or group ID' },
+        { status: 400 }
+      );
+    }
+
     const body = await request.json();
 
     const { name, is_required, min_selections, max_selections } = body;
@@ -96,6 +104,13 @@ export async function DELETE(
   try {
     const dishId = parseInt(params.id);
     const groupId = parseInt(params.groupId);
+    
+    if (isNaN(dishId) || dishId <= 0 || isNaN(groupId) || groupId <= 0) {
+      return NextResponse.json(
+        { error: 'Invalid dish ID or group ID' },
+        { status: 400 }
+      );
+    }
 
     const result = await pool.query(
       'DELETE FROM menuca_v3.modifier_groups WHERE id = $1 AND dish_id = $2 RETURNING id',

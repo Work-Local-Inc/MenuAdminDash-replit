@@ -7,6 +7,12 @@ export async function GET(
 ) {
   try {
     const dishId = parseInt(params.id);
+    if (isNaN(dishId) || dishId <= 0) {
+      return NextResponse.json(
+        { error: 'Invalid dish ID' },
+        { status: 400 }
+      );
+    }
 
     const result = await pool.query(
       `SELECT 
@@ -41,8 +47,14 @@ export async function POST(
 ) {
   try {
     const dishId = parseInt(params.id);
-    const body = await request.json();
+    if (isNaN(dishId) || dishId <= 0) {
+      return NextResponse.json(
+        { error: 'Invalid dish ID' },
+        { status: 400 }
+      );
+    }
 
+    const body = await request.json();
     const { name, is_required, min_selections, max_selections } = body;
 
     if (!name?.trim()) {
@@ -74,7 +86,7 @@ export async function POST(
         nextOrder,
         is_required ?? false,
         min_selections ?? 0,
-        max_selections ?? 1
+        max_selections ?? 999
       ]
     );
 
