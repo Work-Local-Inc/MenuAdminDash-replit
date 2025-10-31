@@ -3,12 +3,13 @@
 ## CRITICAL: READ THIS BEFORE ANY SUPABASE WORK
 
 ### Database Schema
-**SCHEMA: `public`** (ONLY schema that exists)
-- ALL tables exist ONLY in the `public` schema
-- The `menuca_v3` schema DOES NOT EXIST in this database
-- DO NOT configure `db: { schema: 'menuca_v3' }` in Supabase clients
-- DO NOT write SQL queries with `FROM menuca_v3.table_name`
-- The default schema is `public` - use that everywhere
+**This project uses ONLY SUPABASE** (no Neon database).
+
+The Supabase database has TWO schemas:
+1. **`public` schema**: Admin-only tables (`admin_users`, `admin_roles`, `admin_user_restaurants`)
+2. **`menuca_v3` schema**: ALL restaurant platform data (restaurants, dishes, orders, users, etc.)
+
+**ALL Supabase clients MUST be configured with `db: { schema: 'menuca_v3' }` to access restaurant data.**
 
 ### Environment Variables & Secrets
 ```
@@ -21,47 +22,122 @@ SUPABASE_SERVICE_ROLE_KEY=<Service role key for admin operations>
 
 #### 1. Server-Side Client: `lib/supabase/server.ts`
 ```typescript
-// CORRECT - No schema override, uses default 'public' schema
+// CORRECT - Configure menuca_v3 schema for restaurant data
+import { Database } from '@/types/supabase-database'
+
 export async function createClient() {
   const cookieStore = await cookies()
   return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      db: { schema: 'menuca_v3' },  // REQUIRED
       cookies: { /* ... */ }
     }
   )
 }
 ```
 
-#### 2. Middleware: `middleware.ts`
+#### 2. Browser Client: `lib/supabase/client.ts`
 ```typescript
-// CORRECT - No schema override, uses default 'public' schema
-const supabase = createServerClient(
+// CORRECT - Configure menuca_v3 schema
+import { Database } from '@/types/supabase-database'
+
+export function createClient() {
+  return createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      db: { schema: 'menuca_v3' }  // REQUIRED
+    }
+  )
+}
+```
+
+#### 3. Admin Client: `lib/supabase/admin.ts`
+```typescript
+// CORRECT - Configure menuca_v3 schema with service role
+import { Database } from '@/types/supabase-database'
+
+export function createAdminClient() {
+  return createClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      db: { schema: 'menuca_v3' }  // REQUIRED
+    }
+  )
+}
+```
+
+#### 4. Middleware: `middleware.ts`
+```typescript
+// CORRECT - Configure menuca_v3 schema
+import { Database } from '@/types/supabase-database'
+
+const supabase = createServerClient<Database>(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   {
+    db: { schema: 'menuca_v3' },  // REQUIRED
     cookies: { /* ... */ }
   }
 )
 ```
 
-#### 3. Direct PostgreSQL: `lib/db/postgres.ts`
-- Uses `pg` Pool for direct SQL queries
-- Queries target `public` schema: `FROM public.restaurants` (or just `FROM restaurants`)
-- Same `public` schema as Supabase clients
+### Key Tables
 
-### Key Tables (in `public` schema)
-- `restaurants`
+**In `menuca_v3` schema** (restaurant platform data):
+- `restaurants` (ID type: **INTEGER**, not UUID)
 - `courses` (menu categories)
 - `dishes` (menu items)
+- `dish_prices`
+- `modifier_groups`
+- `dish_modifiers`
 - `orders`
-- `users`
+- `users` (customers)
+- All other restaurant ordering platform tables
+
+**In `public` schema** (admin only):
 - `admin_users`
 - `admin_roles`
+- `admin_user_restaurants`
+
+### Restaurant ID Data Type
+**CRITICAL**: Restaurant IDs are **INTEGERS**, not UUIDs.
+- Primary key: `id` (integer)
+- Also has: `uuid` (string, for compatibility)
+
+### Environment Variables
+```
+NEXT_PUBLIC_SUPABASE_URL=https://nthpbtdjhhnwfxqsxbvy.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key>
+SUPABASE_SERVICE_ROLE_KEY=<service role key>
+SUPABASE_BRANCH_DB_URL=<direct PostgreSQL connection>
+```
+
+**IGNORE** `DATABASE_URL` - this is an old Neon database that is NOT being used.
+
+### Querying Data
+```typescript
+// ✅ CORRECT - Schema configured in client, use integer IDs
+const { data } = await supabase
+  .from('restaurants')
+  .select('*')
+  .eq('id', 123)  // Integer ID
+  .single()
+
+// ❌ WRONG - Don't manually specify schema in query
+const { data } = await supabase
+  .from('menuca_v3.restaurants')  // DON'T DO THIS
+```
 
 ### REMINDER BEFORE EVERY SUPABASE CHANGE
-1. ✅ Check this file first
-2. ✅ Verify schema is `public` (default, no override)
-3. ✅ Check environment variables are correct
-4. ✅ Test the changes before claiming success
+1. ✅ ALL clients must have `db: { schema: 'menuca_v3' }`
+2. ✅ Restaurant IDs are integers, not UUIDs
+3. ✅ Only Supabase database exists (ignore DATABASE_URL)
+4. ✅ Santiago spent 4 weeks migrating everything to Supabase
+5. ✅ Test the changes before claiming success
+
+### Last Updated
+October 31, 2025
