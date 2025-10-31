@@ -3,10 +3,12 @@
 ## CRITICAL: READ THIS BEFORE ANY SUPABASE WORK
 
 ### Database Schema
-**SCHEMA: `public`** (NOT `menuca_v3`)
-- All tables exist in the `public` schema
+**SCHEMA: `public`** (ONLY schema that exists)
+- ALL tables exist ONLY in the `public` schema
+- The `menuca_v3` schema DOES NOT EXIST in this database
 - DO NOT configure `db: { schema: 'menuca_v3' }` in Supabase clients
-- The default schema is `public` - use that
+- DO NOT write SQL queries with `FROM menuca_v3.table_name`
+- The default schema is `public` - use that everywhere
 
 ### Environment Variables & Secrets
 ```
@@ -46,8 +48,8 @@ const supabase = createServerClient(
 
 #### 3. Direct PostgreSQL: `lib/db/postgres.ts`
 - Uses `pg` Pool for direct SQL queries
-- Queries should target `menuca_v3` schema in SQL: `FROM menuca_v3.restaurants`
-- But Supabase clients use `public` schema
+- Queries target `public` schema: `FROM public.restaurants` (or just `FROM restaurants`)
+- Same `public` schema as Supabase clients
 
 ### Key Tables (in `public` schema)
 - `restaurants`
