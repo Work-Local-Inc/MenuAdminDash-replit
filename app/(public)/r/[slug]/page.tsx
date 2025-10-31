@@ -42,17 +42,23 @@ export default async function RestaurantPage({ params }: RestaurantPageProps) {
   const supabase = await createClient();
   const restaurantId = extractIdFromSlug(params.slug);
   
+  console.log('[Restaurant Page] Slug:', params.slug, 'Restaurant ID:', restaurantId);
+  
   if (!restaurantId) {
+    console.log('[Restaurant Page] No restaurant ID found');
     notFound();
   }
   
-  const { data: restaurant } = await supabase
+  const { data: restaurant, error: restaurantError } = await supabase
     .from('restaurants')
     .select('*')
     .eq('id', restaurantId)
     .single();
   
+  console.log('[Restaurant Page] Query result:', { restaurant, error: restaurantError });
+  
   if (!restaurant) {
+    console.log('[Restaurant Page] No restaurant found - calling not Found()');
     notFound();
   }
   
@@ -67,7 +73,7 @@ export default async function RestaurantPage({ params }: RestaurantPageProps) {
     .from('courses')
     .select(`
       *,
-      dishes!dishes_course_id_fkey (*)
+      dishes!dishes_course_id_fkey!inner (*)
     `)
     .eq('restaurant_id', restaurantId)
     .eq('is_active', true)
