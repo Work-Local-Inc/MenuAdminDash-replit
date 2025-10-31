@@ -28,11 +28,19 @@ Preferred communication style: Simple, everyday language.
 
 ### Core Features & Implementations
 - **Restaurant Management**: Status, online ordering toggle, contact, delivery area configuration (Mapbox).
-- **Menu Management**:
+- **Menu Management** (✅ Fully Refactored - Enterprise Schema):
     - **Categories & Dishes**: Full CRUD, restaurant-scoped, drag-drop reordering, search/filtering, active/featured toggles.
     - **Advanced Features**: Modifier groups & modifiers (drag-drop, validation), "Quick Create Size," inventory tracking ("Sold Out" badges, availability toggles), bulk operations (multi-select, activate/deactivate, feature, mark in/out of stock, delete).
     - **Navigation**: `/admin/menu/categories`, `/admin/menu/dishes`, `/admin/menu/dishes/[id]/modifiers`.
-    - **Database**: Uses `dish_modifier_groups`, `dish_modifier_items`, `pricing_rules` JSON field.
+    - **Refactored Database Schema** (Oct 2025):
+        - **Pricing**: `dish_prices` relational table (replaced JSONB)
+        - **Modifiers**: `modifier_groups` → `dish_modifiers` (direct name+price, no ingredient FK)
+        - **Combos**: `combo_steps` + `combo_items` hierarchical system
+        - **Inventory**: `dish_inventory` table for stock tracking
+        - **Enterprise Tables**: `dish_size_options`, `dish_allergens`, `dish_dietary_tags`, `dish_ingredients`
+        - **SQL Functions**: 50+ optimized functions (`get_restaurant_menu`, `validate_dish_customization`, `calculate_dish_price`)
+        - **API Integration**: All routes updated to use refactored schema with full backwards compatibility
+    - **Documentation**: Complete refactoring guide in `lib/Documentation/Frontend-Guides/Menu-refatoring/`
 - **Franchise Management**: Hierarchical system for parent/child linking and bulk updates, analytics.
 - **Categorization System**: Cuisine and tag-based discovery (36 cuisines, 12 tags).
 - **Onboarding Tracking**: 8-step process with progress, analytics, and interactive checklists.
