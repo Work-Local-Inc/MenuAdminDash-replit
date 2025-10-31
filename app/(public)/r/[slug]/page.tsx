@@ -69,7 +69,7 @@ export default async function RestaurantPage({ params }: RestaurantPageProps) {
   }
   
   // Fetch menu categories and dishes
-  const { data: courses } = await supabase
+  const { data: courses, error: coursesError } = await supabase
     .from('courses')
     .select(`
       *,
@@ -79,6 +79,9 @@ export default async function RestaurantPage({ params }: RestaurantPageProps) {
     .eq('is_active', true)
     .eq('dishes.is_active', true)
     .order('display_order', { ascending: true });
+  
+  console.log('[Restaurant Page] Courses query result:', { courses, coursesError });
+  console.log('[Restaurant Page] About to render RestaurantMenu component');
   
   return <RestaurantMenu restaurant={restaurant} courses={courses || []} />;
 }
