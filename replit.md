@@ -19,12 +19,15 @@ Preferred communication style: Simple, everyday language.
 - **Customer-Facing Menu**: Public routes (`/r/[slug]`) using Server Components, Zustand for shopping cart with localStorage persistence.
 
 ### Backend & Data Layer
-- **Database**: Supabase PostgreSQL (`menuca_v3` schema).
+- **Database**: Supabase PostgreSQL.
+- **⚠️ CRITICAL SCHEMA INFO**: 
+  - **Supabase clients** (via `@supabase/ssr`) query the **`public` schema** (default, NO schema override in client config)
+  - **Direct SQL queries** (via `lib/db/postgres.ts`) target the **`menuca_v3` schema** (e.g., `FROM menuca_v3.restaurants`)
+  - **See `SUPABASE_CONFIG.md` for complete reference - CHECK THIS FILE BEFORE ANY SUPABASE WORK**
 - **Database Connection**: Uses `SUPABASE_SERVICE_ROLE_KEY` + `NEXT_PUBLIC_SUPABASE_URL` for admin operations.
-- **Direct PostgreSQL Queries**: Handled by `lib/db/postgres.ts` using `pg` Pool.
-- **Schema Management**: Strict adherence to `menuca_v3` schema.
+- **Direct PostgreSQL Queries**: Handled by `lib/db/postgres.ts` using `pg` Pool, queries `menuca_v3` schema.
 - **Data Operations**: Primarily uses SQL Functions (50+) for reads and Edge Functions (29) for writes.
-- **Admin Users Management**: Custom tables (`admin_users`, `admin_roles`, `admin_user_restaurants`) within `menuca_v3` for granular control, with RLS bypass via service role client. **Enhanced password validation** (Oct 2025): Minimum 8 chars, requires uppercase/lowercase/number/special char, blocks 30+ common passwords, no sequential/repeated chars.
+- **Admin Users Management**: Custom tables (`admin_users`, `admin_roles`, `admin_user_restaurants`) for granular control, with RLS bypass via service role client. **Enhanced password validation** (Oct 2025): Minimum 8 chars, requires uppercase/lowercase/number/special char, blocks 30+ common passwords, no sequential/repeated chars.
 
 ### Core Features & Implementations
 - **Restaurant Management**: Status, online ordering toggle, contact, delivery area configuration (Mapbox).
