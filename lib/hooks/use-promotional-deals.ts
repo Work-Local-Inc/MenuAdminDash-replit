@@ -70,3 +70,26 @@ export function useDeleteDeal() {
     },
   })
 }
+
+/**
+ * Clone a deal
+ */
+export function useCloneDeal() {
+  return useMutation({
+    mutationFn: async (dealId: number) => {
+      const response = await fetch(`/api/admin/promotions/deals/${dealId}/clone`, {
+        method: 'POST',
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to clone deal')
+      }
+
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/promotions/deals'] })
+    },
+  })
+}

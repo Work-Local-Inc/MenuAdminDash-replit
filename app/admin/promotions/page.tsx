@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { usePromotionalDeals, useToggleDealStatus } from "@/lib/hooks/use-promotional-deals"
+import { usePromotionalDeals, useToggleDealStatus, useDeleteDeal, useCloneDeal } from "@/lib/hooks/use-promotional-deals"
 import { useAdminRestaurants } from "@/hooks/use-admin-restaurants"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -44,6 +44,8 @@ export default function PromotionalDealsPage() {
   const { data: dealsData, isLoading: dealsLoading } = usePromotionalDeals()
   const { data: authorizedRestaurantIds = [], isLoading: restaurantsLoading } = useAdminRestaurants()
   const toggleStatus = useToggleDealStatus()
+  const deleteDeal = useDeleteDeal()
+  const cloneDeal = useCloneDeal()
   const { toast } = useToast()
 
   const deals = dealsData?.deals || []
@@ -84,6 +86,42 @@ export default function PromotionalDealsPage() {
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : 'Failed to toggle deal status',
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleCloneDeal = async (dealId: number) => {
+    try {
+      await cloneDeal.mutateAsync(dealId)
+      toast({
+        title: "Success",
+        description: "Deal cloned successfully",
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : 'Failed to clone deal',
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleDeleteDeal = async (dealId: number) => {
+    if (!confirm('Are you sure you want to delete this deal? This action can be reversed.')) {
+      return
+    }
+
+    try {
+      await deleteDeal.mutateAsync(dealId)
+      toast({
+        title: "Success",
+        description: "Deal deleted successfully",
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : 'Failed to delete deal',
         variant: "destructive",
       })
     }
@@ -280,11 +318,17 @@ export default function PromotionalDealsPage() {
                                 View Stats
                               </DropdownMenuItem>
                             </Link>
-                            <DropdownMenuItem data-testid={`action-clone-${deal.id}`}>
+                            <DropdownMenuItem 
+                              onClick={() => handleCloneDeal(deal.id)}
+                              disabled={cloneDeal.isPending}
+                              data-testid={`action-clone-${deal.id}`}
+                            >
                               <Copy className="mr-2 h-4 w-4" />
                               Clone Deal
                             </DropdownMenuItem>
                             <DropdownMenuItem 
+                              onClick={() => handleDeleteDeal(deal.id)}
+                              disabled={deleteDeal.isPending || deal.disabled_at !== null}
                               className="text-destructive"
                               data-testid={`action-delete-${deal.id}`}
                             >
