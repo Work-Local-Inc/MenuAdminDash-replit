@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
 import { verifyRestaurantPermission } from '@/lib/api/promotions'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { updateDealSchema } from '@/lib/validation/promotions'
+import { z } from 'zod'
 
 /**
  * GET /api/admin/promotions/deals/[id]
@@ -52,6 +54,8 @@ export async function GET(
 /**
  * PATCH /api/admin/promotions/deals/[id]
  * Update a promotional deal
+ * 
+ * SECURITY: Does NOT allow restaurant_id changes to prevent privilege escalation
  */
 export async function PATCH(
   request: NextRequest,
@@ -61,6 +65,10 @@ export async function PATCH(
     const { adminUser } = await verifyAdminAuth(request)
     const dealId = parseInt(params.id)
     const body = await request.json()
+
+    // Validate request body with Zod (strict mode prevents restaurant_id injection)
+    const validated = updateDealSchema.parse(body)
+
     const supabase = createAdminClient()
 
     // Verify admin has permission for this deal's restaurant
@@ -76,17 +84,19 @@ export async function PATCH(
 
     const hasPermission = await verifyRestaurantPermission(adminUser.id, existingDeal.restaurant_id)
     if (!hasPermission) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+      return NextResponse.json(
+        { error: 'You do not have permission to update this deal' },
+        { status: 403 }
+      )
     }
 
-    // Update the deal
+    // SECURITY: Double-check that restaurant_id cannot be modified
+    // Filter ensures UPDATE only affects deals owned by this restaurant
     const { data: deal, error } = await supabase
       .from('promotional_deals')
-      .update({
-        ...body,
-        updated_at: new Date().toISOString(),
-      })
+      .update(validated as any)
       .eq('id', dealId)
+      .eq('restaurant_id', existingDeal.restaurant_id)  // CRITICAL: Prevents cross-restaurant updates
       .select()
       .single()
 
@@ -94,9 +104,34 @@ export async function PATCH(
       throw error
     }
 
+    // Final verification: ensure restaurant_id wasn't changed
+    if (deal && deal.restaurant_id !== existingDeal.restaurant_id) {
+      console.error('[SECURITY] Restaurant ID modification detected!', {
+        dealId,
+        original: existingDeal.restaurant_id,
+        modified: deal.restaurant_id
+      })
+      throw new Error('Security violation: restaurant_id modification not allowed')
+    }
+
     return NextResponse.json({ deal })
   } catch (error) {
     console.error(`[PATCH /api/admin/promotions/deals/${params.id}]`, error)
+
+    // Handle Zod validation errors
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        {
+          error: 'Validation failed',
+          details: error.errors.map(e => ({
+            field: e.path.join('.'),
+            message: e.message
+          }))
+        },
+        { status: 400 }
+      )
+    }
+
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to update deal' },
       { status: 500 }
