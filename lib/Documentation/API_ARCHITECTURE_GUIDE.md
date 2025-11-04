@@ -1,8 +1,17 @@
 # Menu.ca API Architecture Guide
 
 **Last Updated:** November 4, 2025  
-**Version:** 3.0  
+**Version:** 3.1  
 **Purpose:** Comprehensive reference for all API endpoints, patterns, and best practices
+
+## 🎯 Quick Reference
+
+**Core Principles:**
+1. **IDs**: Use `UUID` in APIs, `integer ID` internally
+2. **Server State**: React Query for all API data
+3. **Client State**: Zustand for UI/app state
+4. **Database**: SQL functions for CUD, direct queries for simple reads
+5. **Validation**: Zod schemas on every API route
 
 ---
 
@@ -52,7 +61,36 @@ export async function createClient() {
 1. **`public` schema**: Admin tables only (`admin_users`, `admin_roles`, `admin_user_restaurants`)
 2. **`menuca_v3` schema**: ALL restaurant platform data (restaurants, dishes, orders, users, promotional deals, etc.)
 
-**Restaurant IDs are INTEGERS, not UUIDs**
+### Critical ID Architecture Rules
+
+⚠️ **Restaurant Identification Pattern:**
+- **Database Primary Key**: `id` (INTEGER) - Used internally for foreign keys and joins
+- **API Public Interface**: `uuid` (STRING) - **ALWAYS use UUID in API calls**
+
+**Why UUIDs for APIs:**
+- ✅ Prevents confusion between tables with duplicate IDs
+- ✅ Safer for external integrations
+- ✅ Industry best practice for public APIs
+- ✅ Future-proof for distributed systems
+
+```typescript
+// ❌ WRONG - Don't expose internal integer IDs in APIs
+POST /api/admin/promotions/deals
+{ "restaurant_id": 846 }
+
+// ✅ CORRECT - Always use UUID in API requests/responses
+POST /api/admin/promotions/deals
+{ "restaurant_uuid": "769323a7-0a51-4a06-8bb9-86bb57826f33" }
+
+// Internal: Convert UUID to ID for database operations
+const { data } = await supabase
+  .from('restaurants')
+  .select('id')
+  .eq('uuid', restaurant_uuid)
+  .single()
+
+const restaurant_id = data.id  // Now use integer ID for FK constraints
+```
 
 ---
 
@@ -181,6 +219,225 @@ export async function GET(request: NextRequest) {
 ---
 
 ## API Patterns & Standards
+
+### Architectural Principles
+
+#### 1. State Management Strategy
+
+**Server State (React Query):**
+All data fetching, mutations, caching, and real-time updates MUST use React Query.
+
+```typescript
+import { useQuery, useMutation, queryClient } from '@tanstack/react-query'
+import { apiRequest } from '@/lib/queryClient'
+
+// ✅ CORRECT - React Query for server state
+function DealsPage() {
+  // Data fetching with automatic caching & refetching
+  const { data, isLoading } = useQuery({
+    queryKey: ['/api/admin/promotions/deals'],  // Automatic fetching
+    staleTime: 60000,  // Default: 1 minute
+  })
+  
+  // Mutations with cache invalidation
+  const createDeal = useMutation({
+    mutationFn: (data) => apiRequest('/api/admin/promotions/deals/create', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    }),
+    onSuccess: () => {
+      // Invalidate and refetch deals list
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/promotions/deals'] })
+    }
+  })
+  
+  return (
+    <div>
+      {isLoading ? <Skeleton /> : data.deals.map(/* ... */)}
+      <button onClick={() => createDeal.mutate(formData)}>
+        Create Deal
+      </button>
+    </div>
+  )
+}
+```
+
+**React Query Configuration:**
+```typescript
+// lib/queryClient.ts
+export const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      queryFn: defaultQueryFn,  // Automatic URL fetching
+      staleTime: 60 * 1000,     // 1 minute
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+})
+```
+
+**Client State (Zustand):**
+Use Zustand for UI state and local app state (NOT server data).
+
+```typescript
+import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
+
+// ✅ CORRECT - Zustand for client-side state
+interface CartStore {
+  items: CartItem[]
+  addItem: (item: CartItem) => void
+  removeItem: (id: string) => void
+  clearCart: () => void
+}
+
+export const useCartStore = create<CartStore>()(
+  persist(
+    (set) => ({
+      items: [],
+      addItem: (item) => set((state) => ({ items: [...state.items, item] })),
+      removeItem: (id) => set((state) => ({ 
+        items: state.items.filter(i => i.id !== id) 
+      })),
+      clearCart: () => set({ items: [] }),
+    }),
+    { name: 'cart-storage' }  // Persists to localStorage
+  )
+)
+```
+
+**When to use what:**
+- **React Query**: API data, database records, server state
+- **Zustand**: Shopping cart, UI preferences, form wizards, theme
+- **React State**: Component-local UI state (modals, toggles)
+
+#### 2. Database Operations Pattern
+
+⚠️ **CRITICAL**: Follow this pattern for ALL database operations:
+
+**CREATE, UPDATE, DELETE → SQL Functions ONLY**
+```typescript
+// ✅ CORRECT - Use SQL function for mutations
+const { data, error } = await supabase
+  .rpc('create_promotional_deal', {
+    p_restaurant_uuid: '769323a7-0a51-4a06-8bb9-86bb57826f33',
+    p_name: 'Summer Sale',
+    p_discount_percent: 20
+  })
+
+// ✅ CORRECT - Use SQL function for updates
+const { data, error } = await supabase
+  .rpc('update_deal_status', {
+    p_deal_id: 123,
+    p_is_enabled: false
+  })
+
+// ✅ CORRECT - Use SQL function for deletes (soft delete)
+const { data, error } = await supabase
+  .rpc('soft_delete_deal', {
+    p_deal_id: 123
+  })
+```
+
+**READ → Direct Queries (Single Table Only)**
+```typescript
+// ✅ CORRECT - Direct query for simple reads
+const { data } = await supabase
+  .from('promotional_deals')
+  .select('*')
+  .eq('restaurant_id', 846)
+  .is('deleted_at', null)
+  .order('created_at', { ascending: false })
+
+// ✅ CORRECT - Direct query with filtering & sorting
+const { data } = await supabase
+  .from('restaurants')
+  .select('id, name, slug, is_online')
+  .eq('is_active', true)
+  .order('name')
+```
+
+**Complex Reads → SQL Functions**
+```typescript
+// ✅ CORRECT - Use function for multi-table reads
+const { data } = await supabase
+  .rpc('get_restaurant_menu', {
+    p_restaurant_id: 846,
+    p_language: 'en'
+  })
+
+// ✅ CORRECT - Use function for aggregations
+const { data } = await supabase
+  .rpc('get_deal_analytics', {
+    p_restaurant_id: 846,
+    p_start_date: '2025-01-01',
+    p_end_date: '2025-12-31'
+  })
+```
+
+**Why SQL Functions for CUD:**
+- ✅ Centralized business logic
+- ✅ Transaction safety
+- ✅ Consistent validation
+- ✅ Better performance (server-side)
+- ✅ Easier to test and maintain
+- ✅ Reusable across API routes
+
+#### 3. Request Validation (Zod)
+
+**EVERY API route MUST validate input with Zod schemas:**
+
+```typescript
+import { z } from 'zod'
+
+// Define validation schema
+const createDealSchema = z.object({
+  restaurant_uuid: z.string().uuid('Invalid restaurant UUID'),
+  name: z.string().min(1, 'Name required').max(255),
+  discount_type: z.enum(['percentage', 'fixed_amount']),
+  discount_value: z.number().positive('Discount must be positive'),
+  minimum_purchase: z.number().min(0).optional(),
+})
+
+// Use in API route
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json()
+    
+    // ✅ Validate before processing
+    const validated = createDealSchema.parse(body)
+    
+    // Now use validated data safely
+    const result = await supabase.rpc('create_promotional_deal', {
+      p_restaurant_uuid: validated.restaurant_uuid,
+      p_name: validated.name,
+      p_discount_type: validated.discount_type,
+      p_discount_value: validated.discount_value,
+    })
+    
+    return NextResponse.json({ success: true, data: result })
+    
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: error.errors },
+        { status: 400 }
+      )
+    }
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+}
+```
+
+**Zod Best Practices:**
+- ✅ Create reusable schemas in `lib/validation/`
+- ✅ Use `.parse()` for strict validation (throws on error)
+- ✅ Return 400 errors with field-level details
+- ✅ Validate UUIDs with `.uuid()` method
+- ✅ Use `.transform()` for data normalization
+
+---
 
 ### RESTful Route Structure
 
