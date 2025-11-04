@@ -2,6 +2,8 @@
 
 ## CRITICAL: READ THIS BEFORE ANY SUPABASE WORK
 
+**📖 See also:** [Supabase Best Practices Guide](lib/Documentation/SUPABASE_BEST_PRACTICES.md) - Comprehensive guide covering code organization, security, performance, and common pitfalls.
+
 ### Database Schema
 **This project uses ONLY SUPABASE** (no Neon database).
 

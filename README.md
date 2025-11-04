@@ -21,6 +21,9 @@ Complete reference for all API endpoints, authentication patterns, and frontend 
 Critical database schema information and client setup.  
 **⚠️ READ BEFORE ANY SUPABASE WORK**
 
+**[Supabase Best Practices](lib/Documentation/SUPABASE_BEST_PRACTICES.md)**  
+Comprehensive guide covering code organization, security, performance, testing, and common pitfalls.
+
 **[Project Overview](replit.md)**  
 High-level project architecture, user preferences, and system overview.
 
