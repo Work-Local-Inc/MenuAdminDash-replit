@@ -24,7 +24,6 @@ export async function GET(request: NextRequest) {
         email,
         first_name,
         last_name,
-        phone,
         role_id,
         status,
         is_active,
