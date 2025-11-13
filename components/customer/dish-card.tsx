@@ -17,20 +17,33 @@ export function DishCard({ dish, restaurantId }: DishCardProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const addItem = useCartStore((state) => state.addItem);
   
-  // Determine price to display - prices are already in dollars in the database
-  const displayPrice = dish.base_price ? Number(dish.base_price).toFixed(2) : '0.00';
+  // Extract price from prices array or use base_price fallback
+  const getDisplayPrice = () => {
+    if (dish.base_price) {
+      return Number(dish.base_price).toFixed(2);
+    }
+    if (dish.prices && Array.isArray(dish.prices) && dish.prices.length > 0) {
+      const lowestPrice = Math.min(...dish.prices.map((p: any) => Number(p.price)));
+      return Number(lowestPrice).toFixed(2);
+    }
+    return '0.00';
+  };
+  
+  const displayPrice = getDisplayPrice();
+  const hasMultiplePrices = dish.prices && dish.prices.length > 1;
   
   const handleQuickAdd = () => {
-    // If dish has customizations, open modal; otherwise add directly to cart
-    if (dish.has_customization) {
+    // If dish has customizations or multiple prices, open modal; otherwise add directly to cart
+    if (dish.has_customization || hasMultiplePrices) {
       setIsModalOpen(true);
     } else {
+      const basePrice = dish.base_price || (dish.prices?.[0]?.price) || 0;
       addItem({
         dishId: dish.id,
         dishName: dish.name,
         dishImage: dish.image_url,
-        size: 'Regular',
-        sizePrice: dish.base_price || 0,
+        size: dish.prices?.[0]?.size_variant || 'Regular',
+        sizePrice: basePrice,
         quantity: 1,
         modifiers: [],
         specialInstructions: '',
@@ -67,7 +80,7 @@ export function DishCard({ dish, restaurantId }: DishCardProps) {
                     {dish.name}
                   </h3>
                   <span className="text-base font-bold whitespace-nowrap" data-testid={`text-dish-price-${dish.id}`}>
-                    ${displayPrice}
+                    {hasMultiplePrices && 'Starting at '}${displayPrice}
                   </span>
                 </div>
                 

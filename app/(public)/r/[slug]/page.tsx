@@ -83,6 +83,11 @@ export default async function RestaurantPage({ params }: RestaurantPageProps) {
     totalDishes: menuData?.courses?.reduce((sum: number, c: any) => sum + (c.dishes?.length || 0), 0)
   });
   
+  // DEBUG: Log first dish structure
+  if (menuData?.courses?.[0]?.dishes?.[0]) {
+    console.log('[Restaurant Page] Sample dish structure:', JSON.stringify(menuData.courses[0].dishes[0], null, 2));
+  }
+  
   // Extract courses from menu response
   const courses = (menuData as RestaurantMenuResponse)?.courses || [];
   

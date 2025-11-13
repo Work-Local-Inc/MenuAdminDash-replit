@@ -56,18 +56,33 @@ export function DishModal({ dish, restaurantId, isOpen, onClose }: DishModalProp
   // Reset state when modal opens/closes
   useEffect(() => {
     if (isOpen) {
-      setSelectedSize('Regular');
+      // Set default size to first available option
+      const defaultSize = dish.prices?.[0]?.size_variant || 'Regular';
+      setSelectedSize(defaultSize);
       setSelectedModifiers([]);
       setQuantity(1);
       setSpecialInstructions('');
       setGroupSelections({});
     }
-  }, [isOpen]);
+  }, [isOpen, dish.prices]);
   
-  // Parse size options (if exists as JSON)
-  const sizeOptions = dish.size_options || [{ name: 'Regular', price: dish.base_price }];
+  // Parse size options from prices array or fallback to base_price
+  const getSizeOptions = () => {
+    if (dish.prices && Array.isArray(dish.prices) && dish.prices.length > 0) {
+      return dish.prices.map((p: any) => ({
+        name: p.size_variant,
+        price: p.price
+      }));
+    }
+    if (dish.size_options) {
+      return dish.size_options;
+    }
+    return [{ name: 'Regular', price: dish.base_price || 0 }];
+  };
+  
+  const sizeOptions = getSizeOptions();
   const selectedSizeOption = sizeOptions.find((s: any) => s.name === selectedSize) || sizeOptions[0];
-  const sizePrice = selectedSizeOption?.price || dish.base_price || 0;
+  const sizePrice = selectedSizeOption?.price || 0;
   
   // Get modifier price for selected size
   const getModifierPrice = (modifier: any): number => {
