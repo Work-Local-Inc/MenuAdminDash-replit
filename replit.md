@@ -16,7 +16,7 @@ Preferred communication style: Simple, everyday language.
 - **API Routes**: Thin wrappers around Supabase Edge Functions for writes, direct Supabase queries for reads, Zod validation.
 - **Form Handling**: React Hook Form with Zod schemas and shadcn/ui components.
 - **Utility Functions**: `lib/utils.ts` for helpers, Canadian locale formatting.
-- **Customer-Facing Menu**: Public routes (`/r/[slug]`) using Server Components, Zustand for shopping cart with localStorage persistence.
+- **Customer-Facing Menu**: Public routes (`/r/[slug]`) using Server Components, Zustand for shopping cart with localStorage persistence. **Menu Display Fix (Nov 2025)**: Fixed critical blocking issue where menus showed "Menu Coming Soon" despite having active dishes. Created optimized `get_restaurant_menu()` SQL function aligned with actual menuca_v3 schema structure (verified dishes, dish_prices, modifier_groups tables). Performance: <500ms for 28-dish restaurants. See `lib/Documentation/MENU_DISPLAY_FIX.md` for details.
 
 ### Backend & Data Layer
 - **Database**: Supabase PostgreSQL (ONLY database - no Neon).

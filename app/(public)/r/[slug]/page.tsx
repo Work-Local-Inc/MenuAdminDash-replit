@@ -3,6 +3,7 @@ import { Metadata } from 'next';
 import { createClient } from '@/lib/supabase/server';
 import { extractIdFromSlug, createRestaurantSlug } from '@/lib/utils/slugify';
 import RestaurantMenu from '@/components/customer/restaurant-menu';
+import type { RestaurantMenuResponse } from '@/lib/types/menu';
 
 interface RestaurantPageProps {
   params: {
@@ -68,20 +69,24 @@ export default async function RestaurantPage({ params }: RestaurantPageProps) {
     redirect(`/r/${correctSlug}`);
   }
   
-  // Fetch menu categories and dishes
-  const { data: courses, error: coursesError } = await supabase
-    .from('courses')
-    .select(`
-      *,
-      dishes!dishes_course_id_fkey!inner (*)
-    `)
-    .eq('restaurant_id', restaurantId)
-    .eq('is_active', true)
-    .eq('dishes.is_active', true)
-    .order('display_order', { ascending: true });
+  // Fetch menu using get_restaurant_menu SQL function
+  const { data: menuData, error: menuError } = await supabase
+    .rpc('get_restaurant_menu', {
+      p_restaurant_id: restaurantId,
+      p_language_code: 'en'
+    });
   
-  console.log('[Restaurant Page] Courses query result:', { courses, coursesError });
-  console.log('[Restaurant Page] About to render RestaurantMenu component');
+  console.log('[Restaurant Page] Menu RPC result:', { 
+    menuData, 
+    menuError,
+    coursesCount: menuData?.courses?.length,
+    totalDishes: menuData?.courses?.reduce((sum: number, c: any) => sum + (c.dishes?.length || 0), 0)
+  });
   
-  return <RestaurantMenu restaurant={restaurant} courses={courses || []} />;
+  // Extract courses from menu response
+  const courses = (menuData as RestaurantMenuResponse)?.courses || [];
+  
+  console.log('[Restaurant Page] About to render RestaurantMenu component with courses:', courses.length);
+  
+  return <RestaurantMenu restaurant={restaurant} courses={courses} />;
 }
