@@ -38,7 +38,7 @@ export function DishModal({ dish, restaurantId, isOpen, onClose }: DishModalProp
   
   // Load modifiers when modal opens
   useEffect(() => {
-    if (isOpen && dish.has_customization) {
+    if (isOpen && dish.id) {
       setIsLoadingModifiers(true);
       fetch(`/api/customer/dishes/${dish.id}/modifiers`)
         .then(res => res.json())
@@ -51,7 +51,7 @@ export function DishModal({ dish, restaurantId, isOpen, onClose }: DishModalProp
           setIsLoadingModifiers(false);
         });
     }
-  }, [isOpen, dish.id, dish.has_customization]);
+  }, [isOpen, dish.id]);
   
   // Reset state when modal opens/closes
   useEffect(() => {
@@ -199,7 +199,7 @@ export function DishModal({ dish, restaurantId, isOpen, onClose }: DishModalProp
           )}
           
           {/* Modifier Groups */}
-          {dish.has_customization && modifierGroups.length > 0 && (
+          {modifierGroups.length > 0 && (
             <div className="space-y-6">
               {modifierGroups.map((group) => {
                 const groupSelected = groupSelections[group.id] || [];
