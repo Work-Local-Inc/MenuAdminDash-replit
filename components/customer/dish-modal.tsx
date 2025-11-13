@@ -16,6 +16,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useCartStore } from '@/lib/stores/cart-store';
 import type { CartModifier } from '@/lib/stores/cart-store';
+import type { ModifierGroupWithModifiers } from '@/lib/types/menu';
 
 interface DishModalProps {
   dish: any;
@@ -29,8 +30,9 @@ export function DishModal({ dish, restaurantId, isOpen, onClose }: DishModalProp
   const [selectedModifiers, setSelectedModifiers] = useState<CartModifier[]>([]);
   const [quantity, setQuantity] = useState(1);
   const [specialInstructions, setSpecialInstructions] = useState('');
-  const [modifiers, setModifiers] = useState<any[]>([]);
+  const [modifierGroups, setModifierGroups] = useState<ModifierGroupWithModifiers[]>([]);
   const [isLoadingModifiers, setIsLoadingModifiers] = useState(false);
+  const [groupSelections, setGroupSelections] = useState<Record<number, number[]>>({});
   
   const addItem = useCartStore((state) => state.addItem);
   
@@ -41,7 +43,7 @@ export function DishModal({ dish, restaurantId, isOpen, onClose }: DishModalProp
       fetch(`/api/customer/dishes/${dish.id}/modifiers`)
         .then(res => res.json())
         .then(data => {
-          setModifiers(data || []);
+          setModifierGroups(data || []);
           setIsLoadingModifiers(false);
         })
         .catch(err => {
@@ -58,6 +60,7 @@ export function DishModal({ dish, restaurantId, isOpen, onClose }: DishModalProp
       setSelectedModifiers([]);
       setQuantity(1);
       setSpecialInstructions('');
+      setGroupSelections({});
     }
   }, [isOpen]);
   
@@ -66,12 +69,44 @@ export function DishModal({ dish, restaurantId, isOpen, onClose }: DishModalProp
   const selectedSizeOption = sizeOptions.find((s: any) => s.name === selectedSize) || sizeOptions[0];
   const sizePrice = selectedSizeOption?.price || dish.base_price || 0;
   
-  const handleModifierToggle = (modifier: any, checked: boolean) => {
+  // Get modifier price for selected size
+  const getModifierPrice = (modifier: any): number => {
+    if (!modifier.prices || modifier.prices.length === 0) return 0;
+    const priceForSize = modifier.prices.find((p: any) => p.size_variant === selectedSize);
+    return priceForSize?.price || modifier.prices[0]?.price || 0;
+  };
+
+  // Handle modifier selection/deselection
+  const handleModifierToggle = (group: ModifierGroupWithModifiers, modifierId: number, checked: boolean) => {
+    const currentSelections = groupSelections[group.id] || [];
+    let newSelections: number[];
+
+    if (group.max_selections === 1) {
+      newSelections = checked ? [modifierId] : [];
+    } else {
+      if (checked) {
+        if (group.max_selections === 0 || currentSelections.length < group.max_selections) {
+          newSelections = [...currentSelections, modifierId];
+        } else {
+          return;
+        }
+      } else {
+        newSelections = currentSelections.filter(id => id !== modifierId);
+      }
+    }
+
+    setGroupSelections({ ...groupSelections, [group.id]: newSelections });
+
+    const modifier = group.modifiers.find(m => m.id === modifierId);
+    if (!modifier) return;
+
+    const price = getModifierPrice(modifier);
+
     if (checked) {
       setSelectedModifiers([...selectedModifiers, {
         id: modifier.id,
         name: modifier.name,
-        price: modifier.price || 0,
+        price,
       }]);
     } else {
       setSelectedModifiers(selectedModifiers.filter(m => m.id !== modifier.id));
@@ -148,38 +183,105 @@ export function DishModal({ dish, restaurantId, isOpen, onClose }: DishModalProp
             </div>
           )}
           
-          {/* Modifiers */}
-          {dish.has_customization && modifiers.length > 0 && (
-            <div>
-              <Label className="text-base font-semibold mb-3 block">Customize Your Order</Label>
-              <div className="space-y-3">
-                {modifiers.map((modifier: any) => (
-                  <div key={modifier.id} className="flex items-start space-x-3">
-                    <Checkbox
-                      id={`modifier-${modifier.id}`}
-                      checked={selectedModifiers.some(m => m.id === modifier.id)}
-                      onCheckedChange={(checked) => handleModifierToggle(modifier, checked as boolean)}
-                      data-testid={`checkbox-modifier-${modifier.id}`}
-                    />
-                    <Label 
-                      htmlFor={`modifier-${modifier.id}`} 
-                      className="flex-1 cursor-pointer font-normal"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span>{modifier.name}</span>
-                        {modifier.price > 0 && (
-                          <span className="text-sm text-muted-foreground">
-                            +${Number(modifier.price).toFixed(2)}
-                          </span>
+          {/* Modifier Groups */}
+          {dish.has_customization && modifierGroups.length > 0 && (
+            <div className="space-y-6">
+              {modifierGroups.map((group) => {
+                const groupSelected = groupSelections[group.id] || [];
+                const isMaxSelections = group.max_selections > 0 && groupSelected.length >= group.max_selections;
+
+                return (
+                  <div key={group.id} className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-base font-semibold">
+                        {group.name}
+                        {group.is_required && (
+                          <Badge variant="destructive" className="ml-2 text-xs">Required</Badge>
                         )}
-                      </div>
-                      {modifier.is_required && (
-                        <Badge variant="outline" className="text-xs mt-1">Required</Badge>
+                      </Label>
+                      {group.max_selections > 0 && (
+                        <span className="text-sm text-muted-foreground">
+                          {group.max_selections === 1 ? 'Choose 1' : `Choose up to ${group.max_selections}`}
+                        </span>
                       )}
-                    </Label>
+                    </div>
+                    
+                    {group.instructions && (
+                      <p className="text-sm text-muted-foreground">{group.instructions}</p>
+                    )}
+                    
+                    {group.max_selections === 1 ? (
+                      <RadioGroup
+                        value={groupSelected[0]?.toString() || ''}
+                        onValueChange={(value) => {
+                          const modifierId = parseInt(value);
+                          const oldSelection = groupSelected[0];
+                          if (oldSelection) {
+                            handleModifierToggle(group, oldSelection, false);
+                          }
+                          handleModifierToggle(group, modifierId, true);
+                        }}
+                      >
+                        {group.modifiers.map((modifier) => {
+                          const price = getModifierPrice(modifier);
+                          return (
+                            <div key={modifier.id} className="flex items-center space-x-2 mb-2">
+                              <RadioGroupItem
+                                value={modifier.id.toString()}
+                                id={`modifier-${modifier.id}`}
+                                data-testid={`radio-modifier-${modifier.id}`}
+                              />
+                              <Label htmlFor={`modifier-${modifier.id}`} className="flex-1 cursor-pointer">
+                                <div className="flex items-center justify-between">
+                                  <span>{modifier.name}</span>
+                                  {price > 0 && (
+                                    <span className="text-sm text-muted-foreground">
+                                      +${Number(price).toFixed(2)}
+                                    </span>
+                                  )}
+                                </div>
+                              </Label>
+                            </div>
+                          );
+                        })}
+                      </RadioGroup>
+                    ) : (
+                      <div className="space-y-2">
+                        {group.modifiers.map((modifier) => {
+                          const price = getModifierPrice(modifier);
+                          const isSelected = groupSelected.includes(modifier.id);
+                          const isDisabled = !isSelected && isMaxSelections;
+                          
+                          return (
+                            <div key={modifier.id} className="flex items-start space-x-3">
+                              <Checkbox
+                                id={`modifier-${modifier.id}`}
+                                checked={isSelected}
+                                disabled={isDisabled}
+                                onCheckedChange={(checked) => handleModifierToggle(group, modifier.id, checked as boolean)}
+                                data-testid={`checkbox-modifier-${modifier.id}`}
+                              />
+                              <Label 
+                                htmlFor={`modifier-${modifier.id}`} 
+                                className={`flex-1 cursor-pointer font-normal ${isDisabled ? 'opacity-50' : ''}`}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <span>{modifier.name}</span>
+                                  {price > 0 && (
+                                    <span className="text-sm text-muted-foreground">
+                                      +${Number(price).toFixed(2)}
+                                    </span>
+                                  )}
+                                </div>
+                              </Label>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
-                ))}
-              </div>
+                );
+              })}
             </div>
           )}
           

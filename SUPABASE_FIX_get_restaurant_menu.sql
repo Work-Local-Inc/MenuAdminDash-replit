@@ -181,7 +181,9 @@ BEGIN
         'is_available', ad.is_available,
         'unavailable_until', ad.unavailable_until,
         'unavailable_reason', ad.unavailable_reason,
+        'base_price', COALESCE((dp.prices->0->>'price')::numeric, 0),
         'prices', COALESCE(dp.prices, '[]'::jsonb),
+        'size_options', COALESCE(dp.prices, '[]'::jsonb),
         'modifiers', COALESCE(dm.modifier_groups, '[]'::jsonb)
       ) as dish_data
     FROM active_dishes ad
