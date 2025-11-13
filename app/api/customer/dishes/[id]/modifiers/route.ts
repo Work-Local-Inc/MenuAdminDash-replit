@@ -16,19 +16,64 @@ export async function GET(
       );
     }
     
-    // Fetch modifiers for the dish
-    const { data: modifiers, error } = await supabase
-      .schema('menuca_v3').from('dish_modifiers')
-      .select('id, name, price, is_required, display_order')
+    // Fetch modifier groups with nested modifiers and prices
+    // Schema hierarchy: modifier_groups → dish_modifiers → dish_modifier_prices
+    const { data: modifierGroups, error } = await supabase
+      .schema('menuca_v3')
+      .from('modifier_groups')
+      .select(`
+        id,
+        dish_id,
+        name,
+        is_required,
+        min_selections,
+        max_selections,
+        display_order,
+        parent_modifier_id,
+        instructions,
+        modifiers:dish_modifiers(
+          id,
+          uuid,
+          restaurant_id,
+          dish_id,
+          modifier_group_id,
+          name,
+          is_default,
+          modifier_type,
+          display_order,
+          prices:dish_modifier_prices(
+            id,
+            uuid,
+            dish_modifier_id,
+            dish_id,
+            size_variant,
+            price,
+            display_order,
+            is_active
+          )
+        )
+      `)
       .eq('dish_id', dishId)
-      .eq('is_active', true)
       .order('display_order', { ascending: true });
     
     if (error) {
       throw error;
     }
     
-    return NextResponse.json(modifiers || []);
+    // Filter out inactive modifier prices and sort modifiers
+    const processedGroups = (modifierGroups || []).map(group => ({
+      ...group,
+      modifiers: (group.modifiers || [])
+        .map((modifier: any) => ({
+          ...modifier,
+          prices: (modifier.prices || [])
+            .filter((price: any) => price.is_active)
+            .sort((a: any, b: any) => a.display_order - b.display_order)
+        }))
+        .sort((a: any, b: any) => a.display_order - b.display_order)
+    }));
+    
+    return NextResponse.json(processedGroups);
   } catch (error: any) {
     console.error('Error fetching dish modifiers:', error);
     return NextResponse.json(

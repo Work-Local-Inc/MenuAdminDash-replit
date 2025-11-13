@@ -56,26 +56,54 @@ export interface ModifierGroup {
   min_selections: number
   max_selections: number
   display_order: number
+  parent_modifier_id: number | null
+  instructions: string | null
   created_at: string
   updated_at: string
 }
 
 export interface DishModifier {
   id: number
+  uuid: string
+  restaurant_id: number
+  dish_id: number
   modifier_group_id: number
   name: string
-  price: number
-  is_included: boolean
+  modifier_type: string | null
   is_default: boolean
   display_order: number
   created_at: string
   updated_at: string
+  deleted_at: string | null
+}
+
+export interface ModifierPrice {
+  id: number
+  uuid: string
+  dish_modifier_id: number
+  dish_id: number
+  size_variant: string | null
+  price: number
+  display_order: number
+  is_active: boolean
+  created_at: string
+  updated_at: string
+  deleted_at: string | null
 }
 
 // ============================================
 // NESTED TYPES (for SQL function response)
 // ============================================
 
+export interface DishModifierWithPrices extends DishModifier {
+  prices: ModifierPrice[]
+}
+
+export interface ModifierGroupWithModifiers extends ModifierGroup {
+  modifiers: DishModifierWithPrices[]
+}
+
+// Legacy alias for backwards compatibility
 export interface ModifierGroupWithOptions extends ModifierGroup {
   options: DishModifier[]
 }
