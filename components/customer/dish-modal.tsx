@@ -40,9 +40,11 @@ export function DishModal({ dish, restaurantId, isOpen, onClose }: DishModalProp
   useEffect(() => {
     if (isOpen && dish.id) {
       setIsLoadingModifiers(true);
+      console.log(`[DishModal] Fetching modifiers for dish ${dish.id}...`);
       fetch(`/api/customer/dishes/${dish.id}/modifiers`)
         .then(res => res.json())
         .then(data => {
+          console.log(`[DishModal] Received ${data?.length || 0} modifier groups for dish ${dish.id}:`, data);
           setModifierGroups(data || []);
           setIsLoadingModifiers(false);
         })
@@ -199,7 +201,7 @@ export function DishModal({ dish, restaurantId, isOpen, onClose }: DishModalProp
           )}
           
           {/* Modifier Groups */}
-          {modifierGroups.length > 0 && (
+          {modifierGroups.length > 0 ? (
             <div className="space-y-6">
               {modifierGroups.map((group) => {
                 const groupSelected = groupSelections[group.id] || [];
@@ -298,6 +300,14 @@ export function DishModal({ dish, restaurantId, isOpen, onClose }: DishModalProp
                 );
               })}
             </div>
+          ) : (
+            isLoadingModifiers ? (
+              <div className="text-center py-4 text-muted-foreground">Loading modifiers...</div>
+            ) : (
+              <div className="text-center py-4 text-muted-foreground">
+                {console.log('[DishModal] No modifier groups to display')}
+              </div>
+            )
           )}
           
           {/* Special Instructions */}
