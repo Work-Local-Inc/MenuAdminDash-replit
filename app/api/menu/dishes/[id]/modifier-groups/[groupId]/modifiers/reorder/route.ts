@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import pool from '@/lib/db/postgres';
+import { createClient } from '@/lib/supabase/server';
 
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string; groupId: string } }
 ) {
-  const client = await pool.connect();
-  
   try {
     const groupId = parseInt(params.groupId);
     const { modifier_ids } = await request.json();
@@ -18,28 +16,34 @@ export async function POST(
       );
     }
 
-    await client.query('BEGIN');
+    const supabase = await createClient();
 
+    // Perform sequential updates for atomicity
     for (let i = 0; i < modifier_ids.length; i++) {
-      await client.query(
-        `UPDATE menuca_v3.dish_modifier_items 
-         SET display_order = $1, updated_at = NOW()
-         WHERE id = $2 AND modifier_group_id = $3`,
-        [i, modifier_ids[i], groupId]
-      );
-    }
+      const { error } = await supabase
+        .schema('menuca_v3').from('dish_modifier_items')
+        .update({
+          display_order: i,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', modifier_ids[i])
+        .eq('modifier_group_id', groupId);
 
-    await client.query('COMMIT');
+      if (error) {
+        console.error(`Error updating modifier ${modifier_ids[i]}:`, error);
+        return NextResponse.json(
+          { error: 'Failed to reorder modifiers' },
+          { status: 500 }
+        );
+      }
+    }
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    await client.query('ROLLBACK');
     console.error('Error reordering modifiers:', error);
     return NextResponse.json(
       { error: 'Failed to reorder modifiers' },
       { status: 500 }
     );
-  } finally {
-    client.release();
   }
 }

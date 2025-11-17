@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import pool from '@/lib/db/postgres';
+import { createClient } from '@/lib/supabase/server';
 
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const client = await pool.connect();
-  
   try {
     const dishId = parseInt(params.id);
     if (isNaN(dishId) || dishId <= 0) {
@@ -25,32 +23,36 @@ export async function POST(
       );
     }
 
-    await client.query('BEGIN');
+    const supabase = await createClient();
 
     // Verify all groups belong to this dish
-    const verifyResult = await client.query(
-      'SELECT COUNT(*) as count FROM menuca_v3.modifier_groups WHERE id = ANY($1) AND dish_id = $2',
-      [group_ids, dishId]
-    );
+    const { data: verifyData, error: verifyError } = await supabase
+      .schema('menuca_v3').from('modifier_groups')
+      .select('id')
+      .in('id', group_ids)
+      .eq('dish_id', dishId);
 
-    if (parseInt(verifyResult.rows[0].count) !== group_ids.length) {
-      await client.query('ROLLBACK');
+    if (verifyError || !verifyData || verifyData.length !== group_ids.length) {
       return NextResponse.json(
         { error: 'Some modifier groups do not belong to this dish' },
         { status: 400 }
       );
     }
 
+    // Perform sequential updates for atomicity
     for (let i = 0; i < group_ids.length; i++) {
-      const updateResult = await client.query(
-        `UPDATE menuca_v3.modifier_groups 
-         SET display_order = $1, updated_at = NOW()
-         WHERE id = $2 AND dish_id = $3`,
-        [i, group_ids[i], dishId]
-      );
+      const { data, error } = await supabase
+        .schema('menuca_v3').from('modifier_groups')
+        .update({
+          display_order: i,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', group_ids[i])
+        .eq('dish_id', dishId)
+        .select('id');
 
-      if (updateResult.rowCount === 0) {
-        await client.query('ROLLBACK');
+      if (error || !data || data.length === 0) {
+        console.error(`Error updating group ${group_ids[i]}:`, error);
         return NextResponse.json(
           { error: `Modifier group ${group_ids[i]} not found` },
           { status: 404 }
@@ -58,17 +60,12 @@ export async function POST(
       }
     }
 
-    await client.query('COMMIT');
-
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    await client.query('ROLLBACK');
     console.error('Error reordering modifier groups:', error);
     return NextResponse.json(
       { error: 'Failed to reorder modifier groups' },
       { status: 500 }
     );
-  } finally {
-    client.release();
   }
 }

@@ -1,55 +1,62 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { query } from '@/lib/db/postgres'
+import { createClient } from '@/lib/supabase/server'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
 import { AuthError } from '@/lib/errors'
 
 export async function GET(request: NextRequest) {
   try {
     await verifyAdminAuth(request)
+    
+    const supabase = await createClient()
+    
     // Get all BASE TABLES ONLY in menuca_v3 schema (excludes views and partitions)
-    const tablesResult = await query(`
-      SELECT table_name 
-      FROM information_schema.tables 
-      WHERE table_schema = 'menuca_v3' 
-        AND table_type = 'BASE TABLE'
-        AND table_name NOT LIKE '%\\_202%'
-      ORDER BY table_name;
-    `)
+    const { data: tablesData, error: tablesError } = await supabase
+      .schema('menuca_v3').from('information_schema.tables')
+      .select('table_name')
+      .eq('table_schema', 'menuca_v3')
+      .eq('table_type', 'BASE TABLE')
+      .not('table_name', 'like', '%\\_202%')
+      .order('table_name')
+
+    if (tablesError) {
+      console.error('Error fetching tables:', tablesError)
+      return NextResponse.json(
+        { error: 'Failed to fetch tables' },
+        { status: 500 }
+      )
+    }
 
     console.log('DB Inspector - Tables query result:', {
-      rowCount: tablesResult.rowCount,
-      rows: tablesResult.rows.length,
-      sampleRows: tablesResult.rows.slice(0, 5)
+      rows: tablesData?.length || 0,
+      sampleRows: tablesData?.slice(0, 5)
     })
 
-    const tables = tablesResult.rows.map(row => row.table_name)
+    const tables = (tablesData || []).map(row => row.table_name)
     console.log('DB Inspector - Total tables found:', tables.length)
 
     // Get columns for each table
     const schemaDetails: Record<string, any[]> = {}
     
     for (const tableName of tables) {
-      const columnsResult = await query(`
-        SELECT 
-          column_name,
-          data_type,
-          is_nullable,
-          column_default
-        FROM information_schema.columns
-        WHERE table_schema = 'menuca_v3' 
-          AND table_name = $1
-        ORDER BY ordinal_position;
-      `, [tableName])
+      const { data: columnsData } = await supabase
+        .schema('menuca_v3').from('information_schema.columns')
+        .select('column_name, data_type, is_nullable, column_default')
+        .eq('table_schema', 'menuca_v3')
+        .eq('table_name', tableName)
+        .order('ordinal_position')
       
-      schemaDetails[tableName] = columnsResult.rows
+      schemaDetails[tableName] = columnsData || []
     }
 
     // Get row counts for each table
     const tableCounts: Record<string, number> = {}
     for (const tableName of tables) {
       try {
-        const countResult = await query(`SELECT COUNT(*)::int as count FROM menuca_v3."${tableName}"`)
-        tableCounts[tableName] = countResult.rows[0]?.count || 0
+        const { count, error } = await supabase
+          .schema('menuca_v3').from(tableName)
+          .select('*', { count: 'exact', head: true })
+        
+        tableCounts[tableName] = error ? -1 : (count || 0)
       } catch (e) {
         tableCounts[tableName] = -1 // Error counting
       }

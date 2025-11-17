@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import pool from '@/lib/db/postgres';
+import { createClient } from '@/lib/supabase/server';
 
 export async function PATCH(
   request: NextRequest,
@@ -31,9 +31,8 @@ export async function PATCH(
       );
     }
 
-    const updates: string[] = [];
-    const values: any[] = [];
-    let paramCount = 1;
+
+    const updateData: any = {};
 
     if (name !== undefined) {
       if (!name?.trim()) {
@@ -42,52 +41,54 @@ export async function PATCH(
           { status: 400 }
         );
       }
-      updates.push(`name = $${paramCount++}`);
-      values.push(name.trim());
+      updateData.name = name.trim();
     }
 
     if (is_required !== undefined) {
-      updates.push(`is_required = $${paramCount++}`);
-      values.push(is_required);
+      updateData.is_required = is_required;
     }
 
     if (min_selections !== undefined) {
-      updates.push(`min_selections = $${paramCount++}`);
-      values.push(min_selections);
+      updateData.min_selections = min_selections;
     }
 
     if (max_selections !== undefined) {
-      updates.push(`max_selections = $${paramCount++}`);
-      values.push(max_selections);
+      updateData.max_selections = max_selections;
     }
 
-    if (updates.length === 0) {
+    if (Object.keys(updateData).length === 0) {
       return NextResponse.json(
         { error: 'No fields to update' },
         { status: 400 }
       );
     }
 
-    updates.push(`updated_at = NOW()`);
-    values.push(groupId);
-    values.push(dishId);
+    updateData.updated_at = new Date().toISOString();
 
-    const result = await pool.query(
-      `UPDATE menuca_v3.modifier_groups 
-       SET ${updates.join(', ')}
-       WHERE id = $${paramCount} AND dish_id = $${paramCount + 1}
-       RETURNING *`,
-      values
-    );
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .schema('menuca_v3').from('modifier_groups')
+      .update(updateData)
+      .eq('id', groupId)
+      .eq('dish_id', dishId)
+      .select()
+      .single();
 
-    if (result.rows.length === 0) {
+    if (error || !data) {
+      if (error?.code === 'PGRST116') {
+        return NextResponse.json(
+          { error: 'Modifier group not found or does not belong to this dish' },
+          { status: 404 }
+        );
+      }
+      console.error('Error updating modifier group:', error);
       return NextResponse.json(
-        { error: 'Modifier group not found or does not belong to this dish' },
-        { status: 404 }
+        { error: 'Failed to update modifier group' },
+        { status: 500 }
       );
     }
 
-    return NextResponse.json(result.rows[0]);
+    return NextResponse.json(data);
   } catch (error: any) {
     console.error('Error updating modifier group:', error);
     return NextResponse.json(
@@ -112,15 +113,25 @@ export async function DELETE(
       );
     }
 
-    const result = await pool.query(
-      'DELETE FROM menuca_v3.modifier_groups WHERE id = $1 AND dish_id = $2 RETURNING id',
-      [groupId, dishId]
-    );
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .schema('menuca_v3').from('modifier_groups')
+      .delete()
+      .eq('id', groupId)
+      .eq('dish_id', dishId)
+      .select('id');
 
-    if (result.rows.length === 0) {
+    if (error || !data || data.length === 0) {
+      if (error?.code === 'PGRST116' || !data || data.length === 0) {
+        return NextResponse.json(
+          { error: 'Modifier group not found or does not belong to this dish' },
+          { status: 404 }
+        );
+      }
+      console.error('Error deleting modifier group:', error);
       return NextResponse.json(
-        { error: 'Modifier group not found or does not belong to this dish' },
-        { status: 404 }
+        { error: 'Failed to delete modifier group' },
+        { status: 500 }
       );
     }
 

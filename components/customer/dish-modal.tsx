@@ -38,24 +38,18 @@ export function DishModal({ dish, restaurantId, isOpen, onClose }: DishModalProp
   
   // Load modifiers when modal opens
   useEffect(() => {
-    console.log(`[DishModal useEffect] isOpen=${isOpen}, dish.id=${dish?.id}, dish=`, dish);
-    
     if (isOpen && dish.id) {
       setIsLoadingModifiers(true);
-      console.log(`[DishModal] ✅ Fetching modifiers for dish ${dish.id}...`);
       fetch(`/api/customer/dishes/${dish.id}/modifiers`)
         .then(res => res.json())
         .then(data => {
-          console.log(`[DishModal] ✅ Received ${data?.length || 0} modifier groups for dish ${dish.id}:`, data);
           setModifierGroups(data || []);
           setIsLoadingModifiers(false);
         })
         .catch(err => {
-          console.error('[DishModal] ❌ Error loading modifiers:', err);
+          console.error('Error loading modifiers:', err);
           setIsLoadingModifiers(false);
         });
-    } else {
-      console.log(`[DishModal] ❌ NOT fetching - isOpen=${isOpen}, dish.id=${dish?.id}`);
     }
   }, [isOpen, dish.id]);
   

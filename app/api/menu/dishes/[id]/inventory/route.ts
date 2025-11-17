@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import pool from '@/lib/db/postgres';
+import { createClient } from '@/lib/supabase/server';
 
 export async function GET(
   request: NextRequest,
@@ -8,21 +8,15 @@ export async function GET(
   try {
     const dishId = parseInt(params.id);
 
-    const result = await pool.query(
-      `SELECT 
-        dish_id,
-        is_available,
-        unavailable_until,
-        reason,
-        notes,
-        updated_by_admin_id,
-        updated_at
-      FROM menuca_v3.dish_inventory
-      WHERE dish_id = $1`,
-      [dishId]
-    );
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .schema('menuca_v3').from('dish_inventory')
+      .select('dish_id, is_available, unavailable_until, reason, notes, updated_by_admin_id, updated_at')
+      .eq('dish_id', dishId)
+      .single();
 
-    if (result.rows.length === 0) {
+    if (error && error.code === 'PGRST116') {
+      // No data found, return default values
       return NextResponse.json({
         dish_id: dishId,
         is_available: true,
@@ -32,7 +26,15 @@ export async function GET(
       });
     }
 
-    return NextResponse.json(result.rows[0]);
+    if (error) {
+      console.error('Error fetching dish inventory:', error);
+      return NextResponse.json(
+        { error: 'Failed to fetch dish inventory' },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json(data);
   } catch (error: any) {
     console.error('Error fetching dish inventory:', error);
     return NextResponse.json(
@@ -52,33 +54,32 @@ export async function PATCH(
 
     const { is_available, unavailable_until, reason, notes } = body;
 
-    const result = await pool.query(
-      `INSERT INTO menuca_v3.dish_inventory (
-        dish_id,
-        is_available,
-        unavailable_until,
-        reason,
-        notes,
-        updated_at
-      ) VALUES ($1, $2, $3, $4, $5, NOW())
-      ON CONFLICT (dish_id) 
-      DO UPDATE SET
-        is_available = $2,
-        unavailable_until = $3,
-        reason = $4,
-        notes = $5,
-        updated_at = NOW()
-      RETURNING *`,
-      [
-        dishId,
-        is_available ?? true,
-        unavailable_until || null,
-        reason || null,
-        notes || null
-      ]
-    );
+    const supabase = await createClient();
+    
+    const upsertData = {
+      dish_id: dishId,
+      is_available: is_available ?? true,
+      unavailable_until: unavailable_until || null,
+      reason: reason || null,
+      notes: notes || null,
+      updated_at: new Date().toISOString()
+    };
 
-    return NextResponse.json(result.rows[0]);
+    const { data, error } = await supabase
+      .schema('menuca_v3').from('dish_inventory')
+      .upsert(upsertData, { onConflict: 'dish_id' })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating dish inventory:', error);
+      return NextResponse.json(
+        { error: 'Failed to update dish inventory' },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json(data);
   } catch (error: any) {
     console.error('Error updating dish inventory:', error);
     return NextResponse.json(
