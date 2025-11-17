@@ -29,6 +29,8 @@ export async function getRestaurants(filters?: {
       return []
     }
     
+    console.log(`[getRestaurants] Found ${data?.length || 0} restaurants with filters:`, filters)
+    
     return (data || []).map((restaurant: any) => {
       const primaryLocation = restaurant.restaurant_locations?.find((loc: any) => loc.is_primary)
       return {
