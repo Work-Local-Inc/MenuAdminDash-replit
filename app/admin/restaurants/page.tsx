@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRestaurants, useDeleteRestaurant } from "@/lib/hooks/use-restaurants"
+import { useRestaurants, useDeleteRestaurant, useToggleVerified } from "@/lib/hooks/use-restaurants"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -55,6 +55,7 @@ export default function RestaurantsPage() {
   })
   
   const deleteRestaurant = useDeleteRestaurant()
+  const toggleVerified = useToggleVerified()
 
   // Apply verified filter
   const filteredRestaurants = restaurants.filter((restaurant: any) => {
@@ -287,6 +288,13 @@ export default function RestaurantsPage() {
                           <DropdownMenuItem data-testid={`menu-clone-${restaurant.id}`}>
                             <Copy className="mr-2 h-4 w-4" />
                             Clone
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            data-testid={`menu-toggle-verified-${restaurant.id}`}
+                            onClick={() => toggleVerified.mutate(restaurant.id)}
+                          >
+                            <CheckCircle2 className="mr-2 h-4 w-4" />
+                            {restaurant.verified ? 'Mark as Unverified' : 'Mark as Verified'}
                           </DropdownMenuItem>
                           <DropdownMenuItem 
                             data-testid={`menu-delete-${restaurant.id}`}

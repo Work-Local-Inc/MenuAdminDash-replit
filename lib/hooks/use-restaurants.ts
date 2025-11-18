@@ -145,6 +145,40 @@ export function useToggleOnlineOrdering() {
   })
 }
 
+export function useToggleVerified() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async (restaurantId: number) => {
+      const res = await fetch(`/api/restaurants/${restaurantId}/toggle-verified`, {
+        method: 'POST',
+      })
+      
+      if (!res.ok) {
+        const errorData = await res.json()
+        throw new Error(errorData.error || 'Failed to toggle verified status')
+      }
+      
+      return res.json()
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/restaurants'] })
+      toast({
+        title: "Success",
+        description: `Restaurant ${data.verified ? 'verified' : 'unverified'} successfully`,
+      })
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message,
+      })
+    },
+  })
+}
+
 // ============================================
 // RESTAURANT LOCATIONS
 // ============================================
