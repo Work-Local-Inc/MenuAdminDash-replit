@@ -33,22 +33,9 @@ export function DishCard({ dish, restaurantId }: DishCardProps) {
   const hasMultiplePrices = dish.prices && dish.prices.length > 1;
   
   const handleQuickAdd = () => {
-    // If dish has customizations or multiple prices, open modal; otherwise add directly to cart
-    if (dish.has_customization || hasMultiplePrices) {
-      setIsModalOpen(true);
-    } else {
-      const basePrice = dish.base_price || (dish.prices?.[0]?.price) || 0;
-      addItem({
-        dishId: dish.id,
-        dishName: dish.name,
-        dishImage: dish.image_url,
-        size: dish.prices?.[0]?.size_variant || 'Regular',
-        sizePrice: basePrice,
-        quantity: 1,
-        modifiers: [],
-        specialInstructions: '',
-      });
-    }
+    // Always open modal to ensure modifiers are handled correctly
+    // The modal will handle the add-to-cart flow and enforce required modifiers
+    setIsModalOpen(true);
   };
   
   return (
