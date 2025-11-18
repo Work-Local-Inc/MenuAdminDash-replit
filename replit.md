@@ -76,3 +76,72 @@ Preferred communication style: Simple, everyday language.
 ### Integrations
 - **Mapbox GL JS**: For delivery area polygon drawing.
 - **@hello-pangea/dnd**: For drag-and-drop reordering.
+- **Stripe**: Payment processing for customer orders (Nov 2025).
+
+## Customer Ordering System (Nov 2025)
+
+### Customer Authentication
+- Separate authentication system from admin using Supabase Auth
+- Sign up/login pages at `/customer/login`
+- Customer user records stored in `menuca_v3.users` table
+- Supports email/password authentication with automatic user profile creation
+
+### Checkout Flow
+- **Cart**: Zustand-based shopping cart with localStorage persistence
+- **Checkout**: Multi-step checkout process at `/checkout`
+  - Step 1: Address confirmation (select saved address or add new)
+  - Step 2: Payment (Stripe Elements integration)
+- **Address Management**: CRUD operations for delivery addresses (`user_delivery_addresses` table)
+  - Saved addresses with labels (Home, Work, etc.)
+  - Default address selection
+  - Delivery instructions support
+  - Toronto (city_id: 1) as default city
+
+### Payment Processing
+- **Stripe Integration**: Secure payment processing with Stripe Elements
+- **Payment Intent**: Created server-side with amount and metadata
+- **Stripe Customer**: Automatically created and linked to user record (`stripe_customer_id`)
+- **Payment Transactions**: Tracked in `payment_transactions` table
+- **Currency**: CAD (Canadian Dollar)
+
+### Order Management
+- **Order Creation**: Orders created after successful payment
+- **Order History**: Accessible at `/customer/account` (Orders tab)
+- **Order Status**: Tracked in `order_status_history` table
+- **Order Details**: Include restaurant info, delivery address, payment status
+
+### Customer Account Pages
+- **Account Dashboard**: `/customer/account` with three tabs:
+  - **Orders**: View order history, track status, view details
+  - **Addresses**: Manage saved delivery addresses
+  - **Profile**: View account information (email, name, phone)
+- **Protected Routes**: Redirects to login if not authenticated
+
+### Database Tables Used
+- `users`: Customer profiles with Stripe customer ID
+- `user_delivery_addresses`: Saved delivery addresses
+- `user_payment_methods`: Saved payment methods (Stripe)
+- `payment_transactions`: Payment history and tracking
+- `orders`: Order records with delivery info and payment status
+- `order_status_history`: Order status changes over time
+- `stripe_webhook_events`: Webhook event tracking for idempotency
+
+### API Endpoints
+- `POST /api/customer/create-payment-intent`: Create Stripe payment intent
+- `POST /api/customer/orders`: Create order after payment (with server-side validation)
+- `GET /api/customer/orders`: Fetch user's order history
+- `POST /api/customer/stripe-webhook`: Handle Stripe webhook events
+
+### Security Features
+- **Server-side price validation**: All dish and modifier prices fetched from database
+- **Payment amount verification**: Server recalculates and verifies totals match payment amount
+- **Payment replay protection**: UNIQUE constraints on stripe_payment_intent_id (see migrations/004_add_payment_intent_uniqueness.sql)
+- **Restaurant ownership validation**: Verifies dishes and modifiers belong to correct restaurant
+- **Quantity validation**: Enforces positive integer quantities only
+- **User authentication**: All endpoints verify user authentication
+- **Webhook signature verification**: Stripe webhook events verified with signature
+
+### Database Migration Required
+**IMPORTANT**: Before using the checkout system in production, run the migration:
+- `migrations/004_add_payment_intent_uniqueness.sql` in Supabase SQL Editor
+- This adds UNIQUE constraints to prevent duplicate orders from the same payment intent

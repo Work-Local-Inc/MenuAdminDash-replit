@@ -167,6 +167,9 @@ export function CartDrawer({ isOpen, onClose, restaurant }: CartDrawerProps) {
               <Button
                 className="w-full"
                 size="lg"
+                onClick={() => {
+                  window.location.href = '/checkout';
+                }}
                 data-testid="button-checkout"
               >
                 Proceed to Checkout
