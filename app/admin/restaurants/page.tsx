@@ -28,7 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Search, Filter, MoreVertical, Plus, Download, Edit, Trash2, Copy, ExternalLink } from "lucide-react"
+import { Search, Filter, MoreVertical, Plus, Download, Edit, Trash2, Copy, ExternalLink, CheckCircle2 } from "lucide-react"
 import Link from "next/link"
 import { formatCurrency } from "@/lib/utils"
 import { createRestaurantSlug } from "@/lib/utils/slugify"
@@ -37,6 +37,7 @@ import { TableSkeleton } from "@/components/ui/loading-skeletons"
 const provinces = ["All", "ON", "BC", "QC", "AB"]
 const cities = ["All", "Toronto", "Vancouver", "Montreal", "Calgary", "Ottawa"]
 const statuses = ["All", "active", "suspended", "inactive"]
+const verifiedOptions = ["All", "Verified", "Unverified"]
 
 export default function RestaurantsPage() {
   const [selectedRestaurants, setSelectedRestaurants] = useState<number[]>([])
@@ -44,6 +45,7 @@ export default function RestaurantsPage() {
   const [provinceFilter, setProvinceFilter] = useState("All")
   const [cityFilter, setCityFilter] = useState("All")
   const [statusFilter, setStatusFilter] = useState("active")
+  const [verifiedFilter, setVerifiedFilter] = useState("All")
 
   const { data: restaurants = [], isLoading } = useRestaurants({
     province: provinceFilter !== "All" ? provinceFilter : undefined,
@@ -54,7 +56,15 @@ export default function RestaurantsPage() {
   
   const deleteRestaurant = useDeleteRestaurant()
 
-  const filteredRestaurants = restaurants
+  // Apply verified filter
+  const filteredRestaurants = restaurants.filter((restaurant: any) => {
+    if (verifiedFilter === "Verified") {
+      return restaurant.verified === true
+    } else if (verifiedFilter === "Unverified") {
+      return restaurant.verified !== true
+    }
+    return true
+  })
 
   const toggleRestaurant = (id: number) => {
     setSelectedRestaurants(prev =>
@@ -153,6 +163,16 @@ export default function RestaurantsPage() {
                 ))}
               </SelectContent>
             </Select>
+            <Select value={verifiedFilter} onValueChange={setVerifiedFilter}>
+              <SelectTrigger className="w-full md:w-[180px]" data-testid="select-verified">
+                <SelectValue placeholder="Verified" />
+              </SelectTrigger>
+              <SelectContent>
+                {verifiedOptions.map(option => (
+                  <SelectItem key={option} value={option}>{option}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Button variant="outline" onClick={exportToCSV} data-testid="button-export">
               <Download className="mr-2 h-4 w-4" />
               Export
@@ -219,7 +239,17 @@ export default function RestaurantsPage() {
                       />
                     </TableCell>
                     <TableCell className="font-mono">{restaurant.id}</TableCell>
-                    <TableCell className="font-medium">{restaurant.name}</TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        {restaurant.name}
+                        {restaurant.verified && (
+                          <Badge variant="secondary" className="gap-1" data-testid={`badge-verified-${restaurant.id}`}>
+                            <CheckCircle2 className="h-3 w-3" />
+                            Verified
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <Badge
                         variant={
