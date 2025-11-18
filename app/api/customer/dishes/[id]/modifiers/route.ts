@@ -16,8 +16,7 @@ export async function GET(
       );
     }
     
-    // Fetch modifier groups with nested modifiers and prices
-    // Schema hierarchy: modifier_groups → dish_modifiers → dish_modifier_prices
+    // Fetch modifier groups with minimal fields to avoid column errors
     const { data: modifierGroups, error } = await supabase
       .schema('menuca_v3')
       .from('modifier_groups')
@@ -29,27 +28,13 @@ export async function GET(
         min_selections,
         max_selections,
         display_order,
-        parent_modifier_id,
-        instructions,
         modifiers:dish_modifiers(
           id,
-          uuid,
-          restaurant_id,
-          dish_id,
-          modifier_group_id,
           name,
-          is_default,
-          modifier_type,
           display_order,
           prices:dish_modifier_prices(
-            id,
-            uuid,
-            dish_modifier_id,
-            dish_id,
             size_variant,
-            price,
-            display_order,
-            is_active
+            price
           )
         )
       `)
@@ -60,17 +45,15 @@ export async function GET(
       throw error;
     }
     
-    // Filter out inactive modifier prices and sort modifiers
+    // Sort modifiers
     const processedGroups = (modifierGroups || []).map(group => ({
       ...group,
       modifiers: (group.modifiers || [])
         .map((modifier: any) => ({
           ...modifier,
-          prices: (modifier.prices || [])
-            .filter((price: any) => price.is_active)
-            .sort((a: any, b: any) => a.display_order - b.display_order)
+          prices: modifier.prices || []
         }))
-        .sort((a: any, b: any) => a.display_order - b.display_order)
+        .sort((a: any, b: any) => (a.display_order || 0) - (b.display_order || 0))
     }));
     
     return NextResponse.json(processedGroups);
