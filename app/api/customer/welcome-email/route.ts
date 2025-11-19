@@ -12,11 +12,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get user details from the users table
+    // Get user details from the users table (query by auth_user_id, not id)
     const { data: userRecord } = await supabase
       .from('users')
       .select('first_name, email')
-      .eq('id', user.id)
+      .eq('auth_user_id', user.id)
       .single() as { data: { first_name: string; email: string } | null }
 
     if (!userRecord) {

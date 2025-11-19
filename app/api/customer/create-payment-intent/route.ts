@@ -30,8 +30,8 @@ export async function POST(request: NextRequest) {
     // Get or create Stripe customer
     const { data: userData } = await supabase
       .from('users')
-      .select('stripe_customer_id, email, first_name, last_name')
-      .eq('id', user.id)
+      .select('id, stripe_customer_id, email, first_name, last_name')
+      .eq('auth_user_id', user.id)
       .single()
 
     let stripeCustomerId = userData?.stripe_customer_id
@@ -50,11 +50,11 @@ export async function POST(request: NextRequest) {
 
       stripeCustomerId = customer.id
 
-      // Update user with Stripe customer ID
+      // Update user with Stripe customer ID  
       await supabase
         .from('users')
-        .update({ stripe_customer_id: stripeCustomerId })
-        .eq('id', user.id)
+        .update({ stripe_customer_id: stripeCustomerId } as any)
+        .eq('id', userData?.id)
     }
 
     // Create payment intent
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
       currency: 'cad',
       customer: stripeCustomerId,
       metadata: {
-        user_id: user.id, // SECURITY: Track which user made this payment
+        user_id: String(userData?.id || user.id), // SECURITY: Track which user made this payment
         ...metadata,
       },
       automatic_payment_methods: {

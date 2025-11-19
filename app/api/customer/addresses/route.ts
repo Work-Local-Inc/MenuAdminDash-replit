@@ -41,7 +41,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    const userId = userData.id
+    const userId = (userData as any).id
+
+    // If this should be default, unset other defaults first
+    if (is_default) {
+      await adminSupabase
+        .from('user_delivery_addresses')
+        .update({ is_default: false } as any)
+        .eq('user_id', userId)
+        .eq('is_default', true)
+    }
 
     const { data, error } = await adminSupabase
       .from('user_delivery_addresses')
@@ -54,7 +63,7 @@ export async function POST(request: NextRequest) {
         delivery_instructions: delivery_instructions || null,
         address_label: address_label || null,
         is_default: is_default || false,
-      })
+      } as any)
       .select()
       .single()
 
@@ -100,7 +109,7 @@ export async function GET(request: NextRequest) {
         *,
         city:cities(name)
       `)
-      .eq('user_id', userData.id)
+      .eq('user_id', (userData as any).id)
       .order('is_default', { ascending: false })
       .order('created_at', { ascending: false })
 

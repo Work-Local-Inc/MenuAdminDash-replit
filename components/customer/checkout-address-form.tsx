@@ -78,7 +78,7 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed }: CheckoutAddr
       setSavedAddresses(addresses)
       
       // Auto-select default address
-      const defaultAddr = addresses.find((a: any) => data.find((d: any) => d.id === a.id)?.is_default)
+      const defaultAddr = addresses.find((a: any) => (data as any[]).find((d: any) => d.id === a.id)?.is_default)
       if (defaultAddr?.id) {
         setSelectedAddressId(defaultAddr.id)
       }
@@ -90,7 +90,18 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed }: CheckoutAddr
   }
 
   const handleSaveNewAddress = async () => {
+    console.log('[Address Form] Saving address:', {
+      streetAddress,
+      postalCode,
+      city,
+      province,
+      unit,
+      deliveryInstructions,
+      addressLabel
+    })
+
     if (!streetAddress || !postalCode) {
+      console.error('[Address Form] Validation failed:', { streetAddress, postalCode })
       toast({
         title: "Missing information",
         description: "Please fill in street address and postal code",
@@ -306,15 +317,15 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed }: CheckoutAddr
                   id="postal-code"
                   placeholder="M5V 3A8"
                   value={postalCode}
-                  onChange={(e) => setPostalCode(e.target.value)}
+                  onChange={(e) => setPostalCode(e.target.value.toUpperCase())}
                   required
                   data-testid="input-postal-code"
-                  disabled={true}
-                  className="bg-muted"
                 />
-                <p className="text-xs text-muted-foreground">
-                  Auto-filled from address
-                </p>
+                {postalCode && (
+                  <p className="text-xs text-muted-foreground">
+                    {city && province ? `Auto-filled from address (${city}, ${province})` : 'Manually entered'}
+                  </p>
+                )}
               </div>
             </div>
 

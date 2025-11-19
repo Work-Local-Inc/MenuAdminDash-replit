@@ -59,11 +59,11 @@ export default function CheckoutPage() {
         return
       }
 
-      // Get full user details
+      // Get full user details (query by auth_user_id, not id)
       const { data: userData } = await supabase
         .from('users')
         .select('*')
-        .eq('id', user.id)
+        .eq('auth_user_id', user.id)
         .single()
 
       setCurrentUser(userData)
