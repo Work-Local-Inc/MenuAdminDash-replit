@@ -233,6 +233,19 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed }: CheckoutAddr
           </div>
         )}
 
+        {/* Continue Button for Saved Address */}
+        {savedAddresses.length > 0 && !showNewAddressForm && (
+          <Button
+            onClick={handleContinue}
+            disabled={!selectedAddressId}
+            className="w-full"
+            size="lg"
+            data-testid="button-continue-to-payment"
+          >
+            Continue to Payment
+          </Button>
+        )}
+
         {/* Add New Address Button */}
         {!showNewAddressForm && (
           <Button
@@ -320,10 +333,14 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed }: CheckoutAddr
                   onChange={(e) => setPostalCode(e.target.value.toUpperCase())}
                   required
                   data-testid="input-postal-code"
+                  disabled={!!(city && province)} // Disabled when Google Places fills it
+                  className={city && province ? "bg-muted" : ""}
                 />
                 {postalCode && (
                   <p className="text-xs text-muted-foreground">
-                    {city && province ? `Auto-filled from address (${city}, ${province})` : 'Manually entered'}
+                    {city && province 
+                      ? `✓ Auto-filled from Google Places (${city}, ${province})` 
+                      : 'Enter manually if Google Places unavailable'}
                   </p>
                 )}
               </div>
@@ -345,25 +362,13 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed }: CheckoutAddr
               onClick={handleSaveNewAddress}
               disabled={submitting}
               className="w-full"
+              size="lg"
               data-testid="button-save-new-address"
             >
               <Check className="w-4 h-4 mr-2" />
-              {submitting ? "Saving..." : "Save Address"}
+              {submitting ? "Saving..." : "Save & Continue to Payment"}
             </Button>
           </div>
-        )}
-
-        {/* Continue Button */}
-        {!showNewAddressForm && savedAddresses.length > 0 && (
-          <Button
-            onClick={handleContinue}
-            disabled={!selectedAddressId}
-            className="w-full"
-            size="lg"
-            data-testid="button-continue-to-payment"
-          >
-            Continue to Payment
-          </Button>
         )}
       </CardContent>
     </Card>
