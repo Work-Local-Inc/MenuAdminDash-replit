@@ -2,11 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@/lib/supabase/server'
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY')
+// Use TEST keys in development, LIVE keys in production
+const stripeSecretKey = process.env.TESTING_STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY
+
+if (!stripeSecretKey) {
+  throw new Error('Missing required Stripe secret key')
 }
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+const stripe = new Stripe(stripeSecretKey, {
   apiVersion: '2025-11-17.clover',
 })
 
