@@ -18,7 +18,8 @@ export default function CustomerLoginPage() {
   const { toast } = useToast()
   const supabase = createClient()
   
-  const redirect = searchParams.get('redirect') || '/'
+  // Default redirect for customers is to their account page
+  const redirect = searchParams.get('redirect') || '/customer/account'
   
   // Login state
   const [loginEmail, setLoginEmail] = useState('')
@@ -84,21 +85,31 @@ export default function CustomerLoginPage() {
         throw new Error('Failed to create account')
       }
 
-      // Create user record in users table
-      const { error: userError } = await supabase
-        .from('users')
-        .insert({
-          id: authData.user.id,
-          email: signupEmail,
-          first_name: signupFirstName,
-          last_name: signupLastName,
-          phone: signupPhone || null,
-          status: 'active',
-        } as any)
+      // Create user record in users table via server API
+      // Server-side uses service role key with proper permissions
+      try {
+        const response = await fetch('/api/customer/signup', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            auth_user_id: authData.user.id,
+            email: signupEmail,
+            first_name: signupFirstName,
+            last_name: signupLastName,
+            phone: signupPhone || null,
+          }),
+        })
 
-      if (userError) {
-        console.error('Error creating user record:', userError)
-        // Don't fail signup if user record creation fails - can be fixed later
+        if (!response.ok) {
+          const errorData = await response.json()
+          console.error('Error creating user record:', errorData)
+          // Don't fail signup - auth account is created, user record can be fixed later
+        }
+      } catch (err) {
+        console.error('Exception calling signup API:', err)
+        // Don't fail signup - auth account is created
       }
 
       // Send welcome email (don't fail signup if email fails)
