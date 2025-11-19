@@ -88,13 +88,13 @@ export async function POST(request: NextRequest) {
       }, { status: 409 })
     }
     
-    // Get restaurant (no need for delivery fee - it's already calculated in cart)
+    // Get restaurant with service config for delivery fee validation
     console.log('[Order API] Looking for restaurant with slug:', restaurantSlug)
     const { data: restaurant, error: restaurantError } = await supabase
       .from('restaurants')
-      .select('id, name, logo_url')
+      .select('id, name, logo_url, restaurant_service_configs(id, delivery_fee_cents)')
       .eq('slug', restaurantSlug)
-      .single() as { data: { id: number; name: string; logo_url: string | null } | null; error: any }
+      .single() as { data: { id: number; name: string; logo_url: string | null; restaurant_service_configs: { id: number; delivery_fee_cents: number }[] } | null; error: any }
 
     if (restaurantError || !restaurant) {
       console.error('[Order API] Restaurant query error:', restaurantError)
@@ -210,7 +210,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Calculate fees and tax on server
-    const deliveryFee = (restaurant.restaurant_service_configs?.[0]?.delivery_fee_cents || 500) / 100
+    // If no service config, delivery is FREE ($0)
+    const deliveryFeeCents = restaurant.restaurant_service_configs?.[0]?.delivery_fee_cents ?? 0
+    const deliveryFee = deliveryFeeCents / 100 // Correctly handles 0 (free delivery)
     const tax = (serverSubtotal + deliveryFee) * 0.13 // 13% HST
     const serverTotal = serverSubtotal + deliveryFee + tax
 
