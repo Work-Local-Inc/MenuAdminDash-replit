@@ -130,31 +130,33 @@ export async function POST(request: NextRequest) {
         }, { status: 400 })
       }
 
-      // Fetch actual price from database
-      console.log(`[Order API] Looking for price - dish: ${item.dishId}, size: "${item.size}"`)
+      // Fetch actual price from database (column is size_variant, not size)
+      console.log(`[Order API] Looking for price - dish: ${item.dishId}, size_variant: "${item.size}"`)
       const { data: dishPrice, error: priceError } = await supabase
         .from('dish_prices')
-        .select('price, size')
+        .select('price, size_variant')
         .eq('dish_id', item.dishId)
-        .eq('size', item.size)
-        .single() as { data: { price: string; size: string } | null; error: any }
+        .eq('size_variant', item.size)
+        .eq('is_active', true)
+        .single() as { data: { price: string; size_variant: string } | null; error: any }
 
       if (!dishPrice) {
         // Get available sizes for better error message
         const { data: availableSizes } = await supabase
           .from('dish_prices')
-          .select('size')
+          .select('size_variant, price')
           .eq('dish_id', item.dishId)
+          .eq('is_active', true)
         
-        console.error(`[Order API] Price not found for dish ${item.dishId}, size: "${item.size}"`)
-        console.error('[Order API] Available sizes:', availableSizes)
+        console.error(`[Order API] Price not found for dish ${item.dishId}, size_variant: "${item.size}"`)
+        console.error('[Order API] Available size_variants:', availableSizes)
         console.error('[Order API] Price query error:', priceError)
         return NextResponse.json({ 
           error: `Invalid dish price: dish ${item.dishId}, size "${item.size}" not found. Available sizes: ${JSON.stringify(availableSizes)}` 
         }, { status: 400 })
       }
 
-      console.log(`[Order API] Found price: ${dishPrice.price} for size "${dishPrice.size}"`)
+      console.log(`[Order API] Found price: ${dishPrice.price} for size_variant "${dishPrice.size_variant}"`)
 
       // Calculate item total using server prices
       let itemTotal = parseFloat(dishPrice.price) * item.quantity
@@ -225,9 +227,12 @@ export async function POST(request: NextRequest) {
     // Create order with server-validated data
     const orderData = {
       user_id: user_id || null, // NULL for guest orders
+      is_guest_order: !user_id, // TRUE for guest checkouts
       guest_email: guest_email || null,
+      guest_phone: user_id ? null : '000-000-0000', // TODO: Collect phone in checkout form
+      guest_name: user_id ? null : delivery_address.name || 'Guest Customer',
       restaurant_id: restaurant.id,
-      status: 'pending',
+      // NOTE: No 'status' column - order status tracked in order_status_history table
       payment_status: 'paid',
       stripe_payment_intent_id: payment_intent_id,
       total_amount: serverTotal,

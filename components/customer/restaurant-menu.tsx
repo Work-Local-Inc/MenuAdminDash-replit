@@ -28,10 +28,11 @@ export default function RestaurantMenu({ restaurant, courses, hasMenu = true }: 
   // Initialize cart with restaurant details
   useEffect(() => {
     const deliveryFeeCents = serviceConfig?.delivery_fee_cents || 500; // In cents
+    const deliveryFee = deliveryFeeCents / 100; // Convert cents to dollars
     const minOrder = serviceConfig?.delivery_min_order || 0;
     const slug = `${restaurant.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${restaurant.id}`;
     
-    setRestaurant(restaurant.id, restaurant.name, slug, deliveryFeeCents, minOrder);
+    setRestaurant(restaurant.id, restaurant.name, slug, deliveryFee, minOrder);
   }, [restaurant.id, restaurant.name, serviceConfig, setRestaurant]);
   
   // Scroll to category section

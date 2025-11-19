@@ -19,15 +19,12 @@ interface CartDrawerProps {
 }
 
 export function CartDrawer({ isOpen, onClose, restaurant }: CartDrawerProps) {
-  const { items, updateQuantity, removeItem, clearCart } = useCartStore();
+  const { items, updateQuantity, removeItem, clearCart, deliveryFee } = useCartStore();
   
-  const serviceConfig = restaurant.restaurant_service_configs?.[0];
-  const deliveryFeeCents = serviceConfig?.delivery_fee_cents || 500; // Default $5 in cents
   const HST_RATE = 0.13;
   
-  // Calculate totals - prices are in dollars, delivery fee is in cents
+  // Calculate totals - all prices are in dollars
   const subtotal = items.reduce((sum, item) => sum + item.subtotal, 0);
-  const deliveryFee = deliveryFeeCents / 100; // Convert cents to dollars
   const tax = (subtotal + deliveryFee) * HST_RATE;
   const total = subtotal + deliveryFee + tax;
   
