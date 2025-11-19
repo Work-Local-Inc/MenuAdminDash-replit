@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import Stripe from 'stripe'
 import { sendOrderConfirmationEmail } from '@/lib/emails/service'
+import { extractIdFromSlug } from '@/lib/utils/slugify'
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY')
@@ -53,6 +54,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid payment intent metadata' }, { status: 400 })
     }
 
+    // Extract restaurant ID from slug
+    const restaurantId = extractIdFromSlug(restaurantSlug)
+    if (!restaurantId) {
+      return NextResponse.json({ error: 'Invalid restaurant identifier' }, { status: 400 })
+    }
+
     // SECURITY: Check if this payment intent was already used (prevent replay attacks)
     const { data: existingOrder } = await supabase
       .from('orders')
@@ -71,7 +78,7 @@ export async function POST(request: NextRequest) {
     const { data: restaurant } = await supabase
       .from('restaurants')
       .select('id, name, logo_url, restaurant_service_configs(delivery_fee_cents)')
-      .eq('slug', restaurantSlug)
+      .eq('id', restaurantId)
       .single() as { data: { id: number; name: string; logo_url: string | null; restaurant_service_configs: { delivery_fee_cents: number }[] } | null }
 
     if (!restaurant) {
