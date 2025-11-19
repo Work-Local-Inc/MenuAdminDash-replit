@@ -348,6 +348,8 @@ export function CheckoutAddressForm({ userId, isGuest, onAddressConfirmed }: Che
                 <Input
                   id="guest-email"
                   type="email"
+                  name="email"
+                  autoComplete="email"
                   placeholder="your@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
