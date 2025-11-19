@@ -136,23 +136,36 @@ export async function POST(request: NextRequest) {
             .select(`
               id,
               name,
-              price,
               modifier_group:modifier_groups!inner(
                 id,
                 dish_id
               )
             `)
             .eq('id', mod.id)
-            .eq('modifier_groups.dish_id', item.dishId)
-            .single() as { data: { id: number; name: string; price: string } | null }
+            .single() as { data: { id: number; name: string; modifier_group: { id: number; dish_id: number } } | null }
 
-          if (!modifierData) {
+          if (!modifierData || modifierData.modifier_group.dish_id !== item.dishId) {
             return NextResponse.json({ 
               error: `Invalid modifier ${mod.id} for dish ${item.dishId}` 
             }, { status: 400 })
           }
 
-          const modPrice = parseFloat(modifierData.price)
+          // Get modifier price from dish_modifier_prices table
+          const { data: priceData } = await supabase
+            .from('dish_modifier_prices')
+            .select('price')
+            .eq('dish_modifier_id', mod.id)
+            .eq('dish_id', item.dishId)
+            .eq('is_active', true)
+            .single() as { data: { price: string } | null }
+
+          if (!priceData) {
+            return NextResponse.json({ 
+              error: `Invalid modifier price for modifier ${mod.id}` 
+            }, { status: 400 })
+          }
+
+          const modPrice = parseFloat(priceData.price)
           itemTotal += modPrice * item.quantity
           validatedModifiers.push({
             id: mod.id,
