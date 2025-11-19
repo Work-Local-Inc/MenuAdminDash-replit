@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 
-export default function Home() {
-  // Redirect directly to dashboard
+export default async function Home() {
+  // Always redirect to admin dashboard
   redirect('/admin/dashboard')
 }
