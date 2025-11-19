@@ -14,47 +14,67 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
     
-    // Check authentication
+    // Check authentication (optional - support guest checkout)
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
 
     const body = await request.json()
-    const { amount, metadata } = body
+    const { amount, metadata, user_id, guest_email } = body
 
     if (!amount || amount <= 0) {
       return NextResponse.json({ error: 'Invalid amount' }, { status: 400 })
     }
 
-    // Get or create Stripe customer
-    const { data: userData } = await supabase
-      .from('users')
-      .select('id, stripe_customer_id, email, first_name, last_name')
-      .eq('auth_user_id', user.id)
-      .single()
+    // For guests, require email
+    if (!user && !guest_email) {
+      return NextResponse.json({ error: 'Email required for guest checkout' }, { status: 400 })
+    }
 
-    let stripeCustomerId = userData?.stripe_customer_id
+    let stripeCustomerId: string | undefined = undefined
+    let userDbId: number | null = null
 
-    // Create Stripe customer if doesn't exist
-    if (!stripeCustomerId) {
+    // LOGGED-IN USER: Get or create Stripe customer
+    if (user) {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('id, stripe_customer_id, email, first_name, last_name')
+        .eq('auth_user_id', user.id)
+        .single()
+
+      userDbId = userData?.id || null
+      stripeCustomerId = userData?.stripe_customer_id
+
+      // Create Stripe customer if doesn't exist
+      if (!stripeCustomerId) {
+        const customer = await stripe.customers.create({
+          email: userData?.email || user.email || undefined,
+          name: userData?.first_name && userData?.last_name 
+            ? `${userData.first_name} ${userData.last_name}`
+            : undefined,
+          metadata: {
+            user_id: String(userData?.id || user.id),
+          },
+        })
+
+        stripeCustomerId = customer.id
+
+        // Update user with Stripe customer ID  
+        if (userData?.id) {
+          await supabase
+            .from('users')
+            .update({ stripe_customer_id: stripeCustomerId } as any)
+            .eq('id', userData.id)
+        }
+      }
+    }
+    // GUEST: Create anonymous Stripe customer
+    else if (guest_email) {
       const customer = await stripe.customers.create({
-        email: userData?.email || user.email || undefined,
-        name: userData?.first_name && userData?.last_name 
-          ? `${userData.first_name} ${userData.last_name}`
-          : undefined,
+        email: guest_email,
         metadata: {
-          user_id: user.id,
+          guest_checkout: 'true',
         },
       })
-
       stripeCustomerId = customer.id
-
-      // Update user with Stripe customer ID  
-      await supabase
-        .from('users')
-        .update({ stripe_customer_id: stripeCustomerId } as any)
-        .eq('id', userData?.id)
     }
 
     // Create payment intent
@@ -63,7 +83,8 @@ export async function POST(request: NextRequest) {
       currency: 'cad',
       customer: stripeCustomerId,
       metadata: {
-        user_id: String(userData?.id || user.id), // SECURITY: Track which user made this payment
+        user_id: user_id ? String(user_id) : 'guest',
+        guest_email: guest_email || undefined,
         ...metadata,
       },
       automatic_payment_methods: {

@@ -9,8 +9,9 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { useToast } from '@/hooks/use-toast'
-import { Plus, MapPin, Check, Shield } from 'lucide-react'
+import { Plus, MapPin, Check, Shield, UserCircle } from 'lucide-react'
 import { GooglePlacesAutocomplete } from './google-places-autocomplete'
+import Link from 'next/link'
 
 interface DeliveryAddress {
   id?: number
@@ -21,24 +22,27 @@ interface DeliveryAddress {
   city_name?: string
   postal_code: string
   delivery_instructions?: string
+  email?: string // For guest checkouts
 }
 
 interface CheckoutAddressFormProps {
-  userId: number
+  userId?: number // Optional for guest checkout
+  isGuest: boolean
   onAddressConfirmed: (address: DeliveryAddress) => void
 }
 
-export function CheckoutAddressForm({ userId, onAddressConfirmed }: CheckoutAddressFormProps) {
+export function CheckoutAddressForm({ userId, isGuest, onAddressConfirmed }: CheckoutAddressFormProps) {
   const { toast } = useToast()
   const supabase = createClient()
   
   const [savedAddresses, setSavedAddresses] = useState<DeliveryAddress[]>([])
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null)
-  const [showNewAddressForm, setShowNewAddressForm] = useState(false)
-  const [loading, setLoading] = useState(true)
+  const [showNewAddressForm, setShowNewAddressForm] = useState(isGuest) // Auto-show for guests
+  const [loading, setLoading] = useState(!isGuest) // Skip loading for guests
   const [submitting, setSubmitting] = useState(false)
   
   // New address form fields
+  const [email, setEmail] = useState('') // For guest checkout
   const [streetAddress, setStreetAddress] = useState('')
   const [unit, setUnit] = useState('')
   const [city, setCity] = useState('')
@@ -48,8 +52,10 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed }: CheckoutAddr
   const [addressLabel, setAddressLabel] = useState('')
 
   useEffect(() => {
-    loadSavedAddresses()
-  }, [userId])
+    if (!isGuest && userId) {
+      loadSavedAddresses()
+    }
+  }, [userId, isGuest])
 
   const loadSavedAddresses = async () => {
     try {
@@ -176,6 +182,40 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed }: CheckoutAddr
     onAddressConfirmed(selected)
   }
 
+  const handleGuestCheckout = () => {
+    // Validate email
+    if (!email || !email.includes('@')) {
+      toast({
+        title: "Email required",
+        description: "Please enter a valid email address",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Validate address fields
+    if (!streetAddress || !postalCode) {
+      toast({
+        title: "Missing information",
+        description: "Please fill in street address and postal code",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Create address object for guest
+    const guestAddress: DeliveryAddress = {
+      street_address: streetAddress,
+      unit: unit || undefined,
+      city_id: 0, // Not needed for guest
+      postal_code: postalCode.toUpperCase().replace(/\s/g, ''),
+      delivery_instructions: deliveryInstructions || undefined,
+      email: email,
+    }
+
+    onAddressConfirmed(guestAddress)
+  }
+
   if (loading) {
     return (
       <Card>
@@ -193,10 +233,35 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed }: CheckoutAddr
       <CardHeader>
         <CardTitle>Delivery Address</CardTitle>
         <CardDescription>
-          Where should we deliver your order?
+          {isGuest ? 'Enter your delivery information to continue' : 'Where should we deliver your order?'}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Guest Sign-In Prompt */}
+        {isGuest && (
+          <div className="bg-muted/50 border rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <UserCircle className="w-5 h-5 text-muted-foreground mt-0.5" />
+              <div className="flex-1">
+                <p className="font-medium text-sm">Have an account?</p>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Sign in to use saved addresses and track your orders
+                </p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  asChild
+                  data-testid="button-sign-in"
+                >
+                  <Link href="/customer/login?redirect=/checkout">
+                    Sign In
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Saved Addresses */}
         {savedAddresses.length > 0 && !showNewAddressForm && (
           <div className="space-y-3">
@@ -263,7 +328,7 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed }: CheckoutAddr
         {showNewAddressForm && (
           <div className="space-y-4 border rounded-lg p-4">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="font-medium">New Delivery Address</h3>
+              <h3 className="font-medium">{isGuest ? 'Delivery Information' : 'New Delivery Address'}</h3>
               {savedAddresses.length > 0 && (
                 <Button
                   variant="ghost"
@@ -276,16 +341,37 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed }: CheckoutAddr
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="address-label">Label (optional)</Label>
-              <Input
-                id="address-label"
-                placeholder="e.g., Home, Work, Office"
-                value={addressLabel}
-                onChange={(e) => setAddressLabel(e.target.value)}
-                data-testid="input-address-label"
-              />
-            </div>
+            {/* Email field for guest checkout */}
+            {isGuest && (
+              <div className="space-y-2">
+                <Label htmlFor="guest-email">Email Address *</Label>
+                <Input
+                  id="guest-email"
+                  type="email"
+                  placeholder="your@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  data-testid="input-guest-email"
+                />
+                <p className="text-xs text-muted-foreground">
+                  We'll send your order confirmation to this email
+                </p>
+              </div>
+            )}
+
+            {!isGuest && (
+              <div className="space-y-2">
+                <Label htmlFor="address-label">Label (optional)</Label>
+                <Input
+                  id="address-label"
+                  placeholder="e.g., Home, Work, Office"
+                  value={addressLabel}
+                  onChange={(e) => setAddressLabel(e.target.value)}
+                  data-testid="input-address-label"
+                />
+              </div>
+            )}
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -359,14 +445,14 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed }: CheckoutAddr
             </div>
 
             <Button
-              onClick={handleSaveNewAddress}
+              onClick={isGuest ? handleGuestCheckout : handleSaveNewAddress}
               disabled={submitting}
               className="w-full"
               size="lg"
-              data-testid="button-save-new-address"
+              data-testid={isGuest ? "button-guest-continue" : "button-save-new-address"}
             >
               <Check className="w-4 h-4 mr-2" />
-              {submitting ? "Saving..." : "Save & Continue to Payment"}
+              {submitting ? "Processing..." : (isGuest ? "Continue to Payment" : "Save & Continue to Payment")}
             </Button>
           </div>
         )}

@@ -15,14 +15,11 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
     
-    // Check authentication
+    // Check authentication (optional - support guest checkout)
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
 
     const body = await request.json()
-    const { payment_intent_id, delivery_address, cart_items } = body
+    const { payment_intent_id, delivery_address, cart_items, user_id, guest_email } = body
 
     if (!payment_intent_id) {
       return NextResponse.json({ error: 'Payment intent ID required' }, { status: 400 })
@@ -32,12 +29,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Cart items required' }, { status: 400 })
     }
 
+    // For guests, require email
+    if (!user && !guest_email) {
+      return NextResponse.json({ error: 'Email required for guest checkout' }, { status: 400 })
+    }
+
     // Verify payment intent
     const paymentIntent = await stripe.paymentIntents.retrieve(payment_intent_id)
     
-    // SECURITY: Verify payment belongs to this user
-    if (paymentIntent.metadata.user_id !== user.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // SECURITY: Verify payment belongs to this user/guest
+    const expectedUserId = user_id ? String(user_id) : 'guest'
+    if (paymentIntent.metadata.user_id !== expectedUserId) {
+      return NextResponse.json({ error: 'Payment mismatch' }, { status: 401 })
+    }
+
+    // SECURITY: For guests, verify email matches
+    if (!user && paymentIntent.metadata.guest_email !== guest_email) {
+      return NextResponse.json({ error: 'Email mismatch' }, { status: 401 })
     }
 
     // SECURITY: Only process succeeded payments
@@ -184,7 +192,8 @@ export async function POST(request: NextRequest) {
 
     // Create order with server-validated data
     const orderData = {
-      user_id: user.id,
+      user_id: user_id || null, // NULL for guest orders
+      guest_email: guest_email || null,
       restaurant_id: restaurant.id,
       status: 'pending',
       payment_status: 'paid',
@@ -225,7 +234,7 @@ export async function POST(request: NextRequest) {
       .insert({
         order_id: order.id,
         order_created_at: order.created_at,
-        user_id: user.id,
+        user_id: user_id || null,
         restaurant_id: restaurant.id,
         stripe_payment_intent_id: payment_intent_id,
         stripe_charge_id: paymentIntent.latest_charge as string,
@@ -246,21 +255,24 @@ export async function POST(request: NextRequest) {
       } as any)
 
     // Send order confirmation email (don't fail order if email fails)
-    try {
-      await sendOrderConfirmationEmail({
-        orderNumber: order.id.toString(),
-        restaurantName: restaurant.name,
-        restaurantLogoUrl: restaurant.logo_url || undefined,
-        items: validatedItems,
-        deliveryAddress: delivery_address,
-        subtotal: serverSubtotal,
-        deliveryFee: deliveryFee,
-        tax: tax,
-        total: serverTotal,
-        customerEmail: user.email!,
-      })
-    } catch (emailError) {
-      console.error('Failed to send order confirmation email:', emailError)
+    const customerEmail = user?.email || guest_email
+    if (customerEmail) {
+      try {
+        await sendOrderConfirmationEmail({
+          orderNumber: order.id.toString(),
+          restaurantName: restaurant.name,
+          restaurantLogoUrl: restaurant.logo_url || undefined,
+          items: validatedItems,
+          deliveryAddress: delivery_address,
+          subtotal: serverSubtotal,
+          deliveryFee: deliveryFee,
+          tax: tax,
+          total: serverTotal,
+          customerEmail,
+        })
+      } catch (emailError) {
+        console.error('Failed to send order confirmation email:', emailError)
+      }
     }
 
     return NextResponse.json(order)

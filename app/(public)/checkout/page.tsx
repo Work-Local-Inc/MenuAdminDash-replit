@@ -30,6 +30,7 @@ interface DeliveryAddress {
   city_name?: string
   postal_code: string
   delivery_instructions?: string
+  email?: string // For guest checkouts
 }
 
 export default function CheckoutPage() {
@@ -54,8 +55,10 @@ export default function CheckoutPage() {
       const { data: { user } } = await supabase.auth.getUser()
       
       if (!user) {
-        // Redirect to customer signup/login
-        router.push(`/customer/login?redirect=/checkout`)
+        // Guest checkout - no redirect, just proceed
+        console.log('[Checkout] Guest checkout mode')
+        setCurrentUser(null)
+        setLoading(false)
         return
       }
 
@@ -71,16 +74,16 @@ export default function CheckoutPage() {
       console.log('[Checkout] User lookup:', { userData, userError })
 
       if (!userData) {
-        console.error('[Checkout] No user found - redirecting to login')
-        // Redirect to login if user account not found
-        router.push(`/customer/login?redirect=/checkout`)
-        return
+        // User has auth but no profile - treat as guest
+        console.log('[Checkout] Auth user but no profile - treating as guest')
+        setCurrentUser(null)
+      } else {
+        setCurrentUser(userData)
       }
-
-      setCurrentUser(userData)
     } catch (error) {
       console.error('Auth check error:', error)
-      router.push(`/customer/login?redirect=/checkout`)
+      // Don't redirect on error - allow guest checkout
+      setCurrentUser(null)
     } finally {
       setLoading(false)
     }
@@ -112,9 +115,12 @@ export default function CheckoutPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           amount: total,
+          user_id: currentUser?.id, // Will be undefined for guests
+          guest_email: address.email, // For guest checkouts
           metadata: {
             delivery_address: JSON.stringify(address),
             restaurant_slug: restaurantSlug,
+            guest_email: address.email, // Store in metadata too
           }
         }),
       })
@@ -217,6 +223,7 @@ export default function CheckoutPage() {
             {step === 'address' && (
               <CheckoutAddressForm 
                 userId={currentUser?.id}
+                isGuest={!currentUser}
                 onAddressConfirmed={handleAddressConfirmed}
               />
             )}
