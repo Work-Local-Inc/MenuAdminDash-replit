@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import Stripe from 'stripe'
+import { sendOrderConfirmationEmail } from '@/lib/emails/service'
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY')
 }
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2024-11-20.acacia',
+  apiVersion: '2025-11-17.clover',
 })
 
 export async function POST(request: NextRequest) {
@@ -57,7 +58,7 @@ export async function POST(request: NextRequest) {
       .from('orders')
       .select('id')
       .eq('stripe_payment_intent_id', payment_intent_id)
-      .single()
+      .single() as { data: { id: number } | null }
 
     if (existingOrder) {
       return NextResponse.json({ 
@@ -69,9 +70,9 @@ export async function POST(request: NextRequest) {
     // Get restaurant with service config for fees
     const { data: restaurant } = await supabase
       .from('restaurants')
-      .select('id, restaurant_service_configs(delivery_fee_cents)')
+      .select('id, name, logo_url, restaurant_service_configs(delivery_fee_cents)')
       .eq('slug', restaurantSlug)
-      .single()
+      .single() as { data: { id: number; name: string; logo_url: string | null; restaurant_service_configs: { delivery_fee_cents: number }[] } | null }
 
     if (!restaurant) {
       return NextResponse.json({ error: 'Restaurant not found' }, { status: 404 })
@@ -92,10 +93,10 @@ export async function POST(request: NextRequest) {
       // SECURITY: Verify dish belongs to this restaurant before fetching price
       const { data: dish } = await supabase
         .from('dishes')
-        .select('id, restaurant_id')
+        .select('id, restaurant_id, name')
         .eq('id', item.dishId)
         .eq('restaurant_id', restaurant.id)
-        .single()
+        .single() as { data: { id: number; restaurant_id: number; name: string } | null }
 
       if (!dish) {
         return NextResponse.json({ 
@@ -109,7 +110,7 @@ export async function POST(request: NextRequest) {
         .select('price')
         .eq('dish_id', item.dishId)
         .eq('size', item.size)
-        .single()
+        .single() as { data: { price: string } | null }
 
       if (!dishPrice) {
         return NextResponse.json({ error: `Invalid dish price: ${item.dishId}` }, { status: 400 })
@@ -136,7 +137,7 @@ export async function POST(request: NextRequest) {
             `)
             .eq('id', mod.id)
             .eq('modifier_groups.dish_id', item.dishId)
-            .single()
+            .single() as { data: { id: number; name: string; price: string } | null }
 
           if (!modifierData) {
             return NextResponse.json({ 
@@ -157,6 +158,7 @@ export async function POST(request: NextRequest) {
       serverSubtotal += itemTotal
       validatedItems.push({
         dish_id: item.dishId,
+        name: dish.name,
         size: item.size,
         quantity: item.quantity,
         unit_price: parseFloat(dishPrice.price),
@@ -202,13 +204,13 @@ export async function POST(request: NextRequest) {
       .from('orders')
       .insert(orderData as any)
       .select()
-      .single()
+      .single() as { data: { id: number; created_at: string } | null; error: any }
 
-    if (orderError) {
+    if (orderError || !order) {
       console.error('Order creation error:', orderError)
       
       // SECURITY: Handle duplicate payment intent (race condition or replay attack)
-      if (orderError.code === '23505') { // PostgreSQL unique violation
+      if (orderError?.code === '23505') { // PostgreSQL unique violation
         return NextResponse.json({ 
           error: 'This payment has already been processed (concurrent request detected)',
         }, { status: 409 })
@@ -242,6 +244,24 @@ export async function POST(request: NextRequest) {
         status: 'pending',
         notes: 'Order placed and payment confirmed',
       } as any)
+
+    // Send order confirmation email (don't fail order if email fails)
+    try {
+      await sendOrderConfirmationEmail({
+        orderNumber: order.id.toString(),
+        restaurantName: restaurant.name,
+        restaurantLogoUrl: restaurant.logo_url || undefined,
+        items: validatedItems,
+        deliveryAddress: delivery_address,
+        subtotal: serverSubtotal,
+        deliveryFee: deliveryFee,
+        tax: tax,
+        total: serverTotal,
+        customerEmail: user.email!,
+      })
+    } catch (emailError) {
+      console.error('Failed to send order confirmation email:', emailError)
+    }
 
     return NextResponse.json(order)
   } catch (error: any) {

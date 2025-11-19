@@ -101,6 +101,18 @@ export default function CustomerLoginPage() {
         // Don't fail signup if user record creation fails - can be fixed later
       }
 
+      // Send welcome email (don't fail signup if email fails)
+      try {
+        await fetch('/api/customer/welcome-email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        })
+      } catch (emailError) {
+        console.error('Failed to send welcome email:', emailError)
+      }
+
       toast({
         title: "Account Created!",
         description: "Welcome to Menu.ca - you can now place orders",
