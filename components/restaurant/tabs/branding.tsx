@@ -29,6 +29,7 @@ import {
 import { Palette, Upload, Eye } from "lucide-react"
 import { queryClient, apiRequest } from "@/lib/queryClient"
 import { useToast } from "@/hooks/use-toast"
+import { hexToHSL } from "@/lib/utils"
 
 const brandingSchema = z.object({
   logo_url: z.string().url('Must be a valid URL').or(z.literal('')).optional(),
@@ -166,6 +167,14 @@ export function RestaurantBranding({ restaurantId }: RestaurantBrandingProps) {
   const currentSecondaryColor = form.watch('secondary_color') || '#666666'
   const currentFont = form.watch('font_family') || 'Inter'
   const currentLogoUrl = logoPreview || form.watch('logo_url') || restaurant?.logo_url
+
+  // Convert hex to HSL for preview using the utility function
+  const primaryColorHSL = currentPrimaryColor ? hexToHSL(currentPrimaryColor) : null;
+  const previewStyle = primaryColorHSL ? {
+    '--primary': primaryColorHSL,
+    '--ring': primaryColorHSL,
+    fontFamily: currentFont,
+  } as React.CSSProperties : { fontFamily: currentFont };
 
   return (
     <div className="space-y-6">
@@ -343,7 +352,7 @@ export function RestaurantBranding({ restaurantId }: RestaurantBrandingProps) {
             <CardDescription>See how your branding will look</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-6 p-6 border rounded-lg" style={{ fontFamily: currentFont }}>
+            <div className="space-y-6 p-6 border rounded-lg" style={previewStyle}>
               {currentLogoUrl && (
                 <div className="flex justify-center">
                   <img
@@ -354,14 +363,14 @@ export function RestaurantBranding({ restaurantId }: RestaurantBrandingProps) {
                 </div>
               )}
               <div className="space-y-4">
-                <h2 className="text-2xl font-bold" style={{ color: currentPrimaryColor }}>
+                <h2 className="text-2xl font-bold text-primary">
                   {restaurant?.name}
                 </h2>
                 <p className="text-muted-foreground">
                   This is how your restaurant name will appear with your selected font.
                 </p>
                 <div className="flex gap-3">
-                  <Button style={{ backgroundColor: currentPrimaryColor, color: 'white' }}>
+                  <Button>
                     Primary Button
                   </Button>
                   <Button
