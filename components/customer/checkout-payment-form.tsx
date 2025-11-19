@@ -50,6 +50,14 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, onBack }: C
         elements,
         confirmParams: {
           return_url: `${window.location.origin}/customer/order-confirmation`,
+          payment_method_data: {
+            billing_details: {
+              address: {
+                country: 'CA', // Canada - we're Canada-only
+                postal_code: deliveryAddress.postal_code,
+              }
+            }
+          }
         },
         redirect: 'if_required',
       })
