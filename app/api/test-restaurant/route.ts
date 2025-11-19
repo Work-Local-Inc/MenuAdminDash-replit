@@ -14,13 +14,13 @@ export async function GET(request: NextRequest) {
     if (checkTable === 'users') {
       // Try to query admin_roles table
       const { data: rolesData, error: rolesError, count: rolesCount } = await supabase
-        .schema('menuca_v3').from('admin_roles')
+        .from('admin_roles')
         .select('id, name, is_system_role', { count: 'exact' })
         .limit(5)
       
       // Check admin_users with role join
       const { data: adminData, error: adminError } = await supabase
-        .schema('menuca_v3').from('admin_users')
+        .from('admin_users')
         .select('id, email, first_name, last_name, role_id, role:admin_roles(id, name)', { count: 'exact' })
         .limit(3)
       
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
     
     // Default: check restaurants
     const { data, error, count } = await supabase
-      .schema('menuca_v3').from('restaurants')
+      .from('restaurants')
       .select('id, name, status', { count: 'exact' })
       .limit(10)
 

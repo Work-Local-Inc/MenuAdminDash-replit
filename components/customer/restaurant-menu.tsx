@@ -42,7 +42,7 @@ export default function RestaurantMenu({ restaurant, courses, hasMenu = true }: 
       element.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
-  
+
   return (
     <div className="min-h-screen bg-background">
       {/* Restaurant Header */}

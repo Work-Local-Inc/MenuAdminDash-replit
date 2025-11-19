@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
     
     // Check if dish_modifier_groups table exists
     const { data: groupsTableData } = await supabase
-      .schema('menuca_v3').from('information_schema.tables')
+      .from('information_schema.tables')
       .select('table_name')
       .eq('table_schema', 'menuca_v3')
       .eq('table_name', 'dish_modifier_groups')
@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     
     // Check if dish_modifier_items table exists
     const { data: modifiersTableData } = await supabase
-      .schema('menuca_v3').from('information_schema.tables')
+      .from('information_schema.tables')
       .select('table_name')
       .eq('table_schema', 'menuca_v3')
       .eq('table_name', 'dish_modifier_items')

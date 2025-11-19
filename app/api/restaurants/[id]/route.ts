@@ -67,7 +67,7 @@ export async function PATCH(
       // If there are other fields to update (name, timezone, etc.), update them separately
       if (Object.keys(otherFields).length > 0) {
         const { error: updateError } = await supabase
-          .schema('menuca_v3').from('menuca_v3.restaurants')
+          .from('restaurants')
           .update(otherFields)
           .eq('id', params.id)
 
@@ -76,7 +76,7 @@ export async function PATCH(
     } else {
       // No status change - direct update for non-sensitive fields (name, timezone, etc.)
       const { data, error } = await supabase
-        .schema('menuca_v3').from('menuca_v3.restaurants')
+        .from('restaurants')
         .update(validatedData)
         .eq('id', params.id)
         .select()
@@ -87,7 +87,7 @@ export async function PATCH(
 
     // Fetch and return the updated restaurant
     const { data: restaurant, error: fetchError } = await supabase
-      .schema('menuca_v3').from('menuca_v3.restaurants')
+      .from('restaurants')
       .select()
       .eq('id', params.id)
       .single()

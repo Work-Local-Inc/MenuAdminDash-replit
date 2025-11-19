@@ -24,7 +24,7 @@ export async function GET(
 
     // Get tags for the restaurant
     const { data: tags, error } = await supabase
-      .schema('menuca_v3').from('restaurant_tag_assignments')
+      .from('restaurant_tag_assignments')
       .select(`
         restaurant_tags (
           id,

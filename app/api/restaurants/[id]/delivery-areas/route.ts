@@ -26,7 +26,7 @@ export async function GET(
     
     const { data, error } = await supabase
       .schema('menuca_v3')
-      .schema('menuca_v3').from('restaurant_delivery_zones')
+      .from('restaurant_delivery_zones')
       .select('id, restaurant_id, zone_name, delivery_fee_cents, minimum_order_cents, estimated_delivery_minutes, zone_geometry, is_active, created_at')
       .eq('restaurant_id', parseInt(params.id))
       .is('deleted_at', null)
@@ -72,7 +72,7 @@ export async function POST(
     
     const { data, error } = await supabase
       .schema('menuca_v3')
-      .schema('menuca_v3').from('restaurant_delivery_zones')
+      .from('restaurant_delivery_zones')
       .insert({
         restaurant_id: parseInt(params.id),
         zone_name: validatedData.name,

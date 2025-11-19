@@ -1,0 +1,157 @@
+PRIORITY 1: Fix the blank dashboard data connection issue BEFORE continuing with Feedback tab.
+
+The dashboard is completely blank - no data loading. Let's diagnose and fix:
+
+STEP 1: CREATE CONNECTION TEST ENDPOINT
+File: app/api/test-connection/route.ts
+```typescript
+import { createClient } from '@/lib/supabase/server'
+import { NextResponse } from 'next/server'
+
+export async function GET() {
+  try {
+    const supabase = createClient()
+    
+    // Test restaurant query
+    const { data: restaurants, error: restaurantsError } = await supabase
+      .from('restaurants')
+      .select('id, name, status')
+      .limit(5)
+    
+    if (restaurantsError) {
+      return NextResponse.json({ 
+        success: false,
+        error: 'Restaurant query failed', 
+        details: restaurantsError 
+      }, { status: 500 })
+    }
+    
+    // Get counts
+    const { count: restaurantCount, error: rCountError } = await supabase
+      .from('restaurants')
+      .select('*', { count: 'exact', head: true })
+    
+    const { count: userCount, error: uCountError } = await supabase
+      .from('users')
+      .select('*', { count: 'exact', head: true })
+    
+    return NextResponse.json({
+      success: true,
+      connection: 'CONNECTED',
+      sampleRestaurants: restaurants,
+      counts: {
+        restaurants: restaurantCount || 0,
+        users: userCount || 0
+      },
+      errors: {
+        restaurantCount: rCountError,
+        userCount: uCountError
+      }
+    })
+  } catch (error: any) {
+    return NextResponse.json({ 
+      success: false,
+      error: 'Connection failed', 
+      details: error?.message || error 
+    }, { status: 500 })
+  }
+}
+```
+
+STEP 2: TEST THE CONNECTION
+- Navigate to http://localhost:5000/api/test-connection
+- Share the exact JSON response with me
+
+STEP 3: FIX DASHBOARD STATS ENDPOINT
+Once connection test passes, create/fix the dashboard stats API:
+
+File: app/api/dashboard/stats/route.ts
+```typescript
+import { createClient } from '@/lib/supabase/server'
+import { NextResponse } from 'next/server'
+
+export async function GET() {
+  try {
+    const supabase = createClient()
+    
+    // Get restaurant count
+    const { count: restaurantCount } = await supabase
+      .from('restaurants')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'active')
+    
+    // Get user count
+    const { count: userCount } = await supabase
+      .from('users')
+      .select('*', { count: 'exact', head: true })
+    
+    // Get orders for revenue and count
+    const { data: orders } = await supabase
+      .from('orders')
+      .select('total_amount, created_at, order_status')
+    
+    const totalRevenue = orders?.reduce((sum, order) => sum + (Number(order.total_amount) || 0), 0) || 0
+    const totalOrders = orders?.length || 0
+    
+    // Get recent orders with restaurant and user details
+    const { data: recentOrders } = await supabase
+      .from('orders')
+      .select(`
+        id,
+        uuid,
+        total_amount,
+        order_status,
+        created_at,
+        restaurant_id,
+        user_id
+      `)
+      .order('created_at', { ascending: false })
+      .limit(10)
+    
+    // Get restaurant names for recent orders
+    const restaurantIds = recentOrders?.map(o => o.restaurant_id) || []
+    const { data: restaurants } = await supabase
+      .from('restaurants')
+      .select('id, name')
+      .in('id', restaurantIds)
+    
+    // Get user emails for recent orders
+    const userIds = recentOrders?.map(o => o.user_id) || []
+    const { data: users } = await supabase
+      .from('users')
+      .select('id, email')
+      .in('id', userIds)
+    
+    // Map restaurant and user names to orders
+    const ordersWithDetails = recentOrders?.map(order => ({
+      ...order,
+      restaurant_name: restaurants?.find(r => r.id === order.restaurant_id)?.name || 'Unknown',
+      user_email: users?.find(u => u.id === order.user_id)?.email || 'Unknown'
+    })) || []
+    
+    return NextResponse.json({
+      success: true,
+      stats: {
+        totalRevenue: totalRevenue.toFixed(2),
+        totalOrders,
+        totalRestaurants: restaurantCount || 0,
+        totalUsers: userCount || 0
+      },
+      recentOrders: ordersWithDetails,
+      timestamp: new Date().toISOString()
+    })
+  } catch (error: any) {
+    console.error('Dashboard stats error:', error)
+    return NextResponse.json({ 
+      success: false,
+      error: 'Failed to fetch dashboard stats',
+      details: error?.message 
+    }, { status: 500 })
+  }
+}
+```
+
+STEP 4: UPDATE DASHBOARD PAGE TO USE THE API
+Make sure app/admin/dashboard/page.tsx fetches from /api/dashboard/stats and displays the data.
+
+Run the connection test and share results before continuing with Feedback tab!

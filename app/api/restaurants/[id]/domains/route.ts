@@ -12,7 +12,7 @@ export async function GET(
     const supabase = createAdminClient()
     
     const { data, error } = await supabase
-      .schema('menuca_v3').from('restaurant_domains')
+      .from('restaurant_domains')
       .select('*')
       .eq('restaurant_id', params.id)
       .order('created_at', { ascending: false })
@@ -41,7 +41,7 @@ export async function POST(
     const { restaurant_id, ...domainData } = body
     
     const { data, error } = await supabase
-      .schema('menuca_v3').from('restaurant_domains')
+      .from('restaurant_domains')
       .insert({
         ...domainData,
         restaurant_id: parseInt(params.id),

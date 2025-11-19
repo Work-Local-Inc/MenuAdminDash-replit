@@ -1,0 +1,79 @@
+YES! Continue with the remaining 3 tabs to complete restaurant management:
+
+13. Feedback Tab (NEXT)
+    - Query restaurant_feedback table (create if doesn't exist):
+      Schema: id, restaurant_id, user_id, rating (1-5), comment, created_at, admin_response, response_at
+    - Display feedback list with:
+      ⭐ Star rating display (visual stars, not just numbers)
+      💬 User comment
+      👤 User name (join with users table)
+      📅 Date posted
+      ✍️ Admin response (if exists) + response date
+    - Admin response form:
+      Textarea for response
+      Submit button (updates admin_response and response_at)
+      Only show form if no response exists yet
+    - Filters:
+      Filter by rating (All, 5⭐, 4⭐, 3⭐, 2⭐, 1⭐)
+      Sort by date (newest first)
+    - Empty state if no feedback yet
+    - Loading states + error handling
+
+14. Custom CSS Tab
+    - Query restaurant_custom_css table (create if doesn't exist):
+      Schema: id, restaurant_id, css_code, is_active, updated_at
+    - Code editor:
+      <textarea> with monospace font (font-family: 'Courier New', monospace)
+      Dark theme background (#1e1e1e) with syntax highlighting (optional)
+      Line numbers (optional enhancement)
+      Minimum 20 rows
+    - Preview toggle:
+      Checkbox "Enable Custom CSS"
+      Warning badge if CSS contains dangerous patterns (display: none on body, etc.)
+    - Save button with confirmation:
+      "Are you sure? This will affect the live site."
+      Update both css_code and is_active
+      Show success toast with last updated timestamp
+    - Validation:
+      Check for potentially dangerous CSS
+      Character limit warning (suggest max 10,000 chars)
+    - Show current CSS status:
+      "Last updated: {date}" or "No custom CSS yet"
+
+15. Delivery Areas Tab (MOST COMPLEX - Mapbox Integration) 🗺️
+    - Query delivery_areas table (already exists with PostGIS geometry)
+    - Mapbox GL JS integration:
+      Install: npm install mapbox-gl @types/mapbox-gl
+      Initialize map centered on restaurant's first location
+      Set MAPBOX_TOKEN in .env.local (user needs to provide)
+    - Polygon Drawing:
+      Add Mapbox Draw controls (draw_polygon mode)
+      Convert drawn polygon to GeoJSON
+      Send GeoJSON to API → convert to PostGIS geometry
+      Display existing areas as colored polygon layers
+    - Area Management:
+      Form fields: Area name, Description, Delivery fee for this area
+      Click existing area to edit
+      Delete button with confirmation
+      Area list sidebar showing all areas
+    - PostGIS Conversion:
+      API endpoint converts GeoJSON → ST_GeomFromGeoJSON()
+      Store in delivery_areas.area_polygon (geometry type)
+      Query existing areas → convert to GeoJSON for map display
+    - Validation:
+      Ensure polygon has at least 3 points
+      Check for overlapping areas (optional warning)
+      Require area name before saving
+
+TECHNICAL REQUIREMENTS:
+- Create restaurant_feedback table if missing
+- Create restaurant_custom_css table if missing
+- Install mapbox-gl for tab 15
+- Use React Hook Form + Zod validation
+- Add loading states and error handling
+- Use toast notifications for success/errors
+- For Mapbox: Show clear setup instructions if MAPBOX_TOKEN is missing
+
+Focus on tab 13 (Feedback) first - it's the simplest. Then 14 (Custom CSS), then 15 (Delivery Areas with Mapbox).
+
+Let me know when tab 15 is started - I'll provide the exact Mapbox integration code and PostGIS conversion queries.

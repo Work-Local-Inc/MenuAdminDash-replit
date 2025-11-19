@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
 
     // Query v_onboarding_progress_stats view
     const { data, error } = await supabase
-      .schema('menuca_v3').from('v_onboarding_progress_stats')
+      .from('v_onboarding_progress_stats')
       .select('*')
       .order('step_order');
 

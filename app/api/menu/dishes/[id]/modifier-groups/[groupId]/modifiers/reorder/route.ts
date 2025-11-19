@@ -21,7 +21,7 @@ export async function POST(
     // Perform sequential updates for atomicity
     for (let i = 0; i < modifier_ids.length; i++) {
       const { error } = await supabase
-        .schema('menuca_v3').from('dish_modifier_items')
+        .from('dish_modifier_items')
         .update({
           display_order: i,
           updated_at: new Date().toISOString()

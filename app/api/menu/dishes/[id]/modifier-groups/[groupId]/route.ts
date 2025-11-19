@@ -67,7 +67,7 @@ export async function PATCH(
 
     const supabase = await createClient();
     const { data, error } = await supabase
-      .schema('menuca_v3').from('modifier_groups')
+      .from('modifier_groups')
       .update(updateData)
       .eq('id', groupId)
       .eq('dish_id', dishId)
@@ -115,7 +115,7 @@ export async function DELETE(
 
     const supabase = await createClient();
     const { data, error } = await supabase
-      .schema('menuca_v3').from('modifier_groups')
+      .from('modifier_groups')
       .delete()
       .eq('id', groupId)
       .eq('dish_id', dishId)

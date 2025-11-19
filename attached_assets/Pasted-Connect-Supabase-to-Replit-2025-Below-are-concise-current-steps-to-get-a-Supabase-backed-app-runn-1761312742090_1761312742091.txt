@@ -1,0 +1,119 @@
+Connect Supabase to Replit (2025)
+Below are concise, current steps to get a Supabase-backed app running on Replit. I’ll cover Auth setup, client connection (browser/server), database URL for ORMs (Drizzle/Prisma), environment variables, and Realtime caveats.
+
+1) Supabase: Dev-friendly Auth
+Go to Authentication → Providers → Email.
+In Sign up configuration, disable “Confirm email” for development only.
+Optional: Add a redirect URL for local dev (e.g., http://localhost:3000 or your Replit webview URL) under Authentication → URL configuration.
+2) Supabase: Get connection details
+Go to Project Settings → API (or Connect → Connection info if shown in your dashboard).
+Copy:
+SUPABASE_URL (Project URL)
+SUPABASE_ANON_KEY (Public)
+SUPABASE_SERVICE_ROLE_KEY (Server-side only; keep secret)
+For ORMs: Use the Shared Connection Pooler URL (pgbouncer). Copy:
+Host, Port, Database, User, Password
+Schema (usually public unless you use a custom schema)
+Notes:
+
+pgbouncer is recommended on free-tier/volatile environments like Replit to avoid connection exhaustion.
+For Drizzle/Prisma, prefer the pooler URL.
+3) Replit: Configure environment variables (Secrets)
+In Replit, open Tools → Secrets (or the padlock icon).
+Add:
+SUPABASE_URL = https://YOUR-PROJECT-ref.supabase.co
+SUPABASE_ANON_KEY = your_anon_key
+SUPABASE_SERVICE_ROLE_KEY = your_service_role_key (only if you’ll run server code calling admin APIs)
+DATABASE_URL = postgres://USER:PASSWORD@POOLER_HOST:POOLER_PORT/DB?sslmode=require
+Append options for pgbouncer if required by your ORM (see below).
+Optional: NODE_ENV=development
+Keep service role strictly server-side. Never expose it in browser code.
+
+4) Client-side (browser) usage in Replit
+If your Replit serves a frontend directly (Vite/React), install and init Supabase JS client:
+
+Install: npm i @supabase/supabase-js
+Create a client module:
+// lib/supabaseClient.js
+
+import { createClient } from '@supabase/supabase-js'
+export const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_ANON_KEY,
+  {
+    auth: {
+      persistSession: 
+true
+,
+      autoRefreshToken: 
+true
+,
+      detectSessionInUrl: 
+true
+,
+    },
+    realtime: { params: { eventsPerSecond: 
+5
+ } },
+  }
+)
+
+Use the client in your React app. For Replit’s webview, ensure your redirect URLs match in Supabase Auth settings if you use OAuth/passwordless.
+Security note: In client code, you can reference process.env only if your bundler inlines variables. On Replit, prefer an env-aware build step or pass them from a server endpoint. Otherwise, hardcode for dev only and never commit keys.
+
+5) Server-side usage (Replit Node server)
+If you have a Node server in Replit (Express/Hono/Fastify), use @supabase/supabase-js too:
+
+import { createClient } from '@supabase/supabase-js'
+const supabaseAdmin = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY, 
+// server only
+
+  { auth: { autoRefreshToken: 
+false
+, persistSession: 
+false
+ } }
+)
+
+Use the admin client for secure tasks (e.g., server-validated inserts, auth management). Do not expose this client to the browser.
+
+6) ORM setup (Drizzle or Prisma) with the Pooler
+Drizzle (Node Postgres):
+Use the pooler DATABASE_URL:
+postgres://USER:PASSWORD@POOLER_HOST:PORT/DB?sslmode=require
+If connecting via pgbouncer, add:
+For Drizzle + pg: typically fine with just sslmode=require.
+If using Prisma, you often need pgbouncer flags:
+?pgbouncer=true&connection_limit=1&pool_timeout=30
+Prisma:
+DATABASE_URL example:
+postgresql://USER:PASSWORD@POOLER_HOST:PORT/DB?schema=public&sslmode=require&pgbouncer=true&connection_limit=1
+Run:
+npx prisma generate
+npx prisma migrate dev
+Tip: Replit instances sleep and recycle; keep migrations idempotent and prefer short-lived connections. For long tasks, avoid holding DB connections open.
+
+7) React template in Supabase “Connect” panel
+In Supabase → Connect, choose React to view example SDK snippets.
+Copy the createClient usage, but still feed values from Replit secrets.
+8) Realtime considerations on Replit
+Replit restarts can sever WebSocket connections. Implement reconnection logic:
+Use supabase.realtime.setAuth(session.access_token) when the user logs in.
+Re-subscribe to channels on reconnect.
+Prefer private channels with proper RLS if you broadcast from the database. Ensure auth is set before subscribe.
+9) Common pitfalls and fixes
+CORS: If calling Edge Functions or PostgREST from the browser, set Allowed Headers/Origins in Supabase (Authentication → URL Configuration and Project Settings → API).
+Mixed server/client keys: Only use ANON on client, SERVICE_ROLE on server.
+Connection limits: Always use the pooler URL on Replit. Avoid long-lived pools on free instances.
+SSL required: Include sslmode=require on Replit.
+10) Minimal verification checklist
+Can you run a simple auth flow on Replit? (sign up, sign in, get session)
+Can you insert/select a row using the anon client?
+Does Prisma/Drizzle connect and run a simple query using the pooler DATABASE_URL?
+Are OAuth redirects working to your Replit URL or localhost?
+If you share your stack (pure frontend, Node server, Drizzle/Prisma), I’ll tailor exact env vars and code snippets, including a ready-to-paste Drizzle/Prisma connection string with pgbouncer flags.
+
+
+

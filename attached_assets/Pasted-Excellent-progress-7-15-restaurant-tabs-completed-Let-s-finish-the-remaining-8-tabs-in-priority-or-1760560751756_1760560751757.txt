@@ -1,0 +1,73 @@
+Excellent progress! 7/15 restaurant tabs completed. Let's finish the remaining 8 tabs in priority order:
+
+REMAINING TABS (Medium to Low Priority):
+
+8. Menu Categories Tab
+   - Query courses table filtered by restaurant_id
+   - Display list of menu categories/courses
+   - Show dish count per category
+   - Quick link to full menu management (future phase)
+   - Read-only view for now (full menu CRUD comes later)
+
+9. Integrations Tab
+   - Create restaurant_integrations table (NEW TABLE):
+     - id, restaurant_id, integration_type, api_key, webhook_url, is_active, config (JSONB)
+   - Form fields: integration type dropdown (POS, Payment, Delivery), API keys (masked input), webhook URL, active toggle
+   - Save integration settings
+
+10. Branding Tab
+    - Edit restaurants table columns: logo_url, primary_color, secondary_color, font_family
+    - Logo upload to Supabase Storage (bucket: restaurant-logos)
+    - Color pickers for primary/secondary colors
+    - Font dropdown (Google Fonts integration optional)
+    - Live preview of color scheme
+
+11. SEO Tab
+    - Create restaurant_seo table (NEW TABLE):
+      - id, restaurant_id, meta_title, meta_description, og_title, og_description, og_image_url, include_in_sitemap
+    - Form fields: meta tags, Open Graph tags
+    - Character count indicators (title: 60 chars, description: 160 chars)
+    - Toggle for sitemap inclusion
+
+12. Images Tab ⭐ IMPORTANT
+    - Query restaurant_images table (NEW TABLE - needs creation):
+      - id, restaurant_id, image_url, alt_text, is_featured, display_order
+    - Multi-image upload to Supabase Storage (bucket: restaurant-images)
+    - Image gallery with drag-to-reorder
+    - Set featured image toggle
+    - Delete images with confirmation
+
+13. Feedback Tab
+    - Query restaurant_feedback table (NEW TABLE - needs creation):
+      - id, restaurant_id, user_id, rating, comment, created_at, admin_response, response_at
+    - Display feedback list with ratings (star display)
+    - Admin response form
+    - Filter by rating (1-5 stars)
+    - Sort by date
+
+14. Custom CSS Tab
+    - Query restaurant_custom_css table (NEW TABLE - needs creation):
+      - id, restaurant_id, css_code, is_active, updated_at
+    - Code editor for custom CSS (use <textarea> with monospace font)
+    - Preview toggle (show/hide custom CSS)
+    - Validation warnings for dangerous CSS
+    - Save with confirmation dialog
+
+15. Delivery Areas Tab (MOST COMPLEX - Do Last) 🗺️
+    - Query delivery_areas table (has PostGIS geometry column)
+    - Integrate Mapbox GL JS for interactive map
+    - Polygon drawing tool for delivery zones
+    - Convert drawn polygons to PostGIS geometry format
+    - Save area name, description, delivery fee per area
+    - Display existing areas as map layers
+    - Edit/delete areas
+
+TECHNICAL REQUIREMENTS:
+- Create NEW tables as needed (migrations in SQL)
+- Use React Hook Form + Zod validation
+- Use Supabase Storage for image uploads (bucket creation if needed)
+- Follow the same component structure as previous tabs
+- Add loading states and error handling
+- Use React Query with toast notifications
+
+Start with tabs 8-11 (simpler ones), then 12-14 (moderate complexity), then 15 (most complex - Mapbox integration).

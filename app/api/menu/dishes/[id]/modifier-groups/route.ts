@@ -16,7 +16,7 @@ export async function GET(
 
     const supabase = await createClient();
     const { data, error } = await supabase
-      .schema('menuca_v3').from('modifier_groups')
+      .from('modifier_groups')
       .select('id, dish_id, name, display_order, is_required, min_selections, max_selections, created_at, updated_at')
       .eq('dish_id', dishId)
       .order('display_order', { ascending: true })
@@ -66,7 +66,7 @@ export async function POST(
     const supabase = await createClient();
     
     const { data: maxOrderData } = await supabase
-      .schema('menuca_v3').from('modifier_groups')
+      .from('modifier_groups')
       .select('display_order')
       .eq('dish_id', dishId)
       .order('display_order', { ascending: false })
@@ -75,7 +75,7 @@ export async function POST(
     const nextOrder = (maxOrderData?.[0]?.display_order ?? -1) + 1;
 
     const { data, error } = await supabase
-      .schema('menuca_v3').from('modifier_groups')
+      .from('modifier_groups')
       .insert({
         dish_id: dishId,
         name: name.trim(),

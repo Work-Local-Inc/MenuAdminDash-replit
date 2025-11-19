@@ -25,7 +25,7 @@ export async function GET(
     const supabase = createAdminClient()
     
     const { data, error } = await supabase
-      .schema('menuca_v3').from('restaurant_images')
+      .from('restaurant_images')
       .select('*')
       .eq('restaurant_id', parseInt(params.id))
       .order('display_order', { ascending: true })
@@ -64,7 +64,7 @@ export async function POST(
     const validatedData = imageCreateSchema.parse(body)
     
     const { data, error } = await supabase
-      .schema('menuca_v3').from('restaurant_images')
+      .from('restaurant_images')
       .insert({
         restaurant_id: parseInt(params.id),
         ...validatedData,
@@ -127,7 +127,7 @@ export async function PATCH(
     }
     
     const { data, error } = await supabase
-      .schema('menuca_v3').from('restaurant_images')
+      .from('restaurant_images')
       .update(validatedData)
       .eq('id', body.image_id)
       .eq('restaurant_id', parseInt(params.id))
@@ -171,7 +171,7 @@ export async function DELETE(
     
     // First get the image to extract the Storage path for deletion
     const { data: image } = await supabase
-      .schema('menuca_v3').from('restaurant_images')
+      .from('restaurant_images')
       .select('image_url')
       .eq('id', parseInt(imageId))
       .eq('restaurant_id', parseInt(params.id))
@@ -179,7 +179,7 @@ export async function DELETE(
     
     // Delete from database
     const { error: dbError } = await supabase
-      .schema('menuca_v3').from('restaurant_images')
+      .from('restaurant_images')
       .delete()
       .eq('id', parseInt(imageId))
       .eq('restaurant_id', parseInt(params.id))
@@ -198,7 +198,7 @@ export async function DELETE(
           const bucket = pathParts[publicIndex + 1]
           const filePath = pathParts.slice(publicIndex + 2).join('/')
           
-          const { error: storageError } = await supabase.storage.schema('menuca_v3').from(bucket).remove([filePath])
+          const { error: storageError } = await supabase.storage.from(bucket).remove([filePath])
           if (storageError) {
             console.error('Failed to delete from storage:', storageError)
           }

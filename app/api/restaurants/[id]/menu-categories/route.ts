@@ -15,7 +15,7 @@ export async function GET(
     
     // Get courses
     const { data: courses, error: coursesError } = await supabase
-      .schema('menuca_v3').from('courses')
+      .from('courses')
       .select('id, name, description, display_order, is_active')
       .eq('restaurant_id', restaurantId)
       .order('display_order', { ascending: true })
@@ -24,7 +24,7 @@ export async function GET(
     
     // Get dish counts in a single query with GROUP BY
     const { data: dishCounts, error: countError } = await supabase
-      .schema('menuca_v3').from('dishes')
+      .from('dishes')
       .select('course_id')
       .eq('restaurant_id', restaurantId)
     

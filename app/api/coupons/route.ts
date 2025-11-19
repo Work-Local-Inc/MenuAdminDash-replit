@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     const validatedData = couponCreateSchema.parse(body)
 
     const { data, error } = await supabase
-      .schema('menuca_v3').from('menuca_v3.promotional_coupons')
+      .from('promotional_coupons')
       .insert(validatedData as any)
       .select()
       .single()

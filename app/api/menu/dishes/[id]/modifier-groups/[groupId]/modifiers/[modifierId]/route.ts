@@ -17,7 +17,7 @@ export async function PATCH(
     
     // Verify the modifier belongs to the group and the group belongs to the dish
     const { data: verifyData, error: verifyError } = await supabase
-      .schema('menuca_v3').from('dish_modifier_items')
+      .from('dish_modifier_items')
       .select('id, modifier_groups!inner(id, dish_id)')
       .eq('id', modifierId)
       .eq('modifier_groups.id', groupId)
@@ -67,7 +67,7 @@ export async function PATCH(
     updateData.updated_at = new Date().toISOString();
 
     const { data, error } = await supabase
-      .schema('menuca_v3').from('dish_modifier_items')
+      .from('dish_modifier_items')
       .update(updateData)
       .eq('id', modifierId)
       .select()
@@ -104,7 +104,7 @@ export async function DELETE(
     
     // Verify the modifier belongs to the group and the group belongs to the dish
     const { data: verifyData, error: verifyError } = await supabase
-      .schema('menuca_v3').from('dish_modifier_items')
+      .from('dish_modifier_items')
       .select('id, modifier_groups!inner(id, dish_id)')
       .eq('id', modifierId)
       .eq('modifier_groups.id', groupId)
@@ -119,7 +119,7 @@ export async function DELETE(
     }
 
     const { error } = await supabase
-      .schema('menuca_v3').from('dish_modifier_items')
+      .from('dish_modifier_items')
       .delete()
       .eq('id', modifierId);
 

@@ -17,7 +17,7 @@ export async function GET() {
     
     // Test 1: Query restaurants from menuca_v3 schema
     const { data: restaurants, error: restaurantsError } = await supabase
-      .schema('menuca_v3').from('restaurants')
+      .from('restaurants')
       .select('id, name, status')
       .limit(5)
     
@@ -34,11 +34,11 @@ export async function GET() {
     
     // Test 2: Get counts
     const { count: restaurantCount, error: rCountError } = await supabase
-      .schema('menuca_v3').from('restaurants')
+      .from('restaurants')
       .select('*', { count: 'exact', head: true })
     
     const { count: userCount, error: uCountError } = await supabase
-      .schema('menuca_v3').from('users')
+      .from('users')
       .select('*', { count: 'exact', head: true })
     
     console.log('✅ Restaurant count:', restaurantCount)

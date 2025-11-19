@@ -1,0 +1,93 @@
+Excellent progress! Let's continue with Phase 2: Restaurant Management.
+
+Complete the remaining 14 restaurant detail tabs following the ULTIMATE_REPLIT_BUILD_PLAN.md specifications:
+
+PRIORITY ORDER (High to Low):
+
+1. Locations Tab ⭐ HIGH PRIORITY
+   - CRUD for restaurant_locations table
+   - Address fields (street, city, province, postal_code)
+   - Coordinates (latitude, longitude) with validation
+   - Primary location toggle
+   - Map preview (optional: simple lat/lng display)
+
+2. Contacts Tab ⭐ HIGH PRIORITY
+   - CRUD for restaurant_contacts table
+   - Fields: name, email, phone, role
+   - Primary contact toggle
+   - Validation (email format, phone format)
+
+3. Domains Tab ⭐ HIGH PRIORITY
+   - CRUD for restaurant_domains table
+   - Custom domain management
+   - SSL status indicator
+   - Primary domain toggle
+
+4. Hours Tab (Operating Schedule) ⭐ HIGH PRIORITY
+   - CRUD for restaurant_schedules table
+   - Day-of-week selector with time pickers
+   - Handle closed days
+   - "Copy hours to all days" quick action
+   - Separate schedules for delivery vs takeout
+
+5. Service Config Tab
+   - Edit restaurant_delivery_config table
+   - Toggle delivery/takeout service_types
+   - Minimum order amounts
+   - Delivery fee structure
+   - Service radius
+
+6. Payment Methods Tab
+   - Edit restaurant_payment_methods table (NEW TABLE - needs creation)
+   - Toggle cash/card/online payment options
+   - Payment processor integration settings
+
+7. Menu Categories Tab
+   - View/manage courses linked to restaurant
+   - Quick link to full menu management (future phase)
+
+8. Integrations Tab
+   - API keys for third-party services
+   - Webhook configuration
+   - POS system integration settings
+
+9. Branding Tab
+   - Logo upload to Supabase Storage
+   - Color scheme picker (primary, secondary colors)
+   - Font selection
+
+10. SEO Tab
+    - Meta title, description
+    - Open Graph tags
+    - Sitemap inclusion toggle
+
+11. Images Tab
+    - Multiple image upload to Supabase Storage
+    - Image gallery with delete
+    - Set featured image
+
+12. Feedback Tab
+    - View restaurant_feedback table (NEW TABLE - needs creation)
+    - Display user feedback/ratings
+    - Response system
+
+13. Custom CSS Tab
+    - Edit restaurant_custom_css table (NEW TABLE - needs creation)
+    - Code editor for custom CSS
+    - Preview toggle
+
+14. Delivery Areas Tab (ADVANCED - Do Last)
+    - View/edit delivery_areas table (PostGIS geometry)
+    - Interactive Mapbox polygon drawing
+    - Area names and descriptions
+    - This is the most complex tab - save for last
+
+TECHNICAL REQUIREMENTS:
+- Use React Hook Form + Zod validation for all forms
+- Use Supabase queries from lib/supabase/queries.ts
+- Use React Query hooks (useMutation) with toast notifications
+- Add loading states and error handling
+- Follow the exact component structure from Basic Info tab
+- Create NEW tables if they don't exist (restaurant_payment_methods, restaurant_feedback, restaurant_custom_css)
+
+Start with tabs 1-4 (Locations, Contacts, Domains, Hours) as they're the most critical.

@@ -10,7 +10,7 @@ export async function GET(
 
     const supabase = await createClient();
     const { data, error } = await supabase
-      .schema('menuca_v3').from('dish_inventory')
+      .from('dish_inventory')
       .select('dish_id, is_available, unavailable_until, reason, notes, updated_by_admin_id, updated_at')
       .eq('dish_id', dishId)
       .single();
@@ -66,7 +66,7 @@ export async function PATCH(
     };
 
     const { data, error } = await supabase
-      .schema('menuca_v3').from('dish_inventory')
+      .from('dish_inventory')
       .upsert(upsertData, { onConflict: 'dish_id' })
       .select()
       .single();

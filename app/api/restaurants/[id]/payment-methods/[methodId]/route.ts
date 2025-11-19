@@ -22,7 +22,7 @@ export async function PATCH(
     const validatedData = paymentMethodUpdateSchema.parse(body)
     
     const { data, error } = await supabase
-      .schema('menuca_v3').from('restaurant_payment_methods')
+      .from('restaurant_payment_methods')
       .update(validatedData)
       .eq('id', parseInt(params.methodId))
       .eq('restaurant_id', parseInt(params.id))
@@ -54,7 +54,7 @@ export async function DELETE(
     const supabase = createAdminClient()
     
     const { error } = await supabase
-      .schema('menuca_v3').from('restaurant_payment_methods')
+      .from('restaurant_payment_methods')
       .delete()
       .eq('id', parseInt(params.methodId))
       .eq('restaurant_id', parseInt(params.id))

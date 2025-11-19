@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     
     const { data, error } = await supabase
       .schema('menuca_v3')
-      .schema('menuca_v3').from('v_franchise_chains')
+      .from('v_franchise_chains')
       .select('*')
       .order('location_count', { ascending: false })
     

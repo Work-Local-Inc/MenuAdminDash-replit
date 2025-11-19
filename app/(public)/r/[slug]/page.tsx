@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { extractIdFromSlug, createRestaurantSlug } from '@/lib/utils/slugify';
 import RestaurantMenu from '@/components/customer/restaurant-menu';
 import type { RestaurantMenuResponse } from '@/lib/types/menu';
+import { hexToHSL } from '@/lib/utils';
 
 interface RestaurantPageProps {
   params: {
@@ -93,5 +94,16 @@ export default async function RestaurantPage({ params }: RestaurantPageProps) {
   
   console.log('[Restaurant Page] About to render RestaurantMenu component with courses:', courses.length);
   
-  return <RestaurantMenu restaurant={restaurant} courses={courses} />;
+  // Convert primary color to HSL for CSS variable injection
+  const primaryColorHSL = restaurant.primary_color ? hexToHSL(restaurant.primary_color) : null;
+  const dynamicStyle = primaryColorHSL ? {
+    '--primary': primaryColorHSL,
+    '--ring': primaryColorHSL,
+  } as React.CSSProperties : undefined;
+  
+  return (
+    <div style={dynamicStyle}>
+      <RestaurantMenu restaurant={restaurant} courses={courses} />
+    </div>
+  );
 }

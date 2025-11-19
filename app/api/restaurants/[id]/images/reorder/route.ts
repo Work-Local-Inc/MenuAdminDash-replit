@@ -40,7 +40,7 @@ export async function POST(
     // Update display_order for all affected images
     const updates = imageOrders.map(({ id, display_order }) =>
       supabase
-        .schema('menuca_v3').from('restaurant_images')
+        .from('restaurant_images')
         .update({ display_order })
         .eq('id', id)
         .eq('restaurant_id', parseInt(params.id))

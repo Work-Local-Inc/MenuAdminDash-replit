@@ -1,0 +1,91 @@
+If you’re migrating a DB that already has admin tables/columns, you can keep them and wire them into RLS. Two common patterns:
+
+Admin via roles table
+
+Tables: roles(name), user_roles(user_id, role_name)
+RLS checks membership to grant broader access.
+Admin via column on profile
+
+Column: profiles.role TEXT with values like admin, editor, user
+RLS reads this column to determine access.
+Example RLS patterns:
+
+Admins can read everything; others only their own rows
+SQL Query
+
+
+
+-- Example on table: documents(user_id uuid, ...)
+
+-- SELECT policy
+CREATE POLICY "admin_or_owner_read" ON documents
+FOR SELECT TO authenticated
+USING (
+  (auth.jwt() ->> 'user_role') = 'admin'
+  OR user_id = (SELECT auth.uid())
+);
+
+-- INSERT policy
+CREATE POLICY "admin_or_self_insert" ON documents
+FOR INSERT TO authenticated
+WITH CHECK (
+  (auth.jwt() ->> 'user_role') = 'admin'
+  OR user_id = (SELECT auth.uid())
+);
+
+-- UPDATE policy
+CREATE POLICY "admin_or_owner_update" ON documents
+FOR UPDATE TO authenticated
+USING (
+  (auth.jwt() ->> 'user_role') = 'admin'
+  OR user_id = (SELECT auth.uid())
+)
+WITH CHECK (
+  (auth.jwt() ->> 'user_role') = 'admin'
+  OR user_id = (SELECT auth.uid())
+);
+
+If you prefer a roles table instead of JWT claims:
+
+SQL Query
+
+
+
+-- Helper function to test admin membership
+CREATE OR REPLACE FUNCTION is_admin() RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM user_roles ur
+    JOIN roles r ON r.id = ur.role_id
+    WHERE ur.user_id = auth.uid()
+      AND r.name = 'admin'
+  );
+$$;
+REVOKE EXECUTE ON FUNCTION is_admin() FROM anon, authenticated;
+
+-- Policy using the helper
+CREATE POLICY "admins_read_all_or_owner"
+ON documents FOR SELECT TO authenticated
+USING (is_admin() OR user_id = (SELECT auth.uid()));
+
+Important:
+
+Add indexes for columns used in policies (e.g., documents.user_id, user_roles.user_id, roles.name).
+Use SECURITY DEFINER cautiously and revoke EXECUTE from public roles as shown.
+Handling an Admin Dashboard
+Client app (browser): Use authenticated user tokens. RLS will prevent non-admins from seeing restricted rows.
+Server code/Edge Functions for admin tasks:
+If you need unrestricted admin operations, use the service_role key in the Edge Function and implement explicit checks before performing sensitive actions.
+Otherwise, rely on RLS + claims so admin users can perform actions directly via client using their JWT.
+Common Migration Pitfalls
+RLS enabled but no admin policy: Admins might be blocked too. Ensure policies explicitly allow admins.
+Missing indexes: RLS lookups via roles or membership tables can become slow; add indexes.
+Claims not present in JWT: If you plan to use auth.jwt() claims, set them during sign-in/refresh. Alternatively, use DB lookups via helper functions.
+Overbroad policies: Avoid granting TO public or authenticated without conditions; always scope with USING/WITH CHECK.
+If You Share Your Schema
+If you can share:
+
+the names of your “admin” tables/columns, or
+whether you want claim-based or table-based roles,
+I can draft exact RLS policies and any needed helper functions for your menuca_V3 schema.

@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
 
     // Query v_incomplete_onboarding_restaurants view
     let query = supabase
-      .schema('menuca_v3').from('v_incomplete_onboarding_restaurants')
+      .from('v_incomplete_onboarding_restaurants')
       .select('*')
       .order('days_in_onboarding', { ascending: false })
       .order('completion_percentage', { ascending: false });

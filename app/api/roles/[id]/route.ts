@@ -29,7 +29,7 @@ export async function GET(
   }
 
   const { data, error } = await supabase
-    .schema('menuca_v3').from('admin_roles')
+    .from('admin_roles')
     .select('*')
     .eq('id', roleId)
     .single()
@@ -74,7 +74,7 @@ export async function PATCH(
 
     // First check if role exists and if it's a system role
     const { data: existingRole, error: fetchError } = await supabase
-      .schema('menuca_v3').from('admin_roles')
+      .from('admin_roles')
       .select('is_system_role')
       .eq('id', roleId)
       .single()
@@ -121,7 +121,7 @@ export async function PATCH(
 
     // Update role
     const { data, error } = await supabase
-      .schema('menuca_v3').from('admin_roles')
+      .from('admin_roles')
       .update(updateData)
       .eq('id', roleId)
       .select()
@@ -180,7 +180,7 @@ export async function DELETE(
   try {
     // First check if role exists and if it's a system role
     const { data: existingRole, error: fetchError } = await supabase
-      .schema('menuca_v3').from('admin_roles')
+      .from('admin_roles')
       .select('is_system_role, name')
       .eq('id', roleId)
       .single()
@@ -202,7 +202,7 @@ export async function DELETE(
 
     // Check if any admin users are assigned this role
     const { count, error: countError } = await supabase
-      .schema('menuca_v3').from('admin_user_restaurants')
+      .from('admin_user_restaurants')
       .select('*', { count: 'exact', head: true })
       .eq('role_id', roleId)
 
@@ -219,7 +219,7 @@ export async function DELETE(
 
     // Delete role
     const { error } = await supabase
-      .schema('menuca_v3').from('admin_roles')
+      .from('admin_roles')
       .delete()
       .eq('id', roleId)
 
