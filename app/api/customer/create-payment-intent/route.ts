@@ -9,6 +9,9 @@ if (!stripeSecretKey) {
   throw new Error('Missing required Stripe secret key')
 }
 
+// Debug: Check which key we're using
+console.log('[Payment Intent API] Using Stripe key:', stripeSecretKey.substring(0, 10) + '...')
+
 const stripe = new Stripe(stripeSecretKey, {
   apiVersion: '2025-11-17.clover',
 })
