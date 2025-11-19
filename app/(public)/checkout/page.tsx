@@ -15,10 +15,11 @@ import { useToast } from '@/hooks/use-toast'
 import { ShoppingCart, MapPin, CreditCard, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 
-if (!process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY) {
-  throw new Error('Missing required Stripe key: NEXT_PUBLIC_STRIPE_PUBLIC_KEY')
+const stripeKey = process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY || process.env.VITE_STRIPE_PUBLIC_KEY
+if (!stripeKey) {
+  throw new Error('Missing required Stripe key: NEXT_PUBLIC_STRIPE_PUBLIC_KEY or VITE_STRIPE_PUBLIC_KEY')
 }
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY)
+const stripePromise = loadStripe(stripeKey)
 
 interface DeliveryAddress {
   id?: number

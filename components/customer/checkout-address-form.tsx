@@ -99,22 +99,26 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed }: CheckoutAddr
 
     setSubmitting(true)
     try {
-      const { data, error } = await supabase
-        .from('user_delivery_addresses')
-        .insert({
-          user_id: userId,
+      const response = await fetch('/api/customer/addresses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           street_address: streetAddress,
           unit: unit || null,
           city_id: cityId,
           postal_code: postalCode.toUpperCase().replace(/\s/g, ''),
           delivery_instructions: deliveryInstructions || null,
           address_label: addressLabel || null,
-          is_default: savedAddresses.length === 0, // First address is default
-        })
-        .select()
-        .single()
+          is_default: savedAddresses.length === 0,
+        }),
+      })
 
-      if (error) throw error
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to save address')
+      }
+
+      const data = await response.json()
 
       toast({
         title: "Address saved",
