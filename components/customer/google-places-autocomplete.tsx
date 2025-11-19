@@ -32,13 +32,25 @@ export function GooglePlacesAutocomplete({
   const inputRef = useRef<HTMLInputElement>(null)
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null)
   
+  // Store callbacks in refs to prevent re-initialization on every render
+  const onAddressSelectRef = useRef(onAddressSelect)
+  const onChangeRef = useRef(onChange)
+  
+  // Update refs when callbacks change
+  useEffect(() => {
+    onAddressSelectRef.current = onAddressSelect
+    onChangeRef.current = onChange
+  }, [onAddressSelect, onChange])
+  
   const { isLoaded, loadError } = useLoadScript({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_API_KEY || '',
     libraries,
   })
 
   useEffect(() => {
-    if (!isLoaded || !inputRef.current) return
+    if (!isLoaded || !inputRef.current || autocompleteRef.current) return
+
+    console.log('[Google Places] Initializing autocomplete')
 
     // Initialize Google Places Autocomplete
     autocompleteRef.current = new google.maps.places.Autocomplete(inputRef.current, {
@@ -50,7 +62,12 @@ export function GooglePlacesAutocomplete({
     // Listen for place selection
     autocompleteRef.current.addListener("place_changed", () => {
       const place = autocompleteRef.current?.getPlace()
-      if (!place || !place.address_components) return
+      if (!place || !place.address_components) {
+        console.log('[Google Places] No place data received')
+        return
+      }
+
+      console.log('[Google Places] Place selected:', place.formatted_address)
 
       const components = place.address_components
       const addressData = {
@@ -91,19 +108,22 @@ export function GooglePlacesAutocomplete({
       // Combine street number and route
       addressData.street_address = `${streetNumber} ${route}`.trim()
 
-      // Update input value
-      onChange(addressData.street_address)
+      console.log('[Google Places] Parsed address:', addressData)
 
-      // Notify parent component
-      onAddressSelect(addressData)
+      // Update input value using ref
+      onChangeRef.current(addressData.street_address)
+
+      // Notify parent component using ref
+      onAddressSelectRef.current(addressData)
     })
 
     return () => {
       if (autocompleteRef.current) {
         google.maps.event.clearInstanceListeners(autocompleteRef.current)
+        autocompleteRef.current = null
       }
     }
-  }, [isLoaded, onAddressSelect, onChange])
+  }, [isLoaded]) // Only re-run when isLoaded changes
 
   if (loadError) {
     console.error('Google Maps load error:', loadError)
