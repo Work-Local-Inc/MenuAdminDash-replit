@@ -24,16 +24,26 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { payment_intent_id, delivery_address, cart_items, user_id, guest_email } = body
 
+    console.log('[Order API] Request:', { 
+      payment_intent_id: payment_intent_id?.substring(0, 20) + '...', 
+      has_user: !!user,
+      guest_email,
+      cart_items_count: cart_items?.length 
+    })
+
     if (!payment_intent_id) {
+      console.error('[Order API] Missing payment_intent_id')
       return NextResponse.json({ error: 'Payment intent ID required' }, { status: 400 })
     }
 
     if (!cart_items || cart_items.length === 0) {
+      console.error('[Order API] Missing or empty cart_items')
       return NextResponse.json({ error: 'Cart items required' }, { status: 400 })
     }
 
     // For guests, require email
     if (!user && !guest_email) {
+      console.error('[Order API] Guest checkout missing email')
       return NextResponse.json({ error: 'Email required for guest checkout' }, { status: 400 })
     }
 
@@ -78,16 +88,21 @@ export async function POST(request: NextRequest) {
       }, { status: 409 })
     }
     
-    // Get restaurant with service config for fees
-    const { data: restaurant } = await supabase
+    // Get restaurant (no need for delivery fee - it's already calculated in cart)
+    console.log('[Order API] Looking for restaurant with slug:', restaurantSlug)
+    const { data: restaurant, error: restaurantError } = await supabase
       .from('restaurants')
-      .select('id, name, logo_url, restaurant_service_configs(delivery_fee_cents)')
+      .select('id, name, logo_url')
       .eq('slug', restaurantSlug)
-      .single() as { data: { id: number; name: string; logo_url: string | null; restaurant_service_configs: { delivery_fee_cents: number }[] } | null }
+      .single() as { data: { id: number; name: string; logo_url: string | null } | null; error: any }
 
-    if (!restaurant) {
-      return NextResponse.json({ error: 'Restaurant not found' }, { status: 404 })
+    if (restaurantError || !restaurant) {
+      console.error('[Order API] Restaurant query error:', restaurantError)
+      console.error('[Order API] Restaurant data:', restaurant)
+      return NextResponse.json({ error: 'Restaurant not found', details: restaurantError }, { status: 404 })
     }
+
+    console.log('[Order API] Found restaurant:', restaurant.id, restaurant.name)
 
     // SECURITY: Recompute totals on server to prevent client manipulation
     let serverSubtotal = 0

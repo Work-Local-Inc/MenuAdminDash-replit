@@ -79,6 +79,7 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, onBack }: C
           body: JSON.stringify({
             payment_intent_id: paymentIntent.id,
             delivery_address: deliveryAddress,
+            guest_email: deliveryAddress.email, // Required for guest checkout
             cart_items: items.map(item => ({
               dishId: item.dishId,
               size: item.size,
@@ -89,7 +90,9 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, onBack }: C
         })
 
         if (!orderResponse.ok) {
-          throw new Error('Failed to create order')
+          const errorData = await orderResponse.json().catch(() => ({}))
+          console.error('[Order Creation] Failed:', errorData)
+          throw new Error(errorData.error || 'Failed to create order')
         }
 
         const order = await orderResponse.json()
@@ -150,11 +153,19 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, onBack }: C
           <PaymentElement 
             onReady={() => setIsLoading(false)}
             options={{
+              defaultValues: {
+                billingDetails: {
+                  address: {
+                    country: 'CA', // Canada - this makes it show "Postal code" instead of "ZIP code"
+                    postalCode: deliveryAddress.postal_code,
+                  }
+                }
+              },
               fields: {
                 billingDetails: {
                   email: 'auto',
                   address: {
-                    country: 'never',
+                    country: 'never', // Hide country selector since we're Canada-only
                     postalCode: 'auto',
                   }
                 }
