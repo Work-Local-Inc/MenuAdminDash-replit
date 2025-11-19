@@ -105,7 +105,7 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed }: CheckoutAddr
         body: JSON.stringify({
           street_address: streetAddress,
           unit: unit || null,
-          city_id: cityId,
+          city_id: null, // City not selected in form, will be null
           postal_code: postalCode.toUpperCase().replace(/\s/g, ''),
           delivery_instructions: deliveryInstructions || null,
           address_label: addressLabel || null,

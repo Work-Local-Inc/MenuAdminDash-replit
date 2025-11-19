@@ -22,9 +22,9 @@ export async function POST(request: NextRequest) {
       is_default
     } = body
 
-    if (!street_address || !postal_code || !city_id) {
+    if (!street_address || !postal_code) {
       return NextResponse.json(
-        { error: 'Missing required fields: street_address, postal_code, city_id' },
+        { error: 'Missing required fields: street_address, postal_code' },
         { status: 400 }
       )
     }
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
         user_id: userId,
         street_address,
         unit: unit || null,
-        city_id,
+        city_id: city_id || null,
         postal_code: postal_code.toUpperCase().replace(/\s/g, ''),
         delivery_instructions: delivery_instructions || null,
         address_label: address_label || null,

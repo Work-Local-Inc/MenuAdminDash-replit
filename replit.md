@@ -127,6 +127,9 @@ Preferred communication style: Simple, everyday language.
 - `stripe_webhook_events`: Webhook event tracking for idempotency
 
 ### API Endpoints
+- `POST /api/customer/signup`: Create customer account (server-side with service role)
+- `POST /api/customer/addresses`: Save delivery address (server-side with service role)
+- `GET /api/customer/addresses`: Fetch user's saved addresses
 - `POST /api/customer/create-payment-intent`: Create Stripe payment intent
 - `POST /api/customer/orders`: Create order after payment (with server-side validation)
 - `GET /api/customer/orders`: Fetch user's order history
@@ -145,3 +148,4 @@ Preferred communication style: Simple, everyday language.
 **IMPORTANT**: Before using the checkout system in production, run these migrations in Supabase SQL Editor:
 1. `migrations/004_add_payment_intent_uniqueness.sql` - Adds UNIQUE constraints to prevent duplicate orders from the same payment intent
 2. `migrations/005_add_auth_user_id.sql` - Adds auth_user_id column to link Supabase Auth UUIDs to integer user IDs (customer signup will work without this but won't link to auth properly)
+3. `migrations/006_make_city_id_nullable.sql` - Makes city_id nullable in user_delivery_addresses (checkout form doesn't have city selector yet)
