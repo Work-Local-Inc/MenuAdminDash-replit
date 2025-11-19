@@ -1,5 +1,7 @@
 # Menu.ca Admin Dashboard
 
+**🔴 AGENT: BEFORE ANY DATABASE WORK, READ `DATABASE_SCHEMA_QUICK_REF.md` FIRST!**
+
 ## Overview
 The Menu.ca Admin Dashboard is a Next.js 14 application designed to provide comprehensive management for a multi-tenant restaurant ordering platform. It serves 961 restaurants and over 32,330 users, enabling streamlined administration of restaurants, orders, coupons, and user accounts. The project's core purpose is to enhance operational efficiency and administrative capabilities for a large-scale food ordering service by extending an existing Supabase PostgreSQL database.
 
