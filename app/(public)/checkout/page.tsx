@@ -15,15 +15,15 @@ import { useToast } from '@/hooks/use-toast'
 import { ShoppingCart, MapPin, CreditCard, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 
-// Use TEST keys for development - client-side needs NEXT_PUBLIC prefix
-const stripeKey = import.meta.env.VITE_TESTING_VITE_STRIPE_PUBLIC_KEY 
-  || import.meta.env.VITE_STRIPE_PUBLIC_KEY
+// Use TEST publishable key to match backend test secret key
+const stripeKey = process.env.NEXT_PUBLIC_TESTING_VITE_STRIPE_PUBLIC_KEY 
+  || import.meta.env.VITE_TESTING_VITE_STRIPE_PUBLIC_KEY
 
 if (!stripeKey) {
-  throw new Error('Missing required Stripe publishable key. Set VITE_TESTING_VITE_STRIPE_PUBLIC_KEY or VITE_STRIPE_PUBLIC_KEY environment variable.')
+  throw new Error('Missing test Stripe publishable key. Backend uses TESTING_STRIPE_SECRET_KEY, frontend needs TESTING_VITE_STRIPE_PUBLIC_KEY.')
 }
 
-console.log('[Checkout] Using Stripe key:', stripeKey.substring(0, 12) + '...')
+console.log('[Checkout] Using Stripe publishable key:', stripeKey.substring(0, 10) + '...')
 const stripePromise = loadStripe(stripeKey)
 
 interface DeliveryAddress {
