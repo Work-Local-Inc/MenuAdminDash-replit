@@ -138,7 +138,22 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, onBack }: C
 
         {/* Payment Element */}
         <form onSubmit={handleSubmit} className="space-y-6">
-          <PaymentElement />
+          <PaymentElement 
+            options={{
+              fields: {
+                billingDetails: {
+                  email: 'auto',
+                  address: {
+                    country: 'never',
+                    postalCode: 'auto',
+                  }
+                }
+              },
+              terms: {
+                card: 'never'
+              }
+            }}
+          />
 
           <div className="flex gap-3">
             <Button
