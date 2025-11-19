@@ -8,6 +8,12 @@ The Menu.ca Admin Dashboard is a Next.js 14 application designed to provide comp
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
+## Git Workflow (CRITICAL)
+**ALWAYS follow this workflow to stay in sync:**
+1. **Before any code changes**: Run `git pull origin main --no-rebase`
+2. **After committing changes**: Run `git push origin main`
+This prevents divergent branches and merge conflicts.
+
 ## System Architecture
 
 ### Frontend
