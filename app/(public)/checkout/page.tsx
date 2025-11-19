@@ -71,12 +71,9 @@ export default function CheckoutPage() {
       console.log('[Checkout] User lookup:', { userData, userError })
 
       if (!userData) {
-        console.error('[Checkout] No user found for auth_user_id:', user.id)
-        toast({
-          title: "Account Error",
-          description: "Your account setup is incomplete. Please contact support.",
-          variant: "destructive"
-        })
+        console.error('[Checkout] No user found - redirecting to login')
+        // Redirect to login if user account not found
+        router.push(`/customer/login?redirect=/checkout`)
         return
       }
 
