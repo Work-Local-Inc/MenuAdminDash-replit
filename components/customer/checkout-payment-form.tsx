@@ -34,6 +34,7 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, onBack }: C
   const { clearCart, restaurantSlug } = useCartStore()
   
   const [processing, setProcessing] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -139,6 +140,7 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, onBack }: C
         {/* Payment Element */}
         <form onSubmit={handleSubmit} className="space-y-6">
           <PaymentElement 
+            onReady={() => setIsLoading(false)}
             options={{
               fields: {
                 billingDetails: {
@@ -169,12 +171,12 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, onBack }: C
             </Button>
             <Button
               type="submit"
-              disabled={!stripe || processing}
+              disabled={!stripe || processing || isLoading}
               className="flex-1"
               size="lg"
               data-testid="button-place-order"
             >
-              {processing ? "Processing..." : "Place Order"}
+              {isLoading ? "Loading..." : processing ? "Processing..." : "Place Order"}
             </Button>
           </div>
         </form>
