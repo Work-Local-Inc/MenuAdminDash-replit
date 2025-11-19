@@ -59,12 +59,26 @@ export default function CheckoutPage() {
         return
       }
 
+      console.log('[Checkout] Auth user:', user.id)
+
       // Get full user details (query by auth_user_id, not id)
-      const { data: userData } = await supabase
+      const { data: userData, error: userError } = await supabase
         .from('users')
         .select('*')
         .eq('auth_user_id', user.id)
         .single()
+
+      console.log('[Checkout] User lookup:', { userData, userError })
+
+      if (!userData) {
+        console.error('[Checkout] No user found for auth_user_id:', user.id)
+        toast({
+          title: "Account Error",
+          description: "Your account setup is incomplete. Please contact support.",
+          variant: "destructive"
+        })
+        return
+      }
 
       setCurrentUser(userData)
     } catch (error) {
