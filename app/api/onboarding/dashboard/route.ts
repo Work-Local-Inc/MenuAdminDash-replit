@@ -9,8 +9,6 @@ export async function GET(request: NextRequest) {
 
     const supabase = createAdminClient();
 
-    }
-
     // Call Santiago's get-onboarding-dashboard Edge Function
     const { data, error } = await supabase.functions.invoke('get-onboarding-dashboard');
 
