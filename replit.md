@@ -149,6 +149,11 @@ Preferred communication style: Simple, everyday language.
 - **User authentication**: All endpoints verify user authentication
 - **Webhook signature verification**: Stripe webhook events verified with signature
 
+### Critical Fixes (Nov 19, 2025)
+- **Restaurant Lookup Fix**: Order creation now extracts restaurant ID from slug using `extractIdFromSlug()` and queries by `id` column (restaurants table has no `slug` column)
+- **Delivery Fee Fix**: Delivery fees now fetched from `restaurant_delivery_zones` table (menuca_v3 schema), not `restaurant_service_configs` (public schema)
+- **Free Delivery Support**: Missing/inactive delivery zones default to $0.00 delivery fee
+
 ### Database Migrations Required
 **IMPORTANT**: Before using the checkout system in production, run these migrations in Supabase SQL Editor:
 1. `migrations/004_add_payment_intent_uniqueness.sql` - Adds UNIQUE constraints to prevent duplicate orders from the same payment intent
