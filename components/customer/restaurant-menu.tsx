@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/card';
 import { DishCard } from './dish-card';
 import { CartDrawer } from './cart-drawer';
 import { useCartStore } from '@/lib/stores/cart-store';
+import { hexToHSL } from '@/lib/utils';
 
 interface RestaurantMenuProps {
   restaurant: any;
@@ -41,9 +42,18 @@ export default function RestaurantMenu({ restaurant, courses, hasMenu = true }: 
       element.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
+
+  // Calculate dynamic styles for primary color
+  const primaryColorHSL = restaurant.primary_color ? hexToHSL(restaurant.primary_color) : null;
+  
+  const dynamicStyle = primaryColorHSL ? {
+    '--primary': primaryColorHSL,
+    // We can also set ring color if needed, as it often matches primary
+    '--ring': primaryColorHSL,
+  } as React.CSSProperties : undefined;
   
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background" style={dynamicStyle}>
       {/* Restaurant Header */}
       <div className="border-b bg-card">
         <div className="container mx-auto px-4 py-6">
