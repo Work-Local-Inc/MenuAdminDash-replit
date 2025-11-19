@@ -31,14 +31,37 @@ export async function POST(request: NextRequest) {
 
     const adminSupabase = createAdminClient()
     
-    const { data: userData, error: userError } = await adminSupabase
+    // Try to find user by auth_user_id
+    let { data: userData, error: userError } = await adminSupabase
       .from('users')
-      .select('id')
+      .select('id, email, auth_user_id')
       .eq('auth_user_id', user.id)
       .single()
 
+    // FALLBACK: If not found, try by email (legacy users without auth_user_id)
     if (userError || !userData) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      console.log('[Customer Address API] User not found by auth_user_id, trying email fallback')
+      const { data: emailData, error: emailError } = await adminSupabase
+        .from('users')
+        .select('id, email, auth_user_id')
+        .eq('email', user.email)
+        .single()
+
+      if (emailError || !emailData) {
+        console.error('[Customer Address API] User not found by email either:', user.email)
+        return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      }
+
+      userData = emailData
+
+      // Backfill auth_user_id for legacy users
+      if (!userData.auth_user_id) {
+        console.log('[Customer Address API] Backfilling auth_user_id for user:', userData.id)
+        await adminSupabase
+          .from('users')
+          .update({ auth_user_id: user.id } as any)
+          .eq('id', userData.id)
+      }
     }
 
     const userId = (userData as any).id
