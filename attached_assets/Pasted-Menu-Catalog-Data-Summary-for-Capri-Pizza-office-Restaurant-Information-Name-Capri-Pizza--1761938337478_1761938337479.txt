@@ -1,0 +1,122 @@
+Menu & Catalog Data Summary for Capri Pizza
+  :office: Restaurant Information
+  - Name: Capri Pizza
+  - ID: 977
+  - UUID: 7cadd28b-92b0-4f9a-94e0-dc45e292d9ce
+  - Status: Active :white_check_mark:
+  - Online Ordering: Enabled
+  - Location: 4000 Bridle Path Drive, Ottawa, Ontario K1T 2C4
+  ---
+  :clipboard: Courses (Menu Categories) - 11 Total
+  All courses are active and sourced from v2 system:
+  1. Halal Menu (ID: 1353) - Display Order: 0
+  2. Specials (ID: 1357) - Display Order: 0
+  3. Appetizers (ID: 1348) - Display Order: 1
+  4. Salads (ID: 1356) - Display Order: 2
+  5. Specialty Pizza (ID: 1358) - Display Order: 3
+  6. Gourmet Pizza (ID: 1352) - Display Order: 4
+  7. Make Your Pizza (ID: 1355) - Display Order: 5
+  8. Dipping Sauces (ID: 1350) - Display Order: 6
+  9. Kids Menu (ID: 1354) - Display Order: 7
+  10. Drinks (ID: 1351) - Display Order: 8
+  11. Desserts (ID: 1349) - Display Order: 9
+  ---
+  :knife_fork_plate: Dishes (Menu Items) - 86 Total
+  Sample dishes include:
+  - Thai Bites ($21.24)
+  - Breaded Zucchini 20 pcs ($15.25)
+  - Mozzarella Sticks 10 pcs ($14.75)
+  - Capri Combo Box ($18.95)
+  - Large Crack Stick Combo Box ($39.99)
+  - Various Cheesecakes ($9.99 - $11.99)
+  - Candy Bars ($3.99)
+  - Soft Drinks ($2.75)
+  - Dipping Sauces ($2.75)
+  - Pizza Specials ($23.50 - $39.99)
+  - Halal Menu Items ($19.99 - $27.50)
+  Pricing: All 86 dishes have active pricing, mostly with "default" size variant
+  ---
+  :control_knobs: Modifiers & Customization
+  Modifier Groups - 86 Total
+  - Each dish has 1 modifier group named "Other"
+  - Configuration: min 0, max 99 selections (flexible customization)
+  - Display order: 99
+  - None are required
+  Dish Modifiers - 60,544 Total
+  Large number of modifiers allowing extensive customization across all dishes with various
+  ingredients, sauces, and toppings.
+  ---
+  :leafy_green: Ingredients - 153 Total
+  Categories include:
+  Sauces:
+  - BBQ Sauce, Pizza Sauce, Red Hot Sauce, Mild Sauce
+  - Cheddar Chipotle, Nashville Hot Sauce, Buffalo Sauce
+  - Ranch, Garlic Parmesan, Creamy Garlic, Plum Sauce
+  - Sweet Sauce, Honey Garlic, Sweet Thai Chili
+  Toppings:
+  - Pepperoni, Bacon, Ham, Chicken, Ground Beef
+  - Italian Sausage, Chorizo Sausage, Donair Meat
+  - Mushrooms, Green/Red Peppers, Onions, Tomatoes
+  - Black/Green Olives, Jalapenos, Pineapple, Artichoke
+  Cheese Options:
+  - Extra Cheese, Mozzarella, Feta, Bocconcini
+  - Parmesan, Blue Cheese, Cheddar, Vegan Cheese
+  - Lactose Free Cheese, Dairy Free options
+  Specialty Items:
+  - Beyond Meat Beef & Sausage (Plant-based)
+  - Grilled Chicken Breast, Grilled Vegetables
+  - Fresh Basil, Sun-dried Tomato, Roasted Garlic
+  Crust Options:
+  - Regular, Thin, Thick, Extra Thin
+  - Gluten Free (regular, cauliflower, broccoli & cheddar)
+  - Keto Crust
+  Drinks:
+  - Pepsi, Diet Pepsi, 7 Up, Crush, Coke, Sprite
+  Dessert Toppings:
+  - Nutella, Cinnamon Sugar, Biscoff, Salted Caramel, Pistachio
+  ---
+  :dart: Ingredient Groups - 23 Total
+  Organized by type:
+  From V1 System (12 groups):
+  1. Burgers Ingredients (custom_ingredients)
+  2. Crust Type (bread)
+  3. Dips (sauces)
+  4. Drinks can (drinks)
+  5. Extra Chicken (extras)
+  6. Extras for Burgers (extras)
+  7. Fries & Coleslaw or Poutine (side_dishes)
+  8. Pizza Sauces (dressing)
+  9. Pizza Toppings (custom_ingredients)
+  10. Pizza Toppings without Premium (custom_ingredients)
+  11. Premium toppings (custom_ingredients)
+  12. Wings Sauces (sauces)
+  From V2 System (11 groups):
+  All marked as "other" type with max 99 selections:
+  1. Custom ING for Salads
+  2. Dips
+  3. Drinks
+  4. Bacon for Crack Sticks
+  5. Extras for Pizza
+  6. Pizza Toppings
+  7. Premium Toppings (Cheeses)
+  8. Pizza Sauces
+  9. Crust Type
+  10. Dessert Dipping Sauces
+  11. Wings Sauces
+  ---
+  :gift: Combo Groups - 5 Total
+  1. Twins Pizzas (ID: 16259)
+  2. Medium Pizza 3 Toppings (ID: 16260)
+  3. Wings Sauces (ID: 16261)
+  4. 2 Dips Free (ID: 16262)
+  5. Large Pizza 3 Toppings (ID: 16263)
+  All combo groups are active and available.
+  ---
+  :chart_with_upwards_trend: Data Quality Notes
+  - :white_check_mark: All data is actively migrated from legacy v2 system
+  - :white_check_mark: Comprehensive modifier system with 60,544+ customization options
+  - :white_check_mark: Well-organized ingredient groups for efficient menu management
+  - :white_check_mark: All pricing information is complete and active
+  - :white_check_mark: Menu structure is logical with proper display ordering
+  The menu is extensive and highly customizable, offering customers numerous options for
+  personalizing their orders!

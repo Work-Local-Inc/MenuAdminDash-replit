@@ -1,0 +1,60 @@
+Here is up-to-date info from 2025 on connecting Supabase to Replit, distilled from recent sources and a March 2025 video tutorial:
+
+Steps to connect Supabase to Replit (2025):
+
+1. In Supabase:
+
+Go to Authentication > Sign Up Configuration and, for development only, turn off confirm email.
+
+Under Connect > Connection info:
+
+Copy your Supabase URL and anon/public key.
+
+For ORMs, use the shared connection pooler URL (drizzle for JS, with your password and schema).
+
+Change the app framework to React (if that fits your stack) and copy connection details.
+
+2. In Replit:
+
+Go to the Secrets manager.
+
+Add these environment variables:
+
+SUPABASE_CONNECTION_STRING: (from Supabase)
+
+SUPABASE_ANON_KEY: (from Supabase)
+
+SUPABASE_URL: (from Supabase)
+
+Paste the relevant keys and URLs but NOT the secret values into your source code.
+
+3. In your code:
+
+For React/JS:
+
+javascript
+import { createClient } from '@supabase/supabase-js';
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+Configure sign-ins with Supabase Auth (e.g., email/password, Google, etc.).
+
+Example for Google Sign-In:
+
+javascript
+const { error } = await supabase.auth.signInWithOAuth({ provider: 'google' });
+For troubleshooting, make sure redirect URIs in Supabase match your Replit web app’s domain.
+
+4. Troubleshooting tips (2025):
+
+If login flow fails, double-check the variables and prompts you pass to Replit Agent/AI.
+
+Try restarting the process in a fresh chat if you encounter environment handling bugs.
+
+For advanced setups (e.g., user sign-in), ask the agent step-by-step and feed it each secret so it doesn’t get confused.
+
+You may have to re-send secrets/variables if Replit asks again; provide values only through Secrets, NOT in the code directly.
+
+5. Real world notes from 2025:
+
+This workflow is now common; the integration typically succeeds after a few minutes of setup for most users, but login features may need several tries or troubleshooting.
+
+The AI agent in Replit can now automate connecting these services, but manual step-by-step (with careful secrets handling) is still the fallback.​

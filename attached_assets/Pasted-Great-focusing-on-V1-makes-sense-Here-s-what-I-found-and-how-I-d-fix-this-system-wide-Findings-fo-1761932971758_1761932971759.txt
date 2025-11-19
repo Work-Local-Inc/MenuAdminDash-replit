@@ -1,0 +1,54 @@
+Great—focusing on V1 makes sense. Here’s what I found and how I’d fix this system‑wide.
+
+Findings for “Pizza Shark”
+
+V1 source data exists:
+menuca_v1_menu: 60 rows
+menuca_v1_courses: 16 rows
+menuca_v1_ingredients: 48 rows
+menuca_v1_ingredient_groups: 10 rows
+Sample items (from V1): Canadian Pizza, Pizza Burger, subs, donairs, combos (prices like “11.86,16.06,20.26”)
+V2 dish data: not present (consistent with your note it’s V1-origin).
+V3 current state: restaurant id 4 exists, but 0 courses, 0 dishes, 0 prices.
+Mapping: archive.restaurant_id_mapping has old_restaurant_id = 81 → new_restaurant_id = 4, status = suspended.
+temp_migration.v1_menu has 0 rows for restaurant 81 (so the ETL from V1 → temp_migration missed Pizza Shark entirely).
+Likely root cause (systemic)
+
+Filtering by status: the ETL likely excluded “suspended” restaurants from V1 when building temp_migration, so they never got staged into V3—even though they have real menus. Later, flawed activation logic reactivated some locations without menus, yielding “active but empty.”
+Type mismatches in joins: V1 tables use mixed types for restaurant (varchar in most, integer in some). If the ETL joined mapping.old_restaurant_id (int) to v1_menu.restaurant (varchar) without an explicit cast, those rows would be dropped. We saw we must cast to match.
+Result: many restaurants have V1 menu rows but zero V3 dishes. Pizza Shark is one among a large set.
+Proof of systemic issue
+
+A quick check shows many restaurants with v1_menu_count > 0 but v3_dish_count = 0, often marked suspended in mapping. Pizza Shark is in this list (V1=60 rows, V3=0).
+Proposed plan to fix for all affected restaurants
+
+Confirm the ETL rule causing exclusion
+
+Check correlation between mapping.status and presence in temp_migration.v1_menu.
+Check if joins are using explicit casts (v1.restaurant::int) in the ETL.
+Rebuild a robust V1 extraction (read-only preview first)
+
+Extraction should:
+Join mapping on CAST(v1.restaurant AS int) = old_restaurant_id
+Ignore mapping.status (import data regardless; activation can be handled separately)
+Parse multi-size price strings into normalized rows for dish_prices
+Map or create courses; if missing, create “Uncategorized” course placeholder
+Dry-run queries: count rows to be imported and preview a few restaurants.
+Write migration (generate but don’t execute without your approval)
+
+Create temp tables (e.g., temp_v1_courses, temp_v1_dishes, temp_v1_dish_prices).
+Upsert courses/dishes/prices into menuca_v3 using v3 restaurant IDs from mapping.
+Preserve audit columns (source = ‘V1’, source_restaurant_id, source_sku).
+Keep ordering disabled until verification, then flip the flag per policy.
+Guardrails going forward
+
+Make the migration idempotent (use ON CONFLICT upserts).
+Add data validation (no cartesian joins, required price presence, dedupe keys).
+Separate “data import” from “activation” logic.
+If you want, I can:
+
+Run read-only diagnostics across all V1 restaurants to produce:
+count of affected restaurants (V1 menu > 0, V3 dishes = 0)
+top 10 by missing menu rows
+a preview of 3 sample restaurants’ course/dish mappings
+Then draft the full SQL migration to stage and upsert for all affected restaurants (but not execute until you confirm).
