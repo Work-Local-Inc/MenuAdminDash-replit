@@ -23,6 +23,7 @@
     "@radix-ui/react-toast": "^1.2.15",
     "@radix-ui/react-tooltip": "^1.2.8",
     "@react-email/components": "^0.5.7",
+    "@react-google-maps/api": "^2.20.7",
     "@stripe/react-stripe-js": "^5.4.0",
     "@stripe/stripe-js": "^8.5.2",
     "@supabase/ssr": "^0.7.0",

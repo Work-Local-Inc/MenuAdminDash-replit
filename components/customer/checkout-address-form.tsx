@@ -9,7 +9,8 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { useToast } from '@/hooks/use-toast'
-import { Plus, MapPin, Check } from 'lucide-react'
+import { Plus, MapPin, Check, Shield } from 'lucide-react'
+import { GooglePlacesAutocomplete } from './google-places-autocomplete'
 
 interface DeliveryAddress {
   id?: number
@@ -40,7 +41,8 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed }: CheckoutAddr
   // New address form fields
   const [streetAddress, setStreetAddress] = useState('')
   const [unit, setUnit] = useState('')
-  const [cityId, setCityId] = useState(1) // Toronto by default
+  const [city, setCity] = useState('')
+  const [province, setProvince] = useState('')
   const [postalCode, setPostalCode] = useState('')
   const [deliveryInstructions, setDeliveryInstructions] = useState('')
   const [addressLabel, setAddressLabel] = useState('')
@@ -133,6 +135,8 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed }: CheckoutAddr
       // Reset form
       setStreetAddress('')
       setUnit('')
+      setCity('')
+      setProvince('')
       setPostalCode('')
       setDeliveryInstructions('')
       setAddressLabel('')
@@ -260,15 +264,28 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed }: CheckoutAddr
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="street-address">Street Address *</Label>
-              <Input
-                id="street-address"
-                placeholder="123 Main Street"
+              <div className="flex items-center justify-between">
+                <Label htmlFor="street-address">Street Address *</Label>
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Shield className="w-3 h-3" />
+                  <span>Verified address</span>
+                </div>
+              </div>
+              <GooglePlacesAutocomplete
                 value={streetAddress}
-                onChange={(e) => setStreetAddress(e.target.value)}
-                required
-                data-testid="input-street-address"
+                onChange={setStreetAddress}
+                onAddressSelect={(address) => {
+                  setStreetAddress(address.street_address)
+                  setCity(address.city)
+                  setProvince(address.province)
+                  setPostalCode(address.postal_code)
+                }}
+                placeholder="Start typing your address..."
+                testId="input-street-address"
               />
+              <p className="text-xs text-muted-foreground">
+                Select from dropdown to verify address and prevent fraud
+              </p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -292,7 +309,12 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed }: CheckoutAddr
                   onChange={(e) => setPostalCode(e.target.value)}
                   required
                   data-testid="input-postal-code"
+                  disabled={true}
+                  className="bg-muted"
                 />
+                <p className="text-xs text-muted-foreground">
+                  Auto-filled from address
+                </p>
               </div>
             </div>
 

@@ -77,6 +77,7 @@ Preferred communication style: Simple, everyday language.
 - **Mapbox GL JS**: For delivery area polygon drawing.
 - **@hello-pangea/dnd**: For drag-and-drop reordering.
 - **Stripe**: Payment processing for customer orders (Nov 2025).
+- **Google Places API**: Address autocomplete and verification for checkout (Nov 2025).
 
 ## Customer Ordering System (Nov 2025)
 
@@ -92,10 +93,12 @@ Preferred communication style: Simple, everyday language.
   - Step 1: Address confirmation (select saved address or add new)
   - Step 2: Payment (Stripe Elements integration)
 - **Address Management**: CRUD operations for delivery addresses (`user_delivery_addresses` table)
+  - **Google Places Autocomplete**: Real-time address verification (Canada only)
+  - **Fraud Prevention**: Only verified, real addresses can be entered
+  - Auto-fills street address, city, province, postal code
   - Saved addresses with labels (Home, Work, etc.)
   - Default address selection
   - Delivery instructions support
-  - Toronto (city_id: 1) as default city
 
 ### Payment Processing
 - **Stripe Integration**: Secure payment processing with Stripe Elements

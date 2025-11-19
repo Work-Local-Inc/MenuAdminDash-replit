@@ -2,6 +2,7 @@
 const nextConfig = {
   env: {
     NEXT_PUBLIC_STRIPE_PUBLIC_KEY: process.env.VITE_STRIPE_PUBLIC_KEY,
+    NEXT_PUBLIC_GOOGLE_API_KEY: process.env.GOOGLE_API_KEY,
   },
   images: {
     domains: ['nthpbtdjhhnwfxqsxbvy.supabase.co'],
