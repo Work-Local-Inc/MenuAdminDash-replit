@@ -141,7 +141,7 @@ Preferred communication style: Simple, everyday language.
 - **User authentication**: All endpoints verify user authentication
 - **Webhook signature verification**: Stripe webhook events verified with signature
 
-### Database Migration Required
-**IMPORTANT**: Before using the checkout system in production, run the migration:
-- `migrations/004_add_payment_intent_uniqueness.sql` in Supabase SQL Editor
-- This adds UNIQUE constraints to prevent duplicate orders from the same payment intent
+### Database Migrations Required
+**IMPORTANT**: Before using the checkout system in production, run these migrations in Supabase SQL Editor:
+1. `migrations/004_add_payment_intent_uniqueness.sql` - Adds UNIQUE constraints to prevent duplicate orders from the same payment intent
+2. `migrations/005_add_auth_user_id.sql` - Adds auth_user_id column to link Supabase Auth UUIDs to integer user IDs (customer signup will work without this but won't link to auth properly)
