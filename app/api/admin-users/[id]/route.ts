@@ -25,7 +25,7 @@ export async function GET(
   const { id } = await params
 
   const { data, error } = await supabase
-    .schema('menuca_v3').from('admin_users')
+    .from('admin_users')
     .select('*')
     .eq('id', id)
     .single()
@@ -73,7 +73,7 @@ export async function PATCH(
   }
 
   const { data, error } = await supabase
-    .schema('menuca_v3').from('admin_users')
+    .from('admin_users')
     .update(updateData)
     .eq('id', id)
     .select()
@@ -110,7 +110,7 @@ export async function DELETE(
   try {
     // First delete related admin_user_restaurants records
     const { error: junctionError } = await supabase
-      .schema('menuca_v3').from('admin_user_restaurants')
+      .from('admin_user_restaurants')
       .delete()
       .eq('admin_user_id', id)
 
@@ -124,7 +124,7 @@ export async function DELETE(
 
     // Then delete the admin user
     const { error } = await supabase
-      .schema('menuca_v3').from('admin_users')
+      .from('admin_users')
       .delete()
       .eq('id', id)
 

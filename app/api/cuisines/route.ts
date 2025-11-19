@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch all active cuisine types
     const { data: cuisines, error } = await supabase
-      .schema('menuca_v3').from('cuisine_types')
+      .from('cuisine_types')
       .select('id, name, slug, description, display_order')
       .eq('is_active', true)
       .order('display_order');

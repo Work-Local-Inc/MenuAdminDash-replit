@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     
     // Get all BASE TABLES ONLY in menuca_v3 schema (excludes views and partitions)
     const { data: tablesData, error: tablesError } = await supabase
-      .schema('menuca_v3').from('information_schema.tables')
+      .from('information_schema.tables')
       .select('table_name')
       .eq('table_schema', 'menuca_v3')
       .eq('table_type', 'BASE TABLE')
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     
     for (const tableName of tables) {
       const { data: columnsData } = await supabase
-        .schema('menuca_v3').from('information_schema.columns')
+        .from('information_schema.columns')
         .select('column_name, data_type, is_nullable, column_default')
         .eq('table_schema', 'menuca_v3')
         .eq('table_name', tableName)
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     for (const tableName of tables) {
       try {
         const { count, error } = await supabase
-          .schema('menuca_v3').from(tableName)
+          .from(tableName)
           .select('*', { count: 'exact', head: true })
         
         tableCounts[tableName] = error ? -1 : (count || 0)

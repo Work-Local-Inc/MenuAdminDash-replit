@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch all active tags, grouped by category
     const { data: tags, error } = await supabase
-      .schema('menuca_v3').from('restaurant_tags')
+      .from('restaurant_tags')
       .select('id, name, slug, category, display_order')
       .eq('is_active', true)
       .order('category, display_order');

@@ -13,7 +13,7 @@ export async function GET(
     
     const { data, error } = await supabase
       .schema('menuca_v3')
-      .schema('menuca_v3').from('restaurant_schedules')
+      .from('restaurant_schedules')
       .select('*')
       .eq('restaurant_id', params.id)
       .order('type', { ascending: true })
@@ -43,7 +43,7 @@ export async function POST(
     const { restaurant_id, ...scheduleData } = body
     
     const { data, error } = await supabase
-      .schema('menuca_v3').from('restaurant_schedules')
+      .from('restaurant_schedules')
       .insert({
         ...scheduleData,
         restaurant_id: parseInt(params.id),

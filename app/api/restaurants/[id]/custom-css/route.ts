@@ -19,7 +19,7 @@ export async function GET(
     const supabase = createAdminClient()
     
     const { data, error } = await supabase
-      .schema('menuca_v3').from('restaurant_custom_css')
+      .from('restaurant_custom_css')
       .select('*')
       .eq('restaurant_id', parseInt(params.id))
       .single()
@@ -59,7 +59,7 @@ export async function PUT(
     
     // Check if record exists
     const { data: existing } = await supabase
-      .schema('menuca_v3').from('restaurant_custom_css')
+      .from('restaurant_custom_css')
       .select('id')
       .eq('restaurant_id', parseInt(params.id))
       .single()
@@ -69,7 +69,7 @@ export async function PUT(
     if (existing) {
       // Update existing record
       const { data, error } = await supabase
-        .schema('menuca_v3').from('restaurant_custom_css')
+        .from('restaurant_custom_css')
         .update({
           ...validatedData,
           updated_at: new Date().toISOString(),
@@ -83,7 +83,7 @@ export async function PUT(
     } else {
       // Insert new record
       const { data, error } = await supabase
-        .schema('menuca_v3').from('restaurant_custom_css')
+        .from('restaurant_custom_css')
         .insert({
           restaurant_id: parseInt(params.id),
           ...validatedData,

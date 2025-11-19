@@ -72,11 +72,11 @@ export async function POST(request: NextRequest) {
 
     // Convert file to buffer
     const arrayBuffer = await file.arrayBuffer()
-    const buffer = Buffer.schema('menuca_v3').from(arrayBuffer)
+    const buffer = Buffer.from(arrayBuffer)
 
     // Upload to Supabase Storage
     const { data, error } = await supabase.storage
-      .schema('menuca_v3').from(bucket)
+      .from(bucket)
       .upload(path, buffer, {
         contentType: file.type,
         upsert: true,
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
 
     // Get public URL
     const { data: { publicUrl } } = supabase.storage
-      .schema('menuca_v3').from(bucket)
+      .from(bucket)
       .getPublicUrl(data.path)
 
     return NextResponse.json({ url: publicUrl, path: data.path })

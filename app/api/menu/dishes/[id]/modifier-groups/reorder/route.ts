@@ -27,7 +27,7 @@ export async function POST(
 
     // Verify all groups belong to this dish
     const { data: verifyData, error: verifyError } = await supabase
-      .schema('menuca_v3').from('modifier_groups')
+      .from('modifier_groups')
       .select('id')
       .in('id', group_ids)
       .eq('dish_id', dishId);
@@ -42,7 +42,7 @@ export async function POST(
     // Perform sequential updates for atomicity
     for (let i = 0; i < group_ids.length; i++) {
       const { data, error } = await supabase
-        .schema('menuca_v3').from('modifier_groups')
+        .from('modifier_groups')
         .update({
           display_order: i,
           updated_at: new Date().toISOString()

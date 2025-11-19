@@ -13,7 +13,7 @@ export async function GET(
     
     const { data, error } = await supabase
       .schema('menuca_v3')
-      .schema('menuca_v3').from('restaurant_contacts')
+      .from('restaurant_contacts')
       .select('*')
       .eq('restaurant_id', parseInt(params.id))
       .is('deleted_at', null)

@@ -19,7 +19,7 @@ export async function GET(
     const supabase = createAdminClient()
     
     const { data, error } = await supabase
-      .schema('menuca_v3').from('restaurant_payment_methods')
+      .from('restaurant_payment_methods')
       .select('*')
       .eq('restaurant_id', params.id)
       .order('created_at', { ascending: false })
@@ -48,7 +48,7 @@ export async function POST(
     const validatedData = paymentMethodSchema.parse(body)
     
     const { data, error } = await supabase
-      .schema('menuca_v3').from('restaurant_payment_methods')
+      .from('restaurant_payment_methods')
       .insert({
         ...validatedData,
         restaurant_id: parseInt(params.id),

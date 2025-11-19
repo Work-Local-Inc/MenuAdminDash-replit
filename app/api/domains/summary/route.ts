@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
 
     // Get verification summary from view
     const { data, error } = await supabase
-      .schema('menuca_v3').from('v_domain_verification_summary')
+      .from('v_domain_verification_summary')
       .select('*')
       .single()
 
