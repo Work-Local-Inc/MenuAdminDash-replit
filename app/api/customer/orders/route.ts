@@ -131,16 +131,30 @@ export async function POST(request: NextRequest) {
       }
 
       // Fetch actual price from database
-      const { data: dishPrice } = await supabase
+      console.log(`[Order API] Looking for price - dish: ${item.dishId}, size: "${item.size}"`)
+      const { data: dishPrice, error: priceError } = await supabase
         .from('dish_prices')
-        .select('price')
+        .select('price, size')
         .eq('dish_id', item.dishId)
         .eq('size', item.size)
-        .single() as { data: { price: string } | null }
+        .single() as { data: { price: string; size: string } | null; error: any }
 
       if (!dishPrice) {
-        return NextResponse.json({ error: `Invalid dish price: ${item.dishId}` }, { status: 400 })
+        // Get available sizes for better error message
+        const { data: availableSizes } = await supabase
+          .from('dish_prices')
+          .select('size')
+          .eq('dish_id', item.dishId)
+        
+        console.error(`[Order API] Price not found for dish ${item.dishId}, size: "${item.size}"`)
+        console.error('[Order API] Available sizes:', availableSizes)
+        console.error('[Order API] Price query error:', priceError)
+        return NextResponse.json({ 
+          error: `Invalid dish price: dish ${item.dishId}, size "${item.size}" not found. Available sizes: ${JSON.stringify(availableSizes)}` 
+        }, { status: 400 })
       }
+
+      console.log(`[Order API] Found price: ${dishPrice.price} for size "${dishPrice.size}"`)
 
       // Calculate item total using server prices
       let itemTotal = parseFloat(dishPrice.price) * item.quantity
