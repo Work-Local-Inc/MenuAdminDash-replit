@@ -58,6 +58,7 @@ export function CheckoutAddressForm({ userId, isGuest, onAddressConfirmed }: Che
   }, [userId, isGuest])
 
   const loadSavedAddresses = async () => {
+    if (!userId) return
     try {
       const { data, error } = await supabase
         .from('user_delivery_addresses')

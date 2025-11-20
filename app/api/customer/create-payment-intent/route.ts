@@ -44,10 +44,10 @@ export async function POST(request: NextRequest) {
         .from('users')
         .select('id, stripe_customer_id, email, first_name, last_name')
         .eq('auth_user_id', user.id)
-        .single()
+        .single() as { data: { id: number; stripe_customer_id: string | null; email: string; first_name: string | null; last_name: string | null } | null }
 
       userDbId = userData?.id || null
-      stripeCustomerId = userData?.stripe_customer_id
+      stripeCustomerId = userData?.stripe_customer_id || undefined
 
       // Create Stripe customer if doesn't exist
       if (!stripeCustomerId) {
@@ -65,9 +65,10 @@ export async function POST(request: NextRequest) {
 
         // Update user with Stripe customer ID  
         if (userData?.id) {
-          await supabase
-            .from('users')
-            .update({ stripe_customer_id: stripeCustomerId } as any)
+          const updateData = { stripe_customer_id: stripeCustomerId }
+          await (supabase
+            .from('users') as any)
+            .update(updateData)
             .eq('id', userData.id)
         }
       }

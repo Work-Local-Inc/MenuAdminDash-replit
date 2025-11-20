@@ -12,7 +12,7 @@
 
 ### restaurants
 ```sql
--- IMPORTANT: NO 'slug' column exists!
+-- IMPORTANT: NO 'slug' or 'logo_url' columns exist!
 id                  INTEGER PRIMARY KEY (not UUID!)
 uuid                VARCHAR
 name                VARCHAR
@@ -20,6 +20,7 @@ status              VARCHAR
 online_ordering_enabled BOOLEAN
 -- Slug format: "{name}-{id}" (e.g., "joes-pizza-636")
 -- To get restaurant: extractIdFromSlug(slug) → query by 'id'
+-- NO logo_url column - don't query for it!
 ```
 
 ### restaurant_delivery_zones (menuca_v3 schema)
@@ -69,6 +70,8 @@ modifier_group_id   INTEGER
 name                VARCHAR
 price               DECIMAL  -- Direct price, NO ingredient FK
 is_active           BOOLEAN
+-- IMPORTANT: NO separate dish_modifier_prices table!
+-- Price is stored directly in THIS table
 ```
 
 ### orders

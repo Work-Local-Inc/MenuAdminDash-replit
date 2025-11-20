@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useToast } from '@/hooks/use-toast'
 import { useCartStore } from '@/lib/stores/cart-store'
+import { PostOrderSignupModal } from '@/components/customer/post-order-signup-modal'
 import { ArrowLeft, CreditCard } from 'lucide-react'
 
 interface DeliveryAddress {
@@ -18,6 +19,7 @@ interface DeliveryAddress {
   city_name?: string
   postal_code: string
   delivery_instructions?: string
+  email?: string
 }
 
 interface CheckoutPaymentFormProps {
@@ -35,6 +37,16 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, onBack }: C
   
   const [processing, setProcessing] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [showSignupModal, setShowSignupModal] = useState(false)
+  const [completedOrderId, setCompletedOrderId] = useState<number | null>(null)
+  const [guestEmail, setGuestEmail] = useState<string>('')
+
+  const handleSignupModalClose = () => {
+    setShowSignupModal(false)
+    if (completedOrderId) {
+      router.push(`/customer/orders/${completedOrderId}`)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -105,8 +117,18 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, onBack }: C
           description: `Your order #${order.id} has been confirmed`,
         })
 
-        // Redirect to order confirmation
-        router.push(`/customer/orders/${order.id}`)
+        // Store order ID for later redirect
+        setCompletedOrderId(order.id)
+
+        // Check if this is a guest order (has email in delivery address)
+        if (deliveryAddress.email) {
+          // Guest order - show signup modal
+          setGuestEmail(deliveryAddress.email)
+          setShowSignupModal(true)
+        } else {
+          // Logged-in user - redirect immediately
+          router.push(`/customer/orders/${order.id}`)
+        }
       }
     } catch (error: any) {
       console.error('Payment error:', error)
@@ -120,6 +142,7 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, onBack }: C
   }
 
   return (
+    <>
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
@@ -157,7 +180,7 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, onBack }: C
                 billingDetails: {
                   address: {
                     country: 'CA', // Canada - this makes it show "Postal code" instead of "ZIP code"
-                    postalCode: deliveryAddress.postal_code,
+                    postal_code: deliveryAddress.postal_code,
                   }
                 }
               },
@@ -205,5 +228,19 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, onBack }: C
         </p>
       </CardContent>
     </Card>
+
+    {/* Post-Order Signup Modal (Guest Users Only) */}
+    <PostOrderSignupModal
+      open={showSignupModal}
+      onOpenChange={(open) => {
+        if (!open) {
+          // BUG FIX 2: Always redirect when modal closes (skip or ESC/click outside)
+          handleSignupModalClose()
+        }
+      }}
+      guestEmail={guestEmail}
+      onSuccess={handleSignupModalClose}
+    />
+  </>
   )
 }
