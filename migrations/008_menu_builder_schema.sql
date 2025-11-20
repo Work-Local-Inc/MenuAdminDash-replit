@@ -3,7 +3,7 @@
 -- ============================================================================
 -- Purpose: Create category-level modifier templates with dish-level inheritance
 -- Created: November 20, 2025
--- Schema: public (Supabase uses public schema, not menuca_v3)
+-- Schema: menuca_v3 (ALL restaurant data lives in menuca_v3 schema)
 --
 -- OVERVIEW:
 -- This migration creates a dual-level modifier system for efficient menu management:
@@ -25,7 +25,8 @@
 -- - Support bulk operations (update all pizzas at once)
 -- ============================================================================
 
--- Note: Supabase uses 'public' schema by default, not 'menuca_v3'
+-- Set search path to menuca_v3 schema (all restaurant data lives here)
+SET search_path TO menuca_v3;
 
 -- ============================================================================
 -- TABLE 1: course_modifier_templates
@@ -722,6 +723,7 @@ SELECT * FROM get_dish_modifier_groups_with_inheritance(123);
 DO $$ 
 BEGIN
     RAISE NOTICE '✅ Migration 008 complete: Unified Menu Builder Schema';
+    RAISE NOTICE '   - Schema: menuca_v3 (all restaurant data)';
     RAISE NOTICE '   - Created course_modifier_templates';
     RAISE NOTICE '   - Created course_template_modifiers';
     RAISE NOTICE '   - Enhanced dish_modifier_groups with inheritance';
@@ -734,3 +736,6 @@ BEGIN
     RAISE NOTICE '2. Apply templates to existing dishes';
     RAISE NOTICE '3. Use bulk operations to update modifier prices';
 END $$;
+
+-- Reset search path to default
+RESET search_path;

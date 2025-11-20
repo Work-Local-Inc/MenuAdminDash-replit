@@ -1,67 +1,51 @@
 # Menu.ca Admin Dashboard
 
-**🔴 AGENT: BEFORE ANY DATABASE WORK, READ `AI-AGENTS-START-HERE/` FOLDER FIRST!**
-- `AI-AGENTS-START-HERE/CHECKOUT_SCHEMA_REFERENCE.md` - Checkout & order validation patterns
-- `AI-AGENTS-START-HERE/DATABASE_SCHEMA_QUICK_REF.md` - Complete schema reference
-
 ## Overview
-The Menu.ca Admin Dashboard is a Next.js 14 application designed to provide comprehensive management for a multi-tenant restaurant ordering platform. It serves 961 restaurants and over 32,330 users, enabling streamlined administration of restaurants, orders, coupons, and user accounts. The project's core purpose is to enhance operational efficiency and administrative capabilities for a large-scale food ordering service by extending an existing Supabase PostgreSQL database.
+The Menu.ca Admin Dashboard is a Next.js 14 application designed for comprehensive management of a multi-tenant restaurant ordering platform. It supports 961 restaurants and over 32,330 users by extending an existing Supabase PostgreSQL database. The project's core purpose is to streamline administration of restaurants, orders, coupons, and user accounts, enhancing operational efficiency for a large-scale food ordering service.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
-
-## Git Workflow (CRITICAL)
-**ALWAYS follow this workflow to stay in sync:**
-1. **Before any code changes**: Run `git pull origin main --no-rebase`
-2. **After committing changes**: Run `git push origin main`
-This prevents divergent branches and merge conflicts.
 
 ## System Architecture
 
 ### Frontend
 - **Framework**: Next.js 14 (App Router, TypeScript, Server & Client Components).
-- **UI/UX**: Tailwind CSS with a custom design system, shadcn/ui (Radix UI primitives), `next-themes` for dark/light mode.
-- **Authentication**: Supabase Auth (email/password, "Remember Me"), middleware-based route protection, server-side session management (`@supabase/ssr`), custom `useAuth` hook.
-- **State Management**: React Query for server state, React Hook Form with Zod for form management and validation, local component state.
-- **API Routes**: Thin wrappers around Supabase Edge Functions for writes, direct Supabase queries for reads, Zod validation.
-- **Form Handling**: React Hook Form with Zod schemas and shadcn/ui components.
-- **Utility Functions**: `lib/utils.ts` for helpers, Canadian locale formatting.
-- **Customer-Facing Menu**: Public routes (`/r/[slug]`) using Server Components, Zustand for shopping cart with localStorage persistence. **Menu Display Fix (Nov 2025)**: Fixed critical blocking issue where menus showed "Menu Coming Soon" despite having active dishes. Created optimized `get_restaurant_menu()` SQL function aligned with actual menuca_v3 schema structure (verified dishes, dish_prices, modifier_groups tables). Performance: <500ms for 28-dish restaurants. See `lib/Documentation/MENU_DISPLAY_FIX.md` for details.
+- **UI/UX**: Tailwind CSS, shadcn/ui (Radix UI), `next-themes` for dark/light mode.
+- **Authentication**: Supabase Auth (email/password), middleware-based route protection, server-side session management.
+- **State Management**: React Query for server state, React Hook Form with Zod for form management, Zustand for customer-facing shopping cart.
 
 ### Backend & Data Layer
-- **Database**: Supabase PostgreSQL (ONLY database - no Neon).
-- **⚠️ CRITICAL SCHEMA INFO**: 
-  - **TWO SCHEMAS**:
-    - **`public` schema**: Admin tables ONLY (`admin_users`, `admin_roles`, `admin_user_restaurants`)
-    - **`menuca_v3` schema**: ALL restaurant platform data (961 restaurants, 32,330+ users, dishes, orders, etc.)
-  - **ALL Supabase clients MUST be configured with `db: { schema: 'menuca_v3' }`** to access restaurant data
-  - **Restaurant IDs are INTEGERS, not UUIDs**
-  - **Santiago spent 4 weeks migrating ALL data to Supabase's menuca_v3 schema**
-  - **See `SUPABASE_CONFIG.md` for complete reference - CHECK THIS FILE BEFORE ANY SUPABASE WORK**
-- **Database Connection**: Uses `SUPABASE_SERVICE_ROLE_KEY` + `NEXT_PUBLIC_SUPABASE_URL` for admin operations.
-- **Direct PostgreSQL Queries**: Use `SUPABASE_BRANCH_DB_URL` for direct connections (not DATABASE_URL).
-- **Data Operations**: Primarily uses SQL Functions (50+) for reads and Edge Functions (29) for writes.
-- **Admin Users Management**: Custom tables (`admin_users`, `admin_roles`, `admin_user_restaurants`) for granular control, with RLS bypass via service role client. **Enhanced password validation** (Oct 2025): Minimum 8 chars, requires uppercase/lowercase/number/special char, blocks 30+ common passwords, no sequential/repeated chars.
+- **Database**: Supabase PostgreSQL.
+- **Schemas**:
+    - `public`: Admin tables (`admin_users`, `admin_roles`, `admin_user_restaurants`).
+    - `menuca_v3`: ALL restaurant platform data (restaurants, dishes, orders, etc.).
+- **Database Access**: All Supabase clients for restaurant data **MUST** be configured with `db: { schema: 'menuca_v3' }`. Restaurant IDs are integers.
+- **Data Operations**: Primarily SQL Functions (50+) for reads and Edge Functions (29) for writes.
+- **Admin Users**: Custom tables for granular control with RLS bypass via service role client. Enhanced password validation.
 
-### Core Features & Implementations
+### Core Features
 - **Restaurant Management**: Status, online ordering toggle, contact, delivery area configuration (Mapbox).
-- **Menu Management** (✅ Fully Refactored - Enterprise Schema):
-    - **Categories & Dishes**: Full CRUD, restaurant-scoped, drag-drop reordering, search/filtering, active/featured toggles.
-    - **Advanced Features**: Modifier groups & modifiers (drag-drop, validation), "Quick Create Size," inventory tracking ("Sold Out" badges, availability toggles), bulk operations (multi-select, activate/deactivate, feature, mark in/out of stock, delete).
-    - **Navigation**: `/admin/menu/categories`, `/admin/menu/dishes`, `/admin/menu/dishes/[id]/modifiers`.
-    - **Refactored Database Schema** (Oct 2025):
-        - **Pricing**: `dish_prices` relational table (replaced JSONB)
-        - **Modifiers**: `modifier_groups` → `dish_modifiers` (direct name+price, no ingredient FK)
-        - **Combos**: `combo_steps` + `combo_items` hierarchical system
-        - **Inventory**: `dish_inventory` table for stock tracking
-        - **Enterprise Tables**: `dish_size_options`, `dish_allergens`, `dish_dietary_tags`, `dish_ingredients`
-        - **SQL Functions**: 50+ optimized functions (`get_restaurant_menu`, `validate_dish_customization`, `calculate_dish_price`)
-        - **API Integration**: All routes updated to use refactored schema with full backwards compatibility
-    - **Documentation**: Complete refactoring guide in `lib/Documentation/Frontend-Guides/Menu-refatoring/`
-- **Franchise Management**: Hierarchical system for parent/child linking and bulk updates, analytics.
-- **Categorization System**: Cuisine and tag-based discovery (36 cuisines, 12 tags).
-- **Onboarding Tracking**: 8-step process with progress, analytics, and interactive checklists.
-- **Domain Verification & SSL Monitoring**: Automated health checks, SSL verification, DNS health, on-demand verification, cron jobs.
+- **Menu Management**:
+    - **Unified Menu Builder (`/admin/menu/builder`)**: Single-page interface with split-screen editor and live customer preview.
+    - **Category-Level Modifier Templates**: Create reusable modifier groups at the category level.
+    - **Automatic Inheritance & Dish-Level Overrides**: Dishes inherit category templates with options to break inheritance for custom modifiers.
+    - **Drag-and-Drop**: Reordering of categories, dishes, modifier groups, and individual modifiers.
+    - **Bulk Operations**: Multi-select and apply actions to dishes.
+    - **Real-Time Preview**: Instant visualization of menu changes.
+    - **Legacy Support**: Pricing (`dish_prices`), modifiers (`modifier_groups` → `dish_modifiers`), combos, inventory management.
+- **Franchise Management**: Hierarchical system for parent/child linking, bulk updates, and analytics.
+- **Categorization System**: Cuisine and tag-based discovery.
+- **Onboarding Tracking**: 8-step process with progress tracking.
+- **Domain Verification & SSL Monitoring**: Automated health checks and on-demand verification.
+
+### Customer Ordering System
+- **Authentication**: Separate Supabase Auth for customers (`/customer/login`), linking to `menuca_v3.users`.
+- **Checkout Flow**: Multi-step process with Zustand-based cart, address confirmation (Google Places Autocomplete), and Stripe payment.
+- **Address Management**: CRUD for delivery addresses (`user_delivery_addresses`), fraud prevention with verified addresses.
+- **Payment Processing**: Stripe integration for secure payments, server-side payment intent creation, `stripe_customer_id` linkage, and `payment_transactions` tracking (CAD).
+- **Order Management**: Order creation post-payment, order history, status tracking (`order_status_history`).
+- **Account Pages**: Dashboard (`/customer/account`) for orders, addresses, and profile management.
+- **Security**: Server-side price and amount validation, payment replay protection, restaurant ownership validation, quantity validation, user authentication, webhook signature verification.
 
 ## External Dependencies
 
@@ -84,89 +68,7 @@ This prevents divergent branches and merge conflicts.
 - **JetBrains Mono**: Monospace font.
 
 ### Integrations
-- **Mapbox GL JS**: For delivery area polygon drawing.
-- **@hello-pangea/dnd**: For drag-and-drop reordering.
-- **Stripe**: Payment processing for customer orders (Nov 2025).
-- **Google Places API**: Address autocomplete and verification for checkout (Nov 2025).
-
-## Customer Ordering System (Nov 2025)
-
-### Customer Authentication
-- Separate authentication system from admin using Supabase Auth
-- Sign up/login pages at `/customer/login`
-- Customer user records stored in `menuca_v3.users` table
-- Supports email/password authentication with automatic user profile creation
-
-### Checkout Flow
-- **Cart**: Zustand-based shopping cart with localStorage persistence
-- **Checkout**: Multi-step checkout process at `/checkout`
-  - Step 1: Address confirmation (select saved address or add new)
-  - Step 2: Payment (Stripe Elements integration)
-- **Address Management**: CRUD operations for delivery addresses (`user_delivery_addresses` table)
-  - **Google Places Autocomplete**: Real-time address verification (Canada only)
-  - **Fraud Prevention**: Only verified, real addresses can be entered
-  - Auto-fills street address, city, province, postal code
-  - Saved addresses with labels (Home, Work, etc.)
-  - Default address selection
-  - Delivery instructions support
-
-### Payment Processing
-- **Stripe Integration**: Secure payment processing with Stripe Elements
-- **Payment Intent**: Created server-side with amount and metadata
-- **Stripe Customer**: Automatically created and linked to user record (`stripe_customer_id`)
-- **Payment Transactions**: Tracked in `payment_transactions` table
-- **Currency**: CAD (Canadian Dollar)
-
-### Order Management
-- **Order Creation**: Orders created after successful payment
-- **Order History**: Accessible at `/customer/account` (Orders tab)
-- **Order Status**: Tracked in `order_status_history` table
-- **Order Details**: Include restaurant info, delivery address, payment status
-
-### Customer Account Pages
-- **Account Dashboard**: `/customer/account` with three tabs:
-  - **Orders**: View order history, track status, view details
-  - **Addresses**: Manage saved delivery addresses
-  - **Profile**: View account information (email, name, phone)
-- **Protected Routes**: Redirects to login if not authenticated
-
-### Database Tables Used
-- `users`: Customer profiles with Stripe customer ID
-- `user_delivery_addresses`: Saved delivery addresses
-- `user_payment_methods`: Saved payment methods (Stripe)
-- `payment_transactions`: Payment history and tracking
-- `orders`: Order records with delivery info and payment status
-- `order_status_history`: Order status changes over time
-- `stripe_webhook_events`: Webhook event tracking for idempotency
-
-### API Endpoints
-- `POST /api/customer/signup`: Create customer account (server-side with service role)
-- `POST /api/customer/addresses`: Save delivery address (server-side with service role)
-- `GET /api/customer/addresses`: Fetch user's saved addresses
-- `POST /api/customer/create-payment-intent`: Create Stripe payment intent
-- `POST /api/customer/orders`: Create order after payment (with server-side validation)
-- `GET /api/customer/orders`: Fetch user's order history
-- `POST /api/customer/stripe-webhook`: Handle Stripe webhook events
-
-### Security Features
-- **Server-side price validation**: All dish and modifier prices fetched from database
-- **Payment amount verification**: Server recalculates and verifies totals match payment amount
-- **Payment replay protection**: UNIQUE constraints on stripe_payment_intent_id (see migrations/004_add_payment_intent_uniqueness.sql)
-- **Restaurant ownership validation**: Verifies dishes and modifiers belong to correct restaurant
-- **Quantity validation**: Enforces positive integer quantities only
-- **User authentication**: All endpoints verify user authentication
-- **Webhook signature verification**: Stripe webhook events verified with signature
-
-### Critical Fixes (Nov 19-20, 2025)
-- **Restaurant Lookup Fix**: Order creation now extracts restaurant ID from slug using `extractIdFromSlug()` and queries by `id` column (restaurants table has no `slug` column)
-- **Delivery Fee Fix**: Delivery fees now fetched from `restaurant_delivery_zones` table (menuca_v3 schema), not `restaurant_service_configs` (public schema)
-- **Free Delivery Support**: Missing/inactive delivery zones default to $0.00 delivery fee
-- **Modifier Pricing Fix** (Nov 20): ALL modifiers without price records default to $0 (included/free modifiers like sauce choices). Uses `dish_modifier_prices` table with `.maybeSingle()` query.
-- **Checkout Infinite Loop Fix** (Nov 20): Fixed React "Invalid hook call" error caused by using `import.meta.env` in Next.js (Vite-only feature). Changed to `process.env.NEXT_PUBLIC_*` for Next.js compatibility.
-- **In-Page Authentication** (Nov 20): Checkout sign-in now uses modal instead of redirect to prevent cart abandonment. Guest checkout properly bypasses authentication API.
-
-### Database Migrations Required
-**IMPORTANT**: Before using the checkout system in production, run these migrations in Supabase SQL Editor:
-1. `migrations/004_add_payment_intent_uniqueness.sql` - Adds UNIQUE constraints to prevent duplicate orders from the same payment intent
-2. `migrations/005_add_auth_user_id.sql` - Adds auth_user_id column to link Supabase Auth UUIDs to integer user IDs (customer signup will work without this but won't link to auth properly)
-3. `migrations/006_make_city_id_nullable.sql` - Makes city_id nullable in user_delivery_addresses (checkout form doesn't have city selector yet)
+- **Mapbox GL JS**: Delivery area drawing.
+- **@hello-pangea/dnd**: Drag-and-drop reordering.
+- **Stripe**: Payment processing.
+- **Google Places API**: Address autocomplete and verification.

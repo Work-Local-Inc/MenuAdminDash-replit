@@ -34,28 +34,38 @@ export async function GET(request: NextRequest) {
     if (categoriesError) throw categoriesError
 
     // Fetch templates with left join (returns templates even if they have no modifiers)
-    const { data: templates, error: templatesError } = await (supabase
-      .from('course_modifier_templates' as any)
-      .select(`
-        id,
-        course_id,
-        name,
-        is_required,
-        min_selections,
-        max_selections,
-        display_order,
-        course_template_modifiers (
+    // Guard against empty category list to prevent Supabase .in() error
+    const categoryIds = (categories as any)?.map((c: any) => c.id) || []
+    let templates: any[] = []
+    let templatesError = null
+    
+    if (categoryIds.length > 0) {
+      const result = await (supabase
+        .from('course_modifier_templates' as any)
+        .select(`
           id,
+          course_id,
           name,
-          price,
-          is_included,
+          is_required,
+          min_selections,
+          max_selections,
           display_order,
-          deleted_at
-        )
-      `)
-      .in('course_id', (categories as any)?.map((c: any) => c.id) || [])
-      .is('deleted_at', null)
-      .order('display_order', { ascending: true }) as any)
+          course_template_modifiers (
+            id,
+            name,
+            price,
+            is_included,
+            display_order,
+            deleted_at
+          )
+        `)
+        .in('course_id', categoryIds)
+        .is('deleted_at', null)
+        .order('display_order', { ascending: true }) as any)
+      
+      templates = result.data || []
+      templatesError = result.error
+    }
 
     if (templatesError) throw templatesError
 
@@ -79,31 +89,41 @@ export async function GET(request: NextRequest) {
     if (dishesError) throw dishesError
 
     // Fetch modifier groups with left join (returns groups even if they have no modifiers)
-    const { data: modifierGroups, error: groupsError } = await (supabase
-      .from('dish_modifier_groups' as any)
-      .select(`
-        id,
-        dish_id,
-        course_template_id,
-        name,
-        is_required,
-        min_selections,
-        max_selections,
-        display_order,
-        is_custom,
-        dish_modifiers (
+    // Guard against empty dish list to prevent Supabase .in() error
+    const dishIds = (dishes as any)?.map((d: any) => d.id) || []
+    let modifierGroups: any[] = []
+    let groupsError = null
+    
+    if (dishIds.length > 0) {
+      const result = await (supabase
+        .from('dish_modifier_groups' as any)
+        .select(`
           id,
+          dish_id,
+          course_template_id,
           name,
-          price,
-          is_included,
-          is_default,
+          is_required,
+          min_selections,
+          max_selections,
           display_order,
-          deleted_at
-        )
-      `)
-      .in('dish_id', (dishes as any)?.map((d: any) => d.id) || [])
-      .is('deleted_at', null)
-      .order('display_order', { ascending: true }) as any)
+          is_custom,
+          dish_modifiers (
+            id,
+            name,
+            price,
+            is_included,
+            is_default,
+            display_order,
+            deleted_at
+          )
+        `)
+        .in('dish_id', dishIds)
+        .is('deleted_at', null)
+        .order('display_order', { ascending: true }) as any)
+      
+      modifierGroups = result.data || []
+      groupsError = result.error
+    }
 
     if (groupsError) throw groupsError
 
