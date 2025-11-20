@@ -285,6 +285,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Create order (protected by UNIQUE constraint on stripe_payment_intent_id)
+    console.log('[Order API] Attempting to create order with data:', {
+      user_id: orderData.user_id,
+      restaurant_id: orderData.restaurant_id,
+      order_number: orderData.order_number,
+      total_amount: orderData.total_amount,
+      items_count: orderData.items.length,
+      has_delivery_address: !!orderData.delivery_address
+    })
+
     const { data: order, error: orderError } = await adminSupabase
       .from('orders')
       .insert(orderData as any)
@@ -292,7 +301,12 @@ export async function POST(request: NextRequest) {
       .single() as { data: { id: number; created_at: string } | null; error: any }
 
     if (orderError || !order) {
-      console.error('Order creation error:', orderError)
+      console.error('[Order API] ❌ Order creation FAILED')
+      console.error('[Order API] Error code:', orderError?.code)
+      console.error('[Order API] Error message:', orderError?.message)
+      console.error('[Order API] Error details:', orderError?.details)
+      console.error('[Order API] Error hint:', orderError?.hint)
+      console.error('[Order API] Full error object:', JSON.stringify(orderError, null, 2))
       
       // SECURITY: Handle duplicate payment intent (race condition or replay attack)
       if (orderError?.code === '23505') { // PostgreSQL unique violation
@@ -301,8 +315,15 @@ export async function POST(request: NextRequest) {
         }, { status: 409 })
       }
       
-      throw new Error('Failed to create order')
+      // Return detailed error to help diagnose the issue
+      return NextResponse.json({ 
+        error: 'Failed to create order',
+        details: orderError?.message || 'Unknown database error',
+        code: orderError?.code
+      }, { status: 500 })
     }
+
+    console.log('[Order API] ✅ Order created successfully:', order.id)
 
     // Create payment transaction record
     await adminSupabase
