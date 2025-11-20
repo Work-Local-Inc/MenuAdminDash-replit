@@ -52,8 +52,7 @@ git push origin main
    - `admin_user_restaurants`
 
 2. **`menuca_v3` schema:** ALL restaurant platform data
-   - 961 restaurants
-   - 32,330+ users
+   - 185 restaurants
    - All dishes, orders, modifiers, etc.
 
 ### Supabase Client Configuration
@@ -390,8 +389,7 @@ git commit -m "Merge: <description>"
 ---
 
 ## 📊 Project Stats
-- **Restaurants:** 961
-- **Users:** 32,330+
+- **Restaurants:** 185
 - **Database:** Supabase PostgreSQL
 - **Schema:** menuca_v3 (main) + public (admin)
 - **SQL Functions:** 50+
@@ -565,7 +563,7 @@ git log origin/main..HEAD --oneline
 
 ---
 
-**Remember:** This is a REAL production app with 961 restaurants and 32K+ users. Take time to understand before changing. When in doubt, ASK or CHECK the schema first!
+**Remember:** This is a REAL production app with 185 restaurants. Take time to understand before changing. When in doubt, ASK or CHECK the schema first!
 
 ---
 
