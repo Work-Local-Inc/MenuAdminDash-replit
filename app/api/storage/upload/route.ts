@@ -19,6 +19,13 @@ const ALLOWED_MIME_TYPES = [
 // Max file size: 5MB
 const MAX_FILE_SIZE = 5 * 1024 * 1024
 
+function sanitizeFilename(filename: string): string {
+  return filename
+    .replace(/[^a-zA-Z0-9._-]/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '')
+}
+
 export async function POST(request: NextRequest) {
   try {
     await verifyAdminAuth(request)
@@ -70,6 +77,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Sanitize the filename in the path
+    const pathParts = path.split('/')
+    const filename = pathParts[pathParts.length - 1]
+    const sanitizedFilename = sanitizeFilename(filename)
+    pathParts[pathParts.length - 1] = sanitizedFilename
+    const sanitizedPath = pathParts.join('/')
+
     // Convert file to buffer
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
@@ -77,7 +91,7 @@ export async function POST(request: NextRequest) {
     // Upload to Supabase Storage
     const { data, error } = await supabase.storage
       .from(bucket)
-      .upload(path, buffer, {
+      .upload(sanitizedPath, buffer, {
         contentType: file.type,
         upsert: true,
       })
