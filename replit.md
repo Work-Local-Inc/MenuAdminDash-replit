@@ -44,13 +44,17 @@ Preferred communication style: Simple, everyday language.
 - **Domain Verification & SSL Monitoring**: Automated health checks and on-demand verification.
 
 ### Customer Ordering System
-- **Authentication**: Separate Supabase Auth for customers (`/customer/login`), linking to `menuca_v3.users`.
+- **Authentication**: 
+  - Separate Supabase Auth for customers (`/customer/login`), linking to `menuca_v3.users`
+  - **Google OAuth**: Enabled during checkout with secure profile creation via `ensureOAuthProfileForSession` helper
+  - **Security Model**: Verified email requirement, conflict detection, guest account linking
+  - **OAuth Flow**: Google → Supabase → `/auth/callback` → Profile creation → Checkout redirect
 - **Checkout Flow**: Multi-step process with Zustand-based cart, address confirmation (Google Places Autocomplete), and Stripe payment.
 - **Address Management**: CRUD for delivery addresses (`user_delivery_addresses`), fraud prevention with verified addresses.
 - **Payment Processing**: Stripe integration for secure payments, server-side payment intent creation, `stripe_customer_id` linkage, and `payment_transactions` tracking (CAD).
 - **Order Management**: Order creation post-payment, order history, status tracking (`order_status_history`).
 - **Account Pages**: Dashboard (`/customer/account`) for orders, addresses, and profile management.
-- **Security**: Server-side price and amount validation, payment replay protection, restaurant ownership validation, quantity validation, user authentication, webhook signature verification.
+- **Security**: Server-side price and amount validation, payment replay protection, restaurant ownership validation, quantity validation, user authentication, webhook signature verification, OAuth email verification.
 
 ## External Dependencies
 
