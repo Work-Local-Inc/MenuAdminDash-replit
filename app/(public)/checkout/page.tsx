@@ -49,7 +49,7 @@ export default function CheckoutPage() {
   const router = useRouter()
   const { toast } = useToast()
   const toastRef = useRef(toast)
-  const [supabase] = useState(() => createClient())
+  const supabase = createClient()
   const stripePromise = useMemo(() => getStripePromise(), [])
   
   const { items, restaurantName, restaurantSlug, getSubtotal, deliveryFee, getTax, getTotal, minOrder } = useCartStore()
