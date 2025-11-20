@@ -1,5 +1,10 @@
 # Menu.ca Admin Dashboard
 
+## ⚠️ CRITICAL: DATABASE = SUPABASE (NOT REPLIT) ⚠️
+**This project uses SUPABASE PostgreSQL** - Schema: `menuca_v3`  
+**DO NOT use Replit database tools** - Use Supabase clients only  
+**Read AI-AGENTS-START-HERE/AGENT_MEMORY_BANK.md FIRST**
+
 ## Overview
 The Menu.ca Admin Dashboard is a Next.js 14 application designed for comprehensive management of a multi-tenant restaurant ordering platform. It supports 961 restaurants and over 32,330 users by extending an existing Supabase PostgreSQL database. The project's core purpose is to streamline administration of restaurants, orders, coupons, and user accounts, enhancing operational efficiency for a large-scale food ordering service.
 

@@ -8,7 +8,12 @@
 
 **👋 New to this project?** Read these in order:
 
-1. **`AGENT_MEMORY_BANK.md`** ⭐ START HERE
+1. **`START_HERE_FIRST.md`** ⚠️⚠️⚠️ MANDATORY FIRST READ ⚠️⚠️⚠️
+   - **DATABASE IS SUPABASE (NOT REPLIT)**
+   - Critical warnings about what NEVER to do
+   - Quick reference for common tasks
+
+2. **`AGENT_MEMORY_BANK.md`** ⭐ READ SECOND
    - Git workflow (MUST follow)
    - Database & schema overview
    - Common bugs & fixes

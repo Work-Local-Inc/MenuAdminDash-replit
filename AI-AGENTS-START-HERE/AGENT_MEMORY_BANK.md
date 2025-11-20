@@ -5,6 +5,22 @@
 
 ---
 
+## ⚠️⚠️⚠️ STOP! READ THIS FIRST ⚠️⚠️⚠️
+
+### DATABASE IS SUPABASE - NOT REPLIT!!!
+
+**BEFORE doing ANYTHING with databases:**
+1. ✅ This project uses **SUPABASE PostgreSQL** (NOT Replit database)
+2. ✅ Schema is **menuca_v3** (NOT public schema)
+3. ✅ Connection via `NEXT_PUBLIC_SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`
+4. ✅ **NEVER** run `check_database_status` (there is no Replit database)
+5. ✅ **NEVER** run `create_postgresql_database_tool` (Supabase already exists)
+6. ✅ **NEVER** use `execute_sql_tool` (use Supabase client instead)
+
+**If you see "Database is not provisioned" - IGNORE IT. That's Replit's database, not ours.**
+
+---
+
 ## 🚨 CRITICAL: Git Workflow (MUST FOLLOW)
 
 **BEFORE any code changes:**
