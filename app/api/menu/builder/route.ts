@@ -18,7 +18,10 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    console.log('[MENU BUILDER] Fetching menu for restaurant:', restaurantId)
+
     const { data: categories, error: categoriesError } = await supabase
+      .schema('menuca_v3')
       .from('courses')
       .select(`
         id,
@@ -31,6 +34,12 @@ export async function GET(request: NextRequest) {
       .is('deleted_at', null)
       .order('display_order', { ascending: true })
 
+    console.log('[MENU BUILDER] Categories query result:', {
+      count: categories?.length || 0,
+      error: categoriesError,
+      sample: categories?.[0]
+    })
+
     if (categoriesError) throw categoriesError
 
     // Fetch templates with left join (returns templates even if they have no modifiers)
@@ -41,6 +50,7 @@ export async function GET(request: NextRequest) {
     
     if (categoryIds.length > 0) {
       const result = await (supabase
+        .schema('menuca_v3')
         .from('course_modifier_templates' as any)
         .select(`
           id,
@@ -69,22 +79,35 @@ export async function GET(request: NextRequest) {
 
     if (templatesError) throw templatesError
 
+    // Query dishes with prices from separate dish_prices table
     const { data: dishes, error: dishesError } = await supabase
+      .schema('menuca_v3')
       .from('dishes')
       .select(`
         id,
         course_id,
         name,
         description,
-        price,
         image_url,
         is_active,
         is_featured,
-        display_order
+        display_order,
+        dish_prices (
+          id,
+          price,
+          size_variant,
+          display_order
+        )
       `)
       .eq('restaurant_id', parseInt(restaurantId))
       .is('deleted_at', null)
       .order('display_order', { ascending: true })
+
+    console.log('[MENU BUILDER] Dishes query result:', {
+      count: dishes?.length || 0,
+      error: dishesError,
+      sample: dishes?.[0]
+    })
 
     if (dishesError) throw dishesError
 
@@ -96,6 +119,7 @@ export async function GET(request: NextRequest) {
     
     if (dishIds.length > 0) {
       const result = await (supabase
+        .schema('menuca_v3')
         .from('dish_modifier_groups' as any)
         .select(`
           id,
@@ -137,16 +161,23 @@ export async function GET(request: NextRequest) {
           // Filter out soft-deleted template modifiers
           course_template_modifiers: t.course_template_modifiers?.filter((m: any) => !m.deleted_at) || []
         })) || [],
-      dishes: (dishes as any)?.filter((d: any) => d.course_id === category.id).map((dish: any) => ({
-        ...dish,
-        modifier_groups: (modifierGroups as any)
-          ?.filter((g: any) => g.dish_id === dish.id)
-          .map((g: any) => ({
-            ...g,
-            // Filter out soft-deleted dish modifiers
-            dish_modifiers: g.dish_modifiers?.filter((m: any) => !m.deleted_at) || []
-          })) || []
-      })) || []
+      dishes: (dishes as any)?.filter((d: any) => d.course_id === category.id).map((dish: any) => {
+        // Sort dish_prices by display_order and get first price as default
+        const sortedPrices = (dish.dish_prices || []).sort((a: any, b: any) => a.display_order - b.display_order)
+        const defaultPrice = sortedPrices[0]?.price || 0
+        
+        return {
+          ...dish,
+          price: defaultPrice, // Computed price from first variant
+          modifier_groups: (modifierGroups as any)
+            ?.filter((g: any) => g.dish_id === dish.id)
+            .map((g: any) => ({
+              ...g,
+              // Filter out soft-deleted dish modifiers
+              dish_modifiers: g.dish_modifiers?.filter((m: any) => !m.deleted_at) || []
+            })) || []
+        }
+      }) || []
     })) || []
 
     return NextResponse.json(categoriesWithData)

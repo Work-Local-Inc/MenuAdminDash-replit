@@ -17,12 +17,20 @@ export interface MenuBuilderCategory {
   dishes: MenuBuilderDish[]
 }
 
+export interface DishPrice {
+  id: number
+  price: number
+  size_variant: string | null
+  display_order: number
+}
+
 export interface MenuBuilderDish {
   id: number
   course_id: number | null
   name: string
   description: string | null
-  price: number
+  price: number // Computed from first dish_price
+  dish_prices?: DishPrice[] // Array of all price variants
   image_url: string | null
   is_active: boolean
   is_featured: boolean

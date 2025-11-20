@@ -42,13 +42,18 @@ export async function GET(request: NextRequest) {
         course_id,
         name, 
         description, 
-        price, 
         image_url,
         is_active, 
         is_featured,
         display_order, 
         created_at, 
-        updated_at
+        updated_at,
+        dish_prices (
+          id,
+          price,
+          size_variant,
+          display_order
+        )
       `)
       .eq('restaurant_id', parseInt(restaurantId))
 
@@ -111,7 +116,7 @@ export async function POST(request: NextRequest) {
     const displayOrder = validatedData.display_order ?? (maxOrder + 1)
 
     // Create the dish
-    const { data, error } = await supabase
+    const { data: dish, error } = await supabase
       .schema('menuca_v3')
       .from('dishes')
       .insert({
@@ -119,7 +124,6 @@ export async function POST(request: NextRequest) {
         course_id: validatedData.course_id || null,
         name: validatedData.name,
         description: validatedData.description || null,
-        price: validatedData.price,
         image_url: validatedData.image_url || null,
         is_active: validatedData.is_active,
         is_featured: validatedData.is_featured,
@@ -130,7 +134,28 @@ export async function POST(request: NextRequest) {
 
     if (error) throw error
 
-    return NextResponse.json(data)
+    // Create default price variant
+    const { error: priceError } = await supabase
+      .schema('menuca_v3')
+      .from('dish_prices')
+      .insert({
+        dish_id: dish.id,
+        price: validatedData.price,
+        size_variant: null, // Default price with no size variant
+        display_order: 0,
+      })
+
+    if (priceError) throw priceError
+
+    // Return dish with price info
+    return NextResponse.json({
+      ...dish,
+      dish_prices: [{
+        price: validatedData.price,
+        size_variant: null,
+        display_order: 0
+      }]
+    })
   } catch (error: any) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode })
