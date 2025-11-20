@@ -337,7 +337,9 @@
     "zustand": "^5.0.8"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
     "dev": "next dev -p 5000",
     "build": "next build",
     "start": "next start -p 5000"

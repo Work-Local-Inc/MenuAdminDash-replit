@@ -39,6 +39,7 @@ interface DeliveryAddress {
   postal_code: string
   delivery_instructions?: string
   email?: string // For guest checkouts
+  phone?: string // For guest checkouts
 }
 
 export default function CheckoutPage() {
