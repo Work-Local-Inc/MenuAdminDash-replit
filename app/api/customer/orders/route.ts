@@ -260,7 +260,11 @@ export async function POST(request: NextRequest) {
 
     // Create order with server-validated data
     // IMPORTANT: Match exact schema of orders table (see AI-AGENTS-START-HERE/DATABASE_SCHEMA_QUICK_REF.md)
+    // Generate unique order number (timestamp + random for uniqueness)
+    const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
+    
     const orderData = {
+      order_number: orderNumber,
       user_id: user_id || null, // NULL for guest orders
       is_guest_order: !user_id, // TRUE for guest checkouts
       guest_email: guest_email || null,
@@ -268,7 +272,6 @@ export async function POST(request: NextRequest) {
       guest_name: user_id ? null : delivery_address.name || 'Guest Customer',
       restaurant_id: restaurant.id,
       // NOTE: No 'status' column - order status tracked in order_status_history table
-      // NOTE: No 'order_number' or 'order_type' columns - those don't exist in database
       payment_status: 'paid',
       stripe_payment_intent_id: payment_intent_id,
       total_amount: serverTotal,
