@@ -40,6 +40,7 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
   
   const [processing, setProcessing] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [creatingOrder, setCreatingOrder] = useState(false)
   const [showSignupModal, setShowSignupModal] = useState(false)
   const [completedOrderId, setCompletedOrderId] = useState<number | null>(null)
   const [guestEmail, setGuestEmail] = useState<string>('')
@@ -85,6 +86,9 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
         })
         setProcessing(false)
       } else if (paymentIntent && paymentIntent.status === 'succeeded') {
+        // Payment succeeded, show loading state while creating order
+        setCreatingOrder(true)
+        
         // Payment succeeded, create order with cart items for server validation
         const { items } = useCartStore.getState()
         
@@ -134,6 +138,7 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
         variant: "destructive",
       })
       setProcessing(false)
+      setCreatingOrder(false)
     }
   }
 
@@ -237,6 +242,25 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
       guestEmail={guestEmail}
       onSuccess={handleSignupModalClose}
     />
+
+    {/* Full-screen loading overlay during order creation */}
+    {creatingOrder && (
+      <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center" data-testid="loading-order-creation">
+        <Card className="w-full max-w-md mx-4">
+          <CardContent className="pt-6 pb-6 text-center space-y-4">
+            <div className="w-16 h-16 mx-auto">
+              <div className="animate-spin w-16 h-16 border-4 border-primary border-t-transparent rounded-full" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-lg font-semibold">Creating Your Order...</h3>
+              <p className="text-sm text-muted-foreground">
+                Please wait while we finalize your order. You'll be redirected shortly.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )}
   </>
   )
 }
