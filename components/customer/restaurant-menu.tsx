@@ -27,13 +27,17 @@ export default function RestaurantMenu({ restaurant, courses, hasMenu = true }: 
   
   // Initialize cart with restaurant details
   useEffect(() => {
-    const deliveryFeeCents = serviceConfig?.delivery_fee_cents || 500; // In cents
+    // Use restaurant_delivery_zones (menuca_v3 schema) to match server-side calculation
+    const activeZone = restaurant.restaurant_delivery_zones?.find(
+      (zone: any) => zone.is_active && !zone.deleted_at
+    );
+    const deliveryFeeCents = activeZone?.delivery_fee_cents ?? 0; // Default to $0 like server
     const deliveryFee = deliveryFeeCents / 100; // Convert cents to dollars
     const minOrder = serviceConfig?.delivery_min_order || 0;
     const slug = `${restaurant.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${restaurant.id}`;
     
     setRestaurant(restaurant.id, restaurant.name, slug, deliveryFee, minOrder);
-  }, [restaurant.id, restaurant.name, serviceConfig, setRestaurant]);
+  }, [restaurant.id, restaurant.name, restaurant.restaurant_delivery_zones, serviceConfig, setRestaurant]);
   
   // Scroll to category section
   const scrollToCategory = (courseId: string) => {

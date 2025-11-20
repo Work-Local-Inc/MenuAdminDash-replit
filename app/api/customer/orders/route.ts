@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { extractIdFromSlug } from '@/lib/utils/slugify'
 import Stripe from 'stripe'
 import { sendOrderConfirmationEmail } from '@/lib/emails/service'
@@ -17,7 +18,9 @@ const stripe = new Stripe(stripeSecretKey, {
 
 export async function POST(request: NextRequest) {
   try {
+    // Use regular client for auth, admin client for data queries
     const supabase = await createClient()
+    const adminSupabase = createAdminClient()
     
     // Check authentication (optional - support guest checkout)
     const { data: { user } } = await supabase.auth.getUser()
@@ -82,7 +85,7 @@ export async function POST(request: NextRequest) {
     }
 
     // SECURITY: Check if this payment intent was already used (prevent replay attacks)
-    const { data: existingOrder } = await supabase
+    const { data: existingOrder } = await adminSupabase
       .from('orders')
       .select('id')
       .eq('stripe_payment_intent_id', payment_intent_id)
@@ -97,20 +100,18 @@ export async function POST(request: NextRequest) {
     
     // Get restaurant with delivery zones for delivery fee
     console.log('[Order API] Looking for restaurant ID:', restaurantId)
-    const { data: restaurant, error: restaurantError } = await supabase
+    const { data: restaurant, error: restaurantError } = await adminSupabase
       .from('restaurants')
       .select(`
         id, 
-        name, 
-        logo_url,
+        name,
         restaurant_delivery_zones(id, delivery_fee_cents, is_active, deleted_at)
       `)
       .eq('id', restaurantId)
       .single() as { 
         data: { 
           id: number; 
-          name: string; 
-          logo_url: string | null;
+          name: string;
           restaurant_delivery_zones: { id: number; delivery_fee_cents: number; is_active: boolean; deleted_at: string | null }[]
         } | null; 
         error: any 
@@ -137,7 +138,7 @@ export async function POST(request: NextRequest) {
       }
 
       // SECURITY: Verify dish belongs to this restaurant before fetching price
-      const { data: dish } = await supabase
+      const { data: dish } = await adminSupabase
         .from('dishes')
         .select('id, restaurant_id, name')
         .eq('id', item.dishId)
@@ -152,7 +153,7 @@ export async function POST(request: NextRequest) {
 
       // Fetch actual price from database (column is size_variant, not size)
       console.log(`[Order API] Looking for price - dish: ${item.dishId}, size_variant: "${item.size}"`)
-      const { data: dishPrice, error: priceError } = await supabase
+      const { data: dishPrice, error: priceError } = await adminSupabase
         .from('dish_prices')
         .select('price, size_variant')
         .eq('dish_id', item.dishId)
@@ -162,7 +163,7 @@ export async function POST(request: NextRequest) {
 
       if (!dishPrice) {
         // Get available sizes for better error message
-        const { data: availableSizes } = await supabase
+        const { data: availableSizes } = await adminSupabase
           .from('dish_prices')
           .select('size_variant, price')
           .eq('dish_id', item.dishId)
@@ -186,7 +187,7 @@ export async function POST(request: NextRequest) {
       if (item.modifiers && item.modifiers.length > 0) {
         for (const mod of item.modifiers) {
           // Verify modifier belongs to a modifier group for this dish
-          const { data: modifierData } = await supabase
+          const { data: modifierData } = await adminSupabase
             .from('dish_modifiers')
             .select(`
               id,
@@ -206,7 +207,7 @@ export async function POST(request: NextRequest) {
           }
 
           // Query modifier price - default to $0 if no price record exists (included/free modifiers)
-          const { data: priceData } = await supabase
+          const { data: priceData } = await adminSupabase
             .from('dish_modifier_prices')
             .select('price')
             .eq('dish_modifier_id', mod.id)
@@ -257,6 +258,9 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
+    // Generate unique order number (format: timestamp-random)
+    const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
+    
     // Create order with server-validated data
     const orderData = {
       user_id: user_id || null, // NULL for guest orders
@@ -265,6 +269,8 @@ export async function POST(request: NextRequest) {
       guest_phone: user_id ? null : '000-000-0000', // TODO: Collect phone in checkout form
       guest_name: user_id ? null : delivery_address.name || 'Guest Customer',
       restaurant_id: restaurant.id,
+      order_number: orderNumber,
+      order_type: 'delivery', // Delivery checkout (not pickup/dine-in)
       // NOTE: No 'status' column - order status tracked in order_status_history table
       payment_status: 'paid',
       stripe_payment_intent_id: payment_intent_id,
@@ -279,7 +285,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create order (protected by UNIQUE constraint on stripe_payment_intent_id)
-    const { data: order, error: orderError } = await supabase
+    const { data: order, error: orderError } = await adminSupabase
       .from('orders')
       .insert(orderData as any)
       .select()
@@ -299,7 +305,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create payment transaction record
-    await supabase
+    await adminSupabase
       .from('payment_transactions')
       .insert({
         order_id: order.id,
@@ -315,7 +321,7 @@ export async function POST(request: NextRequest) {
       } as any)
 
     // Create initial order status
-    await supabase
+    await adminSupabase
       .from('order_status_history')
       .insert({
         order_id: order.id,
@@ -331,7 +337,7 @@ export async function POST(request: NextRequest) {
         await sendOrderConfirmationEmail({
           orderNumber: order.id.toString(),
           restaurantName: restaurant.name,
-          restaurantLogoUrl: restaurant.logo_url || undefined,
+          restaurantLogoUrl: undefined, // logo_url column doesn't exist in restaurants table
           items: validatedItems,
           deliveryAddress: delivery_address,
           subtotal: serverSubtotal,
@@ -371,7 +377,7 @@ export async function GET(request: NextRequest) {
       .from('orders')
       .select(`
         *,
-        restaurant:restaurants(id, name, slug, logo_url)
+        restaurant:restaurants(id, name)
       `)
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
