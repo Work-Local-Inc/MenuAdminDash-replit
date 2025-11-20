@@ -94,15 +94,25 @@ export default async function RestaurantPage({ params }: RestaurantPageProps) {
   
   console.log('[Restaurant Page] About to render RestaurantMenu component with courses:', courses.length);
   
-  // Convert primary color to HSL for CSS variable injection
+  // Build dynamic branding styles
   const primaryColorHSL = restaurant.primary_color ? hexToHSL(restaurant.primary_color) : null;
-  const dynamicStyle = primaryColorHSL ? {
-    '--primary': primaryColorHSL,
-    '--ring': primaryColorHSL,
-  } as React.CSSProperties : undefined;
+  const secondaryColorHSL = restaurant.secondary_color ? hexToHSL(restaurant.secondary_color) : null;
+  
+  const dynamicStyle: React.CSSProperties = {
+    ...(primaryColorHSL && {
+      '--primary': primaryColorHSL,
+      '--ring': primaryColorHSL,
+    }),
+    ...(secondaryColorHSL && {
+      '--secondary': secondaryColorHSL,
+    }),
+    ...(restaurant.font_family && {
+      fontFamily: restaurant.font_family,
+    }),
+  } as React.CSSProperties;
   
   return (
-    <div style={dynamicStyle}>
+    <div style={Object.keys(dynamicStyle).length > 0 ? dynamicStyle : undefined}>
       <RestaurantMenu restaurant={restaurant} courses={courses} />
     </div>
   );

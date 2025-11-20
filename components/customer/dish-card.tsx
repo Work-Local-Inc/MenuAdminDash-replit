@@ -11,9 +11,16 @@ import { useCartStore } from '@/lib/stores/cart-store';
 interface DishCardProps {
   dish: any;
   restaurantId: number;
+  buttonStyle?: 'rounded' | 'square' | null;
 }
 
-export function DishCard({ dish, restaurantId }: DishCardProps) {
+export function DishCard({ dish, restaurantId, buttonStyle }: DishCardProps) {
+  // Apply button style based on branding
+  const buttonClassName = buttonStyle === 'square' 
+    ? 'rounded-none' 
+    : buttonStyle === 'rounded' 
+    ? 'rounded-full' 
+    : '';
   const [isModalOpen, setIsModalOpen] = useState(false);
   const addItem = useCartStore((state) => state.addItem);
   
@@ -91,7 +98,7 @@ export function DishCard({ dish, restaurantId }: DishCardProps) {
                     e.stopPropagation();
                     handleQuickAdd();
                   }}
-                  className="ml-auto"
+                  className={`ml-auto ${buttonClassName}`}
                   data-testid={`button-add-dish-${dish.id}`}
                 >
                   <Plus className="w-4 h-4 mr-1" />
@@ -108,6 +115,7 @@ export function DishCard({ dish, restaurantId }: DishCardProps) {
         restaurantId={restaurantId}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+        buttonStyle={buttonStyle}
       />
     </>
   );

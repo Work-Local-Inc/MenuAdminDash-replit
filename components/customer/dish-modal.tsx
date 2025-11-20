@@ -23,9 +23,16 @@ interface DishModalProps {
   restaurantId: number;
   isOpen: boolean;
   onClose: () => void;
+  buttonStyle?: 'rounded' | 'square' | null;
 }
 
-export function DishModal({ dish, restaurantId, isOpen, onClose }: DishModalProps) {
+export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: DishModalProps) {
+  // Apply button style based on branding (NOT for icon buttons - they keep default rounding)
+  const regularButtonClassName = buttonStyle === 'square' 
+    ? 'rounded-none' 
+    : buttonStyle === 'rounded' 
+    ? 'rounded-full' 
+    : '';
   const [selectedSize, setSelectedSize] = useState<string>('Regular');
   const [selectedModifiers, setSelectedModifiers] = useState<CartModifier[]>([]);
   const [quantity, setQuantity] = useState(1);
@@ -348,7 +355,7 @@ export function DishModal({ dish, restaurantId, isOpen, onClose }: DishModalProp
             <Button
               size="lg"
               onClick={handleAddToCart}
-              className="px-8"
+              className={`px-8 ${regularButtonClassName}`}
               data-testid="button-add-to-cart"
             >
               Add to Cart - ${Number(itemTotal).toFixed(2)}
