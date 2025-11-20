@@ -332,6 +332,7 @@ export default function CheckoutPage() {
                 <CheckoutPaymentForm 
                   clientSecret={clientSecret}
                   deliveryAddress={selectedAddress}
+                  userId={currentUser?.id}
                   onBack={() => setStep('address')}
                 />
               </Elements>

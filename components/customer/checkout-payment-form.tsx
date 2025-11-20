@@ -27,10 +27,11 @@ interface DeliveryAddress {
 interface CheckoutPaymentFormProps {
   clientSecret: string
   deliveryAddress: DeliveryAddress
+  userId?: string
   onBack: () => void
 }
 
-export function CheckoutPaymentForm({ clientSecret, deliveryAddress, onBack }: CheckoutPaymentFormProps) {
+export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onBack }: CheckoutPaymentFormProps) {
   const stripe = useStripe()
   const elements = useElements()
   const router = useRouter()
@@ -94,6 +95,7 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, onBack }: C
             payment_intent_id: paymentIntent.id,
             delivery_address: deliveryAddress,
             guest_email: deliveryAddress.email, // Required for guest checkout
+            user_id: userId, // Include user_id to match payment intent metadata
             cart_items: items.map(item => ({
               dishId: item.dishId,
               size: item.size,
