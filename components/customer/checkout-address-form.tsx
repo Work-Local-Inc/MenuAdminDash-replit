@@ -18,8 +18,10 @@ interface DeliveryAddress {
   address_label?: string
   street_address: string
   unit?: string
-  city_id: number
+  city_id?: number // Optional for guest checkout
   city_name?: string
+  city?: string // City string from Google Places (for guests)
+  province?: string // Province string from Google Places (for guests)
   postal_code: string
   delivery_instructions?: string
   email?: string // For guest checkouts
@@ -128,10 +130,12 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick 
         const guestAddress: DeliveryAddress = {
           street_address: streetAddress,
           unit: unit || undefined,
-          city_id: 0, // Not needed for guest
+          city: city, // From Google Places autocomplete
+          province: province, // From Google Places autocomplete
           postal_code: postalCode.toUpperCase().replace(/\s/g, ''),
           delivery_instructions: deliveryInstructions || undefined,
           email: email,
+          // DO NOT include city_id for guests
         }
         
         onAddressConfirmed(guestAddress)

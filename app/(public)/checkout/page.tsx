@@ -32,8 +32,10 @@ interface DeliveryAddress {
   address_label?: string
   street_address: string
   unit?: string
-  city_id: number
+  city_id?: number // Optional for guest checkout
   city_name?: string
+  city?: string // City string from Google Places (for guests)
+  province?: string // Province string from Google Places (for guests)
   postal_code: string
   delivery_instructions?: string
   email?: string // For guest checkouts
