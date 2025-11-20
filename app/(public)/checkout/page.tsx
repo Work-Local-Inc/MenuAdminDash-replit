@@ -1,11 +1,11 @@
 "use client"
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCartStore } from '@/lib/stores/cart-store'
 import { createClient } from '@/lib/supabase/client'
 import { Elements } from '@stripe/react-stripe-js'
-import { loadStripe } from '@stripe/stripe-js'
+import { loadStripe, Stripe } from '@stripe/stripe-js'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
@@ -16,16 +16,20 @@ import { useToast } from '@/hooks/use-toast'
 import { ShoppingCart, MapPin, CreditCard, ArrowLeft, LogIn, LogOut, User } from 'lucide-react'
 import Link from 'next/link'
 
-// Use TEST publishable key to match backend test secret key
-// Next.js only supports process.env, NOT import.meta.env
-const stripeKey = process.env.NEXT_PUBLIC_TESTING_VITE_STRIPE_PUBLIC_KEY
+// Singleton Stripe promise to prevent re-initialization
+let stripePromiseSingleton: Promise<Stripe | null> | null = null
 
-if (!stripeKey) {
-  throw new Error('Missing NEXT_PUBLIC_TESTING_VITE_STRIPE_PUBLIC_KEY. Backend uses TESTING_STRIPE_SECRET_KEY.')
+function getStripePromise() {
+  if (!stripePromiseSingleton) {
+    const stripeKey = process.env.NEXT_PUBLIC_TESTING_VITE_STRIPE_PUBLIC_KEY
+    if (!stripeKey) {
+      throw new Error('Missing NEXT_PUBLIC_TESTING_VITE_STRIPE_PUBLIC_KEY')
+    }
+    console.log('[Checkout] Initializing Stripe:', stripeKey.substring(0, 10) + '...')
+    stripePromiseSingleton = loadStripe(stripeKey)
+  }
+  return stripePromiseSingleton
 }
-
-console.log('[Checkout] Using Stripe publishable key:', stripeKey.substring(0, 10) + '...')
-const stripePromise = loadStripe(stripeKey)
 
 interface DeliveryAddress {
   id?: number
@@ -44,7 +48,9 @@ interface DeliveryAddress {
 export default function CheckoutPage() {
   const router = useRouter()
   const { toast } = useToast()
+  const toastRef = useRef(toast)
   const [supabase] = useState(() => createClient())
+  const stripePromise = useMemo(() => getStripePromise(), [])
   
   const { items, restaurantName, restaurantSlug, getSubtotal, deliveryFee, getTax, getTotal, minOrder } = useCartStore()
   
@@ -54,6 +60,11 @@ export default function CheckoutPage() {
   const [selectedAddress, setSelectedAddress] = useState<DeliveryAddress | null>(null)
   const [clientSecret, setClientSecret] = useState<string>('')
   const [showSignInModal, setShowSignInModal] = useState(false)
+
+  // Update toast ref when it changes
+  useEffect(() => {
+    toastRef.current = toast
+  }, [toast])
 
   useEffect(() => {
     checkAuth()
@@ -75,6 +86,7 @@ export default function CheckoutPage() {
     return () => {
       subscription.unsubscribe()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const checkAuth = async () => {
@@ -119,14 +131,15 @@ export default function CheckoutPage() {
   useEffect(() => {
     // Redirect if cart is empty
     if (!loading && items.length === 0) {
-      toast({
+      toastRef.current({
         title: "Cart is empty",
         description: "Add items to your cart before checking out",
         variant: "destructive",
       })
       router.push(restaurantSlug ? `/r/${restaurantSlug}` : '/')
     }
-  }, [items, loading, restaurantSlug, router, toast])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items.length, loading, restaurantSlug])
 
   const subtotal = getSubtotal()
   const tax = getTax()
