@@ -430,26 +430,71 @@ git commit -m "Merge: <description>"
 
 ---
 
-## 🎨 Primary Color Feature (Nov 20, 2025)
+## 🎨 Branding System (Nov 20, 2025)
+
+### Overview
+Complete branding control for restaurant menu pages with advanced customization options.
+
+### Features
+1. **Logo Upload** → `restaurant-logos` bucket (Supabase Storage)
+2. **Banner Image Upload** → `restaurant-images` bucket (header/hero image)
+3. **Primary Color** → Main brand color for buttons, links, accents
+4. **Secondary Color** → Backgrounds and highlights
+5. **Font Family** → Google Fonts selection (10 fonts available)
+6. **Button Style** → Rounded or square corners
+7. **Menu Layout** → Grid or list view for menu items
+
+### Database Schema
+```sql
+-- Branding columns in restaurants table (menuca_v3 schema)
+logo_url           TEXT
+banner_image_url   TEXT
+primary_color      VARCHAR(7) DEFAULT '#000000'
+secondary_color    VARCHAR(7) DEFAULT '#666666'
+font_family        VARCHAR(100) DEFAULT 'Inter'
+button_style       VARCHAR(20) DEFAULT 'rounded' CHECK (button_style IN ('rounded', 'square'))
+menu_layout        VARCHAR(20) DEFAULT 'grid' CHECK (menu_layout IN ('grid', 'list'))
+```
 
 ### How It Works
-1. **Admin sets color:** Branding tab → Primary Color → Save
-2. **Stored as:** Hex code in `restaurants.primary_color` column
-3. **Converted to HSL:** Using `hexToHSL()` utility function
-4. **Applied to customer menu:** Injected as CSS variable `--primary`
-5. **Used by:** All Tailwind classes with `bg-primary`, `text-primary`, etc.
+1. **Admin edits branding:** Branding tab → Update fields → Save
+2. **Files uploaded to:** Supabase Storage (restaurant-logos or restaurant-images buckets)
+3. **Colors converted to HSL:** Using `hexToHSL()` utility function
+4. **Applied to customer menu:** Injected as CSS variables (`--primary`, `--ring`)
+5. **Dynamic styling:** Menu page adapts to all branding settings
 
 ### Files Involved
-- `components/restaurant/tabs/branding.tsx` - Admin UI with preview
+- `components/restaurant/tabs/branding.tsx` - Admin UI with live preview
+- `lib/validations/restaurant.ts` - Validation schema for branding fields
+- `app/api/storage/upload/route.ts` - File upload handler (supports both buckets)
+- `app/api/restaurants/[id]/route.ts` - PATCH endpoint for updates
 - `lib/utils.ts` - `hexToHSL()` conversion function
-- `app/(public)/r/[slug]/page.tsx` - Injects CSS variable for customer view
+- `app/(public)/r/[slug]/page.tsx` - Injects CSS variables for customer view
+- `db/migrations/add_advanced_branding_columns.sql` - Migration for new columns
+
+### Storage Buckets
+- `restaurant-logos` - Logo images (512x512px recommended)
+- `restaurant-images` - Banner/header images (1920x400px recommended)
+- Both buckets have public read access with RLS policies
+
+### Preview System
+Live preview shows:
+- Banner image at top
+- Logo with restaurant name
+- Color swatches with hex values
+- Button style examples (rounded vs square)
+- Menu layout examples (grid vs list)
+- Typography sample with selected font
 
 ### Testing
 1. Go to restaurant in admin → Branding tab
-2. Change Primary Color (try red `#FF0000`)
-3. Save
-4. Visit customer menu `/r/restaurant-slug-id`
-5. Verify buttons/links use new color
+2. Upload logo and banner images
+3. Select colors using color pickers
+4. Choose font, button style, and menu layout
+5. Click "Show Preview" to see live preview
+6. Save changes
+7. Visit customer menu `/r/restaurant-slug-id`
+8. Verify all branding is applied correctly
 
 ---
 
