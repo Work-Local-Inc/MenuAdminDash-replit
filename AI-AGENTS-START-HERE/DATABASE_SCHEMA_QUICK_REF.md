@@ -77,6 +77,9 @@ is_active           BOOLEAN
 ### orders
 ```sql
 id                          INTEGER PRIMARY KEY
+order_number                VARCHAR NOT NULL  -- Format: "ORD-{timestamp}-{random}"
+order_type                  VARCHAR NOT NULL  -- "delivery" or "pickup"
+order_status                VARCHAR NOT NULL  -- "pending", "confirmed", "preparing", etc.
 user_id                     INTEGER (nullable - NULL for guests)
 is_guest_order              BOOLEAN
 guest_email                 VARCHAR
@@ -91,7 +94,9 @@ delivery_fee                DECIMAL
 tax_amount                  DECIMAL
 items                       JSONB  -- validated cart items
 delivery_address            JSONB
--- IMPORTANT: NO 'status' column! Use order_status_history table
+created_at                  TIMESTAMP (auto-generated)
+-- NOTE: Table is partitioned by month (orders_2025_11, etc.)
+-- NOTE: Also tracked in order_status_history table for audit trail
 ```
 
 ## Common Mistakes to AVOID

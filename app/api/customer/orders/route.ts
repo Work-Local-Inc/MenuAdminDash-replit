@@ -265,13 +265,14 @@ export async function POST(request: NextRequest) {
     
     const orderData = {
       order_number: orderNumber,
+      order_type: 'delivery', // Required: "delivery" or "pickup"
+      order_status: 'pending', // Required: Initial status for new orders
       user_id: user_id || null, // NULL for guest orders
       is_guest_order: !user_id, // TRUE for guest checkouts
       guest_email: guest_email || null,
       guest_phone: user_id ? null : '000-000-0000', // TODO: Collect phone in checkout form
       guest_name: user_id ? null : delivery_address.name || 'Guest Customer',
       restaurant_id: restaurant.id,
-      // NOTE: No 'status' column - order status tracked in order_status_history table
       payment_status: 'paid',
       stripe_payment_intent_id: payment_intent_id,
       total_amount: serverTotal,
