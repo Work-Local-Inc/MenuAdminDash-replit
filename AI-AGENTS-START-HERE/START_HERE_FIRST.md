@@ -22,7 +22,7 @@
 - ✅ Read `AGENT_MEMORY_BANK.md` at session start
 - ✅ Use Supabase clients with `db: { schema: 'menuca_v3' }`
 - ✅ Check AI-AGENTS-START-HERE docs before debugging
-- ✅ Remember: 185 restaurants in LIVE Supabase
+- ✅ Remember: LIVE production data in Supabase
 
 ### IF YOU SEE:
 **"Database is not provisioned"** → IGNORE (that's Replit DB, we use Supabase)  

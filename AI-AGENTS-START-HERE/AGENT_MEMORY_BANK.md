@@ -52,7 +52,7 @@ git push origin main
    - `admin_user_restaurants`
 
 2. **`menuca_v3` schema:** ALL restaurant platform data
-   - 185 restaurants
+   - Live production restaurants
    - All dishes, orders, modifiers, etc.
 
 ### Supabase Client Configuration
@@ -389,11 +389,8 @@ git commit -m "Merge: <description>"
 ---
 
 ## 📊 Project Stats
-- **Restaurants:** 185
-- **Database:** Supabase PostgreSQL
+- **Database:** Supabase PostgreSQL (LIVE production data)
 - **Schema:** menuca_v3 (main) + public (admin)
-- **SQL Functions:** 50+
-- **API Routes:** 100+
 - **Framework:** Next.js 14 + TypeScript
 
 ---
@@ -563,7 +560,7 @@ git log origin/main..HEAD --oneline
 
 ---
 
-**Remember:** This is a REAL production app with 185 restaurants. Take time to understand before changing. When in doubt, ASK or CHECK the schema first!
+**Remember:** This is a REAL production app with LIVE data. Take time to understand before changing. When in doubt, ASK or CHECK the schema first!
 
 ---
 

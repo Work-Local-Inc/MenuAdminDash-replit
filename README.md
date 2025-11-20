@@ -1,6 +1,6 @@
 # Menu.ca v3 - Restaurant Ordering Platform
 
-Multi-tenant restaurant ordering platform serving 185 restaurants.
+Multi-tenant restaurant ordering platform with live production data.
 
 ## 🚀 Quick Start
 
@@ -93,7 +93,7 @@ hooks/
 
 ## 🎯 Key Features
 
-- ✅ Multi-tenant restaurant management (185 restaurants)
+- ✅ Multi-tenant restaurant management (production scale)
 - ✅ Menu management with modifiers & inventory tracking
 - ✅ Promotional deals & coupons system
 - ✅ Franchise/chain hierarchy management
