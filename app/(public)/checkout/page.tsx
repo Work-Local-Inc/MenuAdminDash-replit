@@ -11,8 +11,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Separator } from '@/components/ui/separator'
 import { CheckoutAddressForm } from '@/components/customer/checkout-address-form'
 import { CheckoutPaymentForm } from '@/components/customer/checkout-payment-form'
+import { CheckoutSignInModal } from '@/components/customer/checkout-signin-modal'
 import { useToast } from '@/hooks/use-toast'
-import { ShoppingCart, MapPin, CreditCard, ArrowLeft } from 'lucide-react'
+import { ShoppingCart, MapPin, CreditCard, ArrowLeft, LogIn, LogOut, User } from 'lucide-react'
 import Link from 'next/link'
 
 // Use TEST publishable key to match backend test secret key
@@ -50,9 +51,28 @@ export default function CheckoutPage() {
   const [step, setStep] = useState<'address' | 'payment'>('address')
   const [selectedAddress, setSelectedAddress] = useState<DeliveryAddress | null>(null)
   const [clientSecret, setClientSecret] = useState<string>('')
+  const [showSignInModal, setShowSignInModal] = useState(false)
 
   useEffect(() => {
     checkAuth()
+    
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('[Checkout] Auth state changed:', event, session?.user?.id)
+      
+      if (event === 'SIGNED_IN' && session?.user) {
+        // User just signed in - refresh user data
+        await checkAuth()
+      } else if (event === 'SIGNED_OUT') {
+        // User signed out - clear user data
+        setCurrentUser(null)
+      }
+    })
+
+    // Cleanup subscription on unmount
+    return () => {
+      subscription.unsubscribe()
+    }
   }, [])
 
   const checkAuth = async () => {
@@ -109,6 +129,30 @@ export default function CheckoutPage() {
   const subtotal = getSubtotal()
   const tax = getTax()
   const total = getTotal()
+
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut()
+      toast({
+        title: "Signed out",
+        description: "You've been signed out successfully",
+      })
+      setCurrentUser(null)
+    } catch (error: any) {
+      console.error('Sign out error:', error)
+      toast({
+        title: "Error",
+        description: "Failed to sign out",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleSignInSuccess = async () => {
+    // After successful sign-in, refresh auth and close modal
+    await checkAuth()
+    setShowSignInModal(false)
+  }
 
   const handleAddressConfirmed = async (address: DeliveryAddress) => {
     setSelectedAddress(address)
@@ -190,12 +234,47 @@ export default function CheckoutPage() {
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         {/* Header */}
         <div className="mb-6">
-          <Button variant="ghost" asChild className="mb-4" data-testid="button-back-to-menu">
-            <Link href={`/r/${restaurantSlug}`}>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to {restaurantName}
-            </Link>
-          </Button>
+          <div className="flex items-center justify-between mb-4">
+            <Button variant="ghost" asChild data-testid="button-back-to-menu">
+              <Link href={`/r/${restaurantSlug}`}>
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to {restaurantName}
+              </Link>
+            </Button>
+            
+            {/* Auth Section */}
+            <div className="flex items-center gap-3">
+              {currentUser ? (
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 text-sm">
+                    <User className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-muted-foreground">
+                      {currentUser.email || currentUser.first_name || 'Account'}
+                    </span>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={handleSignOut}
+                    data-testid="button-sign-out"
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Sign Out
+                  </Button>
+                </div>
+              ) : (
+                <Button 
+                  variant="default" 
+                  size="sm"
+                  onClick={() => setShowSignInModal(true)}
+                  data-testid="button-sign-in"
+                >
+                  <LogIn className="w-4 h-4 mr-2" />
+                  Sign In
+                </Button>
+              )}
+            </div>
+          </div>
           <h1 className="text-3xl font-bold">Checkout</h1>
           <p className="text-muted-foreground">Complete your order from {restaurantName}</p>
         </div>
@@ -228,8 +307,8 @@ export default function CheckoutPage() {
             {step === 'address' && (
               <CheckoutAddressForm 
                 userId={currentUser?.id}
-                isGuest={!currentUser}
                 onAddressConfirmed={handleAddressConfirmed}
+                onSignInClick={() => setShowSignInModal(true)}
               />
             )}
 
@@ -299,6 +378,13 @@ export default function CheckoutPage() {
           </div>
         </div>
       </div>
+
+      {/* Sign In Modal */}
+      <CheckoutSignInModal 
+        open={showSignInModal}
+        onOpenChange={setShowSignInModal}
+        onSuccess={handleSignInSuccess}
+      />
     </div>
   )
 }

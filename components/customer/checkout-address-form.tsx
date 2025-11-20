@@ -27,13 +27,16 @@ interface DeliveryAddress {
 
 interface CheckoutAddressFormProps {
   userId?: number // Optional for guest checkout
-  isGuest: boolean
   onAddressConfirmed: (address: DeliveryAddress) => void
+  onSignInClick?: () => void // Optional callback for sign in button
 }
 
-export function CheckoutAddressForm({ userId, isGuest, onAddressConfirmed }: CheckoutAddressFormProps) {
+export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick }: CheckoutAddressFormProps) {
   const { toast } = useToast()
   const supabase = createClient()
+  
+  // Derive guest status from userId
+  const isGuest = !userId
   
   const [savedAddresses, setSavedAddresses] = useState<DeliveryAddress[]>([])
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null)
@@ -96,19 +99,9 @@ export function CheckoutAddressForm({ userId, isGuest, onAddressConfirmed }: Che
     }
   }
 
-  const handleSaveNewAddress = async () => {
-    console.log('[Address Form] Saving address:', {
-      streetAddress,
-      postalCode,
-      city,
-      province,
-      unit,
-      deliveryInstructions,
-      addressLabel
-    })
-
+  const handleSubmitAddress = async () => {
+    // Validate address fields first
     if (!streetAddress || !postalCode) {
-      console.error('[Address Form] Validation failed:', { streetAddress, postalCode })
       toast({
         title: "Missing information",
         description: "Please fill in street address and postal code",
@@ -117,47 +110,62 @@ export function CheckoutAddressForm({ userId, isGuest, onAddressConfirmed }: Che
       return
     }
 
-    setSubmitting(true)
-    try {
-      const response = await fetch('/api/customer/addresses', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          street_address: streetAddress,
-          unit: unit || null,
-          city_id: null, // City not selected in form, will be null
-          postal_code: postalCode.toUpperCase().replace(/\s/g, ''),
-          delivery_instructions: deliveryInstructions || null,
-          address_label: addressLabel || null,
-          is_default: savedAddresses.length === 0,
-        }),
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to save address')
-      }
-
-      const data = await response.json()
-
+    // Guest-specific validation
+    if (isGuest && (!email || !email.includes('@'))) {
       toast({
-        title: "Address saved",
-        description: "Your delivery address has been saved",
+        title: "Email required",
+        description: "Please enter a valid email address",
+        variant: "destructive",
       })
+      return
+    }
 
-      // Reload addresses and select the new one
-      await loadSavedAddresses()
-      setSelectedAddressId(data.id)
-      setShowNewAddressForm(false)
-      
-      // Reset form
-      setStreetAddress('')
-      setUnit('')
-      setCity('')
-      setProvince('')
-      setPostalCode('')
-      setDeliveryInstructions('')
-      setAddressLabel('')
+    setSubmitting(true)
+
+    try {
+      if (isGuest) {
+        // GUEST: Skip API, directly pass address to parent
+        const guestAddress: DeliveryAddress = {
+          street_address: streetAddress,
+          unit: unit || undefined,
+          city_id: 0, // Not needed for guest
+          postal_code: postalCode.toUpperCase().replace(/\s/g, ''),
+          delivery_instructions: deliveryInstructions || undefined,
+          email: email,
+        }
+        
+        onAddressConfirmed(guestAddress)
+      } else {
+        // AUTHENTICATED: Save to database via API
+        const response = await fetch('/api/customer/addresses', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            street_address: streetAddress,
+            unit: unit || null,
+            city_id: null,
+            postal_code: postalCode.toUpperCase().replace(/\s/g, ''),
+            delivery_instructions: deliveryInstructions || null,
+            address_label: addressLabel || null,
+            is_default: savedAddresses.length === 0,
+          }),
+        })
+
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || 'Failed to save address')
+        }
+
+        const savedAddress = await response.json()
+
+        toast({
+          title: "Address saved",
+          description: "Your delivery address has been saved",
+        })
+
+        // Pass the saved address directly to continue to payment
+        onAddressConfirmed(savedAddress)
+      }
     } catch (error: any) {
       toast({
         title: "Error",
@@ -183,40 +191,6 @@ export function CheckoutAddressForm({ userId, isGuest, onAddressConfirmed }: Che
     onAddressConfirmed(selected)
   }
 
-  const handleGuestCheckout = () => {
-    // Validate email
-    if (!email || !email.includes('@')) {
-      toast({
-        title: "Email required",
-        description: "Please enter a valid email address",
-        variant: "destructive",
-      })
-      return
-    }
-
-    // Validate address fields
-    if (!streetAddress || !postalCode) {
-      toast({
-        title: "Missing information",
-        description: "Please fill in street address and postal code",
-        variant: "destructive",
-      })
-      return
-    }
-
-    // Create address object for guest
-    const guestAddress: DeliveryAddress = {
-      street_address: streetAddress,
-      unit: unit || undefined,
-      city_id: 0, // Not needed for guest
-      postal_code: postalCode.toUpperCase().replace(/\s/g, ''),
-      delivery_instructions: deliveryInstructions || undefined,
-      email: email,
-    }
-
-    onAddressConfirmed(guestAddress)
-  }
-
   if (loading) {
     return (
       <Card>
@@ -239,7 +213,7 @@ export function CheckoutAddressForm({ userId, isGuest, onAddressConfirmed }: Che
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Guest Sign-In Prompt */}
-        {isGuest && (
+        {isGuest && onSignInClick && (
           <div className="bg-muted/50 border rounded-lg p-4">
             <div className="flex items-start gap-3">
               <UserCircle className="w-5 h-5 text-muted-foreground mt-0.5" />
@@ -250,13 +224,11 @@ export function CheckoutAddressForm({ userId, isGuest, onAddressConfirmed }: Che
                 </p>
                 <Button 
                   variant="outline" 
-                  size="sm" 
-                  asChild
-                  data-testid="button-sign-in"
+                  size="sm"
+                  onClick={onSignInClick}
+                  data-testid="button-sign-in-address-form"
                 >
-                  <Link href="/customer/login?redirect=/checkout">
-                    Sign In
-                  </Link>
+                  Sign In
                 </Button>
               </div>
             </div>
@@ -448,7 +420,7 @@ export function CheckoutAddressForm({ userId, isGuest, onAddressConfirmed }: Che
             </div>
 
             <Button
-              onClick={isGuest ? handleGuestCheckout : handleSaveNewAddress}
+              onClick={handleSubmitAddress}
               disabled={submitting}
               className="w-full"
               size="lg"
