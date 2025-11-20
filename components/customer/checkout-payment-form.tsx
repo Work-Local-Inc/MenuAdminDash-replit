@@ -116,21 +116,15 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
         // Clear cart
         clearCart()
 
-        toast({
-          title: "Order Placed Successfully!",
-          description: `Your order #${order.id} has been confirmed`,
-        })
-
-        // Store order ID for later redirect
-        setCompletedOrderId(order.id)
-
         // Build confirmation URL with payment intent as secure token for guest orders
         const confirmationUrl = deliveryAddress.email
           ? `/customer/orders/${order.id}/confirmation?token=${paymentIntent.id}`
           : `/customer/orders/${order.id}/confirmation`
         
         console.log('[Checkout] Redirecting to confirmation:', confirmationUrl)
-        router.push(confirmationUrl)
+        
+        // Use hard redirect for reliable navigation to confirmation page
+        window.location.href = confirmationUrl
       }
     } catch (error: any) {
       console.error('Payment error:', error)
