@@ -404,6 +404,23 @@ git commit -m "Merge: <description>"
 
 ## 🔄 Recent Fixes (Nov 20, 2025)
 
+### Phone Number Collection in Checkout (Nov 20, 2025)
+**Problem:** Guest orders using placeholder phone number '000-000-0000'  
+**Cause:** Phone number not collected in checkout form  
+**Fix:** 
+- Added phone input field to checkout address form with auto-formatting
+- Added validation (minimum 10 digits required for guests)
+- Updated DeliveryAddress interface across all components
+- Pass guest_phone through payment flow to order creation API
+- Use actual phone number instead of placeholder in order records  
+**Commit:** `1221e40`  
+**Files Modified:** 
+- `components/customer/checkout-address-form.tsx` (phone field + validation)
+- `components/customer/checkout-payment-form.tsx` (pass phone to API)
+- `app/(public)/checkout/page.tsx` (interface update)
+- `app/api/customer/orders/route.ts` (use guest_phone)
+- `package.json` (configured Jest test script)
+
 ### Schema Doubling Issue
 **Problem:** `menuca_v3.menuca_v3.restaurants` error  
 **Cause:** Schema specified twice  
@@ -527,10 +544,12 @@ git log origin/main..HEAD --oneline
 - Restaurant management
 - Primary color branding
 - Schema fixes (no more doubling)
+- Checkout flow (guest + authenticated)
+- Phone number collection for guests
+- Order creation with full validation
 
 ### 🚧 In Progress
-- Checkout flow (Replit Agent working on modifier validation)
-- Order creation (fixing included/free modifiers)
+- None currently
 
 ### ⏳ Not Started
 - Order history UI
@@ -554,5 +573,5 @@ git log origin/main..HEAD --oneline
 ---
 
 **Last Updated By:** Cursor Agent  
-**Next Update:** After Replit finishes modifier validation fix
+**Last Update:** Nov 20, 2025 - Added phone collection to guest checkout flow
 
