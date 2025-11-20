@@ -22,6 +22,7 @@ interface DeliveryAddress {
   postal_code: string
   delivery_instructions?: string
   email?: string
+  phone?: string
 }
 
 interface CheckoutPaymentFormProps {
@@ -94,6 +95,7 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, onBack }: C
             payment_intent_id: paymentIntent.id,
             delivery_address: deliveryAddress,
             guest_email: deliveryAddress.email, // Required for guest checkout
+            guest_phone: deliveryAddress.phone, // Phone number for guest checkout
             cart_items: items.map(item => ({
               dishId: item.dishId,
               size: item.size,

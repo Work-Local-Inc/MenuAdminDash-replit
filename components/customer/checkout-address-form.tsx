@@ -25,6 +25,7 @@ interface DeliveryAddress {
   postal_code: string
   delivery_instructions?: string
   email?: string // For guest checkouts
+  phone?: string // For guest checkouts
 }
 
 interface CheckoutAddressFormProps {
@@ -48,6 +49,7 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick 
   
   // New address form fields
   const [email, setEmail] = useState('') // For guest checkout
+  const [phone, setPhone] = useState('') // For guest checkout
   const [streetAddress, setStreetAddress] = useState('')
   const [unit, setUnit] = useState('')
   const [city, setCity] = useState('')
@@ -113,13 +115,24 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick 
     }
 
     // Guest-specific validation
-    if (isGuest && (!email || !email.includes('@'))) {
-      toast({
-        title: "Email required",
-        description: "Please enter a valid email address",
-        variant: "destructive",
-      })
-      return
+    if (isGuest) {
+      if (!email || !email.includes('@')) {
+        toast({
+          title: "Email required",
+          description: "Please enter a valid email address",
+          variant: "destructive",
+        })
+        return
+      }
+      
+      if (!phone || phone.length < 10) {
+        toast({
+          title: "Phone number required",
+          description: "Please enter a valid phone number (at least 10 digits)",
+          variant: "destructive",
+        })
+        return
+      }
     }
 
     setSubmitting(true)
@@ -135,6 +148,7 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick 
           postal_code: postalCode.toUpperCase().replace(/\s/g, ''),
           delivery_instructions: deliveryInstructions || undefined,
           email: email,
+          phone: phone,
           // DO NOT include city_id for guests
         }
         
@@ -318,25 +332,55 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick 
               )}
             </div>
 
-            {/* Email field for guest checkout */}
+            {/* Email and phone fields for guest checkout */}
             {isGuest && (
-              <div className="space-y-2">
-                <Label htmlFor="guest-email">Email Address *</Label>
-                <Input
-                  id="guest-email"
-                  type="email"
-                  name="email"
-                  autoComplete="email"
-                  placeholder="your@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  data-testid="input-guest-email"
-                />
-                <p className="text-xs text-muted-foreground">
-                  We'll send your order confirmation to this email
-                </p>
-              </div>
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="guest-email">Email Address *</Label>
+                  <Input
+                    id="guest-email"
+                    type="email"
+                    name="email"
+                    autoComplete="email"
+                    placeholder="your@email.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    data-testid="input-guest-email"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    We'll send your order confirmation to this email
+                  </p>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="guest-phone">Phone Number *</Label>
+                  <Input
+                    id="guest-phone"
+                    type="tel"
+                    name="phone"
+                    autoComplete="tel"
+                    placeholder="(416) 555-0123"
+                    value={phone}
+                    onChange={(e) => {
+                      // Format phone number as user types
+                      const input = e.target.value.replace(/\D/g, '')
+                      let formatted = input
+                      if (input.length >= 6) {
+                        formatted = `(${input.slice(0, 3)}) ${input.slice(3, 6)}-${input.slice(6, 10)}`
+                      } else if (input.length >= 3) {
+                        formatted = `(${input.slice(0, 3)}) ${input.slice(3)}`
+                      }
+                      setPhone(formatted)
+                    }}
+                    required
+                    data-testid="input-guest-phone"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    For delivery updates and contact
+                  </p>
+                </div>
+              </>
             )}
 
             {!isGuest && (

@@ -23,12 +23,13 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
 
     const body = await request.json()
-    const { payment_intent_id, delivery_address, cart_items, user_id, guest_email } = body
+    const { payment_intent_id, delivery_address, cart_items, user_id, guest_email, guest_phone } = body
 
     console.log('[Order API] Request:', { 
       payment_intent_id: payment_intent_id?.substring(0, 20) + '...', 
       has_user: !!user,
       guest_email,
+      guest_phone: guest_phone ? '(provided)' : '(not provided)',
       cart_items_count: cart_items?.length 
     })
 
@@ -284,7 +285,7 @@ export async function POST(request: NextRequest) {
       user_id: user_id || null, // NULL for guest orders
       is_guest_order: !user_id, // TRUE for guest checkouts
       guest_email: guest_email || null,
-      guest_phone: user_id ? null : '000-000-0000', // TODO: Collect phone in checkout form
+      guest_phone: user_id ? null : (guest_phone || '000-000-0000'), // Use provided phone or default
       guest_name: user_id ? null : delivery_address.name || 'Guest Customer',
       restaurant_id: restaurant.id,
       // NOTE: No 'status' column - order status tracked in order_status_history table
