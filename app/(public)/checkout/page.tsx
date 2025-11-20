@@ -44,7 +44,7 @@ interface DeliveryAddress {
 export default function CheckoutPage() {
   const router = useRouter()
   const { toast } = useToast()
-  const supabase = createClient()
+  const [supabase] = useState(() => createClient())
   
   const { items, restaurantName, restaurantSlug, getSubtotal, deliveryFee, getTax, getTotal, minOrder } = useCartStore()
   

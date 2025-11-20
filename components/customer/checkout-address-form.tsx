@@ -35,7 +35,7 @@ interface CheckoutAddressFormProps {
 
 export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick }: CheckoutAddressFormProps) {
   const { toast } = useToast()
-  const supabase = createClient()
+  const [supabase] = useState(() => createClient())
   
   // Derive guest status from userId
   const isGuest = !userId
