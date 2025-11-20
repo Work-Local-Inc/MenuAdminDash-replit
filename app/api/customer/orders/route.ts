@@ -185,20 +185,19 @@ export async function POST(request: NextRequest) {
       let validatedModifiers = []
       if (item.modifiers && item.modifiers.length > 0) {
         for (const mod of item.modifiers) {
-          // Get modifier with is_included flag and verify it belongs to a modifier group for this dish
+          // Verify modifier belongs to a modifier group for this dish
           const { data: modifierData } = await supabase
             .from('dish_modifiers')
             .select(`
               id,
               name,
-              is_included,
               modifier_group:modifier_groups!inner(
                 id,
                 dish_id
               )
             `)
             .eq('id', mod.id)
-            .single() as { data: { id: number; name: string; is_included: boolean | null; modifier_group: { id: number; dish_id: number } } | null }
+            .single() as { data: { id: number; name: string; modifier_group: { id: number; dish_id: number } } | null }
 
           if (!modifierData || modifierData.modifier_group.dish_id !== item.dishId) {
             return NextResponse.json({ 
@@ -206,37 +205,16 @@ export async function POST(request: NextRequest) {
             }, { status: 400 })
           }
 
-          // Determine modifier price based on is_included flag
-          let modPrice = 0
+          // Query modifier price - default to $0 if no price record exists (included/free modifiers)
+          const { data: priceData } = await supabase
+            .from('dish_modifier_prices')
+            .select('price')
+            .eq('dish_modifier_id', mod.id)
+            .eq('dish_id', item.dishId)
+            .eq('is_active', true)
+            .maybeSingle() as { data: { price: string } | null }
 
-          if (modifierData.is_included) {
-            // Free/included modifier (like sauce choices) - price is always $0
-            modPrice = 0
-          } else {
-            // Paid modifier - must have price records
-            const { data: priceData } = await supabase
-              .from('dish_modifier_prices')
-              .select('price, size_variant')
-              .eq('dish_modifier_id', mod.id)
-              .eq('size_variant', item.size)
-              .eq('is_active', true)
-              .single() as { data: { price: string; size_variant: string } | null }
-
-            if (!priceData) {
-              // Get available sizes for better error message
-              const { data: availablePrices } = await supabase
-                .from('dish_modifier_prices')
-                .select('size_variant, price')
-                .eq('dish_modifier_id', mod.id)
-                .eq('is_active', true)
-
-              return NextResponse.json({ 
-                error: `Modifier ${mod.id} (${modifierData.name}) is not included and has no price for size "${item.size}". Available sizes: ${JSON.stringify(availablePrices || [])}` 
-              }, { status: 400 })
-            }
-
-            modPrice = parseFloat(priceData.price)
-          }
+          const modPrice = priceData ? parseFloat(priceData.price) : 0
 
           itemTotal += modPrice * item.quantity
           validatedModifiers.push({
