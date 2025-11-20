@@ -162,7 +162,7 @@ This prevents divergent branches and merge conflicts.
 - **Delivery Fee Fix**: Delivery fees now fetched from `restaurant_delivery_zones` table (menuca_v3 schema), not `restaurant_service_configs` (public schema)
 - **Free Delivery Support**: Missing/inactive delivery zones default to $0.00 delivery fee
 - **Modifier Pricing Fix** (Nov 20): ALL modifiers without price records default to $0 (included/free modifiers like sauce choices). Uses `dish_modifier_prices` table with `.maybeSingle()` query.
-- **Checkout Infinite Loop Fix** (Nov 20): Fixed Supabase client re-creation on every render causing infinite loading spinner. Now uses `useState(() => createClient())` for stable client reference.
+- **Checkout Infinite Loop Fix** (Nov 20): Fixed React "Invalid hook call" error caused by using `import.meta.env` in Next.js (Vite-only feature). Changed to `process.env.NEXT_PUBLIC_*` for Next.js compatibility.
 - **In-Page Authentication** (Nov 20): Checkout sign-in now uses modal instead of redirect to prevent cart abandonment. Guest checkout properly bypasses authentication API.
 
 ### Database Migrations Required
