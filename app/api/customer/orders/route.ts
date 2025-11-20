@@ -220,13 +220,8 @@ export async function POST(request: NextRequest) {
             .eq('is_active', true)
             .single() as { data: { price: string } | null }
 
-          if (!priceData) {
-            return NextResponse.json({ 
-              error: `Invalid modifier price for modifier ${mod.id}` 
-            }, { status: 400 })
-          }
-
-          const modPrice = parseFloat(priceData.price)
+          // If no price record, treat as included/free (price = 0)
+          const modPrice = priceData ? parseFloat(priceData.price) : 0
           itemTotal += modPrice * item.quantity
           validatedModifiers.push({
             id: mod.id,
