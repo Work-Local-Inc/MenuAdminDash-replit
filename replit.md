@@ -1,6 +1,8 @@
 # Menu.ca Admin Dashboard
 
-**🔴 AGENT: BEFORE ANY DATABASE WORK, READ `DATABASE_SCHEMA_QUICK_REF.md` FIRST!**
+**🔴 AGENT: BEFORE ANY DATABASE WORK, READ `AI-AGENTS-START-HERE/` FOLDER FIRST!**
+- `AI-AGENTS-START-HERE/CHECKOUT_SCHEMA_REFERENCE.md` - Checkout & order validation patterns
+- `AI-AGENTS-START-HERE/DATABASE_SCHEMA_QUICK_REF.md` - Complete schema reference
 
 ## Overview
 The Menu.ca Admin Dashboard is a Next.js 14 application designed to provide comprehensive management for a multi-tenant restaurant ordering platform. It serves 961 restaurants and over 32,330 users, enabling streamlined administration of restaurants, orders, coupons, and user accounts. The project's core purpose is to enhance operational efficiency and administrative capabilities for a large-scale food ordering service by extending an existing Supabase PostgreSQL database.
@@ -155,10 +157,13 @@ This prevents divergent branches and merge conflicts.
 - **User authentication**: All endpoints verify user authentication
 - **Webhook signature verification**: Stripe webhook events verified with signature
 
-### Critical Fixes (Nov 19, 2025)
+### Critical Fixes (Nov 19-20, 2025)
 - **Restaurant Lookup Fix**: Order creation now extracts restaurant ID from slug using `extractIdFromSlug()` and queries by `id` column (restaurants table has no `slug` column)
 - **Delivery Fee Fix**: Delivery fees now fetched from `restaurant_delivery_zones` table (menuca_v3 schema), not `restaurant_service_configs` (public schema)
 - **Free Delivery Support**: Missing/inactive delivery zones default to $0.00 delivery fee
+- **Modifier Pricing Fix** (Nov 20): ALL modifiers without price records default to $0 (included/free modifiers like sauce choices). Uses `dish_modifier_prices` table with `.maybeSingle()` query.
+- **Checkout Infinite Loop Fix** (Nov 20): Fixed Supabase client re-creation on every render causing infinite loading spinner. Now uses `useState(() => createClient())` for stable client reference.
+- **In-Page Authentication** (Nov 20): Checkout sign-in now uses modal instead of redirect to prevent cart abandonment. Guest checkout properly bypasses authentication API.
 
 ### Database Migrations Required
 **IMPORTANT**: Before using the checkout system in production, run these migrations in Supabase SQL Editor:
