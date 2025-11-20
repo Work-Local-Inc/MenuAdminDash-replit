@@ -22,12 +22,16 @@ interface CartDrawerProps {
 export function CartDrawer({ isOpen, onClose, restaurant, buttonStyle }: CartDrawerProps) {
   const { items, updateQuantity, removeItem, clearCart, deliveryFee } = useCartStore();
   
-  // Apply button style based on branding (NOT for icon buttons - they keep default rounding)
-  const regularButtonClassName = buttonStyle === 'square' 
-    ? 'rounded-none' 
-    : buttonStyle === 'rounded' 
-    ? 'rounded-full' 
-    : '';
+  // Helper function to get button branding class - only applies to non-icon buttons
+  const getButtonClassName = (isIcon: boolean = false) => {
+    if (isIcon) return ''; // Icon buttons always keep default ShadCN geometry
+    
+    return buttonStyle === 'square' 
+      ? 'rounded-none' 
+      : buttonStyle === 'rounded' 
+      ? 'rounded-full' 
+      : '';
+  };
   
   const HST_RATE = 0.13;
   
@@ -49,7 +53,7 @@ export function CartDrawer({ isOpen, onClose, restaurant, buttonStyle }: CartDra
                 variant="ghost"
                 size="sm"
                 onClick={clearCart}
-                className={regularButtonClassName}
+                className={getButtonClassName(false)}
                 data-testid="button-clear-cart"
               >
                 <Trash2 className="w-4 h-4 mr-1" />
@@ -171,7 +175,7 @@ export function CartDrawer({ isOpen, onClose, restaurant, buttonStyle }: CartDra
               </div>
               
               <Button
-                className={`w-full ${regularButtonClassName}`}
+                className={`w-full ${getButtonClassName(false)}`}
                 size="lg"
                 onClick={() => {
                   window.location.href = '/checkout';

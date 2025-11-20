@@ -27,12 +27,16 @@ interface DishModalProps {
 }
 
 export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: DishModalProps) {
-  // Apply button style based on branding (NOT for icon buttons - they keep default rounding)
-  const regularButtonClassName = buttonStyle === 'square' 
-    ? 'rounded-none' 
-    : buttonStyle === 'rounded' 
-    ? 'rounded-full' 
-    : '';
+  // Helper function to get button branding class - only applies to non-icon buttons
+  const getButtonClassName = (isIcon: boolean = false) => {
+    if (isIcon) return ''; // Icon buttons always keep default ShadCN geometry
+    
+    return buttonStyle === 'square' 
+      ? 'rounded-none' 
+      : buttonStyle === 'rounded' 
+      ? 'rounded-full' 
+      : '';
+  };
   const [selectedSize, setSelectedSize] = useState<string>('Regular');
   const [selectedModifiers, setSelectedModifiers] = useState<CartModifier[]>([]);
   const [quantity, setQuantity] = useState(1);
@@ -355,7 +359,7 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
             <Button
               size="lg"
               onClick={handleAddToCart}
-              className={`px-8 ${regularButtonClassName}`}
+              className={`px-8 ${getButtonClassName(false)}`}
               data-testid="button-add-to-cart"
             >
               Add to Cart - ${Number(itemTotal).toFixed(2)}
