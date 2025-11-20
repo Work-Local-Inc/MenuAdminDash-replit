@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { useToast } from '@/hooks/use-toast'
-import { CheckCircle, MapPin, Phone, Store, Package, Home, Eye, Clock, Mail, Utensils } from 'lucide-react'
+import { CheckCircle, MapPin, Phone, Store, Package, Home, Clock, Mail, Utensils } from 'lucide-react'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { PostOrderSignupModal } from '@/components/customer/post-order-signup-modal'
@@ -427,14 +427,8 @@ export default function OrderConfirmationPage() {
           </div>
 
           {/* Action Buttons */}
-          <div className="mt-8 flex flex-col sm:flex-row gap-4">
-            <Button asChild variant="default" className="flex-1" data-testid="button-track-order">
-              <Link href="/customer/account">
-                <Eye className="w-4 h-4 mr-2" />
-                Track Order
-              </Link>
-            </Button>
-            <Button asChild variant="outline" className="flex-1" data-testid="button-continue-browsing">
+          <div className="mt-8 flex justify-center">
+            <Button asChild variant="default" size="lg" data-testid="button-continue-browsing">
               <Link href="/">
                 <Home className="w-4 h-4 mr-2" />
                 Continue Browsing
