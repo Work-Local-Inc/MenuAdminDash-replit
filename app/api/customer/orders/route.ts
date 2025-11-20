@@ -95,20 +95,28 @@ export async function POST(request: NextRequest) {
       }, { status: 409 })
     }
     
-    // Get restaurant with delivery zones for delivery fee (logo_url column doesn't exist)
+    // Extract restaurant ID from slug (e.g., "econo-pizza-1009" → 1009)
+    const restaurantId = extractIdFromSlug(restaurantSlug)
+    
+    if (!restaurantId) {
+      return NextResponse.json({ error: 'Invalid restaurant slug' }, { status: 400 })
+    
+    // Get restaurant with delivery zones for delivery fee
     console.log('[Order API] Looking for restaurant ID:', restaurantId)
     const { data: restaurant, error: restaurantError } = await supabase
       .from('restaurants')
       .select(`
         id, 
-        name,
+        name, 
+        logo_url,
         restaurant_delivery_zones(id, delivery_fee_cents, is_active, deleted_at)
       `)
       .eq('id', restaurantId)
       .single() as { 
         data: { 
           id: number; 
-          name: string;
+          name: string; 
+          logo_url: string | null;
           restaurant_delivery_zones: { id: number; delivery_fee_cents: number; is_active: boolean; deleted_at: string | null }[]
         } | null; 
         error: any 
@@ -182,62 +190,38 @@ export async function POST(request: NextRequest) {
       // SECURITY: Validate modifier prices from database and verify they belong to this dish
       let validatedModifiers = []
       if (item.modifiers && item.modifiers.length > 0) {
-        // Step 1: Get all modifier groups for this dish
-        const { data: dishModifierGroups, error: groupsError } = await supabase
-          .from('modifier_groups')
-          .select('id')
-          .eq('dish_id', item.dishId) as { data: { id: number }[] | null; error: any }
-        
-        if (groupsError) {
-          console.error(`[Order API] Failed to fetch modifier groups for dish ${item.dishId}:`, groupsError)
-          return NextResponse.json({ 
-            error: `Failed to validate modifiers for dish ${item.dishId}` 
-          }, { status: 500 })
-        }
-
-        if (!dishModifierGroups || dishModifierGroups.length === 0) {
-          console.error(`[Order API] No modifier groups found for dish ${item.dishId}`)
-          return NextResponse.json({ 
-            error: `Dish ${item.dishId} does not have modifiers` 
-          }, { status: 400 })
-        }
-
-        const validGroupIds = dishModifierGroups.map(g => g.id)
-
-        // Step 2: Validate each modifier belongs to one of those groups
         for (const mod of item.modifiers) {
-          const { data: modifierData, error: modifierError } = await supabase
+          // Get modifier and verify it belongs to a modifier group for this dish
+          const { data: modifierData } = await supabase
             .from('dish_modifiers')
-            .select('id, modifier_group_id, name, price, is_active')
+            .select(`
+              id,
+              name,
+              modifier_group:modifier_groups!inner(
+                id,
+                dish_id
+              )
+            `)
             .eq('id', mod.id)
-            .single() as { data: { id: number; modifier_group_id: number; name: string; price: string; is_active: boolean } | null; error: any }
+            .single() as { data: { id: number; name: string; modifier_group: { id: number; dish_id: number } } | null }
 
-          if (modifierError || !modifierData) {
-            console.error(`[Order API] Modifier ${mod.id} not found:`, modifierError)
-            return NextResponse.json({ 
-              error: `Invalid modifier ${mod.id}` 
-            }, { status: 400 })
-          }
-
-          // Verify modifier is active
-          if (!modifierData.is_active) {
-            console.error(`[Order API] Modifier ${mod.id} is not active`)
-            return NextResponse.json({ 
-              error: `Modifier ${mod.id} is not available` 
-            }, { status: 400 })
-          }
-
-          // Verify modifier's group belongs to this dish
-          if (!validGroupIds.includes(modifierData.modifier_group_id)) {
-            console.error(`[Order API] Modifier ${mod.id} (group ${modifierData.modifier_group_id}) does not belong to dish ${item.dishId}`)
+          if (!modifierData || modifierData.modifier_group.dish_id !== item.dishId) {
             return NextResponse.json({ 
               error: `Invalid modifier ${mod.id} for dish ${item.dishId}` 
             }, { status: 400 })
           }
 
-          // Step 3: Use the price column directly
-          const modPrice = parseFloat(modifierData.price)
+          // Get modifier price from dish_modifier_prices table
+          const { data: priceData } = await supabase
+            .from('dish_modifier_prices')
+            .select('price')
+            .eq('dish_modifier_id', mod.id)
+            .eq('dish_id', item.dishId)
+            .eq('is_active', true)
+            .single() as { data: { price: string } | null }
 
+          // If no price record, treat as included/free (price = 0)
+          const modPrice = priceData ? parseFloat(priceData.price) : 0
           itemTotal += modPrice * item.quantity
           validatedModifiers.push({
             id: mod.id,
@@ -353,13 +337,12 @@ export async function POST(request: NextRequest) {
         await sendOrderConfirmationEmail({
           orderNumber: order.id.toString(),
           restaurantName: restaurant.name,
-          restaurantLogoUrl: undefined, // logo_url column doesn't exist
+          restaurantLogoUrl: restaurant.logo_url || undefined,
           items: validatedItems,
           deliveryAddress: delivery_address,
           subtotal: serverSubtotal,
           deliveryFee: deliveryFee,
           tax: tax,
-          taxLabel: 'HST (13%)',
           total: serverTotal,
           customerEmail,
         })
@@ -389,12 +372,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Fetch user's orders (logo_url column doesn't exist)
+    // Fetch user's orders
     const { data: orders, error } = await supabase
       .from('orders')
       .select(`
         *,
-        restaurant:restaurants(id, name, slug)
+        restaurant:restaurants(id, name, slug, logo_url)
       `)
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
