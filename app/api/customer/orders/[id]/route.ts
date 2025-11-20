@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = await createClient()
     const orderId = params.id
 
     // Validate order ID
@@ -14,19 +14,21 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid order ID' }, { status: 400 })
     }
 
-    // Fetch order with restaurant details (no logo_url column exists)
+    // Check authentication first using regular client
+    const authClient = await createClient()
+    const { data: { user } } = await authClient.auth.getUser()
+
+    // Use admin client to fetch order (bypasses RLS, but we validate access below)
+    const supabase = createAdminClient()
+
+    // Fetch order with restaurant details (only query existing columns)
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .select(`
         *,
         restaurant:restaurants(
           id,
-          name,
-          phone,
-          address,
-          city,
-          province,
-          postal_code
+          name
         )
       `)
       .eq('id', orderId)
@@ -51,11 +53,6 @@ export async function GET(
           restaurant: {
             id: number
             name: string
-            phone: string | null
-            address: string | null
-            city: string | null
-            province: string | null
-            postal_code: string | null
           }
         } | null
         error: any 
@@ -64,6 +61,30 @@ export async function GET(
     if (orderError || !order) {
       console.error('[Order API] Order not found:', orderId, orderError)
       return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+    }
+
+    // AUTHORIZATION: Verify access rights
+    if (user) {
+      // Authenticated user: must own the order
+      if (order.user_id !== user.id) {
+        console.error('[Order API] Access denied: User does not own order', { userId: user.id, orderUserId: order.user_id })
+        return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+      }
+    } else {
+      // Guest user: must be guest order AND provide matching payment intent ID
+      if (!order.is_guest_order) {
+        console.error('[Order API] Access denied: Not a guest order')
+        return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+      }
+      
+      // Require payment_intent_id as secure token (non-sequential, hard to guess)
+      const { searchParams } = new URL(request.url)
+      const providedToken = searchParams.get('token')
+      
+      if (!providedToken || providedToken !== order.stripe_payment_intent_id) {
+        console.error('[Order API] Access denied: Invalid access token')
+        return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+      }
     }
 
     // Fetch current order status from order_status_history

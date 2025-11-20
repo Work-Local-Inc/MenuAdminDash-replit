@@ -124,17 +124,13 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
         // Store order ID for later redirect
         setCompletedOrderId(order.id)
 
-        // Check if this is a guest order (has email in delivery address)
-        const confirmationUrl = `/customer/orders/${order.id}/confirmation`
-        console.log('[Checkout] Redirecting to confirmation:', confirmationUrl)
+        // Build confirmation URL with payment intent as secure token for guest orders
+        const confirmationUrl = deliveryAddress.email
+          ? `/customer/orders/${order.id}/confirmation?token=${paymentIntent.id}`
+          : `/customer/orders/${order.id}/confirmation`
         
-        if (deliveryAddress.email) {
-          // Guest order - redirect to confirmation (signup modal will show after delay)
-          router.push(confirmationUrl)
-        } else {
-          // Logged-in user - redirect to confirmation page
-          router.push(confirmationUrl)
-        }
+        console.log('[Checkout] Redirecting to confirmation:', confirmationUrl)
+        router.push(confirmationUrl)
       }
     } catch (error: any) {
       console.error('Payment error:', error)

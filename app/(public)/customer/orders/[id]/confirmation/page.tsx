@@ -87,11 +87,22 @@ export default function OrderConfirmationPage() {
 
   const loadOrderDetails = async () => {
     try {
-      const response = await fetch(`/api/customer/orders/${orderId}`)
+      // Get token from URL for guest orders
+      const urlParams = new URLSearchParams(window.location.search)
+      const token = urlParams.get('token')
+      
+      const apiUrl = token 
+        ? `/api/customer/orders/${orderId}?token=${token}`
+        : `/api/customer/orders/${orderId}`
+      
+      const response = await fetch(apiUrl)
       
       if (!response.ok) {
         if (response.status === 404) {
           throw new Error('Order not found')
+        }
+        if (response.status === 403) {
+          throw new Error('Access denied. Please check your link.')
         }
         throw new Error('Failed to load order')
       }
