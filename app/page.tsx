@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 
 export default async function Home() {
-  // Always redirect to admin dashboard
-  redirect('/admin/dashboard')
+  // Redirect to a popular restaurant (replace with homepage/restaurant listing page when built)
+  redirect('/r/econo-pizza-1009')
 }

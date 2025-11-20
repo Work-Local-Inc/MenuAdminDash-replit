@@ -47,7 +47,7 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
   const handleSignupModalClose = () => {
     setShowSignupModal(false)
     if (completedOrderId) {
-      router.push(`/customer/orders/${completedOrderId}`)
+      router.push(`/customer/orders/${completedOrderId}/confirmation`)
     }
   }
 
@@ -125,13 +125,15 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
         setCompletedOrderId(order.id)
 
         // Check if this is a guest order (has email in delivery address)
+        const confirmationUrl = `/customer/orders/${order.id}/confirmation`
+        console.log('[Checkout] Redirecting to confirmation:', confirmationUrl)
+        
         if (deliveryAddress.email) {
-          // Guest order - show signup modal
-          setGuestEmail(deliveryAddress.email)
-          setShowSignupModal(true)
+          // Guest order - redirect to confirmation (signup modal will show after delay)
+          router.push(confirmationUrl)
         } else {
-          // Logged-in user - redirect immediately
-          router.push(`/customer/orders/${order.id}`)
+          // Logged-in user - redirect to confirmation page
+          router.push(confirmationUrl)
         }
       }
     } catch (error: any) {

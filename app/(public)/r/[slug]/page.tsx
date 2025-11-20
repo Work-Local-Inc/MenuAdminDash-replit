@@ -47,8 +47,8 @@ export default async function RestaurantPage({ params }: RestaurantPageProps) {
   console.log('[Restaurant Page] Slug:', params.slug, 'Restaurant ID:', restaurantId);
   
   if (!restaurantId) {
-    console.log('[Restaurant Page] No restaurant ID found - redirecting to dashboard');
-    redirect('/admin/dashboard');
+    console.log('[Restaurant Page] No restaurant ID found - redirecting to homepage');
+    redirect('/');
   }
   
   const { data: restaurant, error: restaurantError } = await supabase
@@ -60,8 +60,8 @@ export default async function RestaurantPage({ params }: RestaurantPageProps) {
   console.log('[Restaurant Page] Query result:', { restaurant, error: restaurantError });
   
   if (!restaurant) {
-    console.log('[Restaurant Page] No restaurant found - redirecting to dashboard');
-    redirect('/admin/dashboard');
+    console.log('[Restaurant Page] No restaurant found - redirecting to homepage');
+    redirect('/');
   }
   
   // Redirect to correct slug if needed
