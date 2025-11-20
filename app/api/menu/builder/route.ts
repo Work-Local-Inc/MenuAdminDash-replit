@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
 
     if (categoriesError) throw categoriesError
 
+    // Fetch templates with left join (returns templates even if they have no modifiers)
     const { data: templates, error: templatesError } = await (supabase
       .from('course_modifier_templates' as any)
       .select(`
@@ -48,7 +49,8 @@ export async function GET(request: NextRequest) {
           name,
           price,
           is_included,
-          display_order
+          display_order,
+          deleted_at
         )
       `)
       .in('course_id', (categories as any)?.map((c: any) => c.id) || [])
@@ -76,6 +78,7 @@ export async function GET(request: NextRequest) {
 
     if (dishesError) throw dishesError
 
+    // Fetch modifier groups with left join (returns groups even if they have no modifiers)
     const { data: modifierGroups, error: groupsError } = await (supabase
       .from('dish_modifier_groups' as any)
       .select(`
@@ -94,7 +97,8 @@ export async function GET(request: NextRequest) {
           price,
           is_included,
           is_default,
-          display_order
+          display_order,
+          deleted_at
         )
       `)
       .in('dish_id', (dishes as any)?.map((d: any) => d.id) || [])
@@ -103,12 +107,25 @@ export async function GET(request: NextRequest) {
 
     if (groupsError) throw groupsError
 
+    // Filter soft-deleted modifiers in application layer after fetching with left joins
     const categoriesWithData = (categories as any)?.map((category: any) => ({
       ...category,
-      templates: (templates as any)?.filter((t: any) => t.course_id === category.id) || [],
+      templates: (templates as any)
+        ?.filter((t: any) => t.course_id === category.id)
+        .map((t: any) => ({
+          ...t,
+          // Filter out soft-deleted template modifiers
+          course_template_modifiers: t.course_template_modifiers?.filter((m: any) => !m.deleted_at) || []
+        })) || [],
       dishes: (dishes as any)?.filter((d: any) => d.course_id === category.id).map((dish: any) => ({
         ...dish,
-        modifier_groups: (modifierGroups as any)?.filter((g: any) => g.dish_id === dish.id) || []
+        modifier_groups: (modifierGroups as any)
+          ?.filter((g: any) => g.dish_id === dish.id)
+          .map((g: any) => ({
+            ...g,
+            // Filter out soft-deleted dish modifiers
+            dish_modifiers: g.dish_modifiers?.filter((m: any) => !m.deleted_at) || []
+          })) || []
       })) || []
     })) || []
 

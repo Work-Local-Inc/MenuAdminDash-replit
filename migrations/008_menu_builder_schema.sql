@@ -82,7 +82,7 @@ CREATE INDEX idx_course_modifier_templates_course
     WHERE deleted_at IS NULL;
 
 -- Index for display order sorting
-CREATE INDEX idx_course_modifier_templates_order 
+CREATE INDEX IF NOT EXISTS idx_course_modifier_templates_order 
     ON course_modifier_templates(course_id, display_order) 
     WHERE deleted_at IS NULL;
 
@@ -137,9 +137,22 @@ CREATE INDEX idx_template_modifiers_template
     WHERE deleted_at IS NULL;
 
 -- Index for display order sorting
-CREATE INDEX idx_template_modifiers_order 
+CREATE INDEX IF NOT EXISTS idx_template_modifiers_order 
     ON course_template_modifiers(template_id, display_order) 
     WHERE deleted_at IS NULL;
+
+-- ============================================================================
+-- ISSUE 4 FIX: Add unique constraint and performance indexes
+-- ============================================================================
+
+-- UNIQUE constraint: Prevent duplicate modifier names within same template
+-- This ensures data integrity at the database level
+CREATE UNIQUE INDEX IF NOT EXISTS idx_template_modifiers_unique_name 
+    ON course_template_modifiers(template_id, name) 
+    WHERE deleted_at IS NULL;
+
+COMMENT ON INDEX idx_template_modifiers_unique_name IS 
+'UNIQUE constraint: Prevents duplicate modifier names within the same template (ignores soft-deleted records)';
 
 -- ============================================================================
 -- TABLE 3: dish_modifier_groups (ENHANCED)
@@ -381,6 +394,13 @@ CREATE INDEX IF NOT EXISTS idx_dish_modifiers_group
 CREATE INDEX IF NOT EXISTS idx_dish_modifiers_order 
     ON dish_modifiers(modifier_group_id, display_order) 
     WHERE deleted_at IS NULL;
+
+-- ============================================================================
+-- ISSUE 4 FIX: Additional performance index for dish modifiers
+-- ============================================================================
+
+COMMENT ON INDEX idx_dish_modifiers_order IS 
+'Performance index: Optimizes ordering queries for dish modifiers within groups';
 
 -- ============================================================================
 -- HELPER FUNCTIONS
