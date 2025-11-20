@@ -285,7 +285,7 @@ export async function POST(request: NextRequest) {
     console.log('[Order API] Attempting to create order with data:', {
       user_id: orderData.user_id,
       restaurant_id: orderData.restaurant_id,
-      order_number: orderData.order_number,
+      payment_intent_id: payment_intent_id,
       total_amount: orderData.total_amount,
       items_count: orderData.items.length,
       has_delivery_address: !!orderData.delivery_address
