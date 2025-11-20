@@ -10,7 +10,9 @@ import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/hooks/use-toast'
 import { Eye, EyeOff, ArrowLeft } from 'lucide-react'
+import { FcGoogle } from 'react-icons/fc'
 import Link from 'next/link'
+import { Separator } from '@/components/ui/separator'
 
 export default function CustomerLoginPage() {
   const router = useRouter()
@@ -35,6 +37,25 @@ export default function CustomerLoginPage() {
   const [signupPhone, setSignupPhone] = useState('')
   const [showSignupPassword, setShowSignupPassword] = useState(false)
   const [signingUp, setSigningUp] = useState(false)
+
+  const handleGoogleSignIn = async () => {
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirect)}`,
+        },
+      })
+
+      if (error) throw error
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Google Sign In Failed",
+        description: error.message || "Failed to sign in with Google",
+      })
+    }
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -228,6 +249,25 @@ export default function CustomerLoginPage() {
                     {loggingIn ? "Logging in..." : "Log In"}
                   </Button>
                 </form>
+
+                <div className="relative my-4">
+                  <Separator />
+                  <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs text-muted-foreground">
+                    OR
+                  </span>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleGoogleSignIn}
+                  disabled={loggingIn}
+                  data-testid="button-google-signin"
+                >
+                  <FcGoogle className="w-5 h-5 mr-2" />
+                  Continue with Google
+                </Button>
               </TabsContent>
               
               <TabsContent value="signup" className="space-y-4">
@@ -320,6 +360,25 @@ export default function CustomerLoginPage() {
                     {signingUp ? "Creating Account..." : "Create Account"}
                   </Button>
                 </form>
+
+                <div className="relative my-4">
+                  <Separator />
+                  <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs text-muted-foreground">
+                    OR
+                  </span>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleGoogleSignIn}
+                  disabled={signingUp}
+                  data-testid="button-google-signup"
+                >
+                  <FcGoogle className="w-5 h-5 mr-2" />
+                  Continue with Google
+                </Button>
               </TabsContent>
             </Tabs>
           </CardContent>

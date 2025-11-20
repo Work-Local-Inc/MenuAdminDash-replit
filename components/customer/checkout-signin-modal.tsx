@@ -31,6 +31,8 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useToast } from '@/hooks/use-toast'
 import { Eye, EyeOff, LogIn, UserPlus } from 'lucide-react'
+import { FcGoogle } from 'react-icons/fc'
+import { Separator } from '@/components/ui/separator'
 
 const signInSchema = z.object({
   email: z.string().email('Please enter a valid email'),
@@ -94,6 +96,26 @@ export function CheckoutSignInModal({
       phone: '',
     },
   })
+
+  const handleGoogleSignIn = async () => {
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback?redirect=/checkout`,
+        },
+      })
+
+      if (error) throw error
+    } catch (error: any) {
+      console.error('Google sign in error:', error)
+      toast({
+        variant: "destructive",
+        title: "Google Sign In Failed",
+        description: error.message || "Failed to sign in with Google",
+      })
+    }
+  }
 
   const handleSignIn = async (data: SignInFormData) => {
     setIsSubmitting(true)
@@ -320,6 +342,25 @@ export function CheckoutSignInModal({
                 </Button>
               </form>
             </Form>
+
+            <div className="relative my-4">
+              <Separator />
+              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-background px-2 text-xs text-muted-foreground">
+                OR
+              </span>
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={handleGoogleSignIn}
+              disabled={isSubmitting}
+              data-testid="button-google-signin-modal"
+            >
+              <FcGoogle className="w-5 h-5 mr-2" />
+              Continue with Google
+            </Button>
           </TabsContent>
           
           {/* Create Account Tab */}
@@ -447,6 +488,25 @@ export function CheckoutSignInModal({
                 </Button>
               </form>
             </Form>
+
+            <div className="relative my-4">
+              <Separator />
+              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-background px-2 text-xs text-muted-foreground">
+                OR
+              </span>
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={handleGoogleSignIn}
+              disabled={isSubmitting}
+              data-testid="button-google-signup-modal"
+            >
+              <FcGoogle className="w-5 h-5 mr-2" />
+              Continue with Google
+            </Button>
           </TabsContent>
         </Tabs>
       </DialogContent>
