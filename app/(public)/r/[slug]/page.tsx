@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: RestaurantPageProps): Promise
     .from('restaurants')
     .select('id, name')
     .eq('id', restaurantId)
-    .single();
+    .single<{ id: number; name: string }>();
   
   if (!restaurant) {
     return {
@@ -55,7 +55,7 @@ export default async function RestaurantPage({ params }: RestaurantPageProps) {
     .from('restaurants')
     .select('*')
     .eq('id', restaurantId)
-    .single();
+    .single<any>();
   
   console.log('[Restaurant Page] Query result:', { restaurant, error: restaurantError });
   
@@ -71,7 +71,7 @@ export default async function RestaurantPage({ params }: RestaurantPageProps) {
   }
   
   // Fetch menu using get_restaurant_menu SQL function
-  const { data: menuData, error: menuError } = await supabase
+  const { data: menuData, error: menuError } = await (supabase as any)
     .rpc('get_restaurant_menu', {
       p_restaurant_id: restaurantId,
       p_language_code: 'en'

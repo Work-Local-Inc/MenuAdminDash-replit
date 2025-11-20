@@ -10,9 +10,12 @@ export const restaurantUpdateSchema = z.object({
   email: z.string().email().optional(),
   // Branding fields
   logo_url: z.string().url().nullable().optional(),
+  banner_image_url: z.string().url().nullable().optional(),
   primary_color: z.string().regex(/^#[0-9A-F]{6}$/i).nullable().optional(),
   secondary_color: z.string().regex(/^#[0-9A-F]{6}$/i).nullable().optional(),
   font_family: z.string().nullable().optional(),
+  button_style: z.enum(["rounded", "square"]).nullable().optional(),
+  menu_layout: z.enum(["grid", "list"]).nullable().optional(),
 }).strict()
 
 export const restaurantCreateSchema = z.object({
