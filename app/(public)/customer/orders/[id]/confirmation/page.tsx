@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { useToast } from '@/hooks/use-toast'
-import { CheckCircle, MapPin, Phone, Store, Package, Home, Eye } from 'lucide-react'
+import { CheckCircle, MapPin, Phone, Store, Package, Home, Eye, Clock, Mail, Utensils } from 'lucide-react'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { PostOrderSignupModal } from '@/components/customer/post-order-signup-modal'
@@ -212,6 +212,52 @@ export default function OrderConfirmationPage() {
                   <p className="text-lg font-semibold text-primary" data-testid="text-estimated-delivery">
                     {estimatedDeliveryTime}
                   </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* What Happens Next Section */}
+          <Card className="mb-6 bg-primary/5 border-primary/20" data-testid="card-what-happens-next">
+            <CardHeader>
+              <CardTitle className="text-lg">What Happens Next?</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex gap-4">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <Utensils className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium mb-1">Restaurant is preparing your order</p>
+                    <p className="text-sm text-muted-foreground">
+                      {order.restaurant.name} has received your order and will start preparing it shortly.
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex gap-4">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <Clock className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium mb-1">Estimated delivery: {estimatedDeliveryTime}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Your food will be delivered to {deliveryAddress.street || deliveryAddress.street_address}.
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex gap-4">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <Mail className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium mb-1">Order confirmation sent</p>
+                    <p className="text-sm text-muted-foreground">
+                      We've sent a confirmation email to {order.is_guest_order ? order.guest_email : 'your email'} with your order details.
+                    </p>
+                  </div>
                 </div>
               </div>
             </CardContent>
