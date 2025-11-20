@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+import { ensureOAuthProfileForSession } from '@/lib/auth/oauth-profile'
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
@@ -18,52 +19,37 @@ export async function GET(request: NextRequest) {
     }
 
     if (data.user) {
-      // Check if user record exists in menuca_v3.users
-      const { data: existingUser, error: userError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('auth_user_id', data.user.id)
-        .single()
+      // SECURITY: Check email verification - require non-null timestamp
+      // Note: For OAuth providers like Google, email is verified by the provider
+      const emailVerified = !!data.user.email_confirmed_at || !!data.user.confirmed_at
 
-      // If user doesn't exist, create user record
-      if (!existingUser && userError?.code === 'PGRST116') {
-        console.log('[Auth Callback] Creating user record for new Google user:', data.user.email)
-        
-        try {
-          // Call signup API to create user record
-          const response = await fetch(`${requestUrl.origin}/api/customer/signup`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              auth_user_id: data.user.id,
-              email: data.user.email,
-              first_name: data.user.user_metadata?.full_name?.split(' ')[0] || '',
-              last_name: data.user.user_metadata?.full_name?.split(' ').slice(1).join(' ') || '',
-              phone: data.user.user_metadata?.phone || null,
-            }),
-          })
+      // Use shared helper to ensure OAuth profile with all security checks
+      const result = await ensureOAuthProfileForSession({
+        authUserId: data.user.id,
+        email: data.user.email || '',
+        emailVerified,
+        firstName: data.user.user_metadata?.full_name?.split(' ')[0] || '',
+        lastName: data.user.user_metadata?.full_name?.split(' ').slice(1).join(' ') || '',
+        phone: data.user.user_metadata?.phone || null,
+      })
 
-          if (!response.ok) {
-            const errorData = await response.json()
-            console.error('[Auth Callback] Error creating user record:', errorData)
-          }
-        } catch (err) {
-          console.error('[Auth Callback] Exception calling signup API:', err)
-        }
+      if (!result.success) {
+        console.error('[Auth Callback] Failed to ensure OAuth profile:', result.error)
+        return NextResponse.redirect(
+          `${requestUrl.origin}/customer/login?error=${encodeURIComponent(result.error || 'Failed to create profile')}`
+        )
+      }
 
-        // Send welcome email (don't fail auth if email fails)
-        try {
-          await fetch(`${requestUrl.origin}/api/customer/welcome-email`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          })
-        } catch (emailError) {
-          console.error('[Auth Callback] Failed to send welcome email:', emailError)
-        }
+      // Send welcome email (don't fail auth if email fails)
+      try {
+        await fetch(`${requestUrl.origin}/api/customer/welcome-email`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        })
+      } catch (emailError) {
+        console.error('[Auth Callback] Failed to send welcome email:', emailError)
       }
     }
 

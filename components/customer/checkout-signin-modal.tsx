@@ -166,9 +166,9 @@ export function CheckoutSignInModal({
         throw new Error('Failed to create account')
       }
 
-      // Create user record in users table via server API
+      // Create user record in users table via OAuth profile API
       try {
-        const response = await fetch('/api/customer/signup', {
+        const response = await fetch('/api/customer/oauth-profile', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -188,7 +188,7 @@ export function CheckoutSignInModal({
           // Don't fail signup - auth account is created, user record can be fixed later
         }
       } catch (err) {
-        console.error('Exception calling signup API:', err)
+        console.error('Exception calling OAuth profile API:', err)
         // Don't fail signup - auth account is created
       }
 
