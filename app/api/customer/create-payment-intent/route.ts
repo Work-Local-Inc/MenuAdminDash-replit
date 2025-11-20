@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
 
     const body = await request.json()
-    const { amount, metadata, user_id, guest_email } = body
+    const { amount, metadata, user_id, guest_email, shipping_address } = body
 
     if (!amount || amount <= 0) {
       return NextResponse.json({ error: 'Invalid amount' }, { status: 400 })
@@ -84,14 +84,29 @@ export async function POST(request: NextRequest) {
       stripeCustomerId = customer.id
     }
 
+    // Build shipping address for Stripe (helps with country detection)
+    const stripeShipping = shipping_address ? {
+      name: shipping_address.name || guest_email || 'Customer',
+      address: {
+        line1: shipping_address.street_address || shipping_address.street,
+        line2: shipping_address.unit || undefined,
+        city: shipping_address.city_name || shipping_address.city,
+        state: shipping_address.province || 'ON',
+        postal_code: shipping_address.postal_code,
+        country: 'CA', // Explicitly set Canada
+      },
+    } : undefined
+
     // Create payment intent
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(amount * 100), // Convert to cents
       currency: 'cad',
       customer: stripeCustomerId,
+      shipping: stripeShipping, // Include shipping address for Canadian origin detection
       metadata: {
         user_id: user_id ? String(user_id) : 'guest',
         guest_email: guest_email || undefined,
+        country: 'CA', // Explicitly mark as Canadian transaction
         ...metadata,
       },
       automatic_payment_methods: {

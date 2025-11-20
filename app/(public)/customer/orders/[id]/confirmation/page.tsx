@@ -11,6 +11,7 @@ import { CheckCircle, MapPin, Phone, Store, Package, Home, Eye, Clock, Mail, Ute
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { PostOrderSignupModal } from '@/components/customer/post-order-signup-modal'
+import { useCartStore } from '@/lib/stores/cart-store'
 
 interface OrderItem {
   dish_id: number
@@ -73,6 +74,7 @@ export default function OrderConfirmationPage() {
   const params = useParams()
   const router = useRouter()
   const { toast } = useToast()
+  const { clearCart } = useCartStore()
   
   const orderId = params.id as string
   const [order, setOrder] = useState<Order | null>(null)
@@ -80,10 +82,13 @@ export default function OrderConfirmationPage() {
   const [showSignupModal, setShowSignupModal] = useState(false)
 
   useEffect(() => {
+    // Clear cart when confirmation page loads (order completed successfully)
+    clearCart()
+    
     if (orderId) {
       loadOrderDetails()
     }
-  }, [orderId])
+  }, [orderId, clearCart])
 
   const loadOrderDetails = async () => {
     try {

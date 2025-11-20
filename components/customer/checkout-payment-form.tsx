@@ -117,9 +117,6 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
 
         const order = await orderResponse.json()
 
-        // Clear cart
-        clearCart()
-
         // Build confirmation URL with payment intent as secure token for guest orders
         const confirmationUrl = deliveryAddress.email
           ? `/customer/orders/${order.id}/confirmation?token=${paymentIntent.id}`
@@ -128,6 +125,8 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
         console.log('[Checkout] Redirecting to confirmation:', confirmationUrl)
         
         // Use hard redirect for reliable navigation to confirmation page
+        // Note: Cart will be cleared on confirmation page to avoid triggering
+        // the "cart is empty" redirect logic before we can navigate away
         window.location.href = confirmationUrl
       }
     } catch (error: any) {

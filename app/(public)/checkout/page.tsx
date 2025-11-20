@@ -181,6 +181,7 @@ export default function CheckoutPage() {
           amount: total,
           user_id: currentUser?.id, // Will be undefined for guests
           guest_email: address.email, // For guest checkouts
+          shipping_address: address, // For Stripe country detection
           metadata: {
             delivery_address: JSON.stringify(address),
             restaurant_slug: restaurantSlug,
