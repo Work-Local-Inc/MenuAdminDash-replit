@@ -259,25 +259,23 @@ export function useDeleteCategoryTemplate() {
 
 export interface RestaurantModifierGroup {
   id: number
-  course_id: number
-  course_name: string
   name: string
   is_required: boolean
   min_selections: number
   max_selections: number
   display_order: number
+  created_at?: string
   modifiers: TemplateModifier[]
 }
 
-export function useRestaurantModifierGroups(restaurantId: number | string | null) {
+export function useRestaurantModifierGroups() {
   return useQuery<RestaurantModifierGroup[]>({
-    queryKey: ['/api/menu/modifier-groups', { restaurant_id: restaurantId }],
+    queryKey: ['/api/menu/modifier-groups'],
     queryFn: async () => {
-      const res = await fetch(`/api/menu/modifier-groups?restaurant_id=${restaurantId}`)
+      const res = await fetch('/api/menu/modifier-groups')
       if (!res.ok) throw new Error('Failed to fetch modifier groups')
       return res.json()
     },
-    enabled: !!restaurantId && (typeof restaurantId === 'number' ? restaurantId > 0 : parseInt(restaurantId) > 0),
   })
 }
 

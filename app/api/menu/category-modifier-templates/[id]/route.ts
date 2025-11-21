@@ -19,38 +19,45 @@ export async function DELETE(
       )
     }
 
-    const { data: existingGroups } = await supabase
-      .from('dish_modifier_groups')
+    // Fetch existing dish groups that inherit from this template
+    const { data: existingGroups } = await (supabase
+      .schema('menuca_v3')
+      .from('dish_modifier_groups' as any)
       .select('id, is_custom')
       .eq('course_template_id', templateId)
-      .is('deleted_at', null)
+      .is('deleted_at', null) as any)
 
-    const { error: templateError } = await supabase
-      .from('course_modifier_templates')
-      .update({ deleted_at: new Date().toISOString() })
-      .eq('id', templateId)
+    // Soft-delete the category template
+    const { error: templateError } = await (supabase
+      .schema('menuca_v3')
+      .from('course_modifier_templates' as any)
+      .update({ deleted_at: new Date().toISOString() } as any)
+      .eq('id', templateId) as any)
 
     if (templateError) throw templateError
 
-    if (existingGroups && existingGroups.length > 0) {
-      const groupsToOrphan = existingGroups.filter(g => !g.is_custom)
+    // Orphan dish modifier groups (convert inherited groups to custom groups)
+    if (existingGroups && (existingGroups as any[]).length > 0) {
+      const groupsToOrphan = (existingGroups as any[]).filter((g: any) => !g.is_custom)
       
       if (groupsToOrphan.length > 0) {
-        await supabase
-          .from('dish_modifier_groups')
+        await (supabase
+          .schema('menuca_v3')
+          .from('dish_modifier_groups' as any)
           .update({ 
             course_template_id: null,
             is_custom: true 
-          })
-          .in('id', groupsToOrphan.map(g => g.id))
+          } as any)
+          .in('id', groupsToOrphan.map((g: any) => g.id)) as any)
       }
     }
 
     return NextResponse.json({
       success: true,
-      orphaned_groups: existingGroups?.filter(g => !g.is_custom).length || 0,
+      orphaned_groups: (existingGroups as any[])?.filter((g: any) => !g.is_custom).length || 0,
     })
   } catch (error: any) {
+    console.error('[DELETE CATEGORY TEMPLATE ERROR]', error)
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode })
     }

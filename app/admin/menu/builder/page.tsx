@@ -132,10 +132,8 @@ export default function MenuBuilderPage() {
     selectedRestaurantId && parseInt(selectedRestaurantId) > 0 ? parseInt(selectedRestaurantId) : null
   )
   
-  // Fetch modifier groups for this restaurant
-  const { data: modifierGroups = [] } = useRestaurantModifierGroups(
-    selectedRestaurantId && parseInt(selectedRestaurantId) > 0 ? parseInt(selectedRestaurantId) : null
-  )
+  // Fetch global modifier groups library
+  const { data: modifierGroups = [] } = useRestaurantModifierGroups()
 
   const createCourse = useCreateCourse()
   const updateCourse = useUpdateCourse()
@@ -173,15 +171,19 @@ export default function MenuBuilderPage() {
     (r: any) => r.id.toString() === selectedRestaurantId
   )
   
-  // Process modifier groups data for category associations
+  // Process category associations with global library groups
+  // modifierGroups = global library groups (course_id IS NULL)
+  // Build map of category -> associated library group IDs from category templates
   const availableModifierGroups = modifierGroups
   const categoryModifierMap = new Map<number, number[]>()
-  modifierGroups.forEach((group) => {
-    if (group.course_id) {
-      categoryModifierMap.set(group.course_id, [
-        ...(categoryModifierMap.get(group.course_id) || []),
-        group.id
-      ])
+  
+  categories.forEach((category) => {
+    const associatedLibraryGroupIds = category.templates
+      .filter((template: any) => template.library_template_id !== null)
+      .map((template: any) => template.library_template_id)
+    
+    if (associatedLibraryGroupIds.length > 0) {
+      categoryModifierMap.set(category.id, associatedLibraryGroupIds)
     }
   })
 
@@ -295,25 +297,41 @@ export default function MenuBuilderPage() {
   const handleToggleCategoryModifier = async (categoryId: number, modifierGroupId: number, isAssociated: boolean) => {
     if (!selectedRestaurantId) return
     
-    if (isAssociated) {
-      // Remove association by soft-deleting the template
-      const group = availableModifierGroups.find(g => g.id === modifierGroupId && g.course_id === categoryId)
-      if (group) {
-        await deleteTemplate.mutateAsync(group.id)
-      }
-    } else {
-      // Create association by creating a new template
-      const modifierGroup = modifierGroups.find(g => g.id === modifierGroupId)
-      if (modifierGroup) {
-        await createTemplate.mutateAsync({
-          course_id: categoryId,
-          name: modifierGroup.name,
-          is_required: modifierGroup.is_required || false,
-          min_selections: modifierGroup.min_selections || 0,
-          max_selections: modifierGroup.max_selections || 1,
-          modifiers: modifierGroup.modifiers,
+    try {
+      if (isAssociated) {
+        // Remove association by finding and deleting the category template
+        const category = categories.find(c => c.id === categoryId)
+        const categoryTemplate = category?.templates.find(
+          (template: any) => template.library_template_id === modifierGroupId
+        )
+        
+        if (categoryTemplate) {
+          await deleteTemplate.mutateAsync(categoryTemplate.id)
+        }
+      } else {
+        // Create association by linking to library group
+        const response = await fetch('/api/menu/category-modifier-templates', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            course_id: categoryId,
+            library_template_id: modifierGroupId,
+          }),
         })
+        
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || 'Failed to associate modifier group')
+        }
+        
+        // Invalidate queries to refetch updated data
+        const queryClient = (await import('@/lib/queryClient')).queryClient
+        queryClient.invalidateQueries({ queryKey: ['/api/menu/builder'] })
+        queryClient.invalidateQueries({ queryKey: ['/api/menu/modifier-groups'] })
       }
+    } catch (error: any) {
+      console.error('[TOGGLE CATEGORY MODIFIER ERROR]', error)
+      alert(error.message || 'Failed to update category modifier association')
     }
   }
 

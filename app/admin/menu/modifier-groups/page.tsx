@@ -59,26 +59,14 @@ import {
 import { useMenuCourses } from "@/lib/hooks/use-menu"
 
 export default function ModifierGroupsPage() {
-  const [selectedRestaurantId, setSelectedRestaurantId] = useState<string>('')
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [editingGroup, setEditingGroup] = useState<RestaurantModifierGroup | null>(null)
   const [deletingGroupId, setDeletingGroupId] = useState<number | null>(null)
 
-  const { data: restaurants = [], isLoading: loadingRestaurants } = useRestaurants()
-  const { data: modifierGroups = [], isLoading: loadingGroups } = useRestaurantModifierGroups(
-    selectedRestaurantId ? parseInt(selectedRestaurantId) : 0
-  )
-  const { data: courses = [], isLoading: loadingCourses } = useMenuCourses(
-    selectedRestaurantId ? parseInt(selectedRestaurantId) : 0
-  )
-
-  const createGroup = useCreateCategoryTemplate()
-  const updateGroup = useUpdateCategoryTemplate()
-  const deleteGroup = useDeleteCategoryTemplate()
+  const { data: modifierGroups = [], isLoading: loadingGroups } = useRestaurantModifierGroups()
 
   const [formData, setFormData] = useState({
     name: '',
-    category_id: '',
     is_required: false,
     min_selections: 0,
     max_selections: 1,
@@ -88,7 +76,6 @@ export default function ModifierGroupsPage() {
   const resetForm = () => {
     setFormData({
       name: '',
-      category_id: '',
       is_required: false,
       min_selections: 0,
       max_selections: 1,
@@ -106,7 +93,6 @@ export default function ModifierGroupsPage() {
     setEditingGroup(group)
     setFormData({
       name: group.name,
-      category_id: group.course_id.toString(),
       is_required: group.is_required,
       min_selections: group.min_selections,
       max_selections: group.max_selections,
@@ -122,10 +108,9 @@ export default function ModifierGroupsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!formData.category_id || formData.modifiers.length === 0) return
+    if (formData.modifiers.length === 0) return
 
-    const data: CreateModifierGroupData = {
-      course_id: parseInt(formData.category_id),
+    const data = {
       name: formData.name,
       is_required: formData.is_required,
       min_selections: formData.min_selections,
@@ -133,23 +118,42 @@ export default function ModifierGroupsPage() {
       modifiers: formData.modifiers.filter(m => m.name.trim() !== '')
     }
 
-    if (editingGroup) {
-      await updateGroup.mutateAsync({
-        id: editingGroup.id,
-        data
-      })
-    } else {
-      await createGroup.mutateAsync(data)
+    const endpoint = '/api/menu/modifier-groups'
+    const method = editingGroup ? 'PATCH' : 'POST'
+    const body = editingGroup ? { id: editingGroup.id, ...data } : data
+
+    const res = await fetch(endpoint, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+
+    if (!res.ok) {
+      const errorData = await res.json()
+      throw new Error(errorData.error || 'Failed to save modifier group')
     }
 
     setCreateDialogOpen(false)
     resetForm()
+    // Trigger refetch
+    window.location.reload()
   }
 
   const handleDelete = async () => {
     if (!deletingGroupId) return
-    await deleteGroup.mutateAsync(deletingGroupId)
+    
+    const res = await fetch(`/api/menu/modifier-groups?id=${deletingGroupId}`, {
+      method: 'DELETE',
+    })
+
+    if (!res.ok) {
+      const errorData = await res.json()
+      throw new Error(errorData.error || 'Failed to delete modifier group')
+    }
+
     setDeletingGroupId(null)
+    // Trigger refetch
+    window.location.reload()
   }
 
   const addModifier = () => {
@@ -180,60 +184,22 @@ export default function ModifierGroupsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight" data-testid="text-page-title">
-            Modifier Groups
+            Global Modifier Groups Library
           </h1>
           <p className="text-muted-foreground mt-1" data-testid="text-page-description">
-            Manage modifier groups that can be associated with categories
+            Create modifier groups that can be associated with any category across all restaurants
           </p>
         </div>
-        {selectedRestaurantId && (
-          <Button 
-            onClick={handleCreate}
-            data-testid="button-create-group"
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Create Modifier Group
-          </Button>
-        )}
+        <Button 
+          onClick={handleCreate}
+          data-testid="button-create-group"
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          Create Modifier Group
+        </Button>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Select Restaurant</CardTitle>
-          <CardDescription>
-            Choose a restaurant to manage its modifier groups
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {loadingRestaurants ? (
-            <Skeleton className="h-10 w-full" />
-          ) : (
-            <Select
-              value={selectedRestaurantId}
-              onValueChange={setSelectedRestaurantId}
-              data-testid="select-restaurant"
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select restaurant..." />
-              </SelectTrigger>
-              <SelectContent>
-                {restaurants.map((restaurant: any) => (
-                  <SelectItem 
-                    key={restaurant.id} 
-                    value={restaurant.id.toString()}
-                    data-testid={`select-restaurant-${restaurant.id}`}
-                  >
-                    {restaurant.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        </CardContent>
-      </Card>
-
-      {selectedRestaurantId && (
-        <>
+      <>
           {loadingGroups ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {[1, 2, 3].map((i) => (
@@ -274,8 +240,8 @@ export default function ModifierGroupsPage() {
                         <CardTitle className="text-lg" data-testid={`text-group-name-${group.id}`}>
                           {group.name}
                         </CardTitle>
-                        <CardDescription data-testid={`text-group-category-${group.id}`}>
-                          {group.course_name}
+                        <CardDescription data-testid={`text-group-type-${group.id}`}>
+                          Global Library
                         </CardDescription>
                       </div>
                       <DropdownMenu>
@@ -356,19 +322,18 @@ export default function ModifierGroupsPage() {
               ))}
             </div>
           )}
-        </>
-      )}
+      </>
 
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle data-testid="text-dialog-title">
-              {editingGroup ? 'Edit Modifier Group' : 'Create Modifier Group'}
+              {editingGroup ? 'Edit Global Modifier Group' : 'Create Global Modifier Group'}
             </DialogTitle>
             <DialogDescription>
               {editingGroup 
-                ? 'Update the modifier group details and options'
-                : 'Create a new modifier group that can be associated with categories'
+                ? 'Update this global modifier group. Changes will not affect already-associated categories.'
+                : 'Create a new global modifier group that can be associated with any category'
               }
             </DialogDescription>
           </DialogHeader>
@@ -385,30 +350,6 @@ export default function ModifierGroupsPage() {
                   required
                   data-testid="input-group-name"
                 />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="category">Category</Label>
-                <Select
-                  value={formData.category_id}
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, category_id: value }))}
-                  required
-                >
-                  <SelectTrigger data-testid="select-category">
-                    <SelectValue placeholder="Select category..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {courses.map((course) => (
-                      <SelectItem 
-                        key={course.id} 
-                        value={course.id.toString()}
-                        data-testid={`select-category-${course.id}`}
-                      >
-                        {course.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
 
               <div className="flex items-center justify-between">

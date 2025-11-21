@@ -55,6 +55,7 @@ export async function GET(request: NextRequest) {
         .select(`
           id,
           course_id,
+          library_template_id,
           name,
           is_required,
           min_selections,
@@ -78,6 +79,37 @@ export async function GET(request: NextRequest) {
     }
 
     if (templatesError) throw templatesError
+
+    // Fetch library template modifiers for templates that reference library groups
+    const libraryTemplateIds = templates
+      .filter((t: any) => t.library_template_id)
+      .map((t: any) => t.library_template_id)
+    
+    let libraryModifiers: any[] = []
+    if (libraryTemplateIds.length > 0) {
+      const { data: libModsData, error: libModsError } = await (supabase
+        .schema('menuca_v3')
+        .from('course_template_modifiers' as any)
+        .select(`
+          id,
+          template_id,
+          name,
+          price,
+          is_included,
+          display_order,
+          deleted_at
+        `)
+        .in('template_id', libraryTemplateIds)
+        .is('deleted_at', null)
+        .order('display_order', { ascending: true }) as any)
+      
+      if (libModsError) {
+        console.log('[MENU BUILDER] Library modifiers query error:', libModsError)
+      } else {
+        libraryModifiers = libModsData || []
+        console.log('[MENU BUILDER] Library modifiers loaded:', libraryModifiers.length)
+      }
+    }
 
     // Query dishes WITHOUT nested prices (FK relationship not in Supabase schema cache)
     const { data: dishes, error: dishesError } = await supabase
@@ -190,11 +222,24 @@ export async function GET(request: NextRequest) {
       ...category,
       templates: (templates as any)
         ?.filter((t: any) => t.course_id === category.id)
-        .map((t: any) => ({
-          ...t,
-          // Filter out soft-deleted template modifiers
-          course_template_modifiers: t.course_template_modifiers?.filter((m: any) => !m.deleted_at) || []
-        })) || [],
+        .map((t: any) => {
+          // CRITICAL FIX: Use library modifiers when library_template_id is set
+          let modifiers: any[] = []
+          if (t.library_template_id) {
+            // Fetch modifiers from library template via JOIN
+            modifiers = libraryModifiers
+              .filter((m: any) => m.template_id === t.library_template_id && !m.deleted_at)
+              .sort((a: any, b: any) => a.display_order - b.display_order)
+          } else {
+            // Use own modifiers for custom (non-library) templates
+            modifiers = t.course_template_modifiers?.filter((m: any) => !m.deleted_at) || []
+          }
+          
+          return {
+            ...t,
+            course_template_modifiers: modifiers
+          }
+        }) || [],
       dishes: (dishes as any)?.filter((d: any) => d.course_id === category.id).map((dish: any) => {
         // Join dish_prices from separate query
         const dishPricesForDish = dishPrices.filter((p: any) => p.dish_id === dish.id)
@@ -207,13 +252,35 @@ export async function GET(request: NextRequest) {
           price: defaultPrice, // Computed price from first variant
           modifier_groups: (modifierGroups as any)
             ?.filter((g: any) => g.dish_id === dish.id)
-            .map((g: any) => ({
-              ...g,
-              // Join dish_modifiers from separate query and filter soft-deleted
-              dish_modifiers: dishModifiers
-                .filter((m: any) => m.modifier_group_id === g.id && !m.deleted_at)
-                .sort((a: any, b: any) => a.display_order - b.display_order)
-            })) || []
+            .map((g: any) => {
+              let modifiers: any[] = []
+              
+              // CRITICAL FIX: Fetch modifiers via category template → library template chain
+              if (g.course_template_id) {
+                // Find the category template
+                const categoryTemplate = templates.find((t: any) => t.id === g.course_template_id)
+                
+                if (categoryTemplate?.library_template_id) {
+                  // Fetch from library template (TRUE LINKING)
+                  modifiers = libraryModifiers
+                    .filter((m: any) => m.template_id === categoryTemplate.library_template_id && !m.deleted_at)
+                    .sort((a: any, b: any) => a.display_order - b.display_order)
+                } else if (categoryTemplate) {
+                  // Fetch from category template's own modifiers
+                  modifiers = categoryTemplate.course_template_modifiers?.filter((m: any) => !m.deleted_at) || []
+                }
+              } else if (g.is_custom) {
+                // Custom dish modifier group - use dish_modifiers
+                modifiers = dishModifiers
+                  .filter((m: any) => m.modifier_group_id === g.id && !m.deleted_at)
+                  .sort((a: any, b: any) => a.display_order - b.display_order)
+              }
+              
+              return {
+                ...g,
+                dish_modifiers: modifiers
+              }
+            }) || []
         }
       }) || []
     })) || []
