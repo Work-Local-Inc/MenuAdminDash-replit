@@ -17,12 +17,16 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import { CategoryModifierAssociation } from '@/components/admin/menu-builder/CategoryModifierAssociation';
 
 interface RestaurantMenuProps {
   restaurant: any;
   courses: any[];
   hasMenu?: boolean;
   editorMode?: boolean;
+  availableModifierGroups?: any[];
+  getCategoryModifierIds?: (categoryId: number) => number[];
+  onToggleCategoryModifier?: (categoryId: number, modifierGroupId: number, isAssociated: boolean) => Promise<void>;
   onEditCategory?: (categoryId: number) => void;
   onDeleteCategory?: (categoryId: number) => void;
   onToggleCategoryActive?: (categoryId: number) => void;
@@ -42,6 +46,9 @@ export default function RestaurantMenu({
   courses, 
   hasMenu = true,
   editorMode = false,
+  availableModifierGroups = [],
+  getCategoryModifierIds,
+  onToggleCategoryModifier,
   onEditCategory,
   onDeleteCategory,
   onToggleCategoryActive,
@@ -306,6 +313,18 @@ export default function RestaurantMenu({
                               <Plus className="w-4 h-4 mr-2" />
                               Add Dish
                             </Button>
+                            
+                            {onToggleCategoryModifier && getCategoryModifierIds && (
+                              <CategoryModifierAssociation
+                                categoryId={course.id}
+                                categoryName={course.name}
+                                availableGroups={availableModifierGroups}
+                                associatedGroupIds={getCategoryModifierIds(course.id)}
+                                onToggleAssociation={async (groupId, isAssociated) => {
+                                  await onToggleCategoryModifier(course.id, groupId, isAssociated)
+                                }}
+                              />
+                            )}
                             
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>

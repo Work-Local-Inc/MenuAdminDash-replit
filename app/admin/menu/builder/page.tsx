@@ -131,6 +131,11 @@ export default function MenuBuilderPage() {
   const { data: categories = [], isLoading: loadingCategories } = useMenuBuilder(
     selectedRestaurantId && parseInt(selectedRestaurantId) > 0 ? parseInt(selectedRestaurantId) : null
   )
+  
+  // Fetch modifier groups for this restaurant
+  const { data: modifierGroups = [] } = useRestaurantModifierGroups(
+    selectedRestaurantId && parseInt(selectedRestaurantId) > 0 ? parseInt(selectedRestaurantId) : null
+  )
 
   const createCourse = useCreateCourse()
   const updateCourse = useUpdateCourse()
@@ -167,6 +172,18 @@ export default function MenuBuilderPage() {
   const selectedRestaurant = restaurants.find(
     (r: any) => r.id.toString() === selectedRestaurantId
   )
+  
+  // Process modifier groups data for category associations
+  const availableModifierGroups = modifierGroups
+  const categoryModifierMap = new Map<number, number[]>()
+  modifierGroups.forEach((group) => {
+    if (group.course_id) {
+      categoryModifierMap.set(group.course_id, [
+        ...(categoryModifierMap.get(group.course_id) || []),
+        group.id
+      ])
+    }
+  })
 
   // Filter categories and dishes
   const filteredCategories = categories
@@ -273,6 +290,31 @@ export default function MenuBuilderPage() {
       restaurant_id: parseInt(selectedRestaurantId),
       data: { is_active: !category.is_active },
     })
+  }
+  
+  const handleToggleCategoryModifier = async (categoryId: number, modifierGroupId: number, isAssociated: boolean) => {
+    if (!selectedRestaurantId) return
+    
+    if (isAssociated) {
+      // Remove association by soft-deleting the template
+      const group = availableModifierGroups.find(g => g.id === modifierGroupId && g.course_id === categoryId)
+      if (group) {
+        await deleteTemplate.mutateAsync(group.id)
+      }
+    } else {
+      // Create association by creating a new template
+      const modifierGroup = modifierGroups.find(g => g.id === modifierGroupId)
+      if (modifierGroup) {
+        await createTemplate.mutateAsync({
+          course_id: categoryId,
+          name: modifierGroup.name,
+          is_required: modifierGroup.is_required || false,
+          min_selections: modifierGroup.min_selections || 0,
+          max_selections: modifierGroup.max_selections || 1,
+          modifiers: modifierGroup.modifiers,
+        })
+      }
+    }
   }
 
   // Dish handlers
@@ -761,6 +803,9 @@ export default function MenuBuilderPage() {
             }))}
             hasMenu={filteredCategories.length > 0}
             editorMode={true}
+            availableModifierGroups={availableModifierGroups}
+            getCategoryModifierIds={(categoryId) => categoryModifierMap.get(categoryId) || []}
+            onToggleCategoryModifier={handleToggleCategoryModifier}
             onEditCategory={(categoryId) => {
               const category = categories.find(c => c.id === categoryId)
               if (category) handleEditCategory(category)
