@@ -59,12 +59,9 @@ const menuItems = [
     ],
   },
   {
-    title: "Menu Management",
+    title: "Menu Builder",
+    url: "/admin/menu/builder",
     icon: UtensilsCrossed,
-    items: [
-      { title: "Menu Categories", url: "/admin/menu/categories" },
-      { title: "Dishes", url: "/admin/menu/dishes" },
-    ],
   },
   {
     title: "Orders",
