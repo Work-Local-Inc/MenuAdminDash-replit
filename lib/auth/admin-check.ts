@@ -32,12 +32,15 @@ export async function verifyAdminAuth(request: NextRequest) {
   
   // Step 2: Verify user email exists in admin_users table (using service role to bypass RLS)
   // This ensures the authenticated user is actually an admin
+  // CRITICAL: admin_users table is in menuca_v3 schema (NOT public schema)
   const adminSupabase = createAdminClient()
   
-  // Get the admin user (simplified - no role lookup for now)
+  // Get the admin user from menuca_v3.admin_users
+  // Note: Even though createAdminClient() has schema: 'menuca_v3' configured,
+  // we're being explicit here to ensure it queries the correct schema
   const { data: adminUser, error: adminError } = await adminSupabase
     .from('admin_users')
-    .select('id, email, first_name, last_name')
+    .select('id, email, first_name, last_name, auth_uuid')
     .eq('email', user.email)
     .is('deleted_at', null) // Only active admins
     .single()

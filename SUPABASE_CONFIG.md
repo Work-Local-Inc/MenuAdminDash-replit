@@ -7,9 +7,11 @@
 ### Database Schema
 **This project uses ONLY SUPABASE** (no Neon database).
 
-The Supabase database has TWO schemas:
-1. **`public` schema**: Admin-only tables (`admin_users`, `admin_roles`, `admin_user_restaurants`)
-2. **`menuca_v3` schema**: ALL restaurant platform data (restaurants, dishes, orders, users, etc.)
+The Supabase database uses the **`menuca_v3` schema** for ALL data:
+- **ALL admin tables**: `admin_users`, `admin_roles`, `admin_user_restaurants`
+- **ALL restaurant platform data**: restaurants, dishes, orders, users, etc.
+
+**CRITICAL**: The `public` schema is NOT used. Everything is in `menuca_v3`.
 
 **ALL Supabase clients MUST be configured with `db: { schema: 'menuca_v3' }` to access restaurant data.**
 
@@ -89,7 +91,14 @@ const supabase = createServerClient<Database>(
 
 ### Key Tables
 
-**In `menuca_v3` schema** (restaurant platform data):
+**ALL tables are in `menuca_v3` schema**:
+
+**Admin tables**:
+- `admin_users` (ID type: **INTEGER**, auth_uuid: **UUID**)
+- `admin_roles`
+- `admin_user_restaurants`
+
+**Restaurant platform data**:
 - `restaurants` (ID type: **INTEGER**, not UUID)
 - `courses` (menu categories)
 - `dishes` (menu items)
@@ -99,11 +108,6 @@ const supabase = createServerClient<Database>(
 - `orders`
 - `users` (customers)
 - All other restaurant ordering platform tables
-
-**In `public` schema** (admin only):
-- `admin_users`
-- `admin_roles`
-- `admin_user_restaurants`
 
 ### Restaurant ID Data Type
 **CRITICAL**: Restaurant IDs are **INTEGERS**, not UUIDs.
