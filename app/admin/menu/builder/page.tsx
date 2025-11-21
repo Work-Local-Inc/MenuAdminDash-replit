@@ -57,13 +57,37 @@ import {
 import { ModifierGroupEditor } from '@/components/admin/menu-builder/ModifierGroupEditor'
 import { InlinePriceEditor } from '@/components/admin/menu-builder/InlinePriceEditor'
 import RestaurantMenu from '@/components/customer/restaurant-menu'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useToast } from '@/hooks/use-toast'
+import { useEffect } from 'react'
 
 export default function MenuBuilderPage() {
   const router = useRouter()
   const { toast } = useToast()
-  const [selectedRestaurantId, setSelectedRestaurantId] = useState<string>('')
+  const searchParams = useSearchParams()
+  
+  // Initialize from URL search params if available
+  const initialRestaurantId = searchParams.get('restaurant') || ''
+  const [selectedRestaurantId, setSelectedRestaurantId] = useState<string>(initialRestaurantId)
+  
+  // Update state when URL changes
+  useEffect(() => {
+    const urlRestaurantId = searchParams.get('restaurant') || ''
+    if (urlRestaurantId !== selectedRestaurantId) {
+      setSelectedRestaurantId(urlRestaurantId)
+    }
+  }, [searchParams])
+  
+  // Handler to update both state and URL
+  const handleRestaurantChange = (restaurantId: string) => {
+    setSelectedRestaurantId(restaurantId)
+    if (restaurantId) {
+      router.push(`/admin/menu/builder?restaurant=${restaurantId}`)
+    } else {
+      router.push('/admin/menu/builder')
+    }
+  }
+  
   const [searchQuery, setSearchQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -531,7 +555,7 @@ export default function MenuBuilderPage() {
           {loadingRestaurants ? (
             <Skeleton className="h-10 w-full" />
           ) : (
-            <Select value={selectedRestaurantId} onValueChange={setSelectedRestaurantId}>
+            <Select value={selectedRestaurantId} onValueChange={handleRestaurantChange}>
               <SelectTrigger data-testid="select-restaurant">
                 <SelectValue placeholder="Select a restaurant" />
               </SelectTrigger>
