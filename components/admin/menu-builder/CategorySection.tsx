@@ -40,7 +40,6 @@ interface CategorySectionProps {
   onDeleteDish: (dishId: number) => void
   onEditDishPrice: (dishId: number) => void
   onToggleDishActive: (dishId: number) => void
-  onToggleDishFeatured: (dishId: number) => void
   onViewDishModifiers: (dishId: number) => void
   onBreakDishInheritance: (dishId: number) => void
   onAddTemplate: () => void
@@ -61,7 +60,6 @@ export function CategorySection({
   onDeleteDish,
   onEditDishPrice,
   onToggleDishActive,
-  onToggleDishFeatured,
   onViewDishModifiers,
   onBreakDishInheritance,
   onAddTemplate,
@@ -234,7 +232,6 @@ export function CategorySection({
                                   onDelete={() => onDeleteDish(dish.id)}
                                   onEditPrice={() => onEditDishPrice(dish.id)}
                                   onToggleActive={() => onToggleDishActive(dish.id)}
-                                  onToggleFeatured={() => onToggleDishFeatured(dish.id)}
                                   onViewModifiers={() => onViewDishModifiers(dish.id)}
                                   onBreakInheritance={() => onBreakDishInheritance(dish.id)}
                                   dragHandleProps={provided.dragHandleProps}

@@ -35,7 +35,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Plus, Search, X, Eye, EyeOff, Pencil, Trash2, CheckCircle, XCircle } from 'lucide-react'
 import { ImageUpload } from '@/components/ui/image-upload'
-import { DropResult } from '@hello-pangea/dnd'
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
 import { useRestaurants } from '@/lib/hooks/use-restaurants'
 import {
   useMenuBuilder,
@@ -44,6 +44,9 @@ import {
   CategoryModifierTemplate,
   useBreakInheritance,
   useReorderMenuItems,
+  useCreateCategoryTemplate,
+  useUpdateCategoryTemplate,
+  useDeleteCategoryTemplate,
 } from '@/lib/hooks/use-menu-builder'
 import {
   useCreateCourse,
@@ -55,9 +58,10 @@ import {
   useReorderCourses,
 } from '@/lib/hooks/use-menu'
 import { ModifierGroupEditor } from '@/components/admin/menu-builder/ModifierGroupEditor'
+import { ModifierTemplateSection } from '@/components/admin/menu-builder/ModifierTemplateSection'
+import { CategorySection } from '@/components/admin/menu-builder/CategorySection'
 import { InlinePriceEditor } from '@/components/admin/menu-builder/InlinePriceEditor'
 import { DishModifierPanel } from '@/components/admin/menu-builder/DishModifierPanel'
-import RestaurantMenu from '@/components/customer/restaurant-menu'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useToast } from '@/hooks/use-toast'
 import { useEffect } from 'react'
@@ -116,6 +120,9 @@ export default function MenuBuilderPage() {
   const [dishModifiersDialogOpen, setDishModifiersDialogOpen] = useState(false)
   const [editingDishModifiers, setEditingDishModifiers] = useState<MenuBuilderDish | null>(null)
 
+  // Track which categories have modifier section expanded
+  const [expandedCategoryModifiers, setExpandedCategoryModifiers] = useState<Set<number>>(new Set())
+
   // Hooks
   const { data: restaurants = [], isLoading: loadingRestaurants } = useRestaurants()
   
@@ -134,6 +141,11 @@ export default function MenuBuilderPage() {
   const deleteDish = useDeleteDish()
 
   const breakInheritance = useBreakInheritance()
+
+  // Template CRUD hooks
+  const createTemplate = useCreateCategoryTemplate()
+  const updateTemplate = useUpdateCategoryTemplate()
+  const deleteTemplate = useDeleteCategoryTemplate()
 
   // Category Form
   const [categoryForm, setCategoryForm] = useState({
@@ -417,14 +429,21 @@ export default function MenuBuilderPage() {
     setTemplateDialogOpen(true)
   }
 
-  const handleEditTemplate = (categoryId: number, templateId: number) => {
-    const category = categories.find(c => c.id === categoryId)
-    const template = category?.templates.find(t => t.id === templateId)
-    if (template) {
-      setTemplateCourseId(categoryId)
-      setEditingTemplate(template)
-      setTemplateDialogOpen(true)
+  const handleEditTemplate = (template: CategoryModifierTemplate) => {
+    setTemplateCourseId(template.course_id)
+    setEditingTemplate(template)
+    setTemplateDialogOpen(true)
+  }
+
+  // Toggle category modifier section expansion
+  const toggleCategoryModifiers = (categoryId: number) => {
+    const newExpanded = new Set(expandedCategoryModifiers)
+    if (newExpanded.has(categoryId)) {
+      newExpanded.delete(categoryId)
+    } else {
+      newExpanded.add(categoryId)
     }
+    setExpandedCategoryModifiers(newExpanded)
   }
 
   // ISSUE 2 FIX: Category drag and drop handlers
@@ -718,59 +737,64 @@ export default function MenuBuilderPage() {
               </Button>
             </CardContent>
           </Card>
-        ) : selectedRestaurant ? (
-          <RestaurantMenu
-            restaurant={selectedRestaurant}
-            courses={filteredCategories.map(category => ({
-              id: category.id,
-              name: category.name,
-              description: category.description,
-              is_active: category.is_active,
-              display_order: category.display_order,
-              dishes: category.dishes.map(dish => ({
-                id: dish.id,
-                name: dish.name,
-                description: dish.description,
-                price: dish.price,
-                image_url: dish.image_url,
-                is_active: dish.is_active,
-                course_id: dish.course_id,
-                display_order: dish.display_order,
-                modifier_groups: dish.modifier_groups,
-              })),
-            }))}
-            hasMenu={filteredCategories.length > 0}
-            editorMode={true}
-            onEditCategory={(categoryId) => {
-              const category = categories.find(c => c.id === categoryId)
-              if (category) handleEditCategory(category)
-            }}
-            onDeleteCategory={(categoryId) => setDeletingCategoryId(categoryId)}
-            onToggleCategoryActive={(categoryId) => {
-              const category = categories.find(c => c.id === categoryId)
-              if (category) handleToggleCategoryActive(category)
-            }}
-            onAddDish={handleAddDish}
-            onEditDish={(dishId) => {
-              const dish = categories.flatMap(c => c.dishes).find(d => d.id === dishId)
-              if (dish) handleEditDish(dish)
-            }}
-            onDeleteDish={setDeletingDishId}
-            onToggleDishActive={(dishId) => {
-              const dish = categories.flatMap(c => c.dishes).find(d => d.id === dishId)
-              if (dish) handleToggleDishActive(dish)
-            }}
-            onReorderCategories={(categoryIds) => {
-              reorderCourses.mutateAsync({
-                restaurant_id: parseInt(selectedRestaurantId),
-                course_ids: categoryIds,
-              })
-            }}
-            onReorderDishes={(categoryId, dishIds) => handleDishReorder(categoryId, dishIds)}
-            selectedDishIds={selectedDishIds}
-            onToggleSelectDish={toggleSelectDish}
-          />
-        ) : null
+        ) : (
+          <DragDropContext onDragEnd={handleCategoryDragEnd}>
+            <Droppable droppableId="categories">
+              {(provided) => (
+                <div
+                  {...provided.droppableProps}
+                  ref={provided.innerRef}
+                  className="space-y-4"
+                >
+                  {filteredCategories.map((category, index) => (
+                    <Draggable
+                      key={category.id}
+                      draggableId={`category-${category.id}`}
+                      index={index}
+                    >
+                      {(provided) => (
+                        <div ref={provided.innerRef} {...provided.draggableProps}>
+                          <CategorySection
+                            category={category}
+                            selectedDishIds={selectedDishIds}
+                            onToggleSelectDish={toggleSelectDish}
+                            onEditCategory={() => handleEditCategory(category)}
+                            onDeleteCategory={() => setDeletingCategoryId(category.id)}
+                            onToggleCategoryActive={() => handleToggleCategoryActive(category)}
+                            onAddDish={() => handleAddDish(category.id)}
+                            onEditDish={(dishId) => {
+                              const dish = category.dishes.find(d => d.id === dishId)
+                              if (dish) handleEditDish(dish)
+                            }}
+                            onDeleteDish={setDeletingDishId}
+                            onEditDishPrice={(dishId) => {
+                              const dish = category.dishes.find(d => d.id === dishId)
+                              if (dish) handleEditDishPrice(dish)
+                            }}
+                            onToggleDishActive={(dishId) => {
+                              const dish = category.dishes.find(d => d.id === dishId)
+                              if (dish) handleToggleDishActive(dish)
+                            }}
+                            onViewDishModifiers={handleViewDishModifiers}
+                            onBreakDishInheritance={handleBreakDishInheritance}
+                            onAddTemplate={() => handleAddTemplate(category.id)}
+                            onEditTemplate={(templateId) => {
+                              const template = category.templates.find(t => t.id === templateId)
+                              if (template) handleEditTemplate(template)
+                            }}
+                            onDishReorder={(dishIds) => handleDishReorder(category.id, dishIds)}
+                            dragHandleProps={provided.dragHandleProps}
+                          />
+                        </div>
+                      )}
+                    </Draggable>
+                  ))}
+                  {provided.placeholder}
+                </div>
+              )}
+            </Droppable>
+          </DragDropContext>
+        )
       )}
 
       {/* Category Dialog */}
