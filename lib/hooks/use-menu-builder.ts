@@ -113,6 +113,19 @@ export interface ApplyTemplateData {
 }
 
 // ============================================
+// TYPE ALIASES - UI TERMINOLOGY MAPPING
+// ============================================
+// These aliases map backend "template" terminology to UI "modifier group" terminology
+// Backend uses: course_modifier_templates, course_template_modifiers
+// UI displays: "Modifier Groups", "Modifier Group Items"
+
+export type CategoryModifierGroup = CategoryModifierTemplate
+export type ModifierGroupItem = TemplateModifier
+export type CreateModifierGroupData = CreateTemplateData
+export type UpdateModifierGroupData = UpdateTemplateData
+export type ApplyModifierGroupData = ApplyTemplateData
+
+// ============================================
 // HOOKS
 // ============================================
 
