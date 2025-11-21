@@ -163,9 +163,12 @@ export function useCreateCategoryTemplate() {
       queryClient.invalidateQueries({ 
         queryKey: ['/api/menu/builder'] 
       })
+      queryClient.invalidateQueries({
+        queryKey: ['/api/menu/modifier-groups']
+      })
       toast({
         title: "Success",
-        description: "Modifier template created successfully",
+        description: "Modifier group created successfully",
       })
     },
     onError: (error: Error) => {
@@ -199,9 +202,12 @@ export function useUpdateCategoryTemplate() {
       queryClient.invalidateQueries({ 
         queryKey: ['/api/menu/builder'] 
       })
+      queryClient.invalidateQueries({
+        queryKey: ['/api/menu/modifier-groups']
+      })
       toast({
         title: "Success",
-        description: "Modifier template updated successfully",
+        description: "Modifier group updated successfully",
       })
     },
     onError: (error: Error) => {
@@ -233,9 +239,12 @@ export function useDeleteCategoryTemplate() {
       queryClient.invalidateQueries({ 
         queryKey: ['/api/menu/builder'] 
       })
+      queryClient.invalidateQueries({
+        queryKey: ['/api/menu/modifier-groups']
+      })
       toast({
         title: "Success",
-        description: "Modifier template deleted successfully",
+        description: "Modifier group deleted successfully",
       })
     },
     onError: (error: Error) => {
@@ -245,6 +254,30 @@ export function useDeleteCategoryTemplate() {
         description: error.message,
       })
     },
+  })
+}
+
+export interface RestaurantModifierGroup {
+  id: number
+  course_id: number
+  course_name: string
+  name: string
+  is_required: boolean
+  min_selections: number
+  max_selections: number
+  display_order: number
+  modifiers: TemplateModifier[]
+}
+
+export function useRestaurantModifierGroups(restaurantId: number | string | null) {
+  return useQuery<RestaurantModifierGroup[]>({
+    queryKey: ['/api/menu/modifier-groups', { restaurant_id: restaurantId }],
+    queryFn: async () => {
+      const res = await fetch(`/api/menu/modifier-groups?restaurant_id=${restaurantId}`)
+      if (!res.ok) throw new Error('Failed to fetch modifier groups')
+      return res.json()
+    },
+    enabled: !!restaurantId && (typeof restaurantId === 'number' ? restaurantId > 0 : parseInt(restaurantId) > 0),
   })
 }
 

@@ -39,6 +39,7 @@ import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea
 import { useRestaurants } from '@/lib/hooks/use-restaurants'
 import {
   useMenuBuilder,
+  useRestaurantModifierGroups,
   MenuBuilderCategory,
   MenuBuilderDish,
   CategoryModifierTemplate,
