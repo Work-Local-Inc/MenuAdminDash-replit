@@ -130,13 +130,13 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Fetch modifier groups with left join (returns groups even if they have no modifiers)
-    // dishIds already declared above when querying prices
+    // Query modifier groups WITHOUT nested dish_modifiers (no FK relationship)
     let modifierGroups: any[] = []
-    let groupsError = null
+    let dishModifiers: any[] = []
     
     if (dishIds.length > 0) {
-      const result = await (supabase
+      // Query modifier groups
+      const { data: groupsData, error: groupsError } = await supabase
         .schema('menuca_v3')
         .from('dish_modifier_groups' as any)
         .select(`
@@ -148,26 +148,42 @@ export async function GET(request: NextRequest) {
           min_selections,
           max_selections,
           display_order,
-          is_custom,
-          dish_modifiers (
+          is_custom
+        `)
+        .in('dish_id', dishIds)
+        .is('deleted_at', null)
+        .order('display_order', { ascending: true })
+      
+      if (groupsError) throw groupsError
+      modifierGroups = groupsData || []
+      
+      // Query dish_modifiers separately and join in application code
+      if (modifierGroups.length > 0) {
+        const modifierGroupIds = modifierGroups.map((g: any) => g.id)
+        const { data: modifiersData, error: modifiersError } = await supabase
+          .schema('menuca_v3')
+          .from('dish_modifiers' as any)
+          .select(`
             id,
+            modifier_group_id,
             name,
             price,
             is_included,
             is_default,
             display_order,
             deleted_at
-          )
-        `)
-        .in('dish_id', dishIds)
-        .is('deleted_at', null)
-        .order('display_order', { ascending: true }) as any)
-      
-      modifierGroups = result.data || []
-      groupsError = result.error
+          `)
+          .in('modifier_group_id', modifierGroupIds)
+          .order('display_order', { ascending: true })
+        
+        if (modifiersError) {
+          console.log('[MENU BUILDER] Modifiers query error:', modifiersError)
+        } else {
+          dishModifiers = modifiersData || []
+          console.log('[MENU BUILDER] Modifiers loaded:', dishModifiers.length)
+        }
+      }
     }
-
-    if (groupsError) throw groupsError
 
     // Filter soft-deleted modifiers in application layer after fetching with left joins
     const categoriesWithData = (categories as any)?.map((category: any) => ({
@@ -193,8 +209,10 @@ export async function GET(request: NextRequest) {
             ?.filter((g: any) => g.dish_id === dish.id)
             .map((g: any) => ({
               ...g,
-              // Filter out soft-deleted dish modifiers
-              dish_modifiers: g.dish_modifiers?.filter((m: any) => !m.deleted_at) || []
+              // Join dish_modifiers from separate query and filter soft-deleted
+              dish_modifiers: dishModifiers
+                .filter((m: any) => m.modifier_group_id === g.id && !m.deleted_at)
+                .sort((a: any, b: any) => a.display_order - b.display_order)
             })) || []
         }
       }) || []
