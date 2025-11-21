@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
 
     if (templatesError) throw templatesError
 
-    // Query dishes with prices from separate dish_prices table
+    // Query dishes WITHOUT nested prices (FK relationship not in Supabase schema cache)
     const { data: dishes, error: dishesError } = await supabase
       .schema('menuca_v3')
       .from('dishes')
@@ -91,13 +91,7 @@ export async function GET(request: NextRequest) {
         image_url,
         is_active,
         is_featured,
-        display_order,
-        dish_prices (
-          id,
-          price,
-          size_variant,
-          display_order
-        )
+        display_order
       `)
       .eq('restaurant_id', parseInt(restaurantId))
       .is('deleted_at', null)
@@ -111,9 +105,34 @@ export async function GET(request: NextRequest) {
 
     if (dishesError) throw dishesError
 
-    // Fetch modifier groups with left join (returns groups even if they have no modifiers)
-    // Guard against empty dish list to prevent Supabase .in() error
+    // Query dish_prices separately and join in application code
     const dishIds = (dishes as any)?.map((d: any) => d.id) || []
+    let dishPrices: any[] = []
+    
+    if (dishIds.length > 0) {
+      const { data: pricesData, error: pricesError } = await supabase
+        .schema('menuca_v3')
+        .from('dish_prices')
+        .select(`
+          id,
+          dish_id,
+          price,
+          size_variant,
+          display_order
+        `)
+        .in('dish_id', dishIds)
+        .order('display_order', { ascending: true })
+      
+      if (pricesError) {
+        console.log('[MENU BUILDER] Prices query error:', pricesError)
+      } else {
+        dishPrices = pricesData || []
+        console.log('[MENU BUILDER] Prices loaded:', dishPrices.length)
+      }
+    }
+
+    // Fetch modifier groups with left join (returns groups even if they have no modifiers)
+    // dishIds already declared above when querying prices
     let modifierGroups: any[] = []
     let groupsError = null
     
@@ -162,12 +181,14 @@ export async function GET(request: NextRequest) {
           course_template_modifiers: t.course_template_modifiers?.filter((m: any) => !m.deleted_at) || []
         })) || [],
       dishes: (dishes as any)?.filter((d: any) => d.course_id === category.id).map((dish: any) => {
-        // Sort dish_prices by display_order and get first price as default
-        const sortedPrices = (dish.dish_prices || []).sort((a: any, b: any) => a.display_order - b.display_order)
+        // Join dish_prices from separate query
+        const dishPricesForDish = dishPrices.filter((p: any) => p.dish_id === dish.id)
+        const sortedPrices = dishPricesForDish.sort((a: any, b: any) => a.display_order - b.display_order)
         const defaultPrice = sortedPrices[0]?.price || 0
         
         return {
           ...dish,
+          dish_prices: dishPricesForDish, // Add prices array from separate query
           price: defaultPrice, // Computed price from first variant
           modifier_groups: (modifierGroups as any)
             ?.filter((g: any) => g.dish_id === dish.id)
