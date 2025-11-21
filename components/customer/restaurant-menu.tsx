@@ -25,13 +25,6 @@ export default function RestaurantMenu({ restaurant, courses, hasMenu = true }: 
   const location = restaurant.restaurant_locations?.[0];
   const serviceConfig = restaurant.restaurant_service_configs?.[0];
   
-  // Button style based on branding settings (explicit handling for both cases)
-  const buttonClassName = restaurant.button_style === 'square' 
-    ? 'rounded-none' 
-    : restaurant.button_style === 'rounded' 
-    ? 'rounded-full' 
-    : ''; // Default to ShadCN styling if not set
-  
   // Initialize cart with restaurant details
   useEffect(() => {
     // Use restaurant_delivery_zones (menuca_v3 schema) to match server-side calculation
@@ -58,32 +51,22 @@ export default function RestaurantMenu({ restaurant, courses, hasMenu = true }: 
     <div className="min-h-screen bg-background">
       {/* Banner Image */}
       {restaurant.banner_image_url && (
-        <div className="w-full h-48 md:h-64 lg:h-80 relative overflow-hidden">
+        <div className="w-full h-32 bg-muted relative overflow-hidden">
           <img
             src={restaurant.banner_image_url}
             alt={`${restaurant.name} banner`}
             className="w-full h-full object-cover"
-            data-testid="img-restaurant-banner"
           />
         </div>
       )}
-
+      
       {/* Restaurant Header */}
       <div className="border-b bg-card">
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
-                {restaurant.logo_url ? (
-                  <img
-                    src={restaurant.logo_url}
-                    alt={`${restaurant.name} logo`}
-                    className="w-12 h-12 md:w-16 md:h-16 object-contain"
-                    data-testid="img-restaurant-logo"
-                  />
-                ) : (
-                  <Store className="w-8 h-8 text-primary" />
-                )}
+                <Store className="w-8 h-8 text-primary" />
                 <h1 className="text-3xl font-bold" data-testid="text-restaurant-name">
                   {restaurant.name}
                 </h1>
@@ -146,7 +129,6 @@ export default function RestaurantMenu({ restaurant, courses, hasMenu = true }: 
                   variant="ghost"
                   onClick={() => scrollToCategory(course.id.toString())}
                   size="sm"
-                  className={buttonClassName}
                   data-testid={`button-category-${course.id}`}
                 >
                   {course.name}
@@ -172,24 +154,14 @@ export default function RestaurantMenu({ restaurant, courses, hasMenu = true }: 
               const courseDishes = course.dishes || [];
               if (courseDishes.length === 0) return null;
               
-              const isListView = restaurant.menu_layout === 'list';
-              const layoutClassName = isListView 
-                ? 'flex flex-col gap-4' 
-                : 'grid grid-cols-1 md:grid-cols-2 gap-4';
-
               return (
                 <div key={course.id} id={`category-${course.id}`} className="scroll-mt-24">
                   <h2 className="text-2xl font-bold mb-6 border-b pb-2" data-testid={`heading-category-${course.id}`}>
                     {course.name}
                   </h2>
-                  <div className={layoutClassName}>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {courseDishes.map((dish: any) => (
-                      <DishCard 
-                        key={dish.id} 
-                        dish={dish} 
-                        restaurantId={restaurant.id}
-                        buttonStyle={restaurant.button_style}
-                      />
+                      <DishCard key={dish.id} dish={dish} restaurantId={restaurant.id} />
                     ))}
                   </div>
                 </div>
@@ -211,7 +183,7 @@ export default function RestaurantMenu({ restaurant, courses, hasMenu = true }: 
           <Button
             size="lg"
             onClick={() => setIsCartOpen(true)}
-            className={`shadow-lg px-6 ${buttonClassName}`}
+            className="rounded-full shadow-lg px-6"
             data-testid="button-open-cart"
           >
             <ShoppingCart className="w-5 h-5 mr-2" />
@@ -225,7 +197,6 @@ export default function RestaurantMenu({ restaurant, courses, hasMenu = true }: 
         isOpen={isCartOpen}
         onClose={() => setIsCartOpen(false)}
         restaurant={restaurant}
-        buttonStyle={restaurant.button_style}
       />
     </div>
   );

@@ -476,12 +476,19 @@ menu_layout        VARCHAR(20) DEFAULT 'grid' CHECK (menu_layout IN ('grid', 'li
 
 ### Files Involved
 - `components/restaurant/tabs/branding.tsx` - Admin UI with live preview
+- `components/customer/restaurant-menu.tsx` - Customer menu page with banner rendering
 - `lib/validations/restaurant.ts` - Validation schema for branding fields
 - `app/api/storage/upload/route.ts` - File upload handler (supports both buckets)
 - `app/api/restaurants/[id]/route.ts` - PATCH endpoint for updates
 - `lib/utils.ts` - `hexToHSL()` conversion function
 - `app/(public)/r/[slug]/page.tsx` - Injects CSS variables for customer view
 - `db/migrations/add_advanced_branding_columns.sql` - Migration for new columns
+
+### Banner Image Specifications
+- **Height:** `h-32` (128px) on customer menu page
+- **Preview Height:** `h-32` (128px) in admin branding preview
+- **Styling:** `object-cover` with `overflow-hidden` for proper image scaling
+- **Recommended Size:** 1920x400px (will be cropped to fit 128px height)
 
 ### Storage Buckets
 - `restaurant-logos` - Logo images (512x512px recommended)
@@ -605,10 +612,24 @@ git log origin/main..HEAD --oneline
 
 ---
 
+## 🔄 Recent Fixes (Nov 21, 2025)
+
+### Banner Image Implementation
+**Problem:** Banner images were stored in database but not displayed on customer menu page  
+**Solution:** Added banner image rendering to customer menu page  
+**Details:**
+- Banner displays at top of menu page when `banner_image_url` is set
+- Height set to `h-32` (128px) - reduced from original preview height
+- Uses `object-cover` for proper image scaling
+- Updated admin preview to match customer-facing height
+**Commit:** `7c02d57`
+
+---
+
 **Remember:** This is a REAL production app with LIVE data. Take time to understand before changing. When in doubt, ASK or CHECK the schema first!
 
 ---
 
-**Last Updated By:** Cursor Agent  
-**Next Update:** After Replit finishes modifier validation fix
+**Last Updated By:** Cursor Agent (CSS Agent)  
+**Next Update:** After next feature implementation
 
