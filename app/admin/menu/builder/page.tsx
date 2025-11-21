@@ -59,9 +59,9 @@ import {
 } from '@/lib/hooks/use-menu'
 import { ModifierGroupEditor } from '@/components/admin/menu-builder/ModifierGroupEditor'
 import { ModifierTemplateSection } from '@/components/admin/menu-builder/ModifierTemplateSection'
-import { CategorySection } from '@/components/admin/menu-builder/CategorySection'
 import { InlinePriceEditor } from '@/components/admin/menu-builder/InlinePriceEditor'
 import { DishModifierPanel } from '@/components/admin/menu-builder/DishModifierPanel'
+import RestaurantMenu from '@/components/customer/restaurant-menu'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useToast } from '@/hooks/use-toast'
 import { useEffect } from 'react'
@@ -737,64 +737,59 @@ export default function MenuBuilderPage() {
               </Button>
             </CardContent>
           </Card>
-        ) : (
-          <DragDropContext onDragEnd={handleCategoryDragEnd}>
-            <Droppable droppableId="categories">
-              {(provided) => (
-                <div
-                  {...provided.droppableProps}
-                  ref={provided.innerRef}
-                  className="space-y-4"
-                >
-                  {filteredCategories.map((category, index) => (
-                    <Draggable
-                      key={category.id}
-                      draggableId={`category-${category.id}`}
-                      index={index}
-                    >
-                      {(provided) => (
-                        <div ref={provided.innerRef} {...provided.draggableProps}>
-                          <CategorySection
-                            category={category}
-                            selectedDishIds={selectedDishIds}
-                            onToggleSelectDish={toggleSelectDish}
-                            onEditCategory={() => handleEditCategory(category)}
-                            onDeleteCategory={() => setDeletingCategoryId(category.id)}
-                            onToggleCategoryActive={() => handleToggleCategoryActive(category)}
-                            onAddDish={() => handleAddDish(category.id)}
-                            onEditDish={(dishId) => {
-                              const dish = category.dishes.find(d => d.id === dishId)
-                              if (dish) handleEditDish(dish)
-                            }}
-                            onDeleteDish={setDeletingDishId}
-                            onEditDishPrice={(dishId) => {
-                              const dish = category.dishes.find(d => d.id === dishId)
-                              if (dish) handleEditDishPrice(dish)
-                            }}
-                            onToggleDishActive={(dishId) => {
-                              const dish = category.dishes.find(d => d.id === dishId)
-                              if (dish) handleToggleDishActive(dish)
-                            }}
-                            onViewDishModifiers={handleViewDishModifiers}
-                            onBreakDishInheritance={handleBreakDishInheritance}
-                            onAddTemplate={() => handleAddTemplate(category.id)}
-                            onEditTemplate={(templateId) => {
-                              const template = category.templates.find(t => t.id === templateId)
-                              if (template) handleEditTemplate(template)
-                            }}
-                            onDishReorder={(dishIds) => handleDishReorder(category.id, dishIds)}
-                            dragHandleProps={provided.dragHandleProps}
-                          />
-                        </div>
-                      )}
-                    </Draggable>
-                  ))}
-                  {provided.placeholder}
-                </div>
-              )}
-            </Droppable>
-          </DragDropContext>
-        )
+        ) : selectedRestaurant ? (
+          <RestaurantMenu
+            restaurant={selectedRestaurant}
+            courses={filteredCategories.map(category => ({
+              id: category.id,
+              name: category.name,
+              description: category.description,
+              is_active: category.is_active,
+              display_order: category.display_order,
+              dishes: category.dishes.map(dish => ({
+                id: dish.id,
+                name: dish.name,
+                description: dish.description,
+                price: dish.price,
+                image_url: dish.image_url,
+                is_active: dish.is_active,
+                course_id: dish.course_id,
+                display_order: dish.display_order,
+                modifier_groups: dish.modifier_groups,
+              })),
+            }))}
+            hasMenu={filteredCategories.length > 0}
+            editorMode={true}
+            onEditCategory={(categoryId) => {
+              const category = categories.find(c => c.id === categoryId)
+              if (category) handleEditCategory(category)
+            }}
+            onDeleteCategory={(categoryId) => setDeletingCategoryId(categoryId)}
+            onToggleCategoryActive={(categoryId) => {
+              const category = categories.find(c => c.id === categoryId)
+              if (category) handleToggleCategoryActive(category)
+            }}
+            onAddDish={handleAddDish}
+            onEditDish={(dishId) => {
+              const dish = categories.flatMap(c => c.dishes).find(d => d.id === dishId)
+              if (dish) handleEditDish(dish)
+            }}
+            onDeleteDish={setDeletingDishId}
+            onToggleDishActive={(dishId) => {
+              const dish = categories.flatMap(c => c.dishes).find(d => d.id === dishId)
+              if (dish) handleToggleDishActive(dish)
+            }}
+            onReorderCategories={(categoryIds) => {
+              reorderCourses.mutateAsync({
+                restaurant_id: parseInt(selectedRestaurantId),
+                course_ids: categoryIds,
+              })
+            }}
+            onReorderDishes={(categoryId, dishIds) => handleDishReorder(categoryId, dishIds)}
+            selectedDishIds={selectedDishIds}
+            onToggleSelectDish={toggleSelectDish}
+          />
+        ) : null
       )}
 
       {/* Category Dialog */}
