@@ -391,7 +391,7 @@ export default function MenuBuilderPage() {
           Menu Builder
         </h1>
         <p className="text-muted-foreground">
-          Manage your complete menu in one place - categories, dishes, and modifier templates
+          Manage your complete menu in one place - categories, dishes, and modifier groups
         </p>
       </div>
 

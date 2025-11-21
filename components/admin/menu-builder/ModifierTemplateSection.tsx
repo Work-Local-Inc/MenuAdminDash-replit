@@ -98,7 +98,7 @@ export function ModifierTemplateSection({
     <>
       <div className="pl-8 space-y-2">
         <p className="text-sm font-medium text-muted-foreground mb-2">
-          Modifier Templates ({templates.length})
+          Modifier Groups ({templates.length})
         </p>
         {templates.map((template) => (
           <Card key={template.id} className="bg-muted/50">
@@ -178,7 +178,7 @@ export function ModifierTemplateSection({
                       data-testid={`button-edit-template-${template.id}`}
                     >
                       <Pencil className="w-4 h-4 mr-2" />
-                      Edit Template
+                      Edit Modifier Group
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     {selectedDishIds.size > 0 && (
@@ -204,7 +204,7 @@ export function ModifierTemplateSection({
                       data-testid={`button-delete-template-${template.id}`}
                     >
                       <Trash2 className="w-4 h-4 mr-2" />
-                      Delete Template
+                      Delete Modifier Group
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -218,9 +218,9 @@ export function ModifierTemplateSection({
       <AlertDialog open={!!deletingTemplate} onOpenChange={(open) => !open && setDeletingTemplate(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Template?</AlertDialogTitle>
+            <AlertDialogTitle>Delete Modifier Group?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove the template but will NOT affect dishes that are already using it.
+              This will remove the modifier group but will NOT affect dishes that are already using it.
               Dishes will keep their current modifiers.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -231,7 +231,7 @@ export function ModifierTemplateSection({
               className="bg-destructive text-destructive-foreground hover-elevate"
               data-testid="button-confirm-delete"
             >
-              Delete Template
+              Delete Modifier Group
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -241,9 +241,9 @@ export function ModifierTemplateSection({
       <AlertDialog open={!!applyingTemplateId} onOpenChange={(open) => !open && setApplyingTemplateId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Apply Modifier Template?</AlertDialogTitle>
+            <AlertDialogTitle>Apply Modifier Group?</AlertDialogTitle>
             <AlertDialogDescription>
-              Choose how to apply this template:
+              Choose how to apply this modifier group:
             </AlertDialogDescription>
           </AlertDialogHeader>
           {/* ISSUE 5 FIX: Show loading state during bulk operations */}

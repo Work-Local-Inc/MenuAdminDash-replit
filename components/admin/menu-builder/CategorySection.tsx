@@ -113,7 +113,7 @@ export function CategorySection({
                 )}
               </div>
               <p className="text-sm text-muted-foreground">
-                {category.dishes.length} dish{category.dishes.length !== 1 ? 'es' : ''} • {category.templates.length} template{category.templates.length !== 1 ? 's' : ''}
+                {category.dishes.length} dish{category.dishes.length !== 1 ? 'es' : ''} • {category.templates.length} modifier group{category.templates.length !== 1 ? 's' : ''}
               </p>
             </div>
 
@@ -134,7 +134,7 @@ export function CategorySection({
               data-testid={`button-add-template-${category.id}`}
             >
               <Plus className="w-4 h-4 mr-2" />
-              Add Template
+              Add Modifier Group
             </Button>
 
             <DropdownMenu>
@@ -180,7 +180,7 @@ export function CategorySection({
 
           <CollapsibleContent className="mt-4">
             <CardContent className="p-0">
-              {/* Modifier Templates */}
+              {/* Modifier Groups */}
               {category.templates.length > 0 && (
                 <div className="mb-4">
                   <ModifierTemplateSection

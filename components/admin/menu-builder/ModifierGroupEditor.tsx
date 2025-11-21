@@ -117,17 +117,17 @@ export function ModifierGroupEditor({ courseId, template, open, onOpenChange }: 
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="dialog-modifier-group-editor">
         <DialogHeader>
           <DialogTitle>
-            {template ? 'Edit' : 'Create'} Modifier Template
+            {template ? 'Edit' : 'Create'} Modifier Group
           </DialogTitle>
           <DialogDescription>
-            Create a reusable modifier template for this category
+            Create a reusable modifier group for this category
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Template Name */}
+          {/* Modifier Group Name */}
           <div>
-            <Label>Template Name</Label>
+            <Label>Modifier Group Name</Label>
             <Input
               placeholder="e.g., Pizza Toppings, Drink Sizes..."
               value={name}
@@ -280,7 +280,7 @@ export function ModifierGroupEditor({ courseId, template, open, onOpenChange }: 
             disabled={!isValid || createTemplate.isPending || updateTemplate.isPending}
             data-testid="button-save-template"
           >
-            {(createTemplate.isPending || updateTemplate.isPending) ? 'Saving...' : 'Save Template'}
+            {(createTemplate.isPending || updateTemplate.isPending) ? 'Saving...' : 'Save Modifier Group'}
           </Button>
         </DialogFooter>
       </DialogContent>
