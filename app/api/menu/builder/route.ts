@@ -202,6 +202,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(categoriesWithData)
   } catch (error: any) {
+    console.error('[MENU BUILDER ERROR]', error)
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode })
     }
