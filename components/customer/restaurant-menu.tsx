@@ -146,7 +146,15 @@ export default function RestaurantMenu({
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
-                <Store className="w-8 h-8 text-primary" />
+                {restaurant.logo_url ? (
+                  <img 
+                    src={restaurant.logo_url} 
+                    alt={restaurant.name} 
+                    className="w-12 h-12 object-contain rounded"
+                  />
+                ) : (
+                  <Store className="w-8 h-8 text-primary" />
+                )}
                 <h1 className="text-3xl font-bold" data-testid="text-restaurant-name">
                   {restaurant.name}
                 </h1>
