@@ -581,58 +581,63 @@ function EditorDishCard({
         </div>
       )}
 
-      {/* Dish Image */}
-      <div className="aspect-[4/3] bg-muted rounded-t-lg overflow-hidden">
-        {dish.image_url ? (
-          <img
-            src={dish.image_url}
-            alt={dish.name}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-            No image
-          </div>
-        )}
-      </div>
-
-      {/* Dish Info */}
+      {/* Dish Info with Left-Side Thumbnail */}
       <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-2 mb-2">
-          <h4 className="font-semibold text-base line-clamp-2 flex-1">
-            {dish.name}
-          </h4>
-          <span className="font-bold text-primary text-lg flex-shrink-0">
-            ${dish.price.toFixed(2)}
-          </span>
-        </div>
+        <div className="flex gap-3">
+          {/* Small Thumbnail Image - Left Side */}
+          <div className="w-20 h-20 bg-muted rounded-md overflow-hidden flex-shrink-0">
+            {dish.image_url ? (
+              <img
+                src={dish.image_url}
+                alt={dish.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
+                No image
+              </div>
+            )}
+          </div>
 
-        {dish.description && (
-          <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-            {dish.description}
-          </p>
-        )}
+          {/* Dish Content - Right Side */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2 mb-1">
+              <h4 className="font-semibold text-base line-clamp-2 flex-1">
+                {dish.name}
+              </h4>
+              <span className="font-bold text-primary text-base flex-shrink-0">
+                ${dish.price.toFixed(2)}
+              </span>
+            </div>
 
-        {/* Quick Actions */}
-        <div className="flex items-center gap-2 pt-3 border-t">
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={onToggleActive}
-            data-testid={`button-toggle-active-${dish.id}`}
-          >
-            {dish.is_active ? <Eye className="w-4 h-4 mr-2" /> : <EyeOff className="w-4 h-4 mr-2" />}
-            {dish.is_active ? 'Active' : 'Inactive'}
-          </Button>
-          
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={onToggleFeatured}
-            data-testid={`button-toggle-featured-${dish.id}`}
-          >
-            {dish.is_featured ? '⭐ Featured' : 'Feature'}
-          </Button>
+            {dish.description && (
+              <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+                {dish.description}
+              </p>
+            )}
+
+            {/* Quick Actions */}
+            <div className="flex items-center gap-2 pt-2 border-t">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={onToggleActive}
+                data-testid={`button-toggle-active-${dish.id}`}
+              >
+                {dish.is_active ? <Eye className="w-4 h-4 mr-1" /> : <EyeOff className="w-4 h-4 mr-1" />}
+                {dish.is_active ? 'Active' : 'Inactive'}
+              </Button>
+              
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={onToggleFeatured}
+                data-testid={`button-toggle-featured-${dish.id}`}
+              >
+                {dish.is_featured ? '⭐ Featured' : 'Feature'}
+              </Button>
+            </div>
+          </div>
         </div>
       </CardContent>
     </Card>
