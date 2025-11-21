@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 
 export interface CartModifier {
   id: number;
@@ -66,6 +66,18 @@ function calculateSubtotal(
   const modifierTotal = modifiers.reduce((sum, m) => sum + m.price, 0);
   return (sizePrice + modifierTotal) * quantity;
 }
+
+// SSR-safe storage: returns localStorage on client, no-op storage on server
+const getStorage = () => {
+  if (typeof window === 'undefined') {
+    return {
+      getItem: () => null,
+      setItem: () => {},
+      removeItem: () => {},
+    };
+  }
+  return localStorage;
+};
 
 export const useCartStore = create<CartStore>()(
   persist(
@@ -225,7 +237,8 @@ export const useCartStore = create<CartStore>()(
       },
     }),
     {
-      name: 'menu-ca-cart', // localStorage key
+      name: 'menu-ca-cart',
+      storage: createJSONStorage(() => getStorage()),
     }
   )
 );

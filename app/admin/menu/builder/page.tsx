@@ -33,8 +33,7 @@ import {
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
-import { Plus, Search, X, CheckSquare, Square } from 'lucide-react'
-import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
+import { Plus, Search, X, Eye, Pencil, Trash2, CheckCircle, XCircle, Star } from 'lucide-react'
 import { ImageUpload } from '@/components/ui/image-upload'
 import { useRestaurants } from '@/lib/hooks/use-restaurants'
 import {
@@ -54,11 +53,9 @@ import {
   useDeleteDish,
   useReorderCourses,
 } from '@/lib/hooks/use-menu'
-import { MenuBuilderLayout } from '@/components/admin/menu-builder/MenuBuilderLayout'
-import { CategorySection } from '@/components/admin/menu-builder/CategorySection'
 import { ModifierGroupEditor } from '@/components/admin/menu-builder/ModifierGroupEditor'
-import { LiveMenuPreview } from '@/components/admin/menu-builder/LiveMenuPreview'
 import { InlinePriceEditor } from '@/components/admin/menu-builder/InlinePriceEditor'
+import RestaurantMenu from '@/components/customer/restaurant-menu'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/hooks/use-toast'
 
@@ -69,7 +66,7 @@ export default function MenuBuilderPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [showPreview, setShowPreview] = useState(true)
+  const [editorMode, setEditorMode] = useState(true)
   const [selectedDishIds, setSelectedDishIds] = useState<Set<number>>(new Set())
 
   // Dialogs
@@ -439,6 +436,74 @@ export default function MenuBuilderPage() {
     })
   }
 
+  // ISSUE 3 FIX: Bulk operation handlers
+  const handleBulkMarkActive = async () => {
+    if (!selectedRestaurantId) return
+    const promises = Array.from(selectedDishIds).map(dishId =>
+      updateDish.mutateAsync({
+        id: dishId,
+        restaurant_id: parseInt(selectedRestaurantId),
+        data: { is_active: true },
+      })
+    )
+    await Promise.all(promises)
+    toast({
+      title: 'Success',
+      description: `${selectedDishIds.size} dishes marked as active`,
+    })
+    clearSelection()
+  }
+
+  const handleBulkMarkInactive = async () => {
+    if (!selectedRestaurantId) return
+    const promises = Array.from(selectedDishIds).map(dishId =>
+      updateDish.mutateAsync({
+        id: dishId,
+        restaurant_id: parseInt(selectedRestaurantId),
+        data: { is_active: false },
+      })
+    )
+    await Promise.all(promises)
+    toast({
+      title: 'Success',
+      description: `${selectedDishIds.size} dishes marked as inactive`,
+    })
+    clearSelection()
+  }
+
+  const handleBulkMarkFeatured = async () => {
+    if (!selectedRestaurantId) return
+    const promises = Array.from(selectedDishIds).map(dishId =>
+      updateDish.mutateAsync({
+        id: dishId,
+        restaurant_id: parseInt(selectedRestaurantId),
+        data: { is_featured: true },
+      })
+    )
+    await Promise.all(promises)
+    toast({
+      title: 'Success',
+      description: `${selectedDishIds.size} dishes marked as featured`,
+    })
+    clearSelection()
+  }
+
+  const handleBulkDelete = async () => {
+    if (!selectedRestaurantId) return
+    const promises = Array.from(selectedDishIds).map(dishId =>
+      deleteDish.mutateAsync({
+        id: dishId,
+        restaurant_id: parseInt(selectedRestaurantId),
+      })
+    )
+    await Promise.all(promises)
+    toast({
+      title: 'Success',
+      description: `${selectedDishIds.size} dishes deleted`,
+    })
+    clearSelection()
+  }
+
   return (
     <div className="space-y-6 pb-12">
       {/* Header */}
@@ -537,47 +602,93 @@ export default function MenuBuilderPage() {
                 <Plus className="w-4 h-4 mr-2" />
                 Add Category
               </Button>
-            </div>
 
-            {/* Selection Toolbar */}
-            {selectedDishIds.size > 0 && (
-              <div className="flex items-center gap-3 mt-4 p-3 bg-primary/10 rounded-lg border border-primary/20">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={toggleSelectAll}
-                  data-testid="button-toggle-select-all"
-                >
-                  {selectedDishIds.size === filteredCategories.flatMap(c => c.dishes).length ? (
-                    <>
-                      <Square className="w-4 h-4 mr-2" />
-                      Deselect All
-                    </>
-                  ) : (
-                    <>
-                      <CheckSquare className="w-4 h-4 mr-2" />
-                      Select All
-                    </>
-                  )}
-                </Button>
-                <span className="text-sm font-medium" data-testid="text-selection-count">
-                  {selectedDishIds.size} dish{selectedDishIds.size > 1 ? 'es' : ''} selected
-                </span>
+              {/* Edit/Preview Mode Toggle */}
+              <Button
+                onClick={() => setEditorMode(!editorMode)}
+                variant={editorMode ? "default" : "outline"}
+                data-testid="button-toggle-editor-mode"
+              >
+                {editorMode ? (
+                  <>
+                    <Eye className="w-4 h-4 mr-2" />
+                    Preview Mode
+                  </>
+                ) : (
+                  <>
+                    <Pencil className="w-4 h-4 mr-2" />
+                    Edit Mode
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ISSUE 3 FIX: Bulk Selection Toolbar */}
+      {selectedRestaurantId && selectedDishIds.size > 0 && editorMode && (
+        <Card className="bg-primary/10 border-primary">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <p className="font-medium" data-testid="text-selected-count">
+                  {selectedDishIds.size} {selectedDishIds.size === 1 ? 'dish' : 'dishes'} selected
+                </p>
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={clearSelection}
                   data-testid="button-clear-selection"
                 >
+                  <X className="w-4 h-4 mr-2" />
                   Clear Selection
                 </Button>
               </div>
-            )}
+              
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  onClick={handleBulkMarkActive}
+                  data-testid="button-bulk-mark-active"
+                >
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Mark Active
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleBulkMarkInactive}
+                  data-testid="button-bulk-mark-inactive"
+                >
+                  <XCircle className="w-4 h-4 mr-2" />
+                  Mark Inactive
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleBulkMarkFeatured}
+                  data-testid="button-bulk-mark-featured"
+                >
+                  <Star className="w-4 h-4 mr-2" />
+                  Mark Featured
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={handleBulkDelete}
+                  data-testid="button-bulk-delete"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete Selected
+                </Button>
+              </div>
+            </div>
           </CardContent>
         </Card>
       )}
 
-      {/* ISSUE 1 & 6 FIX: Only show builder when restaurant selected */}
+      {/* Only show menu when restaurant selected */}
       {!selectedRestaurantId && (
         <Card>
           <CardContent className="py-12 text-center">
@@ -589,113 +700,93 @@ export default function MenuBuilderPage() {
         </Card>
       )}
 
-      {/* Menu Builder Layout */}
+      {/* Unified Menu Builder View */}
       {selectedRestaurantId && parseInt(selectedRestaurantId) > 0 && (
-        <MenuBuilderLayout
-          showPreview={showPreview}
-          leftPanel={
-            loadingCategories ? (
-              <div className="space-y-4">
-                {Array(3).fill(0).map((_, i) => (
-                  <Card key={i}>
-                    <CardHeader>
-                      <Skeleton className="h-8 w-64" />
-                      <Skeleton className="h-4 w-48" />
-                    </CardHeader>
-                    <CardContent>
-                      <Skeleton className="h-32 w-full" />
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : filteredCategories.length === 0 ? (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <p className="text-lg font-medium mb-2">No categories yet</p>
-                  <p className="text-muted-foreground mb-4">
-                    Create your first category to start building your menu
-                  </p>
-                  <Button onClick={handleCreateCategory} data-testid="button-create-first-category">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create First Category
-                  </Button>
+        loadingCategories ? (
+          <div className="space-y-4">
+            {Array(3).fill(0).map((_, i) => (
+              <Card key={i}>
+                <CardHeader>
+                  <Skeleton className="h-8 w-64" />
+                  <Skeleton className="h-4 w-48" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-32 w-full" />
                 </CardContent>
               </Card>
-            ) : (
-              <DragDropContext onDragEnd={handleCategoryDragEnd}>
-                <Droppable droppableId="categories">
-                  {(provided) => (
-                    <div
-                      {...provided.droppableProps}
-                      ref={provided.innerRef}
-                      className="space-y-4"
-                    >
-                      {filteredCategories.map((category, index) => (
-                        <Draggable
-                          key={category.id}
-                          draggableId={`category-${category.id}`}
-                          index={index}
-                        >
-                          {(provided) => (
-                            <div
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                            >
-                              <CategorySection
-                                category={category}
-                                selectedDishIds={selectedDishIds}
-                                onToggleSelectDish={toggleSelectDish}
-                                onEditCategory={() => handleEditCategory(category)}
-                                onDeleteCategory={() => setDeletingCategoryId(category.id)}
-                                onToggleCategoryActive={() => handleToggleCategoryActive(category)}
-                                onAddDish={() => handleAddDish(category.id)}
-                                onEditDish={(dishId) => {
-                                  const dish = category.dishes.find(d => d.id === dishId)
-                                  if (dish) handleEditDish(dish)
-                                }}
-                                onDeleteDish={setDeletingDishId}
-                                onEditDishPrice={(dishId) => {
-                                  const dish = category.dishes.find(d => d.id === dishId)
-                                  if (dish) handleEditDishPrice(dish)
-                                }}
-                                onToggleDishActive={(dishId) => {
-                                  const dish = category.dishes.find(d => d.id === dishId)
-                                  if (dish) handleToggleDishActive(dish)
-                                }}
-                                onToggleDishFeatured={(dishId) => {
-                                  const dish = category.dishes.find(d => d.id === dishId)
-                                  if (dish) handleToggleDishFeatured(dish)
-                                }}
-                                onViewDishModifiers={handleViewDishModifiers}
-                                onBreakDishInheritance={handleBreakDishInheritance}
-                                onAddTemplate={() => handleAddTemplate(category.id)}
-                                onEditTemplate={(templateId) => handleEditTemplate(category.id, templateId)}
-                                onDishReorder={(dishIds) => handleDishReorder(category.id, dishIds)}
-                                dragHandleProps={provided.dragHandleProps}
-                              />
-                            </div>
-                          )}
-                        </Draggable>
-                      ))}
-                      {provided.placeholder}
-                    </div>
-                  )}
-                </Droppable>
-              </DragDropContext>
-            )
-          }
-          rightPanel={
-            // ISSUE 6 FIX: Only render preview with valid restaurant
-            selectedRestaurant && parseInt(selectedRestaurantId) > 0 ? (
-              <LiveMenuPreview
-                restaurant={selectedRestaurant}
-                categories={categories}
-                visible={showPreview}
-                onToggleVisible={() => setShowPreview(!showPreview)}
-              />
-            ) : null
-          }
-        />
+            ))}
+          </div>
+        ) : filteredCategories.length === 0 ? (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <p className="text-lg font-medium mb-2">No categories yet</p>
+              <p className="text-muted-foreground mb-4">
+                Create your first category to start building your menu
+              </p>
+              <Button onClick={handleCreateCategory} data-testid="button-create-first-category">
+                <Plus className="w-4 h-4 mr-2" />
+                Create First Category
+              </Button>
+            </CardContent>
+          </Card>
+        ) : selectedRestaurant ? (
+          <RestaurantMenu
+            restaurant={selectedRestaurant}
+            courses={filteredCategories.map(category => ({
+              id: category.id,
+              name: category.name,
+              description: category.description,
+              is_active: category.is_active,
+              display_order: category.display_order,
+              dishes: category.dishes.map(dish => ({
+                id: dish.id,
+                name: dish.name,
+                description: dish.description,
+                price: dish.price,
+                image_url: dish.image_url,
+                is_active: dish.is_active,
+                is_featured: dish.is_featured,
+                course_id: dish.course_id,
+                display_order: dish.display_order,
+                modifier_groups: dish.modifier_groups,
+              })),
+            }))}
+            hasMenu={filteredCategories.length > 0}
+            editorMode={editorMode}
+            onEditCategory={(categoryId) => {
+              const category = categories.find(c => c.id === categoryId)
+              if (category) handleEditCategory(category)
+            }}
+            onDeleteCategory={(categoryId) => setDeletingCategoryId(categoryId)}
+            onToggleCategoryActive={(categoryId) => {
+              const category = categories.find(c => c.id === categoryId)
+              if (category) handleToggleCategoryActive(category)
+            }}
+            onAddDish={handleAddDish}
+            onEditDish={(dishId) => {
+              const dish = categories.flatMap(c => c.dishes).find(d => d.id === dishId)
+              if (dish) handleEditDish(dish)
+            }}
+            onDeleteDish={setDeletingDishId}
+            onToggleDishActive={(dishId) => {
+              const dish = categories.flatMap(c => c.dishes).find(d => d.id === dishId)
+              if (dish) handleToggleDishActive(dish)
+            }}
+            onToggleDishFeatured={(dishId) => {
+              const dish = categories.flatMap(c => c.dishes).find(d => d.id === dishId)
+              if (dish) handleToggleDishFeatured(dish)
+            }}
+            onReorderCategories={(categoryIds) => {
+              reorderCourses.mutateAsync({
+                restaurant_id: parseInt(selectedRestaurantId),
+                course_ids: categoryIds,
+              })
+            }}
+            onReorderDishes={(categoryId, dishIds) => handleDishReorder(categoryId, dishIds)}
+            selectedDishIds={selectedDishIds}
+            onToggleSelectDish={toggleSelectDish}
+          />
+        ) : null
       )}
 
       {/* Category Dialog */}
