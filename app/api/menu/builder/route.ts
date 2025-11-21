@@ -90,7 +90,6 @@ export async function GET(request: NextRequest) {
         description,
         image_url,
         is_active,
-        is_featured,
         display_order
       `)
       .eq('restaurant_id', parseInt(restaurantId))

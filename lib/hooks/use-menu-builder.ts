@@ -33,7 +33,7 @@ export interface MenuBuilderDish {
   dish_prices?: DishPrice[] // Array of all price variants
   image_url: string | null
   is_active: boolean
-  is_featured: boolean
+  is_featured?: boolean // Optional - column doesn't exist in menuca_v3.dishes
   display_order: number
   modifier_groups: DishModifierGroup[]
 }
