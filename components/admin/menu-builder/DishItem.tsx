@@ -165,12 +165,28 @@ export function DishItem({
             <span className="text-xs">
               {modifierCount} modifier group{modifierCount > 1 ? 's' : ''}
             </span>
-            {hasInheritedModifiers && !hasCustomModifiers && (
-              <Badge variant="outline" className="text-xs ml-auto">Inherited</Badge>
-            )}
-            {hasCustomModifiers && (
-              <Badge variant="outline" className="text-xs ml-auto">Custom</Badge>
-            )}
+            <div className="flex items-center gap-1 ml-auto">
+              {hasInheritedModifiers && !hasCustomModifiers && (
+                <Badge variant="secondary" className="text-xs">
+                  Inherited
+                </Badge>
+              )}
+              {hasCustomModifiers && !hasInheritedModifiers && (
+                <Badge variant="default" className="text-xs">
+                  Custom
+                </Badge>
+              )}
+              {hasInheritedModifiers && hasCustomModifiers && (
+                <>
+                  <Badge variant="secondary" className="text-xs">
+                    Inherited
+                  </Badge>
+                  <Badge variant="default" className="text-xs">
+                    Custom
+                  </Badge>
+                </>
+              )}
+            </div>
           </div>
         )}
 
