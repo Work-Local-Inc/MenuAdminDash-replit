@@ -31,12 +31,14 @@ Preferred communication style: Simple, everyday language.
 ### Core Features
 - **Restaurant Management**: Status, online ordering toggle, contact, delivery area configuration (Mapbox).
 - **Menu Management**:
-    - **Unified Menu Builder (`/admin/menu/builder`)**: Single-page interface with split-screen editor and live customer preview.
-    - **Category-Level Modifier Templates**: Create reusable modifier groups at the category level.
-    - **Automatic Inheritance & Dish-Level Overrides**: Dishes inherit category templates with options to break inheritance for custom modifiers.
-    - **Drag-and-Drop**: Reordering of categories, dishes, modifier groups, and individual modifiers.
-    - **Bulk Operations**: Multi-select and apply actions to dishes.
-    - **Real-Time Preview**: Instant visualization of menu changes.
+    - **Unified Menu Builder (`/admin/menu/builder`)**: Single unified view with RestaurantMenu as main editing interface, Edit/Preview mode toggle.
+    - **Grid Layout**: Responsive dish cards (1/2/3 columns), hover-triggered controls, image upload with drag-drop support.
+    - **Image Upload**: Dish images stored in Supabase storage with preview, drag-drop upload, and removal capabilities.
+    - **Category-Level Modifier Groups**: Create reusable modifier groups at the category level (UI terminology: "Modifier Group", backend: "template").
+    - **Automatic Inheritance & Dish-Level Overrides**: Dishes inherit category modifier groups with options to break inheritance for custom modifiers.
+    - **Drag-and-Drop**: Single DragDropContext for categories and nested dishes, reordering within categories.
+    - **Bulk Operations**: Multi-select dishes with toolbar for batch actions (mark active/inactive/featured, delete).
+    - **Editor Controls**: Hover overlays on dishes (drag/edit/delete), secondary actions bar (price/active/featured/modifiers/inheritance).
     - **Legacy Support**: Pricing (`dish_prices`), modifiers (`modifier_groups` → `dish_modifiers`), combos, inventory management.
 - **Franchise Management**: Hierarchical system for parent/child linking, bulk updates, and analytics.
 - **Categorization System**: Cuisine and tag-based discovery.
@@ -55,6 +57,16 @@ Preferred communication style: Simple, everyday language.
 - **Order Management**: Order creation post-payment, order history, status tracking (`order_status_history`).
 - **Account Pages**: Dashboard (`/customer/account`) for orders, addresses, and profile management.
 - **Security**: Server-side price and amount validation, payment replay protection, restaurant ownership validation, quantity validation, user authentication, webhook signature verification, OAuth email verification.
+
+## Known Issues
+
+### NEXT_REDIRECT Hook Warning (Non-Blocking)
+- **Issue**: "Invalid hook call" warnings appear in browser console during Next.js server-side redirects (e.g., accessing invalid restaurant slugs).
+- **Trigger**: Occurs when RestaurantPage triggers `redirect('/')` for missing restaurants.
+- **Impact**: Warning only, does not affect functionality. Customer pages and admin features work correctly.
+- **Root Cause**: Zustand cart store hook interaction during Next.js SSR redirect path. Cart store has SSR-safe storage implementation but warning persists.
+- **Status**: Documented for future resolution. Does not block production deployment.
+- **Workaround**: None needed. Warning is cosmetic and only visible in development console.
 
 ## External Dependencies
 
