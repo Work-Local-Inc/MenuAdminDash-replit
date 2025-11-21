@@ -276,7 +276,7 @@ export default function MenuBuilderPage() {
       if (dishImageFile) {
         const formData = new FormData()
         formData.append('file', dishImageFile)
-        formData.append('bucket', 'dish-images')
+        formData.append('bucket', 'restaurant-images')
         const dishId = editingDish?.id || Date.now()
         formData.append('path', `${selectedRestaurantId}/${dishId}_${Date.now()}_${dishImageFile.name}`)
 
