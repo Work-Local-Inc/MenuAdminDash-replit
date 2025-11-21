@@ -155,7 +155,7 @@ Transformed from fragmented V1/V2 hybrid system to enterprise-grade architecture
 
 | Function | Purpose | Status | File Location |
 |----------|---------|--------|---------------|
-| `get_my_admin_info()` | Get authenticated admin | ✅ Complete | See Santiago's Supabase (public schema) |
+| `get_my_admin_info()` | Get authenticated admin | ✅ Complete | menuca_v3 schema |
 
 ### API Routes
 

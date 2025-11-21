@@ -93,7 +93,7 @@ const { data } = await supabase.rpc('check_legacy_user', {
 Create simple wrapper functions in `public` schema that call `menuca_v3` functions:
 
 ```sql
--- Create wrapper in public schema (which IS exposed)
+-- ALL functions are in menuca_v3 schema (NOT public)
 CREATE OR REPLACE FUNCTION public.check_legacy_user(p_email text)
 RETURNS TABLE(
   is_legacy boolean,

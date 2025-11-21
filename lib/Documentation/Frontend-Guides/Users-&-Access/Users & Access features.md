@@ -1422,7 +1422,7 @@ function AdminDashboard() {
 ### Quick Test
 
 ```bash
-# Verify SQL function exists in public schema (REST API accessible)
+# ALL functions are in menuca_v3 schema (NOT public)
 "C:\Program Files\PostgreSQL\17\bin\psql.exe" "postgresql://postgres:Gz35CPTom1RnsmGM@db.nthpbtdjhhnwfxqsxbvy.supabase.co:5432/postgres" -c "\df public.get_my_admin_info"
 
 # Verify Edge Functions are deployed
@@ -1462,7 +1462,7 @@ if (data && data.length > 0) {
 
 **Verify:**
 ```sql
--- Check function exists in public schema
+-- Check function exists in menuca_v3 schema
 \df public.get_my_admin_info
 
 -- Manually test with admin's auth_user_id
@@ -2017,7 +2017,7 @@ These PostgreSQL functions replace the following Edge Functions:
 - Accessible via: Supabase REST API
 - Grant: `GRANT EXECUTE TO authenticated`
 
-**Why public schema?**
+**ALL tables and functions are in menuca_v3 schema**
 - REST API requires functions in `public` schema
 - Keeps functions organized separately from data tables
 - Maintains security via SECURITY DEFINER and RLS
@@ -2617,7 +2617,7 @@ LIMIT 5;
 
 #### Feature 5: Admin User Management (JWT-Based)
 
-- [ ] **Verify functions exist in public schema**
+- [ ] **Verify functions exist in menuca_v3 schema**
 ```bash
 "C:\Program Files\PostgreSQL\17\bin\psql.exe" "postgresql://postgres:Gz35CPTom1RnsmGM@db.nthpbtdjhhnwfxqsxbvy.supabase.co:5432/postgres" -c "\df public.get_my_admin_info"
 "C:\Program Files\PostgreSQL\17\bin\psql.exe" "postgresql://postgres:Gz35CPTom1RnsmGM@db.nthpbtdjhhnwfxqsxbvy.supabase.co:5432/postgres" -c "\df public.assign_restaurants_to_admin"
