@@ -643,13 +643,13 @@ export default function MenuBuilderPage() {
                   data-testid="button-clear-selection"
                   className="ml-2"
                 >
-                  <X className="w-4 h-4 mr-1" />
+                  <X className="w-4 h-4 mr-2" />
                   Clear
                 </Button>
               </div>
               
               <div className="flex items-center gap-2 flex-wrap">
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-2">
                   <Button
                     size="sm"
                     variant="default"
@@ -657,7 +657,7 @@ export default function MenuBuilderPage() {
                     data-testid="button-bulk-mark-active"
                     className="bg-green-600 hover:bg-green-700"
                   >
-                    <Eye className="w-4 h-4 mr-1.5" />
+                    <Eye className="w-4 h-4 mr-2" />
                     Active
                   </Button>
                   <Button
@@ -666,7 +666,7 @@ export default function MenuBuilderPage() {
                     onClick={handleBulkMarkInactive}
                     data-testid="button-bulk-mark-inactive"
                   >
-                    <EyeOff className="w-4 h-4 mr-1.5" />
+                    <EyeOff className="w-4 h-4 mr-2" />
                     Inactive
                   </Button>
                 </div>
@@ -679,7 +679,7 @@ export default function MenuBuilderPage() {
                   onClick={handleBulkMarkFeatured}
                   data-testid="button-bulk-mark-featured"
                 >
-                  <Star className="w-4 h-4 mr-1.5" />
+                  <Star className="w-4 h-4 mr-2" />
                   Featured
                 </Button>
                 
@@ -691,7 +691,7 @@ export default function MenuBuilderPage() {
                   onClick={handleBulkDelete}
                   data-testid="button-bulk-delete"
                 >
-                  <Trash2 className="w-4 h-4 mr-1.5" />
+                  <Trash2 className="w-4 h-4 mr-2" />
                   Delete
                 </Button>
               </div>

@@ -621,7 +621,7 @@ function EditorDishCard({
             onClick={onToggleActive}
             data-testid={`button-toggle-active-${dish.id}`}
           >
-            {dish.is_active ? <Eye className="w-4 h-4 mr-1" /> : <EyeOff className="w-4 h-4 mr-1" />}
+            {dish.is_active ? <Eye className="w-4 h-4 mr-2" /> : <EyeOff className="w-4 h-4 mr-2" />}
             {dish.is_active ? 'Active' : 'Inactive'}
           </Button>
           
