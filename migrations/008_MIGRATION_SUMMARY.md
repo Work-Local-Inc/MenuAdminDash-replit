@@ -186,7 +186,7 @@ SELECT * FROM get_dish_modifier_groups_with_inheritance(123);
 
 During implementation, the following corrections were made to match the actual Supabase database:
 
-1. **Schema Name:** Changed from `menuca_v3` to `public` (Supabase uses public schema)
+1. **Schema Name:** ALL TABLES ARE IN menuca_v3 SCHEMA (NOT public)
 2. **Table Name:** Changed from `menu_courses` to `courses` (actual table name)
 3. **Table Prefix:** Removed `menu_` prefix from new tables to match existing naming
 

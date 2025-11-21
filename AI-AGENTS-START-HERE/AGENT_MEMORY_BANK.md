@@ -11,7 +11,11 @@
 
 **BEFORE doing ANYTHING with databases:**
 1. ✅ This project uses **SUPABASE PostgreSQL** (NOT Replit database)
-2. ✅ Schema is **menuca_v3** (NOT public schema)
+2. ⚠️ CRITICAL: ALL TABLES ARE IN menuca_v3 SCHEMA ⚠️
+   - Admin tables: menuca_v3.admin_users, menuca_v3.admin_roles
+   - Restaurant data: menuca_v3.restaurants, menuca_v3.dishes, etc.
+   - There is NO public schema in use
+   - If you see public.admin_users or public.anything - IT IS WRONG
 3. ✅ Connection via `NEXT_PUBLIC_SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`
 4. ✅ **NEVER** run `check_database_status` (there is no Replit database)
 5. ✅ **NEVER** run `create_postgresql_database_tool` (Supabase already exists)
