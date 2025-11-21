@@ -35,6 +35,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Plus, Search, X, CheckSquare, Square } from 'lucide-react'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
+import { ImageUpload } from '@/components/ui/image-upload'
 import { useRestaurants } from '@/lib/hooks/use-restaurants'
 import {
   useMenuBuilder,
@@ -59,9 +60,11 @@ import { ModifierGroupEditor } from '@/components/admin/menu-builder/ModifierGro
 import { LiveMenuPreview } from '@/components/admin/menu-builder/LiveMenuPreview'
 import { InlinePriceEditor } from '@/components/admin/menu-builder/InlinePriceEditor'
 import { useRouter } from 'next/navigation'
+import { useToast } from '@/hooks/use-toast'
 
 export default function MenuBuilderPage() {
   const router = useRouter()
+  const { toast } = useToast()
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string>('')
   const [searchQuery, setSearchQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
@@ -78,6 +81,8 @@ export default function MenuBuilderPage() {
   const [editingDish, setEditingDish] = useState<MenuBuilderDish | null>(null)
   const [dishCategoryId, setDishCategoryId] = useState<number | null>(null)
   const [deletingDishId, setDeletingDishId] = useState<number | null>(null)
+  const [dishImageFile, setDishImageFile] = useState<File | null>(null)
+  const [imageWasRemoved, setImageWasRemoved] = useState(false)
 
   const [priceEditorOpen, setPriceEditorOpen] = useState(false)
   const [editingPriceDish, setEditingPriceDish] = useState<MenuBuilderDish | null>(null)
@@ -237,6 +242,8 @@ export default function MenuBuilderPage() {
   const handleAddDish = (categoryId: number) => {
     setDishCategoryId(categoryId)
     setEditingDish(null)
+    setDishImageFile(null)
+    setImageWasRemoved(false)
     setDishForm({
       name: '',
       description: '',
@@ -250,6 +257,8 @@ export default function MenuBuilderPage() {
   const handleEditDish = (dish: MenuBuilderDish) => {
     setDishCategoryId(dish.course_id)
     setEditingDish(dish)
+    setDishImageFile(null)
+    setImageWasRemoved(false)
     setDishForm({
       name: dish.name,
       description: dish.description || '',
@@ -263,29 +272,76 @@ export default function MenuBuilderPage() {
   const handleSaveDish = async () => {
     if (!selectedRestaurantId) return
 
-    const dishData = {
-      name: dishForm.name,
-      description: dishForm.description || null,
-      price: parseFloat(dishForm.price),
-      course_id: dishCategoryId,
-      is_active: dishForm.is_active,
-      is_featured: dishForm.is_featured,
-    }
+    try {
+      let imageUrl: string | null = null
 
-    if (editingDish) {
-      await updateDish.mutateAsync({
-        id: editingDish.id,
-        restaurant_id: parseInt(selectedRestaurantId),
-        data: dishData,
-      })
-    } else {
-      await createDish.mutateAsync({
-        restaurant_id: parseInt(selectedRestaurantId),
-        ...dishData,
-      })
-    }
+      // Upload image if a new file was selected
+      if (dishImageFile) {
+        const formData = new FormData()
+        formData.append('file', dishImageFile)
+        formData.append('bucket', 'dish-images')
+        const dishId = editingDish?.id || Date.now()
+        formData.append('path', `${selectedRestaurantId}/${dishId}_${Date.now()}_${dishImageFile.name}`)
 
-    setDishDialogOpen(false)
+        const uploadRes = await fetch('/api/storage/upload', {
+          method: 'POST',
+          body: formData,
+        })
+
+        if (!uploadRes.ok) {
+          const errorData = await uploadRes.json().catch(() => ({ error: 'Failed to upload image' }))
+          throw new Error(errorData.error || 'Failed to upload image')
+        }
+
+        const uploadData = await uploadRes.json()
+        imageUrl = uploadData.url
+      }
+
+      const dishData: any = {
+        name: dishForm.name,
+        description: dishForm.description || null,
+        price: parseFloat(dishForm.price),
+        course_id: dishCategoryId,
+        is_active: dishForm.is_active,
+        is_featured: dishForm.is_featured,
+      }
+
+      // ISSUE 1 FIX: Handle image upload/removal
+      if (imageUrl) {
+        // New image was uploaded
+        dishData.image_url = imageUrl
+      } else if (imageWasRemoved) {
+        // User explicitly removed the existing image
+        dishData.image_url = null
+      }
+
+      if (editingDish) {
+        await updateDish.mutateAsync({
+          id: editingDish.id,
+          restaurant_id: parseInt(selectedRestaurantId),
+          data: dishData,
+        })
+      } else {
+        await createDish.mutateAsync({
+          restaurant_id: parseInt(selectedRestaurantId),
+          ...dishData,
+        })
+      }
+
+      // Only close dialog and reset state on SUCCESS
+      setDishDialogOpen(false)
+      setDishImageFile(null)
+      setImageWasRemoved(false)
+    } catch (error) {
+      // ISSUE 2 FIX: Show error toast and keep dialog open
+      console.error('Error saving dish:', error)
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to save dish. Please try again.',
+        variant: 'destructive',
+      })
+      // DO NOT close dialog on error
+    }
   }
 
   const handleDeleteDish = async () => {
@@ -723,7 +779,16 @@ export default function MenuBuilderPage() {
       </AlertDialog>
 
       {/* Dish Dialog */}
-      <Dialog open={dishDialogOpen} onOpenChange={setDishDialogOpen}>
+      <Dialog 
+        open={dishDialogOpen} 
+        onOpenChange={(open) => {
+          setDishDialogOpen(open)
+          if (!open) {
+            setDishImageFile(null)
+            setImageWasRemoved(false)
+          }
+        }}
+      >
         <DialogContent data-testid="dialog-dish">
           <DialogHeader>
             <DialogTitle>{editingDish ? 'Edit' : 'Create'} Dish</DialogTitle>
@@ -749,6 +814,15 @@ export default function MenuBuilderPage() {
                 value={dishForm.description}
                 onChange={(e) => setDishForm({ ...dishForm, description: e.target.value })}
                 data-testid="textarea-dish-description"
+              />
+            </div>
+            <div>
+              <Label>Image (Optional)</Label>
+              <ImageUpload
+                value={editingDish?.image_url}
+                onChange={setDishImageFile}
+                onRemove={() => setImageWasRemoved(true)}
+                data-testid="image-upload-dish"
               />
             </div>
             <div>

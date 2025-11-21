@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
-import { MoreVertical, Pencil, Trash2, DollarSign, Layers, Eye, EyeOff, GripVertical, Star } from 'lucide-react'
+import { MoreVertical, Pencil, Trash2, DollarSign, Layers, Eye, EyeOff, GripVertical, Star, Image as ImageIcon } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -58,6 +58,25 @@ export function DishItem({
         onCheckedChange={onToggleSelect}
         data-testid={`checkbox-dish-${dish.id}`}
       />
+
+      {/* Dish Image */}
+      <div className="relative w-20 h-16 flex-shrink-0 rounded-md overflow-hidden bg-muted">
+        {dish.image_url ? (
+          <img
+            src={dish.image_url}
+            alt={dish.name}
+            className="w-full h-full object-cover"
+            data-testid={`img-dish-${dish.id}`}
+          />
+        ) : (
+          <div 
+            className="w-full h-full flex items-center justify-center"
+            data-testid={`img-placeholder-dish-${dish.id}`}
+          >
+            <ImageIcon className="w-6 h-6 text-muted-foreground" />
+          </div>
+        )}
+      </div>
 
       {/* Dish Info */}
       <div className="flex-1 min-w-0">

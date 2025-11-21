@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { AuthError } from '@/lib/errors'
 
 // Whitelist of allowed storage buckets
-const ALLOWED_BUCKETS = ['restaurant-logos', 'restaurant-images']
+const ALLOWED_BUCKETS = ['restaurant-logos', 'restaurant-images', 'dish-images']
 
 // Allowed file types (MIME types)
 const ALLOWED_MIME_TYPES = [
