@@ -257,10 +257,14 @@ export default function MenuBuilderPage() {
     setEditingDish(dish)
     setDishImageFile(null)
     setImageWasRemoved(false)
+    
+    // Get price from dish_prices array or fallback to computed price field
+    const priceValue = dish.price ?? dish.dish_prices?.[0]?.price ?? 0
+    
     setDishForm({
       name: dish.name,
       description: dish.description || '',
-      price: dish.price.toString(),
+      price: priceValue.toString(),
       is_active: dish.is_active,
       is_featured: dish.is_featured || false,
     })

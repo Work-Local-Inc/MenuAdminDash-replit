@@ -23,7 +23,7 @@ export async function GET(
     await verifyAdminAuth(request)
     const supabase = createAdminClient()
 
-    const { data, error } = await supabase
+    const { data, error} = await supabase
       .schema('menuca_v3')
       .from('dishes')
       .select(`
@@ -32,13 +32,18 @@ export async function GET(
         course_id,
         name, 
         description, 
-        price, 
         image_url,
         is_active, 
         is_featured,
         display_order, 
         created_at, 
-        updated_at
+        updated_at,
+        dish_prices (
+          id,
+          price,
+          size_variant,
+          display_order
+        )
       `)
       .eq('id', parseInt(params.id))
       .single()
@@ -82,7 +87,6 @@ export async function PATCH(
     if (validatedData.course_id !== undefined) updateData.course_id = validatedData.course_id
     if (validatedData.name !== undefined) updateData.name = validatedData.name
     if (validatedData.description !== undefined) updateData.description = validatedData.description
-    if (validatedData.price !== undefined) updateData.price = validatedData.price
     if (validatedData.image_url !== undefined) updateData.image_url = validatedData.image_url
     if (validatedData.is_active !== undefined) updateData.is_active = validatedData.is_active
     if (validatedData.is_featured !== undefined) updateData.is_featured = validatedData.is_featured
@@ -103,6 +107,38 @@ export async function PATCH(
         { error: 'Dish not found' },
         { status: 404 }
       )
+    }
+
+    // Handle price update in dish_prices table
+    if (validatedData.price !== undefined) {
+      // Get or create the default price variant
+      const { data: existingPrice } = await supabase
+        .schema('menuca_v3')
+        .from('dish_prices')
+        .select('id')
+        .eq('dish_id', parseInt(params.id))
+        .is('size_variant', null)
+        .single()
+
+      if (existingPrice) {
+        // Update existing default price
+        await supabase
+          .schema('menuca_v3')
+          .from('dish_prices')
+          .update({ price: validatedData.price })
+          .eq('id', existingPrice.id)
+      } else {
+        // Create new default price
+        await supabase
+          .schema('menuca_v3')
+          .from('dish_prices')
+          .insert({
+            dish_id: parseInt(params.id),
+            price: validatedData.price,
+            size_variant: null,
+            display_order: 0,
+          })
+      }
     }
 
     return NextResponse.json(data)

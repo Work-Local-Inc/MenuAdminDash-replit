@@ -369,7 +369,6 @@ export interface Database {
           description: string | null
           ingredients: string | null
           sku: string | null
-          price: number | null
           base_price: number | null
           prices: Json | null
           size_options: Json | null
