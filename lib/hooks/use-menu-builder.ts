@@ -289,11 +289,11 @@ export function useBreakInheritance() {
   const { toast } = useToast()
 
   return useMutation({
-    mutationFn: async (dishId: number) => {
+    mutationFn: async (modifierGroupId: number) => {
       const res = await fetch('/api/menu/break-inheritance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dish_id: dishId }),
+        body: JSON.stringify({ modifier_group_id: modifierGroupId }),
       })
       if (!res.ok) {
         const errorData = await res.json()
@@ -307,7 +307,7 @@ export function useBreakInheritance() {
       })
       toast({
         title: "Success",
-        description: "Modifier inheritance broken - dish now has custom modifiers",
+        description: "Modifier group inheritance broken - now a custom group",
       })
     },
     onError: (error: Error) => {

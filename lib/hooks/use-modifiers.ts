@@ -44,12 +44,14 @@ export interface CreateModifierData {
   name: string;
   price: number;
   is_default?: boolean;
+  is_included?: boolean;
 }
 
 export interface UpdateModifierData {
   name?: string;
   price?: number;
   is_default?: boolean;
+  is_included?: boolean;
 }
 
 // ==================== MODIFIER GROUPS ====================

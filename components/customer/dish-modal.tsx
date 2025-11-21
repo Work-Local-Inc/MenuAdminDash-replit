@@ -80,7 +80,15 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
   // Parse size options from prices array or fallback to base_price
   const getSizeOptions = () => {
     if (dish.prices && Array.isArray(dish.prices) && dish.prices.length > 0) {
-      return dish.prices.map((p: any) => ({
+      // Check if there are any non-null size variants
+      const hasLabeledVariants = dish.prices.some((p: any) => p.size_variant !== null && p.size_variant !== undefined);
+      
+      // Filter out null size_variant if there are labeled variants
+      const filteredPrices = hasLabeledVariants
+        ? dish.prices.filter((p: any) => p.size_variant !== null && p.size_variant !== undefined)
+        : dish.prices;
+      
+      return filteredPrices.map((p: any) => ({
         name: p.size_variant,
         price: p.price
       }));

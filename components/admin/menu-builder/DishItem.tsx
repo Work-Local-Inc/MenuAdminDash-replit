@@ -8,7 +8,6 @@ import {
   Pencil, 
   Trash2, 
   Layers, 
-  Star, 
   Image as ImageIcon, 
   GripVertical,
   DollarSign,
@@ -26,7 +25,6 @@ interface DishItemProps {
   onDelete: () => void
   onEditPrice: () => void
   onToggleActive: () => void
-  onToggleFeatured: () => void
   onViewModifiers: () => void
   onBreakInheritance: () => void
   dragHandleProps?: any
@@ -40,7 +38,6 @@ export function DishItem({
   onDelete,
   onEditPrice,
   onToggleActive,
-  onToggleFeatured,
   onViewModifiers,
   onBreakInheritance,
   dragHandleProps,
@@ -98,19 +95,11 @@ export function DishItem({
       </div>
 
       {/* Status Badges - Below Checkbox */}
-      {(dish.is_featured || !dish.is_active) && (
-        <div className="absolute top-12 left-3 z-10 flex flex-col gap-1">
-          {dish.is_featured && (
-            <Badge variant="default" className="text-xs backdrop-blur-sm bg-primary/90 w-fit">
-              <Star className="w-3 h-3 mr-1" />
-              Featured
-            </Badge>
-          )}
-          {!dish.is_active && (
-            <Badge variant="secondary" className="text-xs backdrop-blur-sm bg-secondary/90 w-fit">
-              Inactive
-            </Badge>
-          )}
+      {!dish.is_active && (
+        <div className="absolute top-12 left-3 z-10">
+          <Badge variant="secondary" className="text-xs backdrop-blur-sm bg-secondary/90 w-fit">
+            Inactive
+          </Badge>
         </div>
       )}
 
@@ -228,41 +217,23 @@ export function DishItem({
             </TooltipContent>
           </Tooltip>
 
-          {/* Toggle Featured Status */}
+          {/* Manage Modifiers - Always visible */}
           <Tooltip>
             <TooltipTrigger asChild>
               <button
-                onClick={onToggleFeatured}
-                className="p-2 rounded-md hover-elevate active-elevate-2 touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center md:min-h-0 md:min-w-0"
-                data-testid={`button-toggle-featured-${dish.id}`}
-                aria-label={dish.is_featured ? "Remove from featured" : "Mark as featured"}
+                onClick={onViewModifiers}
+                className="p-2 rounded-md hover-elevate active-elevate-2 touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center md:min-h-0 md:min-w-0 relative"
+                data-testid={`button-view-modifiers-${dish.id}`}
+                aria-label="Manage modifiers"
               >
-                <Star 
-                  className={`w-4 h-4 ${dish.is_featured ? 'fill-primary text-primary' : ''}`}
-                />
+                <Layers className="w-4 h-4" />
+                <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full w-5 h-5 flex items-center justify-center font-semibold">
+                  {modifierCount}
+                </span>
               </button>
             </TooltipTrigger>
-            <TooltipContent>
-              {dish.is_featured ? "Remove from Featured" : "Mark as Featured"}
-            </TooltipContent>
+            <TooltipContent>Manage Modifiers {modifierCount > 0 ? `(${modifierCount})` : '(0)'}</TooltipContent>
           </Tooltip>
-
-          {/* View Modifiers - Only show if has modifiers */}
-          {modifierCount > 0 && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={onViewModifiers}
-                  className="p-2 rounded-md hover-elevate active-elevate-2 touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center md:min-h-0 md:min-w-0"
-                  data-testid={`button-view-modifiers-${dish.id}`}
-                  aria-label="View modifiers"
-                >
-                  <Layers className="w-4 h-4" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>View Modifiers</TooltipContent>
-            </Tooltip>
-          )}
 
           {/* Break Inheritance - Only show if has inherited modifiers */}
           {hasInheritedModifiers && (

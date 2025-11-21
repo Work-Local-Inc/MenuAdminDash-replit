@@ -33,7 +33,7 @@ import {
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
-import { Plus, Search, X, Eye, EyeOff, Pencil, Trash2, CheckCircle, XCircle, Star } from 'lucide-react'
+import { Plus, Search, X, Eye, EyeOff, Pencil, Trash2, CheckCircle, XCircle } from 'lucide-react'
 import { ImageUpload } from '@/components/ui/image-upload'
 import { DropResult } from '@hello-pangea/dnd'
 import { useRestaurants } from '@/lib/hooks/use-restaurants'
@@ -56,6 +56,7 @@ import {
 } from '@/lib/hooks/use-menu'
 import { ModifierGroupEditor } from '@/components/admin/menu-builder/ModifierGroupEditor'
 import { InlinePriceEditor } from '@/components/admin/menu-builder/InlinePriceEditor'
+import { DishModifierPanel } from '@/components/admin/menu-builder/DishModifierPanel'
 import RestaurantMenu from '@/components/customer/restaurant-menu'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useToast } from '@/hooks/use-toast'
@@ -91,7 +92,6 @@ export default function MenuBuilderPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [editorMode, setEditorMode] = useState(true)
   const [selectedDishIds, setSelectedDishIds] = useState<Set<number>>(new Set())
 
   // Dialogs
@@ -112,6 +112,9 @@ export default function MenuBuilderPage() {
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false)
   const [templateCourseId, setTemplateCourseId] = useState<number | null>(null)
   const [editingTemplate, setEditingTemplate] = useState<CategoryModifierTemplate | null>(null)
+
+  const [dishModifiersDialogOpen, setDishModifiersDialogOpen] = useState(false)
+  const [editingDishModifiers, setEditingDishModifiers] = useState<MenuBuilderDish | null>(null)
 
   // Hooks
   const { data: restaurants = [], isLoading: loadingRestaurants } = useRestaurants()
@@ -145,7 +148,6 @@ export default function MenuBuilderPage() {
     description: '',
     price: '',
     is_active: true,
-    is_featured: false,
   })
 
   // Find restaurant data for preview
@@ -271,7 +273,6 @@ export default function MenuBuilderPage() {
       description: '',
       price: '',
       is_active: true,
-      is_featured: false,
     })
     setDishDialogOpen(true)
   }
@@ -290,7 +291,6 @@ export default function MenuBuilderPage() {
       description: dish.description || '',
       price: priceValue.toString(),
       is_active: dish.is_active,
-      is_featured: dish.is_featured || false,
     })
     setDishDialogOpen(true)
   }
@@ -329,7 +329,6 @@ export default function MenuBuilderPage() {
         price: parseFloat(dishForm.price),
         course_id: dishCategoryId,
         is_active: dishForm.is_active,
-        is_featured: dishForm.is_featured,
       }
 
       // ISSUE 1 FIX: Handle image upload/removal
@@ -393,14 +392,6 @@ export default function MenuBuilderPage() {
     })
   }
 
-  const handleToggleDishFeatured = async (dish: MenuBuilderDish) => {
-    if (!selectedRestaurantId) return
-    await updateDish.mutateAsync({
-      id: dish.id,
-      restaurant_id: parseInt(selectedRestaurantId),
-      data: { is_featured: !dish.is_featured },
-    })
-  }
 
   const handleEditDishPrice = (dish: MenuBuilderDish) => {
     setEditingPriceDish(dish)
@@ -408,7 +399,11 @@ export default function MenuBuilderPage() {
   }
 
   const handleViewDishModifiers = (dishId: number) => {
-    router.push(`/admin/menu/dishes/${dishId}/modifiers`)
+    const dish = categories.flatMap(c => c.dishes).find(d => d.id === dishId)
+    if (dish) {
+      setEditingDishModifiers(dish)
+      setDishModifiersDialogOpen(true)
+    }
   }
 
   const handleBreakDishInheritance = async (dishId: number) => {
@@ -500,22 +495,6 @@ export default function MenuBuilderPage() {
     clearSelection()
   }
 
-  const handleBulkMarkFeatured = async () => {
-    if (!selectedRestaurantId) return
-    const promises = Array.from(selectedDishIds).map(dishId =>
-      updateDish.mutateAsync({
-        id: dishId,
-        restaurant_id: parseInt(selectedRestaurantId),
-        data: { is_featured: true },
-      })
-    )
-    await Promise.all(promises)
-    toast({
-      title: 'Success',
-      description: `${selectedDishIds.size} dishes marked as featured`,
-    })
-    clearSelection()
-  }
 
   const handleBulkDelete = async () => {
     if (!selectedRestaurantId) return
@@ -631,32 +610,13 @@ export default function MenuBuilderPage() {
                 <Plus className="w-4 h-4 mr-2" />
                 Add Category
               </Button>
-
-              {/* Edit/Preview Mode Toggle */}
-              <Button
-                onClick={() => setEditorMode(!editorMode)}
-                variant={editorMode ? "default" : "outline"}
-                data-testid="button-toggle-editor-mode"
-              >
-                {editorMode ? (
-                  <>
-                    <Eye className="w-4 h-4 mr-2" />
-                    Preview Mode
-                  </>
-                ) : (
-                  <>
-                    <Pencil className="w-4 h-4 mr-2" />
-                    Edit Mode
-                  </>
-                )}
-              </Button>
             </div>
           </CardContent>
         </Card>
       )}
 
       {/* Bulk Selection Toolbar */}
-      {selectedRestaurantId && selectedDishIds.size > 0 && editorMode && (
+      {selectedRestaurantId && selectedDishIds.size > 0 && (
         <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary shadow-lg">
           <CardContent className="py-4">
             <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -699,18 +659,6 @@ export default function MenuBuilderPage() {
                     Inactive
                   </Button>
                 </div>
-                
-                <div className="h-6 w-px bg-border mx-1" />
-                
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleBulkMarkFeatured}
-                  data-testid="button-bulk-mark-featured"
-                >
-                  <Star className="w-4 h-4 mr-2" />
-                  Featured
-                </Button>
                 
                 <div className="h-6 w-px bg-border mx-1" />
                 
@@ -786,14 +734,13 @@ export default function MenuBuilderPage() {
                 price: dish.price,
                 image_url: dish.image_url,
                 is_active: dish.is_active,
-                is_featured: dish.is_featured,
                 course_id: dish.course_id,
                 display_order: dish.display_order,
                 modifier_groups: dish.modifier_groups,
               })),
             }))}
             hasMenu={filteredCategories.length > 0}
-            editorMode={editorMode}
+            editorMode={true}
             onEditCategory={(categoryId) => {
               const category = categories.find(c => c.id === categoryId)
               if (category) handleEditCategory(category)
@@ -812,10 +759,6 @@ export default function MenuBuilderPage() {
             onToggleDishActive={(dishId) => {
               const dish = categories.flatMap(c => c.dishes).find(d => d.id === dishId)
               if (dish) handleToggleDishActive(dish)
-            }}
-            onToggleDishFeatured={(dishId) => {
-              const dish = categories.flatMap(c => c.dishes).find(d => d.id === dishId)
-              if (dish) handleToggleDishFeatured(dish)
             }}
             onReorderCategories={(categoryIds) => {
               reorderCourses.mutateAsync({
@@ -977,14 +920,6 @@ export default function MenuBuilderPage() {
                 data-testid="switch-dish-active"
               />
             </div>
-            <div className="flex items-center justify-between">
-              <Label>Featured</Label>
-              <Switch
-                checked={dishForm.is_featured}
-                onCheckedChange={(checked) => setDishForm({ ...dishForm, is_featured: checked })}
-                data-testid="switch-dish-featured"
-              />
-            </div>
           </div>
 
           <DialogFooter>
@@ -1056,6 +991,44 @@ export default function MenuBuilderPage() {
           }}
         />
       )}
+
+      {/* Dish Modifiers Management Dialog */}
+      <Dialog 
+        open={dishModifiersDialogOpen} 
+        onOpenChange={(open) => {
+          setDishModifiersDialogOpen(open)
+          if (!open) setEditingDishModifiers(null)
+        }}
+      >
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" data-testid="dialog-dish-modifiers">
+          <DialogHeader>
+            <DialogTitle>
+              Manage Modifiers
+            </DialogTitle>
+            <DialogDescription>
+              Configure modifier groups for this dish (category templates + custom groups)
+            </DialogDescription>
+          </DialogHeader>
+
+          {editingDishModifiers && selectedRestaurantId && (
+            <DishModifierPanel
+              dish={editingDishModifiers}
+              restaurantId={parseInt(selectedRestaurantId)}
+              onClose={() => setDishModifiersDialogOpen(false)}
+            />
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDishModifiersDialogOpen(false)}
+              data-testid="button-close-modifiers"
+            >
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
