@@ -31,14 +31,18 @@ Preferred communication style: Simple, everyday language.
 ### Core Features
 - **Restaurant Management**: Status, online ordering toggle, contact, delivery area configuration (Mapbox).
 - **Menu Management**:
-    - **Unified Menu Builder (`/admin/menu/builder`)**: Single unified view with RestaurantMenu as main editing interface, Edit/Preview mode toggle.
+    - **Unified Menu Builder (`/admin/menu/builder`)**: Single unified view with RestaurantMenu as main editing interface mirroring customer-facing menu design.
     - **Grid Layout**: Responsive dish cards (1/2/3 columns), hover-triggered controls, image upload with drag-drop support.
     - **Image Upload**: Dish images stored in Supabase storage with preview, drag-drop upload, and removal capabilities.
-    - **Category-Level Modifier Groups**: Create reusable modifier groups at the category level (UI terminology: "Modifier Group", backend: "template").
-    - **Automatic Inheritance & Dish-Level Overrides**: Dishes inherit category modifier groups with options to break inheritance for custom modifiers.
+    - **Modifier Groups Architecture**:
+        - **Modifier Groups Library (`/admin/menu/modifier-groups`)**: Centralized management page for creating and editing all modifier groups (e.g., "Sauces", "Toppings"). Each group contains modifiers (e.g., Ranch, BBQ, Hot) with pricing and options.
+        - **Category-Level Association**: In menu builder, dropdown with checkboxes next to category headers to associate modifier groups. All dishes in category automatically inherit checked groups.
+        - **Dish-Level Override**: In edit dish dialog, checkboxes to toggle specific modifier groups on/off for individual dishes, overriding category defaults.
+        - **Database Schema**: `course_templates` table for category-level groups, `course_template_modifiers` for modifiers within groups, `modifier_groups` and `dish_modifiers` for dish-level data.
     - **Drag-and-Drop**: Single DragDropContext for categories and nested dishes, reordering within categories.
-    - **Bulk Operations**: Multi-select dishes with toolbar for batch actions (mark active/inactive/featured, delete).
-    - **Editor Controls**: Hover overlays on dishes (drag/edit/delete), secondary actions bar (price/active/featured/modifiers/inheritance).
+    - **Bulk Operations**: Multi-select dishes with toolbar for batch actions (mark active/inactive, delete).
+    - **Editor Controls**: Hover overlays on dishes (drag/edit/delete), secondary actions bar (price/active/modifiers).
+    - **Inline Editing**: Click-to-edit prices, dish modifiers accessible via prominent button with count badge.
     - **Legacy Support**: Pricing (`dish_prices`), modifiers (`modifier_groups` → `dish_modifiers`), combos, inventory management.
 - **Franchise Management**: Hierarchical system for parent/child linking, bulk updates, and analytics.
 - **Categorization System**: Cuisine and tag-based discovery.
