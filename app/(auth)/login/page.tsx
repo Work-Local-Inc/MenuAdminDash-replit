@@ -1,8 +1,6 @@
 "use client"
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -10,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useToast } from '@/hooks/use-toast'
 import { Eye, EyeOff } from 'lucide-react'
+import { login } from './actions'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -17,9 +16,7 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
-  const router = useRouter()
   const { toast } = useToast()
-  const supabase = createClient()
 
   // Load remembered email on mount
   useEffect(() => {
@@ -35,12 +32,15 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
+      const formData = new FormData()
+      formData.append('email', email)
+      formData.append('password', password)
 
-      if (error) throw error
+      const result = await login(formData)
+
+      if (result?.error) {
+        throw new Error(result.error)
+      }
 
       // Save email to localStorage if Remember Me is checked
       if (rememberMe) {
@@ -49,22 +49,13 @@ export default function LoginPage() {
         localStorage.removeItem('menu-ca-admin-email')
       }
 
-      toast({
-        title: "Success",
-        description: "Logged in successfully",
-      })
-
-      // Wait for cookies to sync, then force full page reload to update server session
-      setTimeout(() => {
-        window.location.href = '/admin/dashboard'
-      }, 100)
+      // Server action will handle redirect
     } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Error",
         description: error.message || "Invalid credentials",
       })
-    } finally {
       setLoading(false)
     }
   }
