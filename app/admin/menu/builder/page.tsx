@@ -33,8 +33,9 @@ import {
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
-import { Plus, Search, X, Eye, Pencil, Trash2, CheckCircle, XCircle, Star } from 'lucide-react'
+import { Plus, Search, X, Eye, EyeOff, Pencil, Trash2, CheckCircle, XCircle, Star } from 'lucide-react'
 import { ImageUpload } from '@/components/ui/image-upload'
+import { DropResult } from '@hello-pangea/dnd'
 import { useRestaurants } from '@/lib/hooks/use-restaurants'
 import {
   useMenuBuilder,
@@ -125,7 +126,7 @@ export default function MenuBuilderPage() {
 
   // Find restaurant data for preview
   const selectedRestaurant = restaurants.find(
-    r => r.id.toString() === selectedRestaurantId
+    (r: any) => r.id.toString() === selectedRestaurantId
   )
 
   // Filter categories and dishes
@@ -261,7 +262,7 @@ export default function MenuBuilderPage() {
       description: dish.description || '',
       price: dish.price.toString(),
       is_active: dish.is_active,
-      is_featured: dish.is_featured,
+      is_featured: dish.is_featured || false,
     })
     setDishDialogOpen(true)
   }
@@ -276,7 +277,7 @@ export default function MenuBuilderPage() {
       if (dishImageFile) {
         const formData = new FormData()
         formData.append('file', dishImageFile)
-        formData.append('bucket', 'restaurant-images')
+        formData.append('bucket', 'dish-images')
         const dishId = editingDish?.id || Date.now()
         formData.append('path', `${selectedRestaurantId}/${dishId}_${Date.now()}_${dishImageFile.name}`)
 
