@@ -655,7 +655,7 @@ export default function MenuBuilderPage() {
                     variant="default"
                     onClick={handleBulkMarkActive}
                     data-testid="button-bulk-mark-active"
-                    className="bg-green-600 hover:bg-green-700"
+                    className="bg-emerald-600 text-white"
                   >
                     <Eye className="w-4 h-4 mr-2" />
                     Active
