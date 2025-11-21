@@ -3,6 +3,7 @@ import { verifyAdminAuth } from '@/lib/auth/admin-check'
 import { AuthError } from '@/lib/errors'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { z } from 'zod'
+import { checkLibraryLinkingMigrations } from '@/lib/supabase/check-migrations'
 
 const associateLibraryGroupSchema = z.object({
   course_id: z.number().int().positive('Course ID is required'),
@@ -12,6 +13,28 @@ const associateLibraryGroupSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     await verifyAdminAuth(request)
+    
+    // RUNTIME GUARD: Check if migrations are applied before allowing associations
+    try {
+      const migrationStatus = await checkLibraryLinkingMigrations()
+      
+      if (!migrationStatus.overall_ready) {
+        console.warn('[MIGRATION GUARD] Blocking category association - migrations not applied:', migrationStatus.warnings)
+        return NextResponse.json(
+          {
+            error: 'Database migrations required',
+            message: 'The library linking feature requires database migrations to be applied. Please run migrations 009 and 010 before creating category associations.',
+            warnings: migrationStatus.warnings,
+            details: 'See replit.md for migration instructions'
+          },
+          { status: 503 }
+        )
+      }
+    } catch (migrationCheckError) {
+      console.warn('[MIGRATION GUARD] Could not verify migration status, proceeding with caution:', migrationCheckError)
+      // Continue but log warning - in development, database might be temporarily unavailable
+    }
+    
     const supabase = createAdminClient()
 
     const body = await request.json()

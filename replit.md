@@ -34,11 +34,36 @@ Preferred communication style: Simple, everyday language.
     - **Unified Menu Builder (`/admin/menu/builder`)**: Single unified view with RestaurantMenu as main editing interface mirroring customer-facing menu design.
     - **Grid Layout**: Responsive dish cards (1/2/3 columns), hover-triggered controls, image upload with drag-drop support.
     - **Image Upload**: Dish images stored in Supabase storage with preview, drag-drop upload, and removal capabilities.
-    - **Modifier Groups Architecture**:
-        - **Modifier Groups Library (`/admin/menu/modifier-groups`)**: Centralized management page for creating and editing all modifier groups (e.g., "Sauces", "Toppings"). Each group contains modifiers (e.g., Ranch, BBQ, Hot) with pricing and options.
-        - **Category-Level Association**: In menu builder, dropdown with checkboxes next to category headers to associate modifier groups. All dishes in category automatically inherit checked groups.
-        - **Dish-Level Override**: In edit dish dialog, checkboxes to toggle specific modifier groups on/off for individual dishes, overriding category defaults.
-        - **Database Schema**: `course_templates` table for category-level groups, `course_template_modifiers` for modifiers within groups, `modifier_groups` and `dish_modifiers` for dish-level data.
+    - **Modifier Groups Architecture** (Global Library System - November 2025):
+        - **🔧 STATUS**: Code complete, awaiting database migrations (Neon endpoint currently disabled)
+        - **Architecture Philosophy**: TRUE LINKING (not cloning) - One source of truth for modifier updates that propagate automatically
+        - **Global Modifier Groups Library** (`/admin/menu/modifier-groups`):
+            - Creates modifier groups with `course_id = NULL` (global, not tied to any category)
+            - Groups are reusable across all categories and restaurants
+            - Example: "Sizes" group with Small/Medium/Large options
+            - Updates to library groups automatically propagate to all associated categories
+        - **Category Association** (Menu Builder):
+            - Categories link to library groups via `library_template_id` reference (NO cloning)
+            - In menu builder, dropdown with checkboxes associates library groups with categories
+            - Association creates a category template that REFERENCES the library group
+            - All existing dishes in category automatically inherit the linked group
+        - **Dish Inheritance**:
+            - Dishes inherit modifiers from their category's associated library groups
+            - Modifiers fetched via JOIN through library_template_id (not stored in dish_modifiers)
+            - Breaking inheritance creates custom dish-specific modifiers
+        - **Database Schema**:
+            - `course_modifier_templates`: Library groups (course_id = NULL) AND category associations (course_id = X, library_template_id = Y)
+            - `course_template_modifiers`: Modifier options within library groups
+            - `dish_modifier_groups`: Dish-level groups with course_template_id for inheritance tracking
+            - `dish_modifiers`: Custom modifiers (only when inheritance is broken)
+        - **⚠️ MANUAL MIGRATION REQUIRED**:
+            - **Migration 009**: Make `course_id` nullable, add `library_template_id` column
+            - **Migration 010**: Fix `apply_template_to_dish()` function to stop cloning modifiers
+            - **Data Cleanup**: Run `tsx scripts/migrate-to-library-linking.ts` to remove legacy cloned modifiers
+            - **Status Check**: Run `tsx lib/supabase/check-migrations.ts` to verify migrations
+            - **Runtime Guard**: System blocks new associations until migrations confirmed (503 error with clear message)
+            - **Defensive Fallbacks**: Menu builder gracefully handles mixed state (pre/post migration) without breaking customer menus
+        - **Documentation**: See `LIBRARY_LINKING_FIX_SUMMARY.md` for complete implementation details, verification steps, and troubleshooting
     - **Drag-and-Drop**: Single DragDropContext for categories and nested dishes, reordering within categories.
     - **Bulk Operations**: Multi-select dishes with toolbar for batch actions (mark active/inactive, delete).
     - **Editor Controls**: Hover overlays on dishes (drag/edit/delete), secondary actions bar (price/active/modifiers).
