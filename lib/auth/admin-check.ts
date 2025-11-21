@@ -40,7 +40,7 @@ export async function verifyAdminAuth(request: NextRequest) {
   // we're being explicit here to ensure it queries the correct schema
   const { data: adminUser, error: adminError } = await adminSupabase
     .from('admin_users')
-    .select('id, email, first_name, last_name, auth_uuid')
+    .select('id, email, first_name, last_name')
     .eq('email', user.email)
     .is('deleted_at', null) // Only active admins
     .single()
