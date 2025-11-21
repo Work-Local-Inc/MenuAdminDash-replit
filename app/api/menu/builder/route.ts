@@ -255,25 +255,76 @@ export async function GET(request: NextRequest) {
             .map((g: any) => {
               let modifiers: any[] = []
               
-              // CRITICAL FIX: Fetch modifiers via category template → library template chain
+              // ===================================================================
+              // STATE GUARD: Handle mixed state (cloned vs linked modifiers)
+              // ===================================================================
+              // PRIORITY 1: If course_template_id is set (inherited) → fetch via library
+              // PRIORITY 2: If is_custom = true (broke inheritance) → fetch dish_modifiers
+              // NEVER SHOW BOTH (even if both exist in database due to legacy cloning)
+              // ===================================================================
+              
               if (g.course_template_id) {
-                // Find the category template
+                // INHERITED: Fetch from library via category template
+                // IGNORE any dish_modifiers that might exist (legacy clones)
                 const categoryTemplate = templates.find((t: any) => t.id === g.course_template_id)
                 
                 if (categoryTemplate?.library_template_id) {
-                  // Fetch from library template (TRUE LINKING)
+                  // TRUE LINKING: Fetch from library template
                   modifiers = libraryModifiers
                     .filter((m: any) => m.template_id === categoryTemplate.library_template_id && !m.deleted_at)
                     .sort((a: any, b: any) => a.display_order - b.display_order)
+                  
+                  // MIXED STATE DETECTION: Warn if dish_modifiers also exist (shouldn't happen)
+                  const legacyModifiers = dishModifiers.filter((m: any) => m.modifier_group_id === g.id && !m.deleted_at)
+                  if (legacyModifiers.length > 0) {
+                    console.warn('[MIXED STATE DETECTED]', {
+                      message: 'Dish has both library link AND cloned modifiers',
+                      dish_id: dish.id,
+                      group_id: g.id,
+                      course_template_id: g.course_template_id,
+                      library_template_id: categoryTemplate.library_template_id,
+                      library_modifiers: modifiers.length,
+                      legacy_cloned_modifiers: legacyModifiers.length,
+                      action: 'Using library modifiers (correct), ignoring clones (legacy)'
+                    })
+                  }
                 } else if (categoryTemplate) {
-                  // Fetch from category template's own modifiers
+                  // Fetch from category template's own modifiers (no library link)
                   modifiers = categoryTemplate.course_template_modifiers?.filter((m: any) => !m.deleted_at) || []
+                  
+                  // MIXED STATE DETECTION: Warn if dish_modifiers also exist
+                  const legacyModifiers = dishModifiers.filter((m: any) => m.modifier_group_id === g.id && !m.deleted_at)
+                  if (legacyModifiers.length > 0) {
+                    console.warn('[MIXED STATE DETECTED]', {
+                      message: 'Dish has both template link AND cloned modifiers',
+                      dish_id: dish.id,
+                      group_id: g.id,
+                      course_template_id: g.course_template_id,
+                      template_modifiers: modifiers.length,
+                      legacy_cloned_modifiers: legacyModifiers.length,
+                      action: 'Using template modifiers (correct), ignoring clones (legacy)'
+                    })
+                  }
                 }
               } else if (g.is_custom) {
-                // Custom dish modifier group - use dish_modifiers
+                // CUSTOM: Dish broke inheritance, use its own modifiers
                 modifiers = dishModifiers
                   .filter((m: any) => m.modifier_group_id === g.id && !m.deleted_at)
                   .sort((a: any, b: any) => a.display_order - b.display_order)
+              } else {
+                // ORPHANED: No template link and not custom (shouldn't happen)
+                // Check if dish_modifiers exist (legacy state)
+                const orphanedModifiers = dishModifiers.filter((m: any) => m.modifier_group_id === g.id && !m.deleted_at)
+                if (orphanedModifiers.length > 0) {
+                  console.warn('[ORPHANED MODIFIERS DETECTED]', {
+                    message: 'Modifier group has no template link and is not marked custom',
+                    dish_id: dish.id,
+                    group_id: g.id,
+                    modifiers: orphanedModifiers.length,
+                    action: 'Using dish_modifiers as fallback (needs migration)'
+                  })
+                  modifiers = orphanedModifiers.sort((a: any, b: any) => a.display_order - b.display_order)
+                }
               }
               
               return {
