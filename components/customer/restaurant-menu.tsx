@@ -49,6 +49,17 @@ export default function RestaurantMenu({ restaurant, courses, hasMenu = true }: 
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Banner Image */}
+      {restaurant.banner_image_url && (
+        <div className="w-full h-32 bg-muted relative overflow-hidden">
+          <img
+            src={restaurant.banner_image_url}
+            alt={`${restaurant.name} banner`}
+            className="w-full h-full object-cover"
+          />
+        </div>
+      )}
+      
       {/* Restaurant Header */}
       <div className="border-b bg-card">
         <div className="container mx-auto px-4 py-6">

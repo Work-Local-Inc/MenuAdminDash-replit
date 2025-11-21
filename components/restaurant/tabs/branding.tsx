@@ -568,7 +568,7 @@ export function RestaurantBranding({ restaurantId }: RestaurantBrandingProps) {
             <div className="space-y-0 border rounded-lg overflow-hidden" style={previewStyle}>
               {/* Banner Preview */}
               {currentBannerUrl && (
-                <div className="w-full h-40 bg-muted relative">
+                <div className="w-full h-32 bg-muted relative overflow-hidden">
                   <img
                     src={currentBannerUrl}
                     alt="Banner preview"
