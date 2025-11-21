@@ -626,61 +626,73 @@ export default function MenuBuilderPage() {
         </Card>
       )}
 
-      {/* ISSUE 3 FIX: Bulk Selection Toolbar */}
+      {/* Bulk Selection Toolbar */}
       {selectedRestaurantId && selectedDishIds.size > 0 && editorMode && (
-        <Card className="bg-primary/10 border-primary">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <p className="font-medium" data-testid="text-selected-count">
-                  {selectedDishIds.size} {selectedDishIds.size === 1 ? 'dish' : 'dishes'} selected
-                </p>
+        <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary shadow-lg">
+          <CardContent className="py-4">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div className="flex items-center gap-3">
+                <div className="bg-primary text-primary-foreground px-3 py-1.5 rounded-md font-semibold text-sm" data-testid="text-selected-count">
+                  {selectedDishIds.size} {selectedDishIds.size === 1 ? 'dish' : 'dishes'}
+                </div>
+                <span className="text-sm text-muted-foreground">selected</span>
                 <Button
                   size="sm"
-                  variant="outline"
+                  variant="ghost"
                   onClick={clearSelection}
                   data-testid="button-clear-selection"
+                  className="ml-2"
                 >
-                  <X className="w-4 h-4 mr-2" />
-                  Clear Selection
+                  <X className="w-4 h-4 mr-1" />
+                  Clear
                 </Button>
               </div>
               
-              <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  onClick={handleBulkMarkActive}
-                  data-testid="button-bulk-mark-active"
-                >
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  Mark Active
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleBulkMarkInactive}
-                  data-testid="button-bulk-mark-inactive"
-                >
-                  <XCircle className="w-4 h-4 mr-2" />
-                  Mark Inactive
-                </Button>
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    size="sm"
+                    variant="default"
+                    onClick={handleBulkMarkActive}
+                    data-testid="button-bulk-mark-active"
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    <Eye className="w-4 h-4 mr-1.5" />
+                    Active
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleBulkMarkInactive}
+                    data-testid="button-bulk-mark-inactive"
+                  >
+                    <EyeOff className="w-4 h-4 mr-1.5" />
+                    Inactive
+                  </Button>
+                </div>
+                
+                <div className="h-6 w-px bg-border mx-1" />
+                
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={handleBulkMarkFeatured}
                   data-testid="button-bulk-mark-featured"
                 >
-                  <Star className="w-4 h-4 mr-2" />
-                  Mark Featured
+                  <Star className="w-4 h-4 mr-1.5" />
+                  Featured
                 </Button>
+                
+                <div className="h-6 w-px bg-border mx-1" />
+                
                 <Button
                   size="sm"
                   variant="destructive"
                   onClick={handleBulkDelete}
                   data-testid="button-bulk-delete"
                 >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Delete Selected
+                  <Trash2 className="w-4 h-4 mr-1.5" />
+                  Delete
                 </Button>
               </div>
             </div>

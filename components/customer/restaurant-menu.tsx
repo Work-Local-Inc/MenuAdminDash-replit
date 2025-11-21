@@ -244,11 +244,15 @@ export default function RestaurantMenu({
         ) : editorMode ? (
           <DragDropContext onDragEnd={handleUnifiedDragEnd}>
             <Droppable droppableId="categories" type="CATEGORY">
-              {(provided) => (
+              {(provided, dropSnapshot) => (
                 <div 
                   {...provided.droppableProps} 
                   ref={provided.innerRef}
-                  className="space-y-12"
+                  className={`space-y-12 transition-all duration-200 ${
+                    dropSnapshot.isDraggingOver 
+                      ? 'bg-primary/5 p-4 rounded-lg' 
+                      : ''
+                  }`}
                 >
                   {courses?.map((course, courseIndex) => {
                     const courseDishes = course.dishes || [];
@@ -259,12 +263,16 @@ export default function RestaurantMenu({
                         draggableId={`category-${course.id}`}
                         index={courseIndex}
                       >
-                        {(provided) => (
+                        {(provided, snapshot) => (
                           <div
                             ref={provided.innerRef}
                             {...provided.draggableProps}
                             id={`category-${course.id}`}
-                            className="scroll-mt-24"
+                            className={`scroll-mt-24 transition-all duration-200 ${
+                              snapshot.isDragging 
+                                ? 'opacity-90 scale-[1.02] shadow-2xl rotate-1 z-50' 
+                                : ''
+                            }`}
                           >
                       {/* Category Header with Editor Controls */}
                       <div className="flex items-center gap-3 mb-6 pb-2 border-b">
@@ -366,11 +374,15 @@ export default function RestaurantMenu({
                         ) : null
                       ) : (
                         <Droppable droppableId={`category-${course.id}-dishes`} type="DISH">
-                          {(dishProvided) => (
+                          {(dishProvided, dishDropSnapshot) => (
                             <div
                               {...dishProvided.droppableProps}
                               ref={dishProvided.innerRef}
-                              className="grid grid-cols-1 md:grid-cols-2 gap-4"
+                              className={`grid grid-cols-1 md:grid-cols-2 gap-4 transition-all duration-200 rounded-lg ${
+                                dishDropSnapshot.isDraggingOver 
+                                  ? 'bg-primary/5 ring-2 ring-primary/20 ring-offset-2' 
+                                  : ''
+                              }`}
                             >
                               {courseDishes.map((dish: any, dishIndex: number) => (
                                 <Draggable
@@ -378,10 +390,15 @@ export default function RestaurantMenu({
                                   draggableId={`dish-${dish.id}`}
                                   index={dishIndex}
                                 >
-                                  {(dishDragProvided) => (
+                                  {(dishDragProvided, dishSnapshot) => (
                                     <div
                                       ref={dishDragProvided.innerRef}
                                       {...dishDragProvided.draggableProps}
+                                      className={`transition-all duration-200 ${
+                                        dishSnapshot.isDragging 
+                                          ? 'opacity-80 scale-105 shadow-xl rotate-2 z-50' 
+                                          : ''
+                                      }`}
                                     >
                                       <EditorDishCard
                                         dish={dish}
