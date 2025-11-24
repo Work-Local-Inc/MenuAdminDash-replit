@@ -384,7 +384,6 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
             </Button>
           </div>
         </div>
-        </div>
       </DialogContent>
     </Dialog>
   );
