@@ -192,7 +192,7 @@ export async function POST(request: NextRequest) {
         // Log summary of template applications
         const successCount = templateResults.filter(r => r.success).length
         const failCount = templateResults.filter(r => !r.success).length
-        console.log(`[TEMPLATE APPLICATION] Dish ${dish.id}: ${successCount} succeeded, ${failCount} failed`, templateResults)
+        console.log(`[MODIFIER APPLICATION] Dish ${dish.id}: ${successCount} succeeded, ${failCount} failed`, templateResults)
       }
     }
 

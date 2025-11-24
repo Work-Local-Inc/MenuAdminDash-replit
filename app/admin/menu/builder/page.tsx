@@ -209,7 +209,7 @@ export default function MenuBuilderPage() {
     
     if (associatedGroupIds.length > 0) {
       categoryModifierMap.set(category.id, associatedGroupIds)
-      console.log(`[CATEGORY MODIFIERS] Category ${category.id} (${category.name}) has ${associatedGroupIds.length} associated groups:`, associatedGroupIds)
+      console.log(`[CATEGORY MODIFIERS] Category ${category.id} (${category.name}) has ${associatedGroupIds.length} associated modifier groups:`, associatedGroupIds)
     }
   })
 
