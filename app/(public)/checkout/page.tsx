@@ -79,7 +79,14 @@ export default function CheckoutPage() {
   const checkAuth = async () => {
     try {
       console.log('[Checkout] Starting auth check...')
-      const { data: { user } } = await supabase.auth.getUser()
+      
+      // Add timeout to prevent infinite loading
+      const authPromise = supabase.auth.getUser();
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Auth check timeout')), 5000)
+      );
+      
+      const { data: { user } } = await Promise.race([authPromise, timeoutPromise]) as any;
       
       if (!user) {
         // Guest checkout - no redirect, just proceed
@@ -91,12 +98,21 @@ export default function CheckoutPage() {
 
       console.log('[Checkout] Auth user found:', user.id, user.email)
 
-      // Get full user details (query by auth_user_id, not id)
-      const { data: userData, error: userError } = await supabase
+      // Get full user details (query by auth_user_id, not id) with timeout
+      const userQueryPromise = supabase
         .from('users')
         .select('*')
         .eq('auth_user_id', user.id)
-        .single() as { data: any; error: any }
+        .single();
+      
+      const userTimeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('User query timeout')), 5000)
+      );
+      
+      const { data: userData, error: userError } = await Promise.race([
+        userQueryPromise,
+        userTimeoutPromise
+      ]) as { data: any; error: any };
 
       console.log('[Checkout] User lookup result:', { 
         found: !!userData, 
@@ -114,11 +130,19 @@ export default function CheckoutPage() {
         console.log('[Checkout] Setting currentUser:', userData.id, userData.email)
         setCurrentUser(userData)
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('[Checkout] Auth check error:', error)
       // Don't redirect on error - allow guest checkout
       setCurrentUser(null)
+      
+      if (error.message?.includes('timeout')) {
+        toast({
+          title: "Connection Issue",
+          description: "Continuing as guest checkout",
+        })
+      }
     } finally {
+      console.log('[Checkout] Setting loading to false')
       setLoading(false)
     }
   }
