@@ -173,7 +173,7 @@ export default function CheckoutPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           amount: total,
-          user_id: currentUser?.id, // Will be undefined for guests
+          user_id: currentUser?.id ? String(currentUser.id) : undefined, // MUST be string to match order validation
           guest_email: address.email, // For guest checkouts
           metadata: {
             delivery_address: JSON.stringify(address),
