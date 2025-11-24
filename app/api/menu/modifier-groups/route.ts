@@ -32,34 +32,49 @@ export async function GET(request: NextRequest) {
     await verifyAdminAuth(request)
     const supabase = createAdminClient()
     
-    // Fetch category-level modifier groups (course_id IS NOT NULL)
-    const { data: templates, error: templatesError } = await (supabase
-      .schema('menuca_v3')
-      .from('course_modifier_templates' as any)
-      .select(`
-        id,
-        name,
-        is_required,
-        min_selections,
-        max_selections,
-        display_order,
-        created_at,
-        course_template_modifiers (
+    // Fetch ALL category-level modifier groups in batches (PostgREST has 1000 row limit)
+    const PAGE_SIZE = 1000
+    let allTemplates: any[] = []
+    let page = 0
+    let hasMore = true
+
+    while (hasMore) {
+      const start = page * PAGE_SIZE
+      const end = start + PAGE_SIZE - 1
+
+      const { data: templates, error: templatesError } = await (supabase
+        .schema('menuca_v3')
+        .from('course_modifier_templates' as any)
+        .select(`
           id,
           name,
-          price,
-          is_included,
+          is_required,
+          min_selections,
+          max_selections,
           display_order,
-          deleted_at
-        )
-      `)
-      .not('course_id', 'is', null)
-      .is('deleted_at', null)
-      .order('created_at', { ascending: false }) as any)
+          created_at,
+          course_template_modifiers (
+            id,
+            name,
+            price,
+            is_included,
+            display_order,
+            deleted_at
+          )
+        `)
+        .not('course_id', 'is', null)
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false })
+        .range(start, end) as any)
 
-    if (templatesError) throw templatesError
+      if (templatesError) throw templatesError
 
-    const result = (templates as any[] || []).map((template: any) => ({
+      allTemplates = allTemplates.concat(templates || [])
+      hasMore = templates && templates.length === PAGE_SIZE
+      page++
+    }
+
+    const result = (allTemplates || []).map((template: any) => ({
       ...template,
       modifiers: (template.course_template_modifiers || [])
         .filter((m: any) => !m.deleted_at)
@@ -73,7 +88,7 @@ export async function GET(request: NextRequest) {
         }))
     }))
 
-    console.log(`[MODIFIER GROUPS API] Returning ${result.length} category-level modifier groups`)
+    console.log(`[MODIFIER GROUPS API] Returning ${result.length} category-level modifier groups (fetched in ${page} page(s))`)
 
     return NextResponse.json(result)
   } catch (error: any) {
