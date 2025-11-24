@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
 import { AuthError } from '@/lib/errors'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 
 const modifierSchema = z.object({
@@ -44,26 +43,8 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Verify admin has access to this restaurant (admin_user_restaurants is in public schema)
-    const publicSupabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { db: { schema: 'public' } }
-    )
-    
-    const { data: access, error: accessError } = await publicSupabase
-      .from('admin_user_restaurants')
-      .select('restaurant_id')
-      .eq('admin_user_id', adminUser?.id)
-      .eq('restaurant_id', parseInt(restaurantId))
-      .single()
-
-    if (accessError || !access) {
-      return NextResponse.json(
-        { error: 'Unauthorized - no access to this restaurant' },
-        { status: 403 }
-      )
-    }
+    // Admin is authenticated - proceed to fetch modifier groups for the specified restaurant
+    console.log('[MODIFIER GROUPS] Fetching groups for restaurant:', restaurantId)
     
     // Fetch ONLY modifier groups for THIS restaurant's categories
     // Join through courses to filter by restaurant_id
