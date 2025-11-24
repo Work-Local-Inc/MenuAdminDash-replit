@@ -147,6 +147,55 @@ export async function POST(request: NextRequest) {
 
     if (priceError) throw priceError
 
+    // Auto-apply category modifier templates if dish belongs to a category
+    if (validatedData.course_id) {
+      const { data: templates, error: templatesError } = await (supabase
+        .schema('menuca_v3')
+        .from('course_modifier_templates' as any)
+        .select('id, name')
+        .eq('course_id', validatedData.course_id)
+        .not('library_template_id', 'is', null) // Only category associations
+        .is('deleted_at', null) as any)
+
+      if (templatesError) {
+        console.error('[FETCH TEMPLATES ERROR]', templatesError)
+      }
+
+      if (templates && (templates as any[]).length > 0) {
+        const templateResults: any[] = []
+        
+        // Apply each template to the new dish
+        for (const template of templates as any[]) {
+          const { data, error } = await (supabase.rpc as any)('apply_template_to_dish', {
+            p_dish_id: dish.id,
+            p_template_id: template.id,
+          })
+
+          if (error) {
+            console.error(`[APPLY TEMPLATE ERROR] Template ${template.id} (${template.name}):`, error)
+            templateResults.push({
+              template_id: template.id,
+              template_name: template.name,
+              success: false,
+              error: error.message
+            })
+          } else {
+            templateResults.push({
+              template_id: template.id,
+              template_name: template.name,
+              success: true,
+              modifier_group_id: data
+            })
+          }
+        }
+
+        // Log summary of template applications
+        const successCount = templateResults.filter(r => r.success).length
+        const failCount = templateResults.filter(r => !r.success).length
+        console.log(`[TEMPLATE APPLICATION] Dish ${dish.id}: ${successCount} succeeded, ${failCount} failed`, templateResults)
+      }
+    }
+
     // Return dish with price info
     return NextResponse.json({
       ...dish,

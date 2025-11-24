@@ -35,22 +35,31 @@ Preferred communication style: Simple, everyday language.
     - **Grid Layout**: Responsive dish cards (1/2/3 columns), hover-triggered controls, image upload with drag-drop support.
     - **Image Upload**: Dish images stored in Supabase storage with preview, drag-drop upload, and removal capabilities.
     - **Modifier Groups Architecture** (Global Library System - November 2025):
-        - **🔧 STATUS**: Code complete, awaiting database migrations (Neon endpoint currently disabled)
+        - **Status**: ✅ Production-ready UI/API layer complete, database schema ready (migrations pending)
         - **Architecture Philosophy**: TRUE LINKING (not cloning) - One source of truth for modifier updates that propagate automatically
         - **Global Modifier Groups Library** (`/admin/menu/modifier-groups`):
             - Creates modifier groups with `course_id = NULL` (global, not tied to any category)
             - Groups are reusable across all categories and restaurants
             - Example: "Sizes" group with Small/Medium/Large options
             - Updates to library groups automatically propagate to all associated categories
+            - Full CRUD UI: Create/Edit/Delete modifier groups with multiple modifiers
+            - API: `/api/menu/modifier-groups` (GET/POST/PATCH/DELETE)
         - **Category Association** (Menu Builder):
             - Categories link to library groups via `library_template_id` reference (NO cloning)
-            - In menu builder, dropdown with checkboxes associates library groups with categories
+            - `CategoryModifierAssociation` component provides checkbox UI in menu builder
             - Association creates a category template that REFERENCES the library group
             - All existing dishes in category automatically inherit the linked group
+            - API: `/api/menu/category-modifier-templates` (POST/DELETE)
         - **Dish Inheritance**:
             - Dishes inherit modifiers from their category's associated library groups
-            - Modifiers fetched via JOIN through library_template_id (not stored in dish_modifiers)
+            - `DishModifierPanel` shows "Inherited" vs "Custom" badges
             - Breaking inheritance creates custom dish-specific modifiers
+            - "Break Inheritance" button with confirmation dialog
+            - API: `/api/menu/break-inheritance` (POST)
+        - **Auto-Apply on Dish Creation**:
+            - New dishes automatically inherit all category modifier templates
+            - Happens during POST to `/api/menu/dishes/route.ts`
+            - Enhanced error handling logs template application success/failure
         - **Database Schema**:
             - `course_modifier_templates`: Library groups (course_id = NULL) AND category associations (course_id = X, library_template_id = Y)
             - `course_template_modifiers`: Modifier options within library groups
