@@ -457,9 +457,22 @@ export default function RestaurantMenu({
             </Droppable>
           </DragDropContext>
         ) : (
-          <div className="space-y-12">
+          <div className="space-y-8">
             {courses?.map((course) => {
               const courseDishes = course.dishes || [];
+              
+              // Determine grid classes based on menu_layout
+              const getGridClasses = () => {
+                const layout = restaurant.menu_layout || 'list';
+                
+                if (layout === 'grid') {
+                  // Grid: larger cards, max 2 columns on desktop
+                  return 'grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4';
+                } else {
+                  // List: compact cards, up to 4 columns on wide screens
+                  return 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3';
+                }
+              };
               
               return (
                 <div
@@ -468,7 +481,7 @@ export default function RestaurantMenu({
                   className="scroll-mt-24"
                 >
                   {/* Category Header - Customer View */}
-                  <div className="flex items-center gap-3 mb-6 pb-2 border-b">
+                  <div className="flex items-center gap-3 mb-4 pb-2 border-b">
                     <h2 
                       className="text-2xl font-bold flex-1" 
                       data-testid={`heading-category-${course.id}`}
@@ -477,14 +490,15 @@ export default function RestaurantMenu({
                     </h2>
                   </div>
                   
-                  {/* Dishes Grid - Customer View */}
+                  {/* Dishes Grid - Customer View with Responsive Columns */}
                   {courseDishes.length > 0 && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className={getGridClasses()}>
                       {courseDishes.map((dish: any) => (
                         <DishCard 
                           key={dish.id} 
                           dish={dish} 
-                          restaurantId={restaurant.id} 
+                          restaurantId={restaurant.id}
+                          buttonStyle={restaurant.button_style}
                         />
                       ))}
                     </div>

@@ -166,25 +166,26 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
   
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-testid={`modal-dish-${dish.id}`}>
-        <DialogHeader>
-          <DialogTitle className="text-2xl" data-testid={`text-modal-title-${dish.id}`}>
-            {dish.name}
-          </DialogTitle>
-        </DialogHeader>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0" data-testid={`modal-dish-${dish.id}`}>
+        {/* Hero Image - Full Width at Top */}
+        {dish.image_url && (
+          <div className="w-full h-48 sm:h-64 bg-muted relative">
+            <img
+              src={dish.image_url}
+              alt={dish.name}
+              className="w-full h-full object-cover"
+              data-testid={`img-modal-dish-${dish.id}`}
+            />
+          </div>
+        )}
         
-        <div className="space-y-6">
-          {/* Dish Image */}
-          {dish.image_url && (
-            <div className="w-full h-64 bg-muted rounded-md overflow-hidden">
-              <img
-                src={dish.image_url}
-                alt={dish.name}
-                className="w-full h-full object-cover"
-                data-testid={`img-modal-dish-${dish.id}`}
-              />
-            </div>
-          )}
+        {/* Content Area with Padding */}
+        <div className="p-6 space-y-6">
+          <DialogHeader>
+            <DialogTitle className="text-2xl" data-testid={`text-modal-title-${dish.id}`}>
+              {dish.name}
+            </DialogTitle>
+          </DialogHeader>
           
           {/* Description */}
           {dish.description && (
@@ -219,29 +220,38 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
           
           {/* Modifier Groups */}
           {modifierGroups.length > 0 ? (
-            <div className="space-y-6">
+            <div className="space-y-4">
               {modifierGroups.map((group) => {
                 const groupSelected = groupSelections[group.id] || [];
                 const isMaxSelections = group.max_selections > 0 && groupSelected.length >= group.max_selections;
 
                 return (
-                  <div key={group.id} className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-base font-semibold">
-                        {group.name}
-                        {group.is_required && (
-                          <Badge variant="destructive" className="ml-2 text-xs">Required</Badge>
-                        )}
-                      </Label>
-                      {group.max_selections > 0 && (
-                        <span className="text-sm text-muted-foreground">
-                          {group.max_selections === 1 ? 'Choose 1' : `Choose up to ${group.max_selections}`}
-                        </span>
-                      )}
+                  <div key={group.id} className="border rounded-lg p-4 bg-muted/30 space-y-3">
+                    {/* Group Header with Optional/Required Label */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1">
+                        <Label className="text-base font-semibold block">
+                          {group.name}
+                        </Label>
+                        {/* Optional/Required and Max Selection Info */}
+                        <div className="flex items-center gap-2 mt-1">
+                          {group.is_required ? (
+                            <Badge variant="destructive" className="text-xs">Required</Badge>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">Optional</span>
+                          )}
+                          {group.max_selections > 0 && (
+                            <span className="text-xs text-muted-foreground">
+                              • {group.max_selections === 1 ? 'Choose 1' : `Max ${group.max_selections}`}
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
                     
+                    {/* Instructions */}
                     {group.instructions && (
-                      <p className="text-sm text-muted-foreground">{group.instructions}</p>
+                      <p className="text-sm text-muted-foreground -mt-1">{group.instructions}</p>
                     )}
                     
                     {group.max_selections === 1 ? (
@@ -373,6 +383,7 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
               Add to Cart - ${Number(itemTotal).toFixed(2)}
             </Button>
           </div>
+        </div>
         </div>
       </DialogContent>
     </Dialog>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, UtensilsCrossed } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -48,47 +48,51 @@ export function DishCard({ dish, restaurantId, buttonStyle }: DishCardProps) {
   return (
     <>
       <Card 
-        className="hover-elevate active-elevate-2 cursor-pointer overflow-hidden"
+        className="hover-elevate active-elevate-2 cursor-pointer"
         onClick={() => setIsModalOpen(true)}
         data-testid={`card-dish-${dish.id}`}
       >
         <CardContent className="p-0">
-          {/* Responsive Layout: Vertical on mobile, horizontal on tablet+ */}
-          <div className="flex flex-col sm:flex-row sm:gap-4">
-            {/* Dish Image */}
-            {dish.image_url && (
-              <div className="w-full sm:w-32 h-40 sm:h-32 flex-shrink-0 bg-muted">
-                <img
-                  src={dish.image_url}
-                  alt={dish.name}
-                  className="w-full h-full object-cover"
-                  data-testid={`img-dish-${dish.id}`}
-                />
+          {/* Compact List Layout: Always horizontal (image left, text right) */}
+          <div className="flex gap-3 p-2 sm:p-3">
+            {/* Dish Image - 80x80px fixed, rounded, no background wrapper */}
+            {dish.image_url ? (
+              <img
+                src={dish.image_url}
+                alt={dish.name}
+                className="w-20 h-20 rounded-lg object-cover flex-shrink-0"
+                data-testid={`img-dish-${dish.id}`}
+              />
+            ) : (
+              <div className="w-20 h-20 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                <UtensilsCrossed className="w-8 h-8 text-muted-foreground" />
               </div>
             )}
             
-            {/* Dish Info */}
-            <div className="flex-1 p-3 sm:p-4 flex flex-col justify-between min-h-[120px] sm:min-h-[128px]">
+            {/* Dish Info - flex-1 to fill remaining space */}
+            <div className="flex-1 min-w-0 flex flex-col justify-between">
               <div>
-                {/* Name and Price - Stack on mobile, side-by-side on larger screens */}
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-2 mb-2">
-                  <h3 className="font-semibold text-base sm:text-lg leading-tight flex-1" data-testid={`text-dish-name-${dish.id}`}>
+                {/* Name and Price - same line, wrap if needed */}
+                <div className="flex items-start justify-between gap-2 mb-1">
+                  <h3 className="font-semibold text-sm sm:text-base leading-tight line-clamp-2 flex-1" data-testid={`text-dish-name-${dish.id}`}>
                     {dish.name}
                   </h3>
-                  <span className="text-base sm:text-lg font-bold text-primary sm:whitespace-nowrap" data-testid={`text-dish-price-${dish.id}`}>
-                    {hasMultiplePrices && <span className="text-xs sm:text-sm font-normal">Starting at </span>}
+                  <span className="text-sm sm:text-base font-bold text-primary flex-shrink-0" data-testid={`text-dish-price-${dish.id}`}>
+                    {hasMultiplePrices && <span className="text-xs font-normal">From </span>}
                     ${displayPrice}
                   </span>
                 </div>
                 
+                {/* Description - only show if exists, line-clamp-1 for single line */}
                 {dish.description && (
-                  <p className="text-sm text-muted-foreground line-clamp-2 mb-2" data-testid={`text-dish-description-${dish.id}`}>
+                  <p className="text-xs sm:text-sm text-muted-foreground line-clamp-1 mb-1" data-testid={`text-dish-description-${dish.id}`}>
                     {dish.description}
                   </p>
                 )}
               </div>
               
-              <div className="flex items-center justify-between gap-2 mt-2">
+              {/* Bottom Row - Badge and Add Button */}
+              <div className="flex items-center justify-between gap-2 mt-1">
                 {dish.has_customization && (
                   <Badge variant="outline" className="text-xs" data-testid={`badge-customizable-${dish.id}`}>
                     Customizable
@@ -101,10 +105,10 @@ export function DishCard({ dish, restaurantId, buttonStyle }: DishCardProps) {
                     e.stopPropagation();
                     handleQuickAdd();
                   }}
-                  className={`ml-auto ${buttonClassName}`}
+                  className={`ml-auto text-xs sm:text-sm ${buttonClassName}`}
                   data-testid={`button-add-dish-${dish.id}`}
                 >
-                  <Plus className="w-4 h-4 mr-1" />
+                  <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                   Add
                 </Button>
               </div>
