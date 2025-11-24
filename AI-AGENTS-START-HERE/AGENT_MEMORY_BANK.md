@@ -629,6 +629,18 @@ git log origin/main..HEAD --oneline
 
 ## 🔄 Recent Fixes (Nov 24, 2025)
 
+### Checkout Sign-In UX Improvements
+**Problem:** After sign-in, UI didn't update - sign-in button still showing, no saved addresses visible
+**Solution:** Enhanced auth state tracking, added welcome message, redesigned saved addresses as cards
+**Details:**
+- **Debug Logging:** Added comprehensive console logs to track auth flow
+- **Welcome Message:** "Welcome back, [Name]! 👋" greeting after login
+- **Card-Style Addresses:** Selectable cards with borders, icons, checkmarks (Grab/UberEats style)
+- **No Addresses State:** Prominent empty state with "Add Your First Address" CTA
+- **Guest Prompt:** Enhanced sign-in prompt with primary color accent
+- **Better Feedback:** Toast notification "Loading your saved addresses..." after login
+**Commit:** `8ffe88d`
+
 ### Category Navigation & Sticky Footer Cart Bar
 **Problem:** Category navigation missing for customers, cart button small and hard to see  
 **Solution:** Restored category tabs and redesigned cart as full-width sticky footer  
