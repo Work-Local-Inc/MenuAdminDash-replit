@@ -219,7 +219,7 @@ export default function MenuBuilderPage() {
     ...allModifierGroups,   // Legacy category-specific modifier groups
   ].map(group => ({
     ...group,
-    modifiers: group.modifiers || []
+    modifiers: group.modifiers || group.course_template_modifiers || []
   }))
   
   // Build map of category -> associated modifier group IDs
