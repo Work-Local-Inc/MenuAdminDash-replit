@@ -32,6 +32,10 @@ export async function GET(
       .is('deleted_at', null)
       .order('created_at', { ascending: false })
     
+    console.log('[DELIVERY AREAS API] Restaurant ID:', params.id)
+    console.log('[DELIVERY AREAS API] Query result:', { count: data?.length || 0, error: error?.message })
+    console.log('[DELIVERY AREAS API] Sample data:', data?.[0])
+    
     if (error) {
       throw error
     }
