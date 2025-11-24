@@ -619,17 +619,25 @@ function EditorDishCard({
 }) {
   const [showActiveConfirmation, setShowActiveConfirmation] = useState(false);
   const [pendingActiveState, setPendingActiveState] = useState<boolean | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const handleActiveToggle = (checked: boolean) => {
     setPendingActiveState(checked);
     setShowActiveConfirmation(true);
   };
 
-  const confirmActiveToggle = () => {
+  const confirmActiveToggle = async () => {
     if (pendingActiveState !== null) {
-      onToggleActive();
-      setShowActiveConfirmation(false);
-      setPendingActiveState(null);
+      setIsUpdating(true);
+      try {
+        await onToggleActive();
+        // Wait a bit for React Query to refetch
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } finally {
+        setIsUpdating(false);
+        setShowActiveConfirmation(false);
+        setPendingActiveState(null);
+      }
     }
   };
 
@@ -660,7 +668,7 @@ function EditorDishCard({
         </div>
 
         <CardContent className="p-3">
-          {/* Row 1: Image + Name + Status + Actions */}
+          {/* Row 1: Image + Name + Price + Status + Actions */}
           <div className="flex items-center gap-2 mb-2">
             {/* Drag Handle */}
             <div
@@ -686,29 +694,30 @@ function EditorDishCard({
               )}
             </div>
 
-            {/* Name */}
-            <h4 className="font-semibold text-sm line-clamp-1 flex-1 min-w-0">
-              {dish.name}
-            </h4>
-
-            {/* Price */}
-            <span className="font-bold text-primary text-sm flex-shrink-0">
-              ${dish.price.toFixed(2)}
-            </span>
+            {/* Name + Price Column */}
+            <div className="flex-1 min-w-0">
+              <h4 className="font-semibold text-sm line-clamp-1">
+                {dish.name}
+              </h4>
+              <span className="font-bold text-primary text-xs">
+                ${dish.price.toFixed(2)}
+              </span>
+            </div>
 
             {/* Active/Inactive Status Badge */}
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-shrink-0">
                   <Switch
                     id={`active-${dish.id}`}
-                    checked={dish.is_active}
+                    checked={pendingActiveState !== null ? pendingActiveState : dish.is_active}
                     onCheckedChange={handleActiveToggle}
+                    disabled={isUpdating}
                     data-testid={`switch-active-${dish.id}`}
                     aria-label={dish.is_active ? "Mark as inactive" : "Mark as active"}
                   />
-                  <Label className="text-xs text-muted-foreground cursor-pointer" htmlFor={`active-${dish.id}`}>
-                    {dish.is_active ? 'Active' : 'Inactive'}
+                  <Label className="text-xs text-muted-foreground cursor-pointer whitespace-nowrap" htmlFor={`active-${dish.id}`}>
+                    {(pendingActiveState !== null ? pendingActiveState : dish.is_active) ? 'Active' : 'Inactive'}
                   </Label>
                 </div>
               </TooltipTrigger>
@@ -840,9 +849,9 @@ function EditorDishCard({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={cancelActiveToggle}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmActiveToggle}>
-              {pendingActiveState ? 'Activate' : 'Deactivate'}
+            <AlertDialogCancel onClick={cancelActiveToggle} disabled={isUpdating}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmActiveToggle} disabled={isUpdating}>
+              {isUpdating ? 'Updating...' : (pendingActiveState ? 'Activate' : 'Deactivate')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
