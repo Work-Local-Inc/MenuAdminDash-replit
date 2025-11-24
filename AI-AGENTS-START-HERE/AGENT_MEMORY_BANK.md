@@ -629,6 +629,19 @@ git log origin/main..HEAD --oneline
 
 ## 🔄 Recent Fixes (Nov 24, 2025)
 
+### Compact List Layout Redesign (GrabFood/UberEats Style)
+**Problem:** Menu cards wasted space, not optimized for 100+ item menus, poor density  
+**Solution:** Complete redesign to professional food delivery app patterns  
+**Details:**
+- **Dish Cards:** 80x80px fixed images (all screens), always horizontal layout
+- **Image Handling:** Rounded-lg, no frame, UtensilsCrossed icon fallback for no-image dishes
+- **Multi-Column Grid:** 1→2→3→4 columns responsive (list), 1→2 columns (grid)
+- **Respects Branding:** menu_layout setting (list vs grid) from database
+- **Modifier Modal:** Hero image at top (full-width), Optional/Required labels, grouped UI
+- **Spacing:** Tighter throughout - p-2 sm:p-3 cards, space-y-8 categories, gap-2 sm:gap-3
+- **Estimated Impact:** 5-7 dishes visible mobile (was 3-4), 12-20 desktop (was 8-10)
+**Commit:** `859cd7b`
+
 ### Responsive Design Overhaul
 **Problem:** Menu page layout broke on mobile - text cutoff, cramped spacing, poor usability  
 **Solution:** Implemented comprehensive mobile-first responsive design  
@@ -642,6 +655,7 @@ git log origin/main..HEAD --oneline
 - Tighter padding throughout on mobile (px-3 vs px-4)
 - Service badges stack vertically and use shorter text on mobile
 **Commit:** `80417ee`
+**Note:** Superseded by compact list layout redesign
 
 ### Banner Image Implementation (Nov 21, 2025)
 **Problem:** Banner images were stored in database but not displayed on customer menu page  
