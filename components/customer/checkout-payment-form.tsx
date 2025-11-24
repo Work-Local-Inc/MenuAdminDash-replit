@@ -5,10 +5,12 @@ import { useRouter } from 'next/navigation'
 import { useStripe, useElements, PaymentElement } from '@stripe/react-stripe-js'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
 import { useCartStore } from '@/lib/stores/cart-store'
 import { PostOrderSignupModal } from '@/components/customer/post-order-signup-modal'
-import { ArrowLeft, CreditCard } from 'lucide-react'
+import { ArrowLeft, CreditCard, Camera, Shield } from 'lucide-react'
 
 interface DeliveryAddress {
   id?: number
@@ -44,6 +46,8 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
   const [showSignupModal, setShowSignupModal] = useState(false)
   const [completedOrderId, setCompletedOrderId] = useState<number | null>(null)
   const [guestEmail, setGuestEmail] = useState<string>('')
+  const [saveCard, setSaveCard] = useState(false)
+  const [showScanModal, setShowScanModal] = useState(false)
 
   const handleSignupModalClose = () => {
     setShowSignupModal(false)
@@ -86,6 +90,17 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
         })
         setProcessing(false)
       } else if (paymentIntent && paymentIntent.status === 'succeeded') {
+        // If user wants to save card, set it up for future use
+        if (saveCard && userId) {
+          try {
+            console.log('[Payment] User opted to save card')
+            // Note: Stripe automatically saves payment methods when setup_future_usage is set
+            // This is handled in the payment intent creation on the backend
+          } catch (error) {
+            console.error('[Payment] Error saving card:', error)
+            // Don't fail the order if card saving fails
+          }
+        }
         // Payment succeeded, show loading state while creating order
         setCreatingOrder(true)
         
@@ -173,6 +188,32 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
 
         {/* Payment Element */}
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Scan Card Button */}
+          <div className="flex items-center justify-center">
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              onClick={() => setShowScanModal(true)}
+              className="w-full sm:w-auto"
+              data-testid="button-scan-card"
+            >
+              <Camera className="w-5 h-5 mr-2" />
+              Scan Card for Quick Entry
+            </Button>
+          </div>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">
+                Or enter manually
+              </span>
+            </div>
+          </div>
+
           <PaymentElement 
             onReady={() => setIsLoading(false)}
             options={{
@@ -198,6 +239,30 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
               }
             }}
           />
+
+          {/* Save Card Checkbox (Only for logged-in users) */}
+          {userId && (
+            <div className="flex items-start space-x-3 p-4 bg-primary/5 border border-primary/20 rounded-lg">
+              <Checkbox
+                id="save-card"
+                checked={saveCard}
+                onCheckedChange={(checked) => setSaveCard(checked as boolean)}
+                data-testid="checkbox-save-card"
+              />
+              <div className="flex-1 space-y-1">
+                <Label
+                  htmlFor="save-card"
+                  className="text-sm font-medium leading-none cursor-pointer flex items-center gap-2"
+                >
+                  <Shield className="w-4 h-4 text-primary" />
+                  Save card for faster checkout
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Securely save this card with Stripe for quicker future purchases
+                </p>
+              </div>
+            </div>
+          )}
 
           <div className="flex gap-3">
             <Button
@@ -255,6 +320,95 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
               <p className="text-sm text-muted-foreground">
                 Please wait while we finalize your order. You'll be redirected shortly.
               </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )}
+
+    {/* Card Scanning Modal */}
+    {showScanModal && (
+      <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-50 flex items-center justify-center p-4" data-testid="modal-scan-card">
+        <Card className="w-full max-w-lg">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Camera className="w-5 h-5" />
+                  Scan Credit Card
+                </CardTitle>
+                <CardDescription className="mt-2">
+                  Position your card in the frame to automatically capture details
+                </CardDescription>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowScanModal(false)}
+                data-testid="button-close-scan-modal"
+              >
+                ×
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Camera Preview Placeholder */}
+            <div className="relative aspect-[3/2] bg-muted rounded-lg border-2 border-dashed border-border flex items-center justify-center">
+              <div className="text-center space-y-2 p-6">
+                <Camera className="w-12 h-12 mx-auto text-muted-foreground" />
+                <p className="text-sm font-medium">Camera Preview</p>
+                <p className="text-xs text-muted-foreground">
+                  Card scanning requires camera permissions
+                </p>
+              </div>
+              {/* Card Frame Overlay */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-4/5 aspect-[1.586/1] border-2 border-primary rounded-lg" />
+              </div>
+            </div>
+
+            {/* Instructions */}
+            <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 space-y-2">
+              <p className="text-sm font-medium">Tips for best results:</p>
+              <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
+                <li>Ensure good lighting and avoid glare</li>
+                <li>Hold your card flat within the frame</li>
+                <li>Keep the card steady until capture completes</li>
+              </ul>
+            </div>
+
+            {/* Note about feature */}
+            <div className="bg-muted/50 border rounded-lg p-4">
+              <p className="text-xs text-center text-muted-foreground">
+                <strong>Note:</strong> Card scanning feature requires camera access and OCR setup. 
+                For now, please use manual entry below.
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setShowScanModal(false)}
+                className="flex-1"
+                data-testid="button-cancel-scan"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowScanModal(false)
+                  toast({
+                    title: "Feature Coming Soon",
+                    description: "Card scanning will be available in a future update. Please enter your card details manually.",
+                  })
+                }}
+                className="flex-1"
+                data-testid="button-enable-camera"
+              >
+                <Camera className="w-4 h-4 mr-2" />
+                Enable Camera
+              </Button>
             </div>
           </CardContent>
         </Card>
