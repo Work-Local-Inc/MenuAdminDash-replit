@@ -135,21 +135,25 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
         // Payment succeeded, create order with cart items for server validation
         const { items } = useCartStore.getState()
         
+        const orderPayload = {
+          payment_intent_id: paymentIntent.id,
+          delivery_address: deliveryAddress,
+          guest_email: deliveryAddress.email, // Required for guest checkout
+          user_id: userId, // Include user_id to match payment intent metadata
+          cart_items: items.map(item => ({
+            dishId: item.dishId,
+            size: item.size,
+            quantity: item.quantity,
+            modifiers: item.modifiers,
+          })),
+        };
+        
+        console.log('[Payment] Creating order with userId:', userId, 'Payment Intent metadata user_id:', paymentIntent.metadata.user_id);
+        
         const orderResponse = await fetch('/api/customer/orders', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            payment_intent_id: paymentIntent.id,
-            delivery_address: deliveryAddress,
-            guest_email: deliveryAddress.email, // Required for guest checkout
-            user_id: userId, // Include user_id to match payment intent metadata
-            cart_items: items.map(item => ({
-              dishId: item.dishId,
-              size: item.size,
-              quantity: item.quantity,
-              modifiers: item.modifiers,
-            })),
-          }),
+          body: JSON.stringify(orderPayload),
         })
 
         if (!orderResponse.ok) {
