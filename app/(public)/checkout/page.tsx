@@ -153,15 +153,11 @@ export default function CheckoutPage() {
   }
 
   const handleSignInSuccess = async () => {
-    // After successful sign-in, refresh auth and close modal
-    console.log('[Checkout] Sign-in success callback triggered')
+    // After successful sign-in, MUST reload page for auth to propagate
+    console.log('[Checkout] Sign-in success - reloading page')
     setShowSignInModal(false)
     
-    // Small delay to let auth state propagate through cookies
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
-    // Refresh the page to pick up new auth session
-    console.log('[Checkout] Reloading page to pick up auth session')
+    // Reload page immediately - this is REQUIRED for auth session to work
     window.location.reload()
   }
 
