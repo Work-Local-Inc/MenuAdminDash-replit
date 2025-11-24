@@ -954,7 +954,7 @@ export default function MenuBuilderPage() {
           }
         }}
       >
-        <DialogContent data-testid="dialog-dish">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="dialog-dish">
           <DialogHeader>
             <DialogTitle>{editingDish ? 'Edit' : 'Create'} Dish</DialogTitle>
             <DialogDescription>
