@@ -88,70 +88,30 @@ export default function CheckoutPage() {
 
   const checkAuth = async () => {
     try {
-      console.log('[Checkout] Starting auth check...')
+      console.log('[Checkout] Starting auth check via API...')
       
-      // Add timeout to prevent infinite loading
-      const authPromise = supabase.auth.getUser();
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Auth check timeout')), 5000)
-      );
-      
-      const { data: { user } } = await Promise.race([authPromise, timeoutPromise]) as any;
-      
-      if (!user) {
-        // Guest checkout - no redirect, just proceed
-        console.log('[Checkout] No auth user - Guest checkout mode')
-        setCurrentUser(null)
-        setLoading(false)
-        return
-      }
-
-      console.log('[Checkout] Auth user found:', user.id, user.email)
-
-      // Get full user details (query by auth_user_id, not id) with timeout
-      // Use maybeSingle() instead of single() to avoid 406 errors when no data
-      const userQueryPromise = supabase
-        .from('users')
-        .select('*')
-        .eq('auth_user_id', user.id)
-        .maybeSingle();
-      
-      const userTimeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('User query timeout')), 5000)
-      );
-      
-      const { data: userData, error: userError } = await Promise.race([
-        userQueryPromise,
-        userTimeoutPromise
-      ]) as { data: any; error: any };
-
-      console.log('[Checkout] User lookup result:', { 
-        found: !!userData, 
-        userId: userData?.id,
-        userEmail: userData?.email,
-        userName: userData?.first_name,
-        error: userError 
+      // Use API endpoint instead of direct query to bypass RLS issues
+      const response = await fetch('/api/customer/profile', {
+        credentials: 'include', // Include auth cookies
       })
-
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch profile')
+      }
+      
+      const { user: userData } = await response.json()
+      
       if (!userData) {
-        // User has auth but no profile - treat as guest
-        console.log('[Checkout] Auth user but no profile - treating as guest')
+        console.log('[Checkout] No user profile - Guest checkout mode')
         setCurrentUser(null)
       } else {
-        console.log('[Checkout] Setting currentUser:', userData.id, userData.email)
+        console.log('[Checkout] User profile loaded:', userData.id, userData.email, userData.first_name)
         setCurrentUser(userData)
       }
     } catch (error: any) {
       console.error('[Checkout] Auth check error:', error)
       // Don't redirect on error - allow guest checkout
       setCurrentUser(null)
-      
-      if (error.message?.includes('timeout')) {
-        toast({
-          title: "Connection Issue",
-          description: "Continuing as guest checkout",
-        })
-      }
     } finally {
       console.log('[Checkout] Setting loading to false')
       setLoading(false)
