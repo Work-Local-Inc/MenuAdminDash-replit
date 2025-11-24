@@ -636,11 +636,12 @@ git log origin/main..HEAD --oneline
 - **Category Nav:** Changed from editorMode-only to customer-facing (!editorMode)
 - **Horizontal Scroll:** Categories appear as scrollable tabs at top of menu
 - **Sticky Footer Cart:** Full-width bar at bottom showing "Basket • X Items" + total
-- **Dynamic Text:** Button shows "Place Order" when cart drawer is open
-- **Always Visible:** Fixed positioning keeps cart status visible while scrolling
+- **Always Visible:** Cart footer now always visible (even when empty at $0.00)
+- **Dynamic Text:** Button shows "Place Order" when cart drawer is open with items
+- **Debug Logging:** Added console logs to track cart additions and updates
 - **Bottom Padding:** Added pb-24 to menu container to prevent content hiding
 - **Better UX:** Quick category navigation + persistent cart visibility
-**Commit:** `a86ce38`
+**Commits:** `a86ce38`, `926b8a7`
 
 ### No-Image-First Design & Button Overflow Fix
 **Problem:** 80x80px placeholder wasted space (80%+ dishes have no images), buttons broke on narrow screens  
