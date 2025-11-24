@@ -60,8 +60,11 @@ const menuItems = [
   },
   {
     title: "Menu Builder",
-    url: "/admin/menu/builder",
     icon: UtensilsCrossed,
+    items: [
+      { title: "Menu Builder", url: "/admin/menu/builder" },
+      { title: "Modifier Groups Library", url: "/admin/menu/modifier-groups" },
+    ],
   },
   {
     title: "Orders",

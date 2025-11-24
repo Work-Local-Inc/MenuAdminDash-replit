@@ -73,6 +73,11 @@ export async function GET(request: NextRequest) {
         }))
     }))
 
+    console.log(`[MODIFIER GROUPS API] Returning ${result.length} global library groups`)
+    if (result.length === 0) {
+      console.warn('[MODIFIER GROUPS API] No global library groups found (course_id IS NULL). Check if groups have course_id set.')
+    }
+
     return NextResponse.json(result)
   } catch (error: any) {
     console.error('[MODIFIER GROUPS GET ERROR]', error)
