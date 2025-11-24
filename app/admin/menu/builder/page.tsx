@@ -133,8 +133,8 @@ export default function MenuBuilderPage() {
     selectedRestaurantId && parseInt(selectedRestaurantId) > 0 ? parseInt(selectedRestaurantId) : null
   )
   
-  // Fetch global modifier groups library
-  const { data: modifierGroups = [] } = useRestaurantModifierGroups()
+  // Fetch modifier groups for the selected restaurant only
+  const { data: modifierGroups = [] } = useRestaurantModifierGroups(selectedRestaurantId)
 
   const createCourse = useCreateCourse()
   const updateCourse = useUpdateCourse()

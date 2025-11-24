@@ -270,12 +270,19 @@ export interface RestaurantModifierGroup {
   modifiers: TemplateModifier[]
 }
 
-export function useRestaurantModifierGroups() {
+export function useRestaurantModifierGroups(restaurantId?: string | number) {
   return useQuery<RestaurantModifierGroup[]>({
-    queryKey: ['/api/menu/modifier-groups'],
+    queryKey: ['/api/menu/modifier-groups', restaurantId],
+    enabled: !!restaurantId, // Only run query if restaurant ID is provided
     queryFn: async () => {
-      const res = await fetch('/api/menu/modifier-groups')
-      if (!res.ok) throw new Error('Failed to fetch modifier groups')
+      if (!restaurantId) {
+        throw new Error('Restaurant ID is required')
+      }
+      const res = await fetch(`/api/menu/modifier-groups?restaurant_id=${restaurantId}`)
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || 'Failed to fetch modifier groups')
+      }
       return res.json()
     },
   })

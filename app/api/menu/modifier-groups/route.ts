@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
 import { AuthError } from '@/lib/errors'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 
 const modifierSchema = z.object({
@@ -29,10 +30,43 @@ const updateGlobalGroupSchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
-    await verifyAdminAuth(request)
+    const { adminUser } = await verifyAdminAuth(request)
     const supabase = createAdminClient()
     
-    // Fetch ALL category-level modifier groups in batches (PostgREST has 1000 row limit)
+    // Get restaurant_id from query params - REQUIRED for multi-tenancy
+    const { searchParams } = new URL(request.url)
+    const restaurantId = searchParams.get('restaurant_id')
+    
+    if (!restaurantId) {
+      return NextResponse.json(
+        { error: 'restaurant_id is required' },
+        { status: 400 }
+      )
+    }
+
+    // Verify admin has access to this restaurant (admin_user_restaurants is in public schema)
+    const publicSupabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { db: { schema: 'public' } }
+    )
+    
+    const { data: access, error: accessError } = await publicSupabase
+      .from('admin_user_restaurants')
+      .select('restaurant_id')
+      .eq('admin_user_id', adminUser?.id)
+      .eq('restaurant_id', parseInt(restaurantId))
+      .single()
+
+    if (accessError || !access) {
+      return NextResponse.json(
+        { error: 'Unauthorized - no access to this restaurant' },
+        { status: 403 }
+      )
+    }
+    
+    // Fetch ONLY modifier groups for THIS restaurant's categories
+    // Join through courses to filter by restaurant_id
     const PAGE_SIZE = 1000
     let allTemplates: any[] = []
     let page = 0
@@ -53,6 +87,10 @@ export async function GET(request: NextRequest) {
           max_selections,
           display_order,
           created_at,
+          course_id,
+          courses!inner (
+            restaurant_id
+          ),
           course_template_modifiers (
             id,
             name,
@@ -64,6 +102,7 @@ export async function GET(request: NextRequest) {
         `)
         .not('course_id', 'is', null)
         .is('deleted_at', null)
+        .eq('courses.restaurant_id', parseInt(restaurantId))
         .order('created_at', { ascending: false })
         .range(start, end) as any)
 
@@ -75,7 +114,13 @@ export async function GET(request: NextRequest) {
     }
 
     const result = (allTemplates || []).map((template: any) => ({
-      ...template,
+      id: template.id,
+      name: template.name,
+      is_required: template.is_required,
+      min_selections: template.min_selections,
+      max_selections: template.max_selections,
+      display_order: template.display_order,
+      created_at: template.created_at,
       modifiers: (template.course_template_modifiers || [])
         .filter((m: any) => !m.deleted_at)
         .sort((a: any, b: any) => a.display_order - b.display_order)
@@ -88,7 +133,7 @@ export async function GET(request: NextRequest) {
         }))
     }))
 
-    console.log(`[MODIFIER GROUPS API] Returning ${result.length} category-level modifier groups (fetched in ${page} page(s))`)
+    console.log(`[MODIFIER GROUPS API] Returning ${result.length} modifier groups for restaurant ${restaurantId} (fetched in ${page} page(s))`)
 
     return NextResponse.json(result)
   } catch (error: any) {

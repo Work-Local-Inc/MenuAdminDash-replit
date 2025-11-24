@@ -63,12 +63,14 @@ import { useMenuCourses } from "@/lib/hooks/use-menu"
 export default function ModifierGroupsPage() {
   const queryClient = useQueryClient()
   const { toast } = useToast()
+  const [selectedRestaurantId, setSelectedRestaurantId] = useState<string>('')
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [editingGroup, setEditingGroup] = useState<RestaurantModifierGroup | null>(null)
   const [deletingGroupId, setDeletingGroupId] = useState<number | null>(null)
   const [isSaving, setIsSaving] = useState(false)
 
-  const { data: modifierGroups = [], isLoading: loadingGroups } = useRestaurantModifierGroups()
+  const { data: restaurants = [], isLoading: loadingRestaurants } = useRestaurants()
+  const { data: modifierGroups = [], isLoading: loadingGroups } = useRestaurantModifierGroups(selectedRestaurantId)
 
   const [formData, setFormData] = useState({
     name: '',
@@ -225,22 +227,80 @@ export default function ModifierGroupsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight" data-testid="text-page-title">
-            Global Modifier Groups Library
+            Modifier Groups
           </h1>
           <p className="text-muted-foreground mt-1" data-testid="text-page-description">
-            Create modifier groups that can be associated with any category across all restaurants
+            Manage modifier groups for your restaurant categories
           </p>
         </div>
         <Button 
           onClick={handleCreate}
           data-testid="button-create-group"
+          disabled={!selectedRestaurantId}
         >
           <Plus className="mr-2 h-4 w-4" />
           Create Modifier Group
         </Button>
       </div>
 
-      <>
+      {/* Restaurant Selector */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-center gap-4">
+            <Label htmlFor="restaurant-select" className="min-w-fit">
+              Select Restaurant
+            </Label>
+            <Select
+              value={selectedRestaurantId}
+              onValueChange={setSelectedRestaurantId}
+            >
+              <SelectTrigger
+                id="restaurant-select"
+                className="w-full max-w-md"
+                data-testid="select-restaurant"
+              >
+                <SelectValue placeholder="Choose a restaurant..." />
+              </SelectTrigger>
+              <SelectContent>
+                {loadingRestaurants ? (
+                  <SelectItem value="_loading" disabled>
+                    Loading restaurants...
+                  </SelectItem>
+                ) : restaurants.length === 0 ? (
+                  <SelectItem value="_empty" disabled>
+                    No restaurants available
+                  </SelectItem>
+                ) : (
+                  restaurants.map((restaurant: any) => (
+                    <SelectItem
+                      key={restaurant.id}
+                      value={restaurant.id.toString()}
+                      data-testid={`option-restaurant-${restaurant.id}`}
+                    >
+                      {restaurant.name}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {!selectedRestaurantId ? (
+        <Card>
+          <CardContent className="pt-6 text-center">
+            <Info className="mx-auto h-12 w-12 text-muted-foreground" />
+            <h3 className="mt-4 text-lg font-semibold">
+              Select a Restaurant
+            </h3>
+            <p className="text-muted-foreground">
+              Choose a restaurant above to view and manage its modifier groups
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
           {loadingGroups ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {[1, 2, 3].map((i) => (
@@ -363,7 +423,8 @@ export default function ModifierGroupsPage() {
               ))}
             </div>
           )}
-      </>
+        </>
+      )}
 
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
