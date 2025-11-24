@@ -54,6 +54,16 @@ export default function CheckoutPage() {
   const [clientSecret, setClientSecret] = useState<string>('')
   const [showSignInModal, setShowSignInModal] = useState(false)
 
+  // Debug: Log currentUser changes
+  useEffect(() => {
+    console.log('[Checkout] ⭐ currentUser state changed:', currentUser ? { id: currentUser.id, email: currentUser.email, first_name: currentUser.first_name } : 'null')
+  }, [currentUser])
+
+  // Debug: Log loading state changes
+  useEffect(() => {
+    console.log('[Checkout] ⭐ loading state changed:', loading)
+  }, [loading])
+
   useEffect(() => {
     checkAuth()
     
@@ -99,11 +109,12 @@ export default function CheckoutPage() {
       console.log('[Checkout] Auth user found:', user.id, user.email)
 
       // Get full user details (query by auth_user_id, not id) with timeout
+      // Use maybeSingle() instead of single() to avoid 406 errors when no data
       const userQueryPromise = supabase
         .from('users')
         .select('*')
         .eq('auth_user_id', user.id)
-        .single();
+        .maybeSingle();
       
       const userTimeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('User query timeout')), 5000)
