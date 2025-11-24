@@ -82,6 +82,7 @@ export async function GET(request: NextRequest) {
           )
         `)
         .not('course_id', 'is', null)
+        .is('library_template_id', null)
         .is('deleted_at', null)
         .eq('courses.restaurant_id', parseInt(restaurantId))
         .order('created_at', { ascending: false })
