@@ -489,10 +489,21 @@ menu_layout        VARCHAR(20) DEFAULT 'grid' CHECK (menu_layout IN ('grid', 'li
 - `db/migrations/add_advanced_branding_columns.sql` - Migration for new columns
 
 ### Banner Image Specifications
-- **Height:** `h-32` (128px) on customer menu page
+- **Height (Responsive):** `h-20 sm:h-24 md:h-32` (80px mobile → 96px tablet → 128px desktop)
 - **Preview Height:** `h-32` (128px) in admin branding preview
 - **Styling:** `object-cover` with `overflow-hidden` for proper image scaling
-- **Recommended Size:** 1920x400px (will be cropped to fit 128px height)
+- **Recommended Size:** 1920x400px (will be cropped to fit responsive heights)
+
+### Responsive Design (Nov 24, 2025)
+**Mobile-First Approach:**
+- Banner scales down on mobile (h-20) to save screen space
+- Logo responsive: `w-10 sm:w-12` (40px → 48px)
+- Restaurant name: `text-xl sm:text-2xl md:text-3xl`
+- Dish cards stack vertically on mobile (`flex-col sm:flex-row`)
+- Dish images: Full width on mobile, fixed width on tablet+
+- Price/name stack on mobile to prevent text cutoff
+- Tighter padding on mobile: `px-3 sm:px-4`
+- Service badges abbreviated on mobile ("Delivery" vs "Delivery Available")
 
 ### Storage Buckets
 - `restaurant-logos` - Logo images (512x512px recommended)
@@ -616,14 +627,28 @@ git log origin/main..HEAD --oneline
 
 ---
 
-## 🔄 Recent Fixes (Nov 21, 2025)
+## 🔄 Recent Fixes (Nov 24, 2025)
 
-### Banner Image Implementation
+### Responsive Design Overhaul
+**Problem:** Menu page layout broke on mobile - text cutoff, cramped spacing, poor usability  
+**Solution:** Implemented comprehensive mobile-first responsive design  
+**Details:**
+- Banner: Responsive height (h-20 → h-24 → h-32) saves mobile screen space
+- Dish cards: Changed from horizontal-only to vertical stacking on mobile
+- Critical fix: Dish image now full-width on mobile (was fixed 128px causing text cutoff)
+- Price/name stack vertically on mobile (was side-by-side causing overflow)
+- Logo scales down: w-10 on mobile, w-12 on desktop
+- Restaurant name responsive: text-xl → text-2xl → text-3xl
+- Tighter padding throughout on mobile (px-3 vs px-4)
+- Service badges stack vertically and use shorter text on mobile
+**Commit:** `80417ee`
+
+### Banner Image Implementation (Nov 21, 2025)
 **Problem:** Banner images were stored in database but not displayed on customer menu page  
 **Solution:** Added banner image rendering to customer menu page  
 **Details:**
 - Banner displays at top of menu page when `banner_image_url` is set
-- Height set to `h-32` (128px) - reduced from original preview height
+- Initial height set to `h-32` (128px), later made responsive
 - Uses `object-cover` for proper image scaling
 - Updated admin preview to match customer-facing height
 **Commit:** `7c02d57`
