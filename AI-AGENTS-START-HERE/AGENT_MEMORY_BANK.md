@@ -629,6 +629,19 @@ git log origin/main..HEAD --oneline
 
 ## 🔄 Recent Fixes (Nov 24, 2025)
 
+### Category Navigation & Sticky Footer Cart Bar
+**Problem:** Category navigation missing for customers, cart button small and hard to see  
+**Solution:** Restored category tabs and redesigned cart as full-width sticky footer  
+**Details:**
+- **Category Nav:** Changed from editorMode-only to customer-facing (!editorMode)
+- **Horizontal Scroll:** Categories appear as scrollable tabs at top of menu
+- **Sticky Footer Cart:** Full-width bar at bottom showing "Basket • X Items" + total
+- **Dynamic Text:** Button shows "Place Order" when cart drawer is open
+- **Always Visible:** Fixed positioning keeps cart status visible while scrolling
+- **Bottom Padding:** Added pb-24 to menu container to prevent content hiding
+- **Better UX:** Quick category navigation + persistent cart visibility
+**Commit:** `a86ce38`
+
 ### No-Image-First Design & Button Overflow Fix
 **Problem:** 80x80px placeholder wasted space (80%+ dishes have no images), buttons broke on narrow screens  
 **Solution:** Redesigned for no-image-first, image is optional bonus  
