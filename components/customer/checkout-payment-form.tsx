@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useStripe, useElements, PaymentElement } from '@stripe/react-stripe-js'
 import { Button } from '@/components/ui/button'
@@ -10,6 +10,9 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
 import { useCartStore } from '@/lib/stores/cart-store'
 import { PostOrderSignupModal } from '@/components/customer/post-order-signup-modal'
+import { CardScannerModal } from '@/components/customer/card-scanner-modal'
+import { isMobileDevice, hasCamera } from '@/lib/utils/device'
+import { ScannedCardData } from '@/lib/utils/card-scanner'
 import { ArrowLeft, CreditCard, Camera, Shield } from 'lucide-react'
 
 interface DeliveryAddress {
@@ -48,12 +51,37 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
   const [guestEmail, setGuestEmail] = useState<string>('')
   const [saveCard, setSaveCard] = useState(false)
   const [showScanModal, setShowScanModal] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+  const [hasCameraAccess, setHasCameraAccess] = useState(false)
+
+  // Detect mobile device on mount
+  useEffect(() => {
+    setIsMobile(isMobileDevice());
+    setHasCameraAccess(hasCamera());
+  }, [])
 
   const handleSignupModalClose = () => {
     setShowSignupModal(false)
     if (completedOrderId) {
       router.push(`/customer/orders/${completedOrderId}/confirmation`)
     }
+  }
+
+  const handleCardScanned = async (cardData: ScannedCardData) => {
+    console.log('[Payment] Card scanned:', { 
+      lastFour: cardData.cardNumber.slice(-4),
+      hasExpiry: !!(cardData.expiryMonth && cardData.expiryYear)
+    });
+    
+    // Note: Stripe Elements doesn't allow programmatic card data population for security
+    // Instead, we'll show the scanned data and let user verify/correct in the form
+    toast({
+      title: 'Card Detected',
+      description: `Card ending in ${cardData.cardNumber.slice(-4)} - Please verify details in the form`,
+    });
+    
+    // Store scanned data for reference (could be used for validation)
+    console.log('[Payment] Scanned card number:', cardData.cardNumber.replace(/.(?=.{4})/g, '*'));
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -188,31 +216,35 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
 
         {/* Payment Element */}
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Scan Card Button */}
-          <div className="flex items-center justify-center">
-            <Button
-              type="button"
-              variant="outline"
-              size="lg"
-              onClick={() => setShowScanModal(true)}
-              className="w-full sm:w-auto"
-              data-testid="button-scan-card"
-            >
-              <Camera className="w-5 h-5 mr-2" />
-              Scan Card for Quick Entry
-            </Button>
-          </div>
+          {/* Scan Card Button - Mobile Only */}
+          {isMobile && hasCameraAccess && (
+            <>
+              <div className="flex items-center justify-center">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  onClick={() => setShowScanModal(true)}
+                  className="w-full"
+                  data-testid="button-scan-card"
+                >
+                  <Camera className="w-5 h-5 mr-2" />
+                  Scan Card for Quick Entry
+                </Button>
+              </div>
 
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
-                Or enter manually
-              </span>
-            </div>
-          </div>
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">
+                    Or enter manually
+                  </span>
+                </div>
+              </div>
+            </>
+          )}
 
           <PaymentElement 
             onReady={() => setIsLoading(false)}
@@ -326,94 +358,12 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
       </div>
     )}
 
-    {/* Card Scanning Modal */}
-    {showScanModal && (
-      <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-50 flex items-center justify-center p-4" data-testid="modal-scan-card">
-        <Card className="w-full max-w-lg">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Camera className="w-5 h-5" />
-                  Scan Credit Card
-                </CardTitle>
-                <CardDescription className="mt-2">
-                  Position your card in the frame to automatically capture details
-                </CardDescription>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setShowScanModal(false)}
-                data-testid="button-close-scan-modal"
-              >
-                ×
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Camera Preview Placeholder */}
-            <div className="relative aspect-[3/2] bg-muted rounded-lg border-2 border-dashed border-border flex items-center justify-center">
-              <div className="text-center space-y-2 p-6">
-                <Camera className="w-12 h-12 mx-auto text-muted-foreground" />
-                <p className="text-sm font-medium">Camera Preview</p>
-                <p className="text-xs text-muted-foreground">
-                  Card scanning requires camera permissions
-                </p>
-              </div>
-              {/* Card Frame Overlay */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-4/5 aspect-[1.586/1] border-2 border-primary rounded-lg" />
-              </div>
-            </div>
-
-            {/* Instructions */}
-            <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 space-y-2">
-              <p className="text-sm font-medium">Tips for best results:</p>
-              <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
-                <li>Ensure good lighting and avoid glare</li>
-                <li>Hold your card flat within the frame</li>
-                <li>Keep the card steady until capture completes</li>
-              </ul>
-            </div>
-
-            {/* Note about feature */}
-            <div className="bg-muted/50 border rounded-lg p-4">
-              <p className="text-xs text-center text-muted-foreground">
-                <strong>Note:</strong> Card scanning feature requires camera access and OCR setup. 
-                For now, please use manual entry below.
-              </p>
-            </div>
-
-            {/* Actions */}
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
-                onClick={() => setShowScanModal(false)}
-                className="flex-1"
-                data-testid="button-cancel-scan"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={() => {
-                  setShowScanModal(false)
-                  toast({
-                    title: "Feature Coming Soon",
-                    description: "Card scanning will be available in a future update. Please enter your card details manually.",
-                  })
-                }}
-                className="flex-1"
-                data-testid="button-enable-camera"
-              >
-                <Camera className="w-4 h-4 mr-2" />
-                Enable Camera
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    )}
+    {/* Card Scanning Modal - Mobile Only */}
+    <CardScannerModal
+      isOpen={showScanModal}
+      onClose={() => setShowScanModal(false)}
+      onCardScanned={handleCardScanned}
+    />
   </>
   )
 }
