@@ -62,6 +62,7 @@ import { ModifierGroupEditor } from '@/components/admin/menu-builder/ModifierGro
 import { ModifierTemplateSection } from '@/components/admin/menu-builder/ModifierTemplateSection'
 import { InlinePriceEditor } from '@/components/admin/menu-builder/InlinePriceEditor'
 import { DishModifierPanel } from '@/components/admin/menu-builder/DishModifierPanel'
+import { SizeVariantManager } from '@/components/admin/menu-builder/SizeVariantManager'
 import RestaurantMenu from '@/components/customer/restaurant-menu'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useToast } from '@/hooks/use-toast'
@@ -990,7 +991,7 @@ export default function MenuBuilderPage() {
               />
             </div>
             <div>
-              <Label>Price ($)</Label>
+              <Label>Base Price ($)</Label>
               <Input
                 type="number"
                 step="0.01"
@@ -1000,7 +1001,18 @@ export default function MenuBuilderPage() {
                 onChange={(e) => setDishForm({ ...dishForm, price: e.target.value })}
                 data-testid="input-dish-price"
               />
+              <p className="text-xs text-muted-foreground mt-1">
+                This is the default price. Add size variants below for multiple price options.
+              </p>
             </div>
+
+            {/* Size/Price Variants - Only show when editing existing dish */}
+            {editingDish && (
+              <div className="pt-4 border-t">
+                <SizeVariantManager dishId={editingDish.id} />
+              </div>
+            )}
+
             <div className="flex items-center justify-between">
               <Label>Active</Label>
               <Switch

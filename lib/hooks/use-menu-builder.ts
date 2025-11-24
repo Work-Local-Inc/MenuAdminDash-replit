@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useToast } from '@/hooks/use-toast'
+import { apiRequest } from '@/lib/queryClient'
 
 // ============================================
 // TYPES
@@ -22,6 +23,7 @@ export interface DishPrice {
   price: number
   size_variant: string | null
   display_order: number
+  is_active: boolean
 }
 
 export interface MenuBuilderDish {
@@ -376,6 +378,135 @@ export function useReorderMenuItems() {
     onSuccess: () => {
       queryClient.invalidateQueries({ 
         queryKey: ['/api/menu/builder'] 
+      })
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message,
+      })
+    },
+  })
+}
+
+// ============================================
+// DISH PRICE VARIANTS
+// ============================================
+
+export function useDishPrices(dishId: number | null) {
+  return useQuery<DishPrice[]>({
+    queryKey: ['/api/menu/dish-prices', dishId],
+    queryFn: async () => {
+      if (!dishId) return []
+      const res = await fetch(`/api/menu/dish-prices?dish_id=${dishId}`)
+      if (!res.ok) throw new Error('Failed to fetch dish prices')
+      return res.json()
+    },
+    enabled: !!dishId,
+  })
+}
+
+export function useCreateDishPrice() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async (data: {
+      dish_id: number
+      size_variant: string | null
+      price: number
+      display_order?: number
+      is_active?: boolean
+    }) => {
+      return await apiRequest('/api/menu/dish-prices', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      })
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ 
+        queryKey: ['/api/menu/dish-prices', variables.dish_id] 
+      })
+      queryClient.invalidateQueries({ 
+        queryKey: ['/api/menu/builder'] 
+      })
+      toast({
+        title: "Success",
+        description: "Price variant created successfully",
+      })
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message,
+      })
+    },
+  })
+}
+
+export function useUpdateDishPrice() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async (data: {
+      id: number
+      dish_id: number
+      size_variant?: string | null
+      price?: number
+      display_order?: number
+      is_active?: boolean
+    }) => {
+      return await apiRequest('/api/menu/dish-prices', {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      })
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ 
+        queryKey: ['/api/menu/dish-prices', variables.dish_id] 
+      })
+      queryClient.invalidateQueries({ 
+        queryKey: ['/api/menu/builder'] 
+      })
+      toast({
+        title: "Success",
+        description: "Price variant updated successfully",
+      })
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message,
+      })
+    },
+  })
+}
+
+export function useDeleteDishPrice() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async (data: { id: number; dish_id: number }) => {
+      return await apiRequest('/api/menu/dish-prices', {
+        method: 'DELETE',
+        body: JSON.stringify({ id: data.id }),
+      })
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ 
+        queryKey: ['/api/menu/dish-prices', variables.dish_id] 
+      })
+      queryClient.invalidateQueries({ 
+        queryKey: ['/api/menu/builder'] 
+      })
+      toast({
+        title: "Success",
+        description: "Price variant deleted successfully",
       })
     },
     onError: (error: Error) => {

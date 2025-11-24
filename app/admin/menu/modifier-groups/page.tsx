@@ -1,6 +1,8 @@
 "use client"
 
 import { useState } from "react"
+import { useQueryClient } from "@tanstack/react-query"
+import { useToast } from "@/hooks/use-toast"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -59,9 +61,12 @@ import {
 import { useMenuCourses } from "@/lib/hooks/use-menu"
 
 export default function ModifierGroupsPage() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [editingGroup, setEditingGroup] = useState<RestaurantModifierGroup | null>(null)
   const [deletingGroupId, setDeletingGroupId] = useState<number | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
 
   const { data: modifierGroups = [], isLoading: loadingGroups } = useRestaurantModifierGroups()
 
@@ -110,50 +115,86 @@ export default function ModifierGroupsPage() {
     
     if (formData.modifiers.length === 0) return
 
-    const data = {
-      name: formData.name,
-      is_required: formData.is_required,
-      min_selections: formData.min_selections,
-      max_selections: formData.max_selections,
-      modifiers: formData.modifiers.filter(m => m.name.trim() !== '')
+    setIsSaving(true)
+    try {
+      const data = {
+        name: formData.name,
+        is_required: formData.is_required,
+        min_selections: formData.min_selections,
+        max_selections: formData.max_selections,
+        modifiers: formData.modifiers.filter(m => m.name.trim() !== '')
+      }
+
+      const endpoint = '/api/menu/modifier-groups'
+      const method = editingGroup ? 'PATCH' : 'POST'
+      const body = editingGroup ? { id: editingGroup.id, ...data } : data
+
+      const res = await fetch(endpoint, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+
+      if (!res.ok) {
+        const errorData = await res.json()
+        throw new Error(errorData.error || 'Failed to save modifier group')
+      }
+
+      setCreateDialogOpen(false)
+      resetForm()
+      
+      // Invalidate queries to refetch data
+      queryClient.invalidateQueries({ queryKey: ['/api/menu/modifier-groups'] })
+      queryClient.invalidateQueries({ queryKey: ['/api/menu/builder'] })
+      
+      toast({
+        title: "Success",
+        description: editingGroup 
+          ? "Modifier group updated successfully" 
+          : "Modifier group created successfully",
+      })
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || 'Failed to save modifier group',
+      })
+    } finally {
+      setIsSaving(false)
     }
-
-    const endpoint = '/api/menu/modifier-groups'
-    const method = editingGroup ? 'PATCH' : 'POST'
-    const body = editingGroup ? { id: editingGroup.id, ...data } : data
-
-    const res = await fetch(endpoint, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
-
-    if (!res.ok) {
-      const errorData = await res.json()
-      throw new Error(errorData.error || 'Failed to save modifier group')
-    }
-
-    setCreateDialogOpen(false)
-    resetForm()
-    // Trigger refetch
-    window.location.reload()
   }
 
   const handleDelete = async () => {
     if (!deletingGroupId) return
     
-    const res = await fetch(`/api/menu/modifier-groups?id=${deletingGroupId}`, {
-      method: 'DELETE',
-    })
+    try {
+      const res = await fetch(`/api/menu/modifier-groups?id=${deletingGroupId}`, {
+        method: 'DELETE',
+      })
 
-    if (!res.ok) {
-      const errorData = await res.json()
-      throw new Error(errorData.error || 'Failed to delete modifier group')
+      if (!res.ok) {
+        const errorData = await res.json()
+        throw new Error(errorData.error || 'Failed to delete modifier group')
+      }
+
+      setDeletingGroupId(null)
+      
+      // Invalidate queries to refetch data
+      queryClient.invalidateQueries({ queryKey: ['/api/menu/modifier-groups'] })
+      queryClient.invalidateQueries({ queryKey: ['/api/menu/builder'] })
+      
+      toast({
+        title: "Success",
+        description: "Modifier group deleted successfully",
+      })
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || 'Failed to delete modifier group',
+      })
+      setDeletingGroupId(null)
     }
-
-    setDeletingGroupId(null)
-    // Trigger refetch
-    window.location.reload()
   }
 
   const addModifier = () => {
@@ -465,10 +506,10 @@ export default function ModifierGroupsPage() {
               </Button>
               <Button 
                 type="submit"
-                disabled={createGroup.isPending || updateGroup.isPending}
+                disabled={isSaving}
                 data-testid="button-save"
               >
-                {editingGroup ? 'Update' : 'Create'}
+                {isSaving ? 'Saving...' : editingGroup ? 'Update' : 'Create'}
               </Button>
             </div>
           </form>
