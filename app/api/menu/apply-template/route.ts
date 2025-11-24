@@ -7,11 +7,11 @@ import { z } from 'zod'
 const applyTemplateSchema = z.union([
   z.object({
     dish_ids: z.array(z.number().int().positive()).min(1, 'At least one dish ID required'),
-    template_id: z.number().int().positive('Template ID is required'),
+    modifier_group_id: z.number().int().positive('Modifier group ID is required'),
   }),
   z.object({
     course_id: z.number().int().positive('Course ID is required'),
-    template_id: z.number().int().positive('Template ID is required'),
+    modifier_group_id: z.number().int().positive('Modifier group ID is required'),
   })
 ])
 
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     for (const dishId of dishIds) {
       const { data, error } = await (supabase.rpc as any)('apply_template_to_dish', {
         p_dish_id: dishId,
-        p_template_id: validatedData.template_id,
+        p_template_id: validatedData.modifier_group_id,
       })
 
       if (error) {
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
 
     if (errors.length > 0 && successCount === 0) {
       return NextResponse.json(
-        { error: 'Failed to apply template to any dishes', details: errors },
+        { error: 'Failed to apply modifier group to any dishes', details: errors },
         { status: 500 }
       )
     }
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
       )
     }
     return NextResponse.json(
-      { error: error.message || 'Failed to apply template' },
+      { error: error.message || 'Failed to apply modifier group' },
       { status: 500 }
     )
   }

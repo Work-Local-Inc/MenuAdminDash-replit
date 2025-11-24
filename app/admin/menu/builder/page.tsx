@@ -336,12 +336,12 @@ export default function MenuBuilderPage() {
         }
       } else {
         // Create association by linking to library group
-        const response = await fetch('/api/menu/category-modifier-templates', {
+        const response = await fetch('/api/menu/category-modifier-groups', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             course_id: categoryId,
-            library_template_id: modifierGroupId,
+            modifier_group_id: modifierGroupId,
           }),
         })
         

@@ -7,7 +7,7 @@ import { checkLibraryLinkingMigrations } from '@/lib/supabase/check-migrations'
 
 const associateLibraryGroupSchema = z.object({
   course_id: z.number().int().positive('Course ID is required'),
-  library_template_id: z.number().int().positive('Library template ID is required'),
+  modifier_group_id: z.number().int().positive('Modifier group ID is required'),
 })
 
 export async function POST(request: NextRequest) {
@@ -40,6 +40,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const validatedData = associateLibraryGroupSchema.parse(body)
 
+    // Map modifier_group_id to library_template_id for database operations
+    const libraryTemplateId = validatedData.modifier_group_id
+
     // Fetch the library group template
     const { data: libraryGroup, error: libraryError } = await (supabase
       .schema('menuca_v3')
@@ -48,7 +51,7 @@ export async function POST(request: NextRequest) {
         *,
         course_template_modifiers (*)
       `)
-      .eq('id', validatedData.library_template_id)
+      .eq('id', libraryTemplateId)
       .is('course_id', null)
       .is('deleted_at', null)
       .single() as any)
@@ -66,7 +69,7 @@ export async function POST(request: NextRequest) {
       .from('course_modifier_templates' as any)
       .select('id')
       .eq('course_id', validatedData.course_id)
-      .eq('library_template_id', validatedData.library_template_id)
+      .eq('library_template_id', libraryTemplateId)
       .is('deleted_at', null)
       .single() as any)
 
@@ -96,7 +99,7 @@ export async function POST(request: NextRequest) {
       .from('course_modifier_templates' as any)
       .insert({
         course_id: validatedData.course_id,
-        library_template_id: validatedData.library_template_id,
+        library_template_id: libraryTemplateId,
         name: (libraryGroup as any).name,
         is_required: (libraryGroup as any).is_required,
         min_selections: (libraryGroup as any).min_selections,

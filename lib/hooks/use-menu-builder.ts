@@ -111,7 +111,7 @@ export interface UpdateModifierGroupData {
 export interface ApplyModifierGroupData {
   dish_ids?: number[]
   course_id?: number
-  template_id: number
+  modifier_group_id: number
 }
 
 // ============================================
@@ -144,7 +144,7 @@ export function useCreateCategoryModifierGroup() {
 
   return useMutation({
     mutationFn: async (data: CreateModifierGroupData) => {
-      const res = await fetch('/api/menu/category-modifier-templates', {
+      const res = await fetch('/api/menu/category-modifier-groups', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -183,7 +183,7 @@ export function useUpdateCategoryModifierGroup() {
 
   return useMutation({
     mutationFn: async ({ id, data }: { id: number; data: UpdateModifierGroupData }) => {
-      const res = await fetch(`/api/menu/category-modifier-templates/${id}`, {
+      const res = await fetch(`/api/menu/category-modifier-groups/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -222,7 +222,7 @@ export function useDeleteCategoryModifierGroup() {
 
   return useMutation({
     mutationFn: async (id: number) => {
-      const res = await fetch(`/api/menu/category-modifier-templates/${id}`, {
+      const res = await fetch(`/api/menu/category-modifier-groups/${id}`, {
         method: 'DELETE',
       })
       if (!res.ok) {

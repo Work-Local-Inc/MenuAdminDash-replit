@@ -132,7 +132,7 @@ export function ModifierGroupEditor({ courseId, modifierGroup, open, onOpenChang
               placeholder="e.g., Pizza Toppings, Drink Sizes..."
               value={name}
               onChange={(e) => setName(e.target.value)}
-              data-testid="input-template-name"
+              data-testid="input-modifier-group-name"
             />
           </div>
 
@@ -216,7 +216,7 @@ export function ModifierGroupEditor({ courseId, modifierGroup, open, onOpenChang
                                 placeholder="Modifier name..."
                                 value={modifier.name}
                                 onChange={(e) => updateModifier(modifier.id, 'name', e.target.value)}
-                                data-testid={`input-modifier-name-${index}`}
+                                data-testid={`input-modifier-option-name-${index}`}
                               />
                             </div>
                             
@@ -228,7 +228,7 @@ export function ModifierGroupEditor({ courseId, modifierGroup, open, onOpenChang
                                 placeholder="$0.00"
                                 value={modifier.price || ''}
                                 onChange={(e) => updateModifier(modifier.id, 'price', parseFloat(e.target.value) || 0)}
-                                data-testid={`input-modifier-price-${index}`}
+                                data-testid={`input-modifier-option-price-${index}`}
                               />
                             </div>
 
