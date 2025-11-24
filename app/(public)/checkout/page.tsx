@@ -153,12 +153,14 @@ export default function CheckoutPage() {
   }
 
   const handleSignInSuccess = async () => {
-    // After successful sign-in, MUST reload page for auth to propagate
-    console.log('[Checkout] Sign-in success - reloading page')
+    // Auth state listener handles the update automatically - no reload needed!
+    console.log('[Checkout] Sign-in success - closing modal')
     setShowSignInModal(false)
     
-    // Reload page immediately - this is REQUIRED for auth session to work
-    window.location.reload()
+    toast({
+      title: "Welcome back!",
+      description: "Loading your saved addresses...",
+    })
   }
 
   const handleAddressConfirmed = async (address: DeliveryAddress) => {
