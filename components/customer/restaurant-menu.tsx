@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Store, MapPin, Clock, Phone, ShoppingCart, GripVertical, Pencil, Trash2, Plus, Eye, EyeOff, MoreVertical } from 'lucide-react';
+import { Store, MapPin, Clock, Phone, ShoppingCart, GripVertical, Pencil, Trash2, Plus, Eye, EyeOff, MoreVertical, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -35,6 +35,9 @@ interface RestaurantMenuProps {
   onDeleteDish?: (dishId: number) => void;
   onToggleDishActive?: (dishId: number) => void;
   onToggleDishFeatured?: (dishId: number) => void;
+  onViewDishModifiers?: (dishId: number) => void;
+  onEditDishPrice?: (dishId: number) => void;
+  onBreakDishInheritance?: (dishId: number) => void;
   onReorderCategories?: (categoryIds: number[]) => void;
   onReorderDishes?: (categoryId: number, dishIds: number[]) => void;
   selectedDishIds?: Set<number>;
@@ -57,6 +60,9 @@ export default function RestaurantMenu({
   onDeleteDish,
   onToggleDishActive,
   onToggleDishFeatured,
+  onViewDishModifiers,
+  onEditDishPrice,
+  onBreakDishInheritance,
   onReorderCategories,
   onReorderDishes,
   selectedDishIds,
@@ -429,6 +435,9 @@ export default function RestaurantMenu({
                                         onDelete={() => onDeleteDish?.(dish.id)}
                                         onToggleActive={() => onToggleDishActive?.(dish.id)}
                                         onToggleFeatured={() => onToggleDishFeatured?.(dish.id)}
+                                        onViewModifiers={() => onViewDishModifiers?.(dish.id)}
+                                        onEditPrice={() => onEditDishPrice?.(dish.id)}
+                                        onBreakInheritance={() => onBreakDishInheritance?.(dish.id)}
                                         dragHandleProps={dishDragProvided.dragHandleProps}
                                         isSelected={selectedDishIds?.has(dish.id) || false}
                                         onToggleSelect={() => onToggleSelectDish?.(dish.id)}
@@ -565,6 +574,9 @@ function EditorDishCard({
   onDelete,
   onToggleActive,
   onToggleFeatured,
+  onViewModifiers,
+  onEditPrice,
+  onBreakInheritance,
   dragHandleProps,
   isSelected,
   onToggleSelect,
@@ -574,6 +586,9 @@ function EditorDishCard({
   onDelete: () => void;
   onToggleActive: () => void;
   onToggleFeatured: () => void;
+  onViewModifiers?: () => void;
+  onEditPrice?: () => void;
+  onBreakInheritance?: () => void;
   dragHandleProps?: any;
   isSelected: boolean;
   onToggleSelect: () => void;
@@ -665,7 +680,7 @@ function EditorDishCard({
             )}
 
             {/* Quick Actions */}
-            <div className="flex items-center gap-2 pt-2 border-t">
+            <div className="flex items-center gap-2 pt-2 border-t flex-wrap">
               <Button
                 size="sm"
                 variant="ghost"
@@ -676,14 +691,35 @@ function EditorDishCard({
                 {dish.is_active ? 'Active' : 'Inactive'}
               </Button>
               
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={onToggleFeatured}
-                data-testid={`button-toggle-featured-${dish.id}`}
-              >
-                {dish.is_featured ? '⭐ Featured' : 'Feature'}
-              </Button>
+              {onViewModifiers && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={onViewModifiers}
+                  data-testid={`button-view-modifiers-${dish.id}`}
+                  className="relative"
+                >
+                  <Layers className="w-4 h-4 mr-1" />
+                  Modifiers
+                  {dish.modifier_groups && dish.modifier_groups.length > 0 && (
+                    <Badge variant="secondary" className="ml-1 px-1.5 py-0 text-xs h-5 min-w-[20px]">
+                      {dish.modifier_groups.length}
+                    </Badge>
+                  )}
+                </Button>
+              )}
+              
+              {onEditPrice && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={onEditPrice}
+                  data-testid={`button-edit-price-${dish.id}`}
+                >
+                  <span className="mr-1">$</span>
+                  Price
+                </Button>
+              )}
             </div>
           </div>
         </div>

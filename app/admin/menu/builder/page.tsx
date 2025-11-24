@@ -843,6 +843,12 @@ export default function MenuBuilderPage() {
               const dish = categories.flatMap(c => c.dishes).find(d => d.id === dishId)
               if (dish) handleToggleDishActive(dish)
             }}
+            onViewDishModifiers={handleViewDishModifiers}
+            onEditDishPrice={(dishId) => {
+              const dish = categories.flatMap(c => c.dishes).find(d => d.id === dishId)
+              if (dish) handleEditDishPrice(dish)
+            }}
+            onBreakDishInheritance={handleBreakDishInheritance}
             onReorderCategories={(categoryIds) => {
               reorderCourses.mutateAsync({
                 restaurant_id: parseInt(selectedRestaurantId),
