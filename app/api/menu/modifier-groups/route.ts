@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     await verifyAdminAuth(request)
     const supabase = createAdminClient()
     
-    // Fetch ONLY global library groups (course_id IS NULL)
+    // Fetch category-level modifier groups (course_id IS NOT NULL)
     const { data: templates, error: templatesError } = await (supabase
       .schema('menuca_v3')
       .from('course_modifier_templates' as any)
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
           deleted_at
         )
       `)
-      .is('course_id', null)
+      .not('course_id', 'is', null)
       .is('deleted_at', null)
       .order('created_at', { ascending: false }) as any)
 
@@ -73,10 +73,7 @@ export async function GET(request: NextRequest) {
         }))
     }))
 
-    console.log(`[MODIFIER GROUPS API] Returning ${result.length} global library groups`)
-    if (result.length === 0) {
-      console.warn('[MODIFIER GROUPS API] No global library groups found (course_id IS NULL). Check if groups have course_id set.')
-    }
+    console.log(`[MODIFIER GROUPS API] Returning ${result.length} category-level modifier groups`)
 
     return NextResponse.json(result)
   } catch (error: any) {
