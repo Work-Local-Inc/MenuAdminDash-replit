@@ -354,6 +354,7 @@ export default function CheckoutPage() {
             {/* Step Content */}
             {step === 'address' && (
               <CheckoutAddressForm 
+                key={currentUser?.id || 'guest'} 
                 userId={currentUser?.id}
                 onAddressConfirmed={handleAddressConfirmed}
                 onSignInClick={() => setShowSignInModal(true)}
