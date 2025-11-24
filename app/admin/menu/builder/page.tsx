@@ -182,35 +182,19 @@ export default function MenuBuilderPage() {
   
   categories.forEach((category) => {
     category.modifier_groups?.forEach((modifierGroup: any) => {
-      console.log('[PAGE DEBUG] Processing modifier group:', {
-        id: modifierGroup.id,
-        name: modifierGroup.name,
-        course_id: modifierGroup.course_id,
-        library_template_id: modifierGroup.library_template_id,
-        modifiers_count: modifierGroup.course_template_modifiers?.length || 0
-      })
-      
       // Skip duplicates
-      if (seen.has(modifierGroup.id)) {
-        console.log('[PAGE DEBUG] Skipping duplicate:', modifierGroup.id)
-        return
-      }
+      if (seen.has(modifierGroup.id)) return
       
       // Add legacy category-specific modifier groups that aren't library-linked
       // OR self-referencing templates (legacy data where library_template_id = id)
       if (modifierGroup.course_id !== null && 
           (modifierGroup.library_template_id === null || 
            modifierGroup.library_template_id === modifierGroup.id)) {
-        console.log('[PAGE DEBUG] Adding to availableGroups:', modifierGroup.id, modifierGroup.name)
         allModifierGroups.push(modifierGroup)
         seen.add(modifierGroup.id)
-      } else {
-        console.log('[PAGE DEBUG] Filtered out:', modifierGroup.id, modifierGroup.name, 'because course_id=', modifierGroup.course_id, 'library_template_id=', modifierGroup.library_template_id)
       }
     })
   })
-  
-  console.log('[PAGE DEBUG] Total availableModifierGroups:', allModifierGroups.length + modifierGroups.length)
   
   // Combine global library groups with legacy modifier groups
   // Ensure all groups have modifiers property (safety check for undefined)
