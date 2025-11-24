@@ -1,11 +1,29 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Store, MapPin, Clock, Phone, ShoppingCart, GripVertical, Pencil, Trash2, Plus, Eye, EyeOff, MoreVertical, Layers } from 'lucide-react';
+import { Store, MapPin, Clock, Phone, ShoppingCart, GripVertical, Pencil, Trash2, Plus, Eye, EyeOff, MoreVertical, Layers, DollarSign, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  TooltipProvider,
+} from '@/components/ui/tooltip';
 import { DishCard } from './dish-card';
 import { CartDrawer } from './cart-drawer';
 import { useCartStore } from '@/lib/stores/cart-store';
@@ -573,7 +591,7 @@ export default function RestaurantMenu({
   return menuContent;
 }
 
-// Editor Dish Card Component - Simplified version with admin controls
+// Editor Dish Card Component - Compact two-row design with confirmation dialogs
 function EditorDishCard({
   dish,
   onEdit,
@@ -599,137 +617,236 @@ function EditorDishCard({
   isSelected: boolean;
   onToggleSelect: () => void;
 }) {
+  const [showActiveConfirmation, setShowActiveConfirmation] = useState(false);
+  const [pendingActiveState, setPendingActiveState] = useState<boolean | null>(null);
+
+  const handleActiveToggle = (checked: boolean) => {
+    setPendingActiveState(checked);
+    setShowActiveConfirmation(true);
+  };
+
+  const confirmActiveToggle = () => {
+    if (pendingActiveState !== null) {
+      onToggleActive();
+      setShowActiveConfirmation(false);
+      setPendingActiveState(null);
+    }
+  };
+
+  const cancelActiveToggle = () => {
+    setShowActiveConfirmation(false);
+    setPendingActiveState(null);
+  };
+
+  // Count modifiers across all groups
+  const modifierCount = dish.modifier_groups?.reduce((total: number, group: any) => {
+    return total + (group.modifiers?.length || group.course_template_modifiers?.length || 0);
+  }, 0) || 0;
+
+  // Count price variants
+  const priceVariantCount = dish.dish_prices?.length || 0;
+
   return (
-    <Card className={`group relative hover-elevate ${isSelected ? 'ring-2 ring-primary' : ''}`}>
-      {/* Selection Checkbox - Top Left */}
-      <div className="absolute top-2 left-2 z-10">
-        <Checkbox
-          checked={isSelected}
-          onCheckedChange={onToggleSelect}
-          className="bg-background/90 backdrop-blur-sm"
-          data-testid={`checkbox-select-dish-${dish.id}`}
-        />
-      </div>
-
-      {/* Hover Controls - Top Right */}
-      <div className="absolute top-2 right-2 z-10 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <div
-          {...dragHandleProps}
-          className="p-2 rounded-md bg-background/90 backdrop-blur-sm hover-elevate active-elevate-2 cursor-grab active:cursor-grabbing"
-          data-testid={`drag-handle-dish-${dish.id}`}
-        >
-          <GripVertical className="w-4 h-4" />
+    <TooltipProvider>
+      <Card className={`group relative hover-elevate ${isSelected ? 'ring-2 ring-primary' : ''}`}>
+        {/* Selection Checkbox - Top Left */}
+        <div className="absolute top-2 left-2 z-10">
+          <Checkbox
+            checked={isSelected}
+            onCheckedChange={onToggleSelect}
+            className="bg-background/90 backdrop-blur-sm"
+            data-testid={`checkbox-select-dish-${dish.id}`}
+          />
         </div>
-        
-        <button
-          onClick={onEdit}
-          className="p-2 rounded-md bg-background/90 backdrop-blur-sm hover-elevate active-elevate-2"
-          data-testid={`button-edit-dish-${dish.id}`}
-        >
-          <Pencil className="w-4 h-4" />
-        </button>
-        
-        <button
-          onClick={onDelete}
-          className="p-2 rounded-md bg-destructive/90 text-destructive-foreground backdrop-blur-sm hover-elevate active-elevate-2"
-          data-testid={`button-delete-dish-${dish.id}`}
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
-      </div>
 
-      {/* Status Badges - Moved down to avoid checkbox */}
-      {(dish.is_featured || !dish.is_active) && (
-        <div className="absolute top-12 left-2 z-10 flex flex-col gap-1">
-          {dish.is_featured && (
-            <Badge variant="default" className="text-xs">Featured</Badge>
-          )}
-          {!dish.is_active && (
-            <Badge variant="secondary" className="text-xs">Inactive</Badge>
-          )}
-        </div>
-      )}
-
-      {/* Dish Info with Left-Side Thumbnail */}
-      <CardContent className="p-4">
-        <div className="flex gap-3">
-          {/* Small Thumbnail Image - Left Side */}
-          <div className="w-20 h-20 bg-muted rounded-md overflow-hidden flex-shrink-0">
-            {dish.image_url ? (
-              <img
-                src={dish.image_url}
-                alt={dish.name}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
-                No image
-              </div>
-            )}
-          </div>
-
-          {/* Dish Content - Right Side */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-2 mb-1">
-              <h4 className="font-semibold text-base line-clamp-2 flex-1">
-                {dish.name}
-              </h4>
-              <span className="font-bold text-primary text-base flex-shrink-0">
-                ${dish.price.toFixed(2)}
-              </span>
+        <CardContent className="p-3">
+          {/* Row 1: Image + Name + Status + Actions */}
+          <div className="flex items-center gap-2 mb-2">
+            {/* Drag Handle */}
+            <div
+              {...dragHandleProps}
+              className="p-1 rounded cursor-grab active:cursor-grabbing hover-elevate active-elevate-2 flex-shrink-0"
+              data-testid={`drag-handle-dish-${dish.id}`}
+            >
+              <GripVertical className="w-4 h-4 text-muted-foreground" />
             </div>
 
-            {dish.description && (
-              <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-                {dish.description}
-              </p>
-            )}
-
-            {/* Quick Actions */}
-            <div className="flex items-center gap-2 pt-2 border-t flex-wrap">
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={onToggleActive}
-                data-testid={`button-toggle-active-${dish.id}`}
-              >
-                {dish.is_active ? <Eye className="w-4 h-4 mr-1" /> : <EyeOff className="w-4 h-4 mr-1" />}
-                {dish.is_active ? 'Active' : 'Inactive'}
-              </Button>
-              
-              {onViewModifiers && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={onViewModifiers}
-                  data-testid={`button-view-modifiers-${dish.id}`}
-                  className="relative"
-                >
-                  <Layers className="w-4 h-4 mr-1" />
-                  Modifiers
-                  {dish.modifier_groups && dish.modifier_groups.length > 0 && (
-                    <Badge variant="secondary" className="ml-1 px-1.5 py-0 text-xs h-5 min-w-[20px]">
-                      ({(dish.modifier_groups.map((g: any) => g.name) ?? []).join(', ')})
-                    </Badge>
-                  )}
-                </Button>
-              )}
-              
-              {onEditPrice && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={onEditPrice}
-                  data-testid={`button-edit-price-${dish.id}`}
-                >
-                  <span className="mr-1">$</span>
-                  Price
-                </Button>
+            {/* Thumbnail */}
+            <div className="w-12 h-12 bg-muted rounded overflow-hidden flex-shrink-0">
+              {dish.image_url ? (
+                <img
+                  src={dish.image_url}
+                  alt={dish.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
+                  <Store className="w-5 h-5" />
+                </div>
               )}
             </div>
+
+            {/* Name */}
+            <h4 className="font-semibold text-sm line-clamp-1 flex-1 min-w-0">
+              {dish.name}
+            </h4>
+
+            {/* Price */}
+            <span className="font-bold text-primary text-sm flex-shrink-0">
+              ${dish.price.toFixed(2)}
+            </span>
+
+            {/* Active/Inactive Status Badge */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id={`active-${dish.id}`}
+                    checked={dish.is_active}
+                    onCheckedChange={handleActiveToggle}
+                    data-testid={`switch-active-${dish.id}`}
+                    aria-label={dish.is_active ? "Mark as inactive" : "Mark as active"}
+                  />
+                  <Label className="text-xs text-muted-foreground cursor-pointer" htmlFor={`active-${dish.id}`}>
+                    {dish.is_active ? 'Active' : 'Inactive'}
+                  </Label>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <p className="text-xs max-w-[200px]">
+                  {dish.is_active 
+                    ? "Customers can see and order this dish. Toggle off to hide it from the menu."
+                    : "This dish is hidden from customers. Toggle on to make it visible and orderable."}
+                </p>
+              </TooltipContent>
+            </Tooltip>
+
+            {/* Overflow Menu */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8 flex-shrink-0"
+                  data-testid={`button-dish-menu-${dish.id}`}
+                >
+                  <MoreVertical className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={onEdit}
+                  data-testid={`button-edit-dish-${dish.id}`}
+                >
+                  <Pencil className="w-4 h-4 mr-2" />
+                  Edit Details
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={onDelete}
+                  className="text-destructive"
+                  data-testid={`button-delete-dish-${dish.id}`}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete Dish
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-        </div>
-      </CardContent>
-    </Card>
+
+          {/* Row 2: Quick Access Badges */}
+          <div className="flex items-center gap-1.5 ml-7">
+            {/* Modifiers Badge */}
+            {onViewModifiers && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={onViewModifiers}
+                    className="h-7 px-2 text-xs"
+                    data-testid={`button-view-modifiers-${dish.id}`}
+                  >
+                    <Layers className="w-3 h-3 mr-1" />
+                    Modifiers
+                    {modifierCount > 0 && (
+                      <Badge variant="secondary" className="ml-1 px-1 py-0 text-[10px] h-4 min-w-[16px]">
+                        {modifierCount}
+                      </Badge>
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  <p className="text-xs">
+                    {modifierCount > 0 
+                      ? `Manage ${modifierCount} modifier option${modifierCount === 1 ? '' : 's'} (sizes, toppings, etc.)`
+                      : "Add modifier options like sizes, toppings, or extras"}
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+
+            {/* Price Variants Badge */}
+            {onEditPrice && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={onEditPrice}
+                    className="h-7 px-2 text-xs"
+                    data-testid={`button-edit-price-${dish.id}`}
+                  >
+                    <DollarSign className="w-3 h-3 mr-1" />
+                    Price
+                    {priceVariantCount > 0 && (
+                      <Badge variant="secondary" className="ml-1 px-1 py-0 text-[10px] h-4 min-w-[16px]">
+                        {priceVariantCount}
+                      </Badge>
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  <p className="text-xs">
+                    {priceVariantCount > 0 
+                      ? `Manage ${priceVariantCount} size variant${priceVariantCount === 1 ? '' : 's'} and pricing`
+                      : "Set dish price or add size variants (Small, Medium, Large)"}
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Active/Inactive Confirmation Dialog */}
+      <AlertDialog open={showActiveConfirmation} onOpenChange={setShowActiveConfirmation}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-amber-500" />
+              {pendingActiveState ? 'Activate Dish?' : 'Deactivate Dish?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingActiveState ? (
+                <>
+                  <span className="font-semibold">{dish.name}</span> will become visible to customers and can be ordered from the menu.
+                </>
+              ) : (
+                <>
+                  <span className="font-semibold">{dish.name}</span> will be hidden from the customer menu. Customers won't be able to see or order this dish.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={cancelActiveToggle}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmActiveToggle}>
+              {pendingActiveState ? 'Activate' : 'Deactivate'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </TooltipProvider>
   );
 }
