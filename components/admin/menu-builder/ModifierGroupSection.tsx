@@ -23,70 +23,69 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { CategoryModifierTemplate, useDeleteCategoryTemplate, useApplyTemplate } from '@/lib/hooks/use-menu-builder'
+import { CategoryModifierGroup, useDeleteCategoryModifierGroup, useApplyModifierGroup } from '@/lib/hooks/use-menu-builder'
 import { ModifierGroupEditor } from './ModifierGroupEditor'
 
-interface ModifierTemplateSectionProps {
+interface ModifierGroupSectionProps {
   courseId: number
-  templates: CategoryModifierTemplate[]
+  modifierGroups: CategoryModifierGroup[]
   selectedDishIds: Set<number>
-  onEditTemplate: (template: CategoryModifierTemplate) => void
+  onEditModifierGroup: (modifierGroup: CategoryModifierGroup) => void
 }
 
-export function ModifierTemplateSection({ 
+export function ModifierGroupSection({ 
   courseId, 
-  templates, 
+  modifierGroups, 
   selectedDishIds,
-  onEditTemplate 
-}: ModifierTemplateSectionProps) {
-  const [expandedTemplates, setExpandedTemplates] = useState<Set<number>>(new Set())
-  const [deletingTemplate, setDeletingTemplate] = useState<number | null>(null)
-  const [applyingTemplateId, setApplyingTemplateId] = useState<number | null>(null)
+  onEditModifierGroup 
+}: ModifierGroupSectionProps) {
+  const [expandedModifierGroups, setExpandedModifierGroups] = useState<Set<number>>(new Set())
+  const [deletingModifierGroup, setDeletingModifierGroup] = useState<number | null>(null)
+  const [applyingModifierGroupId, setApplyingModifierGroupId] = useState<number | null>(null)
 
-  const deleteTemplate = useDeleteCategoryTemplate()
-  const applyTemplate = useApplyTemplate()
+  const deleteModifierGroup = useDeleteCategoryModifierGroup()
+  const applyModifierGroup = useApplyModifierGroup()
 
-  const toggleTemplate = (templateId: number) => {
-    const newExpanded = new Set(expandedTemplates)
-    if (newExpanded.has(templateId)) {
-      newExpanded.delete(templateId)
+  const toggleModifierGroup = (modifierGroupId: number) => {
+    const newExpanded = new Set(expandedModifierGroups)
+    if (newExpanded.has(modifierGroupId)) {
+      newExpanded.delete(modifierGroupId)
     } else {
-      newExpanded.add(templateId)
+      newExpanded.add(modifierGroupId)
     }
-    setExpandedTemplates(newExpanded)
+    setExpandedModifierGroups(newExpanded)
   }
 
   const handleDelete = async () => {
-    if (deletingTemplate) {
-      await deleteTemplate.mutateAsync(deletingTemplate)
-      setDeletingTemplate(null)
+    if (deletingModifierGroup) {
+      await deleteModifierGroup.mutateAsync(deletingModifierGroup)
+      setDeletingModifierGroup(null)
     }
   }
 
-  // ISSUE 5 FIX: Add loading state and feedback for bulk operations
-  const handleApplyToSelected = async (templateId: number) => {
+  const handleApplyToSelected = async (modifierGroupId: number) => {
     if (selectedDishIds.size === 0) return
 
     try {
-      await applyTemplate.mutateAsync({
-        template_id: templateId,
+      await applyModifierGroup.mutateAsync({
+        template_id: modifierGroupId,
         dish_ids: Array.from(selectedDishIds),
       })
-      setApplyingTemplateId(null)
+      setApplyingModifierGroupId(null)
     } catch (error) {
-      console.error('[BULK-ACTION] Failed to apply template to selected dishes:', error)
+      console.error('[BULK-ACTION] Failed to apply modifier group to selected dishes:', error)
     }
   }
 
-  const handleApplyToAll = async (templateId: number) => {
+  const handleApplyToAll = async (modifierGroupId: number) => {
     try {
-      await applyTemplate.mutateAsync({
-        template_id: templateId,
+      await applyModifierGroup.mutateAsync({
+        template_id: modifierGroupId,
         course_id: courseId,
       })
-      setApplyingTemplateId(null)
+      setApplyingModifierGroupId(null)
     } catch (error) {
-      console.error('[BULK-ACTION] Failed to apply template to all dishes:', error)
+      console.error('[BULK-ACTION] Failed to apply modifier group to all dishes:', error)
     }
   }
 
@@ -96,20 +95,20 @@ export function ModifierTemplateSection({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h4 className="text-sm font-semibold">Category Modifier Groups</h4>
-            {templates.length > 0 && (
+            {modifierGroups.length > 0 && (
               <Badge variant="secondary" className="text-xs">
-                {templates.length}
+                {modifierGroups.length}
               </Badge>
             )}
           </div>
-          {templates.length === 0 && (
+          {modifierGroups.length === 0 && (
             <p className="text-xs text-muted-foreground">
               Create reusable modifier groups to apply to dishes
             </p>
           )}
         </div>
 
-        {templates.length === 0 ? (
+        {modifierGroups.length === 0 ? (
           <Card className="bg-muted/30 border-dashed">
             <CardContent className="p-4 text-center">
               <p className="text-sm text-muted-foreground">
@@ -119,13 +118,13 @@ export function ModifierTemplateSection({
           </Card>
         ) : (
           <div className="space-y-2">
-            {templates.map((template) => (
-              <Card key={template.id} className="bg-card border hover-elevate">
+            {modifierGroups.map((modifierGroup) => (
+              <Card key={modifierGroup.id} className="bg-card border hover-elevate">
                 <CardContent className="p-3">
                   <div className="flex items-start gap-3">
                     <Collapsible
-                      open={expandedTemplates.has(template.id)}
-                      onOpenChange={() => toggleTemplate(template.id)}
+                      open={expandedModifierGroups.has(modifierGroup.id)}
+                      onOpenChange={() => toggleModifierGroup(modifierGroup.id)}
                       className="flex-1 min-w-0"
                     >
                       <div className="flex items-center gap-2">
@@ -134,9 +133,9 @@ export function ModifierTemplateSection({
                             size="icon"
                             variant="ghost"
                             className="h-7 w-7 shrink-0"
-                            data-testid={`button-toggle-template-${template.id}`}
+                            data-testid={`button-toggle-modifier-group-${modifierGroup.id}`}
                           >
-                            {expandedTemplates.has(template.id) ? (
+                            {expandedModifierGroups.has(modifierGroup.id) ? (
                               <ChevronDown className="w-4 h-4" />
                             ) : (
                               <ChevronRight className="w-4 h-4" />
@@ -146,33 +145,33 @@ export function ModifierTemplateSection({
                         
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-medium text-sm truncate" data-testid={`text-template-name-${template.id}`}>
-                              {template.name}
+                            <span className="font-medium text-sm truncate" data-testid={`text-modifier-group-name-${modifierGroup.id}`}>
+                              {modifierGroup.name}
                             </span>
-                            <Badge variant={template.is_required ? "default" : "secondary"} className="text-xs shrink-0">
-                              {template.is_required ? 'Required' : 'Optional'}
+                            <Badge variant={modifierGroup.is_required ? "default" : "secondary"} className="text-xs shrink-0">
+                              {modifierGroup.is_required ? 'Required' : 'Optional'}
                             </Badge>
-                            {template.min_selections !== undefined && template.max_selections !== undefined && (
+                            {modifierGroup.min_selections !== undefined && modifierGroup.max_selections !== undefined && (
                               <span className="text-xs text-muted-foreground shrink-0">
-                                {template.min_selections === template.max_selections 
-                                  ? `Choose ${template.min_selections}`
-                                  : `Choose ${template.min_selections}-${template.max_selections}`
+                                {modifierGroup.min_selections === modifierGroup.max_selections 
+                                  ? `Choose ${modifierGroup.min_selections}`
+                                  : `Choose ${modifierGroup.min_selections}-${modifierGroup.max_selections}`
                                 }
                               </span>
                             )}
                             <span className="text-xs text-muted-foreground shrink-0">
-                              • {template.course_template_modifiers?.length || 0} options
+                              • {modifierGroup.modifier_options?.length || 0} options
                             </span>
                           </div>
                         </div>
                       </div>
 
                       <CollapsibleContent className="mt-3 space-y-1">
-                        {template.course_template_modifiers?.map((modifier, idx) => (
+                        {modifierGroup.modifier_options?.map((modifier, idx) => (
                           <div
                             key={modifier.id || idx}
                             className="flex items-center justify-between text-sm pl-9 py-1.5 rounded hover:bg-muted/50"
-                            data-testid={`modifier-${template.id}-${idx}`}
+                            data-testid={`modifier-${modifierGroup.id}-${idx}`}
                           >
                             <span className="truncate">{modifier.name}</span>
                             <div className="flex items-center gap-2 shrink-0 ml-2">
@@ -194,15 +193,15 @@ export function ModifierTemplateSection({
                           size="icon"
                           variant="ghost"
                           className="h-8 w-8 shrink-0"
-                          data-testid={`button-template-menu-${template.id}`}
+                          data-testid={`button-modifier-group-menu-${modifierGroup.id}`}
                         >
                           <MoreVertical className="w-4 h-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-56">
                         <DropdownMenuItem
-                          onClick={() => onEditTemplate(template)}
-                          data-testid={`button-edit-template-${template.id}`}
+                          onClick={() => onEditModifierGroup(modifierGroup)}
+                          data-testid={`button-edit-modifier-group-${modifierGroup.id}`}
                         >
                           <Pencil className="w-4 h-4 mr-2" />
                           Edit Modifier Group
@@ -210,25 +209,25 @@ export function ModifierTemplateSection({
                         <DropdownMenuSeparator />
                         {selectedDishIds.size > 0 && (
                           <DropdownMenuItem
-                            onClick={() => setApplyingTemplateId(template.id)}
-                            data-testid={`button-apply-to-selected-${template.id}`}
+                            onClick={() => setApplyingModifierGroupId(modifierGroup.id)}
+                            data-testid={`button-apply-to-selected-${modifierGroup.id}`}
                           >
                             Apply to {selectedDishIds.size} Selected Dish{selectedDishIds.size > 1 ? 'es' : ''}
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuItem
                           onClick={() => {
-                            setApplyingTemplateId(template.id)
+                            setApplyingModifierGroupId(modifierGroup.id)
                           }}
-                          data-testid={`button-apply-to-all-${template.id}`}
+                          data-testid={`button-apply-to-all-${modifierGroup.id}`}
                         >
                           Apply to All Dishes in Category
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
-                          onClick={() => setDeletingTemplate(template.id)}
+                          onClick={() => setDeletingModifierGroup(modifierGroup.id)}
                           className="text-destructive"
-                          data-testid={`button-delete-template-${template.id}`}
+                          data-testid={`button-delete-modifier-group-${modifierGroup.id}`}
                         >
                           <Trash2 className="w-4 h-4 mr-2" />
                           Delete Modifier Group
@@ -244,7 +243,7 @@ export function ModifierTemplateSection({
       </div>
 
       {/* Delete Confirmation */}
-      <AlertDialog open={!!deletingTemplate} onOpenChange={(open) => !open && setDeletingTemplate(null)}>
+      <AlertDialog open={!!deletingModifierGroup} onOpenChange={(open) => !open && setDeletingModifierGroup(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Modifier Group?</AlertDialogTitle>
@@ -266,8 +265,8 @@ export function ModifierTemplateSection({
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Apply Template Confirmation */}
-      <AlertDialog open={!!applyingTemplateId} onOpenChange={(open) => !open && setApplyingTemplateId(null)}>
+      {/* Apply Modifier Group Confirmation */}
+      <AlertDialog open={!!applyingModifierGroupId} onOpenChange={(open) => !open && setApplyingModifierGroupId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Apply Modifier Group</AlertDialogTitle>
@@ -283,18 +282,18 @@ export function ModifierTemplateSection({
                 <Button
                   variant="default"
                   className="w-full justify-start h-auto py-3"
-                  onClick={() => applyingTemplateId && handleApplyToSelected(applyingTemplateId)}
-                  disabled={applyTemplate.isPending}
+                  onClick={() => applyingModifierGroupId && handleApplyToSelected(applyingModifierGroupId)}
+                  disabled={applyModifierGroup.isPending}
                   data-testid="button-apply-selected"
                 >
                   <div className="flex flex-col items-start gap-1">
                     <span className="font-medium">
-                      {applyTemplate.isPending 
+                      {applyModifierGroup.isPending 
                         ? `Applying to ${selectedDishIds.size} dish${selectedDishIds.size > 1 ? 'es' : ''}...`
                         : `Apply to ${selectedDishIds.size} Selected Dish${selectedDishIds.size > 1 ? 'es' : ''}`
                       }
                     </span>
-                    {!applyTemplate.isPending && (
+                    {!applyModifierGroup.isPending && (
                       <span className="text-xs font-normal opacity-90">
                         Add this modifier group to your current selection
                       </span>
@@ -311,18 +310,18 @@ export function ModifierTemplateSection({
               <Button
                 variant="outline"
                 className="w-full justify-start h-auto py-3"
-                onClick={() => applyingTemplateId && handleApplyToAll(applyingTemplateId)}
-                disabled={applyTemplate.isPending}
+                onClick={() => applyingModifierGroupId && handleApplyToAll(applyingModifierGroupId)}
+                disabled={applyModifierGroup.isPending}
                 data-testid="button-apply-all-category"
               >
                 <div className="flex flex-col items-start gap-1">
                   <span className="font-medium">
-                    {applyTemplate.isPending 
+                    {applyModifierGroup.isPending 
                       ? 'Applying to all dishes...'
                       : 'Apply to All Dishes in This Category'
                     }
                   </span>
-                  {!applyTemplate.isPending && (
+                  {!applyModifierGroup.isPending && (
                     <span className="text-xs font-normal text-muted-foreground">
                       Add this modifier group to every dish in the category
                     </span>
@@ -334,7 +333,7 @@ export function ModifierTemplateSection({
           
           <AlertDialogFooter>
             <AlertDialogCancel 
-              disabled={applyTemplate.isPending}
+              disabled={applyModifierGroup.isPending}
               data-testid="button-cancel-apply"
             >
               Cancel

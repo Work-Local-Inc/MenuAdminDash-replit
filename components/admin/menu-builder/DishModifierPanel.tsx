@@ -338,7 +338,7 @@ export function DishModifierPanel({ dish, restaurantId, onClose }: DishModifierP
             <AlertDialogTitle>Break Inheritance?</AlertDialogTitle>
             <AlertDialogDescription>
               This will create an editable copy of the inherited group. The dish will no longer receive
-              updates when the category template changes.
+              updates when the category modifier group changes.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

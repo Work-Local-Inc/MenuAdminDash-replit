@@ -14,7 +14,7 @@ export interface MenuBuilderCategory {
   description: string | null
   display_order: number
   is_active: boolean
-  templates: CategoryModifierTemplate[]
+  modifier_groups: CategoryModifierGroup[]
   dishes: MenuBuilderDish[]
 }
 
@@ -40,7 +40,7 @@ export interface MenuBuilderDish {
   modifier_groups: DishModifierGroup[]
 }
 
-export interface CategoryModifierTemplate {
+export interface CategoryModifierGroup {
   id: number
   course_id: number
   name: string
@@ -48,10 +48,10 @@ export interface CategoryModifierTemplate {
   min_selections: number
   max_selections: number
   display_order: number
-  course_template_modifiers: TemplateModifier[]
+  modifier_options: ModifierOption[]
 }
 
-export interface TemplateModifier {
+export interface ModifierOption {
   id: number
   template_id?: number
   name: string
@@ -83,7 +83,7 @@ export interface DishModifier {
   display_order: number
 }
 
-export interface CreateTemplateData {
+export interface CreateModifierGroupData {
   course_id: number
   name: string
   is_required?: boolean
@@ -96,7 +96,7 @@ export interface CreateTemplateData {
   }[]
 }
 
-export interface UpdateTemplateData {
+export interface UpdateModifierGroupData {
   name?: string
   is_required?: boolean
   min_selections?: number
@@ -108,24 +108,18 @@ export interface UpdateTemplateData {
   }[]
 }
 
-export interface ApplyTemplateData {
+export interface ApplyModifierGroupData {
   dish_ids?: number[]
   course_id?: number
   template_id: number
 }
 
 // ============================================
-// TYPE ALIASES - UI TERMINOLOGY MAPPING
+// NOTE: Database uses legacy column names
 // ============================================
-// These aliases map backend "template" terminology to UI "modifier group" terminology
-// Backend uses: course_modifier_templates, course_template_modifiers
-// UI displays: "Modifier Groups", "Modifier Group Items"
-
-export type CategoryModifierGroup = CategoryModifierTemplate
-export type ModifierGroupItem = TemplateModifier
-export type CreateModifierGroupData = CreateTemplateData
-export type UpdateModifierGroupData = UpdateTemplateData
-export type ApplyModifierGroupData = ApplyTemplateData
+// Database columns still use: course_modifier_templates, course_template_modifiers
+// Code now consistently uses: modifier_groups, modifier_options
+// The API layer handles the translation between database and code terminology
 
 // ============================================
 // HOOKS
@@ -144,12 +138,12 @@ export function useMenuBuilder(restaurantId: number | string | null) {
   })
 }
 
-export function useCreateCategoryTemplate() {
+export function useCreateCategoryModifierGroup() {
   const queryClient = useQueryClient()
   const { toast } = useToast()
 
   return useMutation({
-    mutationFn: async (data: CreateTemplateData) => {
+    mutationFn: async (data: CreateModifierGroupData) => {
       const res = await fetch('/api/menu/category-modifier-templates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -157,7 +151,7 @@ export function useCreateCategoryTemplate() {
       })
       if (!res.ok) {
         const errorData = await res.json()
-        throw new Error(errorData.error || 'Failed to create template')
+        throw new Error(errorData.error || 'Failed to create modifier group')
       }
       return res.json()
     },
@@ -183,12 +177,12 @@ export function useCreateCategoryTemplate() {
   })
 }
 
-export function useUpdateCategoryTemplate() {
+export function useUpdateCategoryModifierGroup() {
   const queryClient = useQueryClient()
   const { toast } = useToast()
 
   return useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: UpdateTemplateData }) => {
+    mutationFn: async ({ id, data }: { id: number; data: UpdateModifierGroupData }) => {
       const res = await fetch(`/api/menu/category-modifier-templates/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -196,7 +190,7 @@ export function useUpdateCategoryTemplate() {
       })
       if (!res.ok) {
         const errorData = await res.json()
-        throw new Error(errorData.error || 'Failed to update template')
+        throw new Error(errorData.error || 'Failed to update modifier group')
       }
       return res.json()
     },
@@ -222,7 +216,7 @@ export function useUpdateCategoryTemplate() {
   })
 }
 
-export function useDeleteCategoryTemplate() {
+export function useDeleteCategoryModifierGroup() {
   const queryClient = useQueryClient()
   const { toast } = useToast()
 
@@ -233,7 +227,7 @@ export function useDeleteCategoryTemplate() {
       })
       if (!res.ok) {
         const errorData = await res.json()
-        throw new Error(errorData.error || 'Failed to delete template')
+        throw new Error(errorData.error || 'Failed to delete modifier group')
       }
       return res.json()
     },
@@ -267,7 +261,7 @@ export interface RestaurantModifierGroup {
   max_selections: number
   display_order: number
   created_at?: string
-  modifiers: TemplateModifier[]
+  modifiers: ModifierOption[]
 }
 
 export function useRestaurantModifierGroups(restaurantId?: string | number) {
@@ -288,12 +282,12 @@ export function useRestaurantModifierGroups(restaurantId?: string | number) {
   })
 }
 
-export function useApplyTemplate() {
+export function useApplyModifierGroup() {
   const queryClient = useQueryClient()
   const { toast } = useToast()
 
   return useMutation({
-    mutationFn: async (data: ApplyTemplateData) => {
+    mutationFn: async (data: ApplyModifierGroupData) => {
       const res = await fetch('/api/menu/apply-template', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -301,7 +295,7 @@ export function useApplyTemplate() {
       })
       if (!res.ok) {
         const errorData = await res.json()
-        throw new Error(errorData.error || 'Failed to apply template')
+        throw new Error(errorData.error || 'Failed to apply modifier group')
       }
       return res.json()
     },
@@ -311,7 +305,7 @@ export function useApplyTemplate() {
       })
       toast({
         title: "Success",
-        description: `Template applied to ${data.dishes_updated} dish(es)`,
+        description: `Modifier group applied to ${data.dishes_updated} dish(es)`,
       })
     },
     onError: (error: Error) => {
@@ -369,7 +363,7 @@ export function useReorderMenuItems() {
       restaurant_id: number
       category_ids?: number[]
       dish_ids?: number[]
-      template_ids?: number[]
+      modifier_group_ids?: number[]
     }) => {
       const res = await fetch('/api/menu/reorder', {
         method: 'PATCH',

@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Plus, Trash2, GripVertical } from 'lucide-react'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
-import { CategoryModifierTemplate, useCreateCategoryTemplate, useUpdateCategoryTemplate } from '@/lib/hooks/use-menu-builder'
+import { CategoryModifierGroup, useCreateCategoryModifierGroup, useUpdateCategoryModifierGroup } from '@/lib/hooks/use-menu-builder'
 import { Checkbox } from '@/components/ui/checkbox'
 
 interface ModifierItem {
@@ -20,29 +20,29 @@ interface ModifierItem {
 
 interface ModifierGroupEditorProps {
   courseId: number
-  template?: CategoryModifierTemplate | null
+  modifierGroup?: CategoryModifierGroup | null
   open: boolean
   onOpenChange: (open: boolean) => void
 }
 
-export function ModifierGroupEditor({ courseId, template, open, onOpenChange }: ModifierGroupEditorProps) {
+export function ModifierGroupEditor({ courseId, modifierGroup, open, onOpenChange }: ModifierGroupEditorProps) {
   const [name, setName] = useState('')
   const [isRequired, setIsRequired] = useState(false)
   const [minSelections, setMinSelections] = useState(0)
   const [maxSelections, setMaxSelections] = useState(1)
   const [modifiers, setModifiers] = useState<ModifierItem[]>([])
 
-  const createTemplate = useCreateCategoryTemplate()
-  const updateTemplate = useUpdateCategoryTemplate()
+  const createModifierGroup = useCreateCategoryModifierGroup()
+  const updateModifierGroup = useUpdateCategoryModifierGroup()
 
   useEffect(() => {
-    if (template) {
-      setName(template.name)
-      setIsRequired(template.is_required)
-      setMinSelections(template.min_selections)
-      setMaxSelections(template.max_selections)
+    if (modifierGroup) {
+      setName(modifierGroup.name)
+      setIsRequired(modifierGroup.is_required)
+      setMinSelections(modifierGroup.min_selections)
+      setMaxSelections(modifierGroup.max_selections)
       setModifiers(
-        template.course_template_modifiers?.map((m, index) => ({
+        modifierGroup.modifier_options?.map((m, index) => ({
           id: m.id?.toString() || `new-${index}`,
           name: m.name,
           price: m.price,
@@ -56,7 +56,7 @@ export function ModifierGroupEditor({ courseId, template, open, onOpenChange }: 
       setMaxSelections(1)
       setModifiers([])
     }
-  }, [template, open])
+  }, [modifierGroup, open])
 
   const addModifier = () => {
     setModifiers([
@@ -85,7 +85,7 @@ export function ModifierGroupEditor({ courseId, template, open, onOpenChange }: 
   }
 
   const handleSave = async () => {
-    const templateData = {
+    const modifierGroupData = {
       course_id: courseId,
       name,
       is_required: isRequired,
@@ -98,13 +98,13 @@ export function ModifierGroupEditor({ courseId, template, open, onOpenChange }: 
       })),
     }
 
-    if (template) {
-      await updateTemplate.mutateAsync({
-        id: template.id,
-        data: templateData,
+    if (modifierGroup) {
+      await updateModifierGroup.mutateAsync({
+        id: modifierGroup.id,
+        data: modifierGroupData,
       })
     } else {
-      await createTemplate.mutateAsync(templateData)
+      await createModifierGroup.mutateAsync(modifierGroupData)
     }
 
     onOpenChange(false)
@@ -117,7 +117,7 @@ export function ModifierGroupEditor({ courseId, template, open, onOpenChange }: 
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="dialog-modifier-group-editor">
         <DialogHeader>
           <DialogTitle>
-            {template ? 'Edit' : 'Create'} Modifier Group
+            {modifierGroup ? 'Edit' : 'Create'} Modifier Group
           </DialogTitle>
           <DialogDescription>
             Create a reusable modifier group for this category
@@ -277,10 +277,10 @@ export function ModifierGroupEditor({ courseId, template, open, onOpenChange }: 
           </Button>
           <Button
             onClick={handleSave}
-            disabled={!isValid || createTemplate.isPending || updateTemplate.isPending}
-            data-testid="button-save-template"
+            disabled={!isValid || createModifierGroup.isPending || updateModifierGroup.isPending}
+            data-testid="button-save-modifier-group"
           >
-            {(createTemplate.isPending || updateTemplate.isPending) ? 'Saving...' : 'Save Modifier Group'}
+            {(createModifierGroup.isPending || updateModifierGroup.isPending) ? 'Saving...' : 'Save Modifier Group'}
           </Button>
         </DialogFooter>
       </DialogContent>

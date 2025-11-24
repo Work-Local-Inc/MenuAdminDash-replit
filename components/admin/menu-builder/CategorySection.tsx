@@ -26,7 +26,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
 import { MenuBuilderCategory } from '@/lib/hooks/use-menu-builder'
 import { DishItem } from './DishItem'
-import { ModifierTemplateSection } from './ModifierTemplateSection'
+import { ModifierGroupSection } from './ModifierGroupSection'
 
 interface CategorySectionProps {
   category: MenuBuilderCategory
@@ -42,8 +42,8 @@ interface CategorySectionProps {
   onToggleDishActive: (dishId: number) => void
   onViewDishModifiers: (dishId: number) => void
   onBreakDishInheritance: (dishId: number) => void
-  onAddTemplate: () => void
-  onEditTemplate: (templateId: number) => void
+  onAddModifierGroup: () => void
+  onEditModifierGroup: (modifierGroupId: number) => void
   onDishReorder: (dishIds: number[]) => void
   dragHandleProps?: any
 }
@@ -62,8 +62,8 @@ export function CategorySection({
   onToggleDishActive,
   onViewDishModifiers,
   onBreakDishInheritance,
-  onAddTemplate,
-  onEditTemplate,
+  onAddModifierGroup,
+  onEditModifierGroup,
   onDishReorder,
   dragHandleProps,
 }: CategorySectionProps) {
@@ -111,7 +111,7 @@ export function CategorySection({
                 )}
               </div>
               <p className="text-sm text-muted-foreground">
-                {category.dishes.length} dish{category.dishes.length !== 1 ? 'es' : ''} • {category.templates.length} modifier group{category.templates.length !== 1 ? 's' : ''}
+                {category.dishes.length} dish{category.dishes.length !== 1 ? 'es' : ''} • {category.modifier_groups.length} modifier group{category.modifier_groups.length !== 1 ? 's' : ''}
               </p>
             </div>
 
@@ -128,8 +128,8 @@ export function CategorySection({
             <Button
               size="sm"
               variant="outline"
-              onClick={onAddTemplate}
-              data-testid={`button-add-template-${category.id}`}
+              onClick={onAddModifierGroup}
+              data-testid={`button-add-modifier-group-${category.id}`}
             >
               <Plus className="w-4 h-4 mr-2" />
               Add Modifier Group
@@ -179,13 +179,13 @@ export function CategorySection({
           <CollapsibleContent className="mt-4">
             <CardContent className="p-0">
               {/* Modifier Groups */}
-              {category.templates.length > 0 && (
+              {category.modifier_groups.length > 0 && (
                 <div className="mb-4">
-                  <ModifierTemplateSection
+                  <ModifierGroupSection
                     courseId={category.id}
-                    templates={category.templates}
+                    modifierGroups={category.modifier_groups}
                     selectedDishIds={selectedDishIds}
-                    onEditTemplate={(template) => onEditTemplate(template.id)}
+                    onEditModifierGroup={(modifierGroup) => onEditModifierGroup(modifierGroup.id)}
                   />
                 </div>
               )}

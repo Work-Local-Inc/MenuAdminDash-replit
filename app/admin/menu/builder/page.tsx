@@ -42,12 +42,12 @@ import {
   useRestaurantModifierGroups,
   MenuBuilderCategory,
   MenuBuilderDish,
-  CategoryModifierTemplate,
+  CategoryModifierGroup,
   useBreakInheritance,
   useReorderMenuItems,
-  useCreateCategoryTemplate,
-  useUpdateCategoryTemplate,
-  useDeleteCategoryTemplate,
+  useCreateCategoryModifierGroup,
+  useUpdateCategoryModifierGroup,
+  useDeleteCategoryModifierGroup,
 } from '@/lib/hooks/use-menu-builder'
 import {
   useCreateCourse,
@@ -59,7 +59,7 @@ import {
   useReorderCourses,
 } from '@/lib/hooks/use-menu'
 import { ModifierGroupEditor } from '@/components/admin/menu-builder/ModifierGroupEditor'
-import { ModifierTemplateSection } from '@/components/admin/menu-builder/ModifierTemplateSection'
+import { ModifierGroupSection } from '@/components/admin/menu-builder/ModifierGroupSection'
 import { InlinePriceEditor } from '@/components/admin/menu-builder/InlinePriceEditor'
 import { DishModifierPanel } from '@/components/admin/menu-builder/DishModifierPanel'
 import { SizeVariantManager } from '@/components/admin/menu-builder/SizeVariantManager'
@@ -115,9 +115,9 @@ export default function MenuBuilderPage() {
   const [priceEditorOpen, setPriceEditorOpen] = useState(false)
   const [editingPriceDish, setEditingPriceDish] = useState<MenuBuilderDish | null>(null)
 
-  const [templateDialogOpen, setTemplateDialogOpen] = useState(false)
-  const [templateCourseId, setTemplateCourseId] = useState<number | null>(null)
-  const [editingTemplate, setEditingTemplate] = useState<CategoryModifierTemplate | null>(null)
+  const [modifierDialogOpen, setModifierDialogOpen] = useState(false)
+  const [modifierCourseId, setModifierCourseId] = useState<number | null>(null)
+  const [editingModifierGroup, setEditingModifierGroup] = useState<CategoryModifierGroup | null>(null)
 
   const [dishModifiersDialogOpen, setDishModifiersDialogOpen] = useState(false)
   const [editingDishModifiers, setEditingDishModifiers] = useState<MenuBuilderDish | null>(null)
@@ -147,10 +147,10 @@ export default function MenuBuilderPage() {
 
   const breakInheritance = useBreakInheritance()
 
-  // Template CRUD hooks
-  const createTemplate = useCreateCategoryTemplate()
-  const updateTemplate = useUpdateCategoryTemplate()
-  const deleteTemplate = useDeleteCategoryTemplate()
+  // Modifier Group CRUD hooks
+  const createModifierGroup = useCreateCategoryModifierGroup()
+  const updateModifierGroup = useUpdateCategoryModifierGroup()
+  const deleteModifierGroup = useDeleteCategoryModifierGroup()
 
   // Category Form
   const [categoryForm, setCategoryForm] = useState({
@@ -172,38 +172,38 @@ export default function MenuBuilderPage() {
     (r: any) => r.id.toString() === selectedRestaurantId
   )
   
-  // Process category associations with global library groups AND legacy category-specific templates
+  // Process category associations with global library groups AND legacy category-specific modifier groups
   // Build combined list of available modifier groups:
   // 1. Global library groups (course_id IS NULL)
-  // 2. Legacy category-specific templates (course_id IS NOT NULL, library_template_id IS NULL)
-  const allTemplates: any[] = []
+  // 2. Legacy category-specific modifier groups (course_id IS NOT NULL, library_template_id IS NULL)
+  const allModifierGroups: any[] = []
   categories.forEach((category) => {
-    category.templates.forEach((template: any) => {
-      // Add legacy category-specific templates that aren't library-linked
-      if (template.course_id !== null && template.library_template_id === null) {
-        allTemplates.push(template)
+    category.modifier_groups.forEach((modifierGroup: any) => {
+      // Add legacy category-specific modifier groups that aren't library-linked
+      if (modifierGroup.course_id !== null && modifierGroup.library_template_id === null) {
+        allModifierGroups.push(modifierGroup)
       }
     })
   })
   
-  // Combine global library groups with legacy templates
+  // Combine global library groups with legacy modifier groups
   const availableModifierGroups = [
     ...modifierGroups, // Global library groups
-    ...allTemplates,   // Legacy category-specific templates
+    ...allModifierGroups,   // Legacy category-specific modifier groups
   ]
   
   // Build map of category -> associated modifier group IDs
   const categoryModifierMap = new Map<number, number[]>()
   
   categories.forEach((category) => {
-    const associatedGroupIds = category.templates
-      .map((template: any) => {
-        // For library-linked templates, use the library_template_id
-        if (template.library_template_id !== null) {
-          return template.library_template_id
+    const associatedGroupIds = category.modifier_groups
+      .map((modifierGroup: any) => {
+        // For library-linked modifier groups, use the library_template_id
+        if (modifierGroup.library_template_id !== null) {
+          return modifierGroup.library_template_id
         }
-        // For legacy category-specific templates, use the template's own ID
-        return template.id
+        // For legacy category-specific modifier groups, use the group's own ID
+        return modifierGroup.id
       })
       .filter((id: number | null) => id !== null)
     
@@ -325,14 +325,14 @@ export default function MenuBuilderPage() {
     
     try {
       if (isAssociated) {
-        // Remove association by finding and deleting the category template
+        // Remove association by finding and deleting the category modifier group
         const category = categories.find(c => c.id === categoryId)
-        const categoryTemplate = category?.templates.find(
-          (template: any) => template.library_template_id === modifierGroupId
+        const categoryModifierGroup = category?.modifier_groups.find(
+          (modifierGroup: any) => modifierGroup.library_template_id === modifierGroupId
         )
         
-        if (categoryTemplate) {
-          await deleteTemplate.mutateAsync(categoryTemplate.id)
+        if (categoryModifierGroup) {
+          await deleteModifierGroup.mutateAsync(categoryModifierGroup.id)
         }
       } else {
         // Create association by linking to library group
@@ -509,17 +509,17 @@ export default function MenuBuilderPage() {
     await breakInheritance.mutateAsync(dishId)
   }
 
-  // Template handlers
-  const handleAddTemplate = (courseId: number) => {
-    setTemplateCourseId(courseId)
-    setEditingTemplate(null)
-    setTemplateDialogOpen(true)
+  // Modifier Group handlers
+  const handleAddModifierGroup = (courseId: number) => {
+    setModifierCourseId(courseId)
+    setEditingModifierGroup(null)
+    setModifierDialogOpen(true)
   }
 
-  const handleEditTemplate = (template: CategoryModifierTemplate) => {
-    setTemplateCourseId(template.course_id)
-    setEditingTemplate(template)
-    setTemplateDialogOpen(true)
+  const handleEditModifierGroup = (modifierGroup: CategoryModifierGroup) => {
+    setModifierCourseId(modifierGroup.course_id)
+    setEditingModifierGroup(modifierGroup)
+    setModifierDialogOpen(true)
   }
 
   // Toggle category modifier section expansion
@@ -1102,17 +1102,17 @@ export default function MenuBuilderPage() {
         />
       )}
 
-      {/* Template Editor Dialog */}
-      {templateCourseId && (
+      {/* Modifier Group Editor Dialog */}
+      {modifierCourseId && (
         <ModifierGroupEditor
-          courseId={templateCourseId}
-          template={editingTemplate}
-          open={templateDialogOpen}
+          courseId={modifierCourseId}
+          modifierGroup={editingModifierGroup}
+          open={modifierDialogOpen}
           onOpenChange={(open) => {
-            setTemplateDialogOpen(open)
+            setModifierDialogOpen(open)
             if (!open) {
-              setTemplateCourseId(null)
-              setEditingTemplate(null)
+              setModifierCourseId(null)
+              setEditingModifierGroup(null)
             }
           }}
         />
@@ -1132,7 +1132,7 @@ export default function MenuBuilderPage() {
               Manage Modifiers
             </DialogTitle>
             <DialogDescription>
-              Configure modifier groups for this dish (category templates + custom groups)
+              Configure modifier groups for this dish (category modifier groups + custom groups)
             </DialogDescription>
           </DialogHeader>
 

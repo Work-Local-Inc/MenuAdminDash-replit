@@ -52,9 +52,6 @@ import { Switch } from "@/components/ui/switch"
 import { useRestaurants } from "@/lib/hooks/use-restaurants"
 import {
   useRestaurantModifierGroups,
-  useCreateCategoryTemplate,
-  useUpdateCategoryTemplate,
-  useDeleteCategoryTemplate,
   RestaurantModifierGroup,
   CreateModifierGroupData,
 } from "@/lib/hooks/use-menu-builder"
