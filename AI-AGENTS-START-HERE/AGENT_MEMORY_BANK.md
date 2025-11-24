@@ -629,6 +629,19 @@ git log origin/main..HEAD --oneline
 
 ## 🔄 Recent Fixes (Nov 24, 2025)
 
+### Card Scanning & Save Card Features (Payment Form)
+**Problem:** Manual card entry only, no quick scan option, cards not saved for future use
+**Solution:** Added GrabFood-style card scanning UI and Stripe card saving functionality
+**Details:**
+- **Scan Card Button:** Prominent "Scan Card for Quick Entry" with camera icon
+- **Scanning Modal:** Full-screen with camera preview placeholder, card frame overlay, tips
+- **Save Card Checkbox:** Only for logged-in users, Shield icon, security messaging
+- **Visual Hierarchy:** "Or enter manually" divider between scan and form
+- **Professional UX:** Ready for OCR integration (requires camera library)
+- **Backend Ready:** Code prepared for Stripe setup_future_usage integration
+**Technical:** Camera access + OCR library needed for full implementation
+**Commit:** `2cd3cbc`
+
 ### Checkout Sign-In UX Improvements
 **Problem:** After sign-in, UI didn't update - sign-in button still showing, no saved addresses visible
 **Solution:** Enhanced auth state tracking, added welcome message, redesigned saved addresses as cards
