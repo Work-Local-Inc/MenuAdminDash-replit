@@ -176,12 +176,22 @@ export default function MenuBuilderPage() {
   // Build combined list of available modifier groups:
   // 1. Global library groups (course_id IS NULL)
   // 2. Legacy category-specific modifier groups (course_id IS NOT NULL, library_template_id IS NULL)
+  // 3. Self-referencing templates (course_id IS NOT NULL, library_template_id = id)
   const allModifierGroups: any[] = []
+  const seen = new Set<number>()
+  
   categories.forEach((category) => {
     category.modifier_groups?.forEach((modifierGroup: any) => {
+      // Skip duplicates
+      if (seen.has(modifierGroup.id)) return
+      
       // Add legacy category-specific modifier groups that aren't library-linked
-      if (modifierGroup.course_id !== null && modifierGroup.library_template_id === null) {
+      // OR self-referencing templates (legacy data where library_template_id = id)
+      if (modifierGroup.course_id !== null && 
+          (modifierGroup.library_template_id === null || 
+           modifierGroup.library_template_id === modifierGroup.id)) {
         allModifierGroups.push(modifierGroup)
+        seen.add(modifierGroup.id)
       }
     })
   })
