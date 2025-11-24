@@ -36,21 +36,41 @@ export async function PATCH(
     const body = await request.json()
     const validatedData = updateModifierGroupSchema.parse(body)
 
+    // Build update object with only provided fields
+    const updateData: any = { name: validatedData.name }
+    if (validatedData.is_required !== undefined) {
+      updateData.is_required = validatedData.is_required
+    }
+    if (validatedData.min_selections !== undefined) {
+      updateData.min_selections = validatedData.min_selections
+    }
+    if (validatedData.max_selections !== undefined) {
+      updateData.max_selections = validatedData.max_selections
+    }
+
     // Update the modifier group
     const { data: updated, error: updateError } = await (supabase
       .schema('menuca_v3')
       .from('course_modifier_templates' as any)
-      .update({
-        name: validatedData.name,
-        is_required: validatedData.is_required,
-        min_selections: validatedData.min_selections,
-        max_selections: validatedData.max_selections,
-      } as any)
+      .update(updateData)
       .eq('id', modifierGroupId)
       .select()
       .single() as any)
 
     if (updateError) throw updateError
+
+    // Propagate changes to inheriting dish modifier groups
+    await (supabase
+      .schema('menuca_v3')
+      .from('modifier_groups' as any)
+      .update({
+        name: updateData.name,
+        ...(updateData.is_required !== undefined && { is_required: updateData.is_required }),
+        ...(updateData.min_selections !== undefined && { min_selections: updateData.min_selections }),
+        ...(updateData.max_selections !== undefined && { max_selections: updateData.max_selections }),
+      } as any)
+      .eq('course_template_id', modifierGroupId)
+      .eq('is_custom', false) as any)
 
     // Handle modifiers update if provided
     if (validatedData.modifiers) {

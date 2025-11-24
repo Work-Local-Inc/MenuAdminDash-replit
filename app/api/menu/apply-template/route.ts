@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
 
     if (dishIds.length === 0) {
       return NextResponse.json(
-        { error: 'No dishes found to apply template to' },
+        { error: 'No dishes found to apply modifier group to' },
         { status: 400 }
       )
     }
