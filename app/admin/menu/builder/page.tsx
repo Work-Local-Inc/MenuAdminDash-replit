@@ -178,7 +178,7 @@ export default function MenuBuilderPage() {
   // 2. Legacy category-specific modifier groups (course_id IS NOT NULL, library_template_id IS NULL)
   const allModifierGroups: any[] = []
   categories.forEach((category) => {
-    category.modifier_groups.forEach((modifierGroup: any) => {
+    category.modifier_groups?.forEach((modifierGroup: any) => {
       // Add legacy category-specific modifier groups that aren't library-linked
       if (modifierGroup.course_id !== null && modifierGroup.library_template_id === null) {
         allModifierGroups.push(modifierGroup)
@@ -196,7 +196,7 @@ export default function MenuBuilderPage() {
   const categoryModifierMap = new Map<number, number[]>()
   
   categories.forEach((category) => {
-    const associatedGroupIds = category.modifier_groups
+    const associatedGroupIds = (category.modifier_groups || [])
       .map((modifierGroup: any) => {
         // For library-linked modifier groups, use the library_template_id
         if (modifierGroup.library_template_id !== null) {

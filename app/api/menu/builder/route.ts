@@ -241,7 +241,7 @@ export async function GET(request: NextRequest) {
     // Filter soft-deleted modifiers in application layer after fetching with left joins
     const categoriesWithData = (categories as any)?.map((category: any) => ({
       ...category,
-      templates: (templates as any)
+      modifier_groups: (templates as any)
         ?.filter((t: any) => t.course_id === category.id)
         .map((t: any) => {
           // CRITICAL FIX: Use library modifiers when library_template_id is set
