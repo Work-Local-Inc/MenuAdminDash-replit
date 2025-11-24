@@ -24,7 +24,8 @@ export async function GET(
     await verifyAdminAuth(request)
     const supabase = createAdminClient()
     
-    const { data, error } = await supabase
+    // Try restaurant_delivery_zones first
+    const { data: zonesData, error: zonesError } = await supabase
       .schema('menuca_v3')
       .from('restaurant_delivery_zones')
       .select('id, restaurant_id, zone_name, delivery_fee_cents, minimum_order_cents, estimated_delivery_minutes, zone_geometry, is_active, created_at')
@@ -33,8 +34,23 @@ export async function GET(
       .order('created_at', { ascending: false })
     
     console.log('[DELIVERY AREAS API] Restaurant ID:', params.id)
-    console.log('[DELIVERY AREAS API] Query result:', { count: data?.length || 0, error: error?.message })
-    console.log('[DELIVERY AREAS API] Sample data:', data?.[0])
+    console.log('[DELIVERY AREAS API] Zones table:', { count: zonesData?.length || 0, error: zonesError?.message })
+    
+    // Try restaurant_delivery_areas as fallback
+    const { data: areasData, error: areasError } = await supabase
+      .schema('menuca_v3')
+      .from('restaurant_delivery_areas')
+      .select('*')
+      .eq('restaurant_id', parseInt(params.id))
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false })
+    
+    console.log('[DELIVERY AREAS API] Areas table:', { count: areasData?.length || 0, error: areasError?.message })
+    console.log('[DELIVERY AREAS API] Areas sample:', areasData?.[0])
+    
+    // Use whichever table has data
+    const data = (zonesData?.length || 0) > 0 ? zonesData : areasData
+    const error = zonesError || areasError
     
     if (error) {
       throw error
