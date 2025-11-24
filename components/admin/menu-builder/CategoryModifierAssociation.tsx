@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
-import { Tag } from "lucide-react"
+import { Tag, Check } from "lucide-react"
 import {
   Popover,
   PopoverContent,
@@ -61,7 +61,7 @@ export function CategoryModifierAssociation({
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <Button
-          variant="outline"
+          variant={associatedCount > 0 ? "default" : "outline"}
           size="sm"
           data-testid={`button-manage-modifiers-${categoryId}`}
         >
@@ -110,17 +110,22 @@ export function CategoryModifierAssociation({
                         onCheckedChange={() => handleToggle(group.id, isAssociated)}
                         data-testid={`checkbox-group-${group.id}`}
                       />
-                      <div className="flex-1">
-                        <Label
-                          htmlFor={`group-${group.id}`}
-                          className="text-sm font-medium cursor-pointer"
-                          data-testid={`label-group-${group.id}`}
-                        >
-                          {group.name}
-                        </Label>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {group.modifiers.length} modifier{group.modifiers.length !== 1 ? 's' : ''}
-                        </p>
+                      <div className="flex-1 flex items-start justify-between">
+                        <div>
+                          <Label
+                            htmlFor={`group-${group.id}`}
+                            className="text-sm font-medium cursor-pointer"
+                            data-testid={`label-group-${group.id}`}
+                          >
+                            {group.name}
+                          </Label>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {group.modifiers.length} modifier{group.modifiers.length !== 1 ? 's' : ''}
+                          </p>
+                        </div>
+                        {isAssociated && (
+                          <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" data-testid={`icon-selected-${group.id}`} />
+                        )}
                       </div>
                     </div>
                   )

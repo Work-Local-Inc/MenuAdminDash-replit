@@ -45,6 +45,7 @@ export function DishItem({
   const hasInheritedModifiers = dish.modifier_groups?.some(g => !g.is_custom)
   const hasCustomModifiers = dish.modifier_groups?.some(g => g.is_custom)
   const modifierCount = dish.modifier_groups?.length || 0
+  const modifierNames = (dish.modifier_groups?.map(g => g.name) ?? []).join(', ')
 
   return (
     <Card 
@@ -148,11 +149,11 @@ export function DishItem({
         )}
 
         {/* Modifier Info */}
-        {modifierCount > 0 && (
+        {modifierCount > 0 && modifierNames && (
           <div className="flex items-center gap-2 text-sm text-muted-foreground pt-3 border-t">
             <Layers className="w-4 h-4 flex-shrink-0" />
-            <span className="text-xs">
-              {modifierCount} modifier group{modifierCount > 1 ? 's' : ''}
+            <span className="text-xs line-clamp-1" title={modifierNames}>
+              Modifiers ({modifierNames})
             </span>
             <div className="flex items-center gap-1 ml-auto">
               {hasInheritedModifiers && !hasCustomModifiers && (

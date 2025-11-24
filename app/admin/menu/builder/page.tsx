@@ -172,19 +172,44 @@ export default function MenuBuilderPage() {
     (r: any) => r.id.toString() === selectedRestaurantId
   )
   
-  // Process category associations with global library groups
-  // modifierGroups = global library groups (course_id IS NULL)
-  // Build map of category -> associated library group IDs from category templates
-  const availableModifierGroups = modifierGroups
+  // Process category associations with global library groups AND legacy category-specific templates
+  // Build combined list of available modifier groups:
+  // 1. Global library groups (course_id IS NULL)
+  // 2. Legacy category-specific templates (course_id IS NOT NULL, library_template_id IS NULL)
+  const allTemplates: any[] = []
+  categories.forEach((category) => {
+    category.templates.forEach((template: any) => {
+      // Add legacy category-specific templates that aren't library-linked
+      if (template.course_id !== null && template.library_template_id === null) {
+        allTemplates.push(template)
+      }
+    })
+  })
+  
+  // Combine global library groups with legacy templates
+  const availableModifierGroups = [
+    ...modifierGroups, // Global library groups
+    ...allTemplates,   // Legacy category-specific templates
+  ]
+  
+  // Build map of category -> associated modifier group IDs
   const categoryModifierMap = new Map<number, number[]>()
   
   categories.forEach((category) => {
-    const associatedLibraryGroupIds = category.templates
-      .filter((template: any) => template.library_template_id !== null)
-      .map((template: any) => template.library_template_id)
+    const associatedGroupIds = category.templates
+      .map((template: any) => {
+        // For library-linked templates, use the library_template_id
+        if (template.library_template_id !== null) {
+          return template.library_template_id
+        }
+        // For legacy category-specific templates, use the template's own ID
+        return template.id
+      })
+      .filter((id: number | null) => id !== null)
     
-    if (associatedLibraryGroupIds.length > 0) {
-      categoryModifierMap.set(category.id, associatedLibraryGroupIds)
+    if (associatedGroupIds.length > 0) {
+      categoryModifierMap.set(category.id, associatedGroupIds)
+      console.log(`[CATEGORY MODIFIERS] Category ${category.id} (${category.name}) has ${associatedGroupIds.length} associated groups:`, associatedGroupIds)
     }
   })
 
