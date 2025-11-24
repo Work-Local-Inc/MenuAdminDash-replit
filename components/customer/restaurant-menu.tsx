@@ -66,6 +66,7 @@ export default function RestaurantMenu({
   const cartItemCount = useCartStore((state) => 
     state.items.reduce((sum, item) => sum + item.quantity, 0)
   );
+  const cartTotal = useCartStore((state) => state.getTotal());
   const setRestaurant = useCartStore((state) => state.setRestaurant);
   
   const location = restaurant.restaurant_locations?.[0];
@@ -220,17 +221,18 @@ export default function RestaurantMenu({
         </div>
       </div>
       
-      {/* Category Navigation - Quick Jump Links (Editor Mode Only) */}
-      {editorMode && courses && courses.length > 1 && (
+      {/* Category Navigation - Quick Jump Links */}
+      {!editorMode && courses && courses.length > 1 && (
         <div className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
           <div className="container mx-auto px-3 sm:px-4">
-            <div className="flex gap-2 py-2 sm:py-3 overflow-x-auto">
+            <div className="flex gap-2 py-2 sm:py-3 overflow-x-auto scrollbar-hide">
               {courses.map((course) => (
                 <Button
                   key={course.id}
                   variant="ghost"
                   onClick={() => scrollToCategory(course.id.toString())}
                   size="sm"
+                  className="whitespace-nowrap"
                   data-testid={`button-category-${course.id}`}
                 >
                   {course.name}
@@ -242,7 +244,7 @@ export default function RestaurantMenu({
       )}
       
       {/* Menu Items - All Categories Shown */}
-      <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8">
+      <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8 pb-24">
         {!hasMenu ? (
           <div className="text-center py-12">
             <p className="text-lg font-medium mb-2">Menu Coming Soon</p>
@@ -516,18 +518,29 @@ export default function RestaurantMenu({
         )}
       </div>
       
-      {/* Floating Cart Button - Only in customer mode */}
+      {/* Sticky Footer Cart Bar - Only in customer mode */}
       {!editorMode && cartItemCount > 0 && (
-        <div className="fixed bottom-6 right-6 z-20">
-          <Button
-            size="lg"
-            onClick={() => setIsCartOpen(true)}
-            className="rounded-full shadow-lg px-6"
-            data-testid="button-open-cart"
-          >
-            <ShoppingCart className="w-5 h-5 mr-2" />
-            Cart ({cartItemCount})
-          </Button>
+        <div className="fixed bottom-0 left-0 right-0 z-20 bg-background border-t shadow-lg">
+          <div className="container mx-auto px-4 py-3">
+            <Button
+              size="lg"
+              onClick={() => setIsCartOpen(true)}
+              className="w-full h-14"
+              data-testid="button-open-cart"
+            >
+              <div className="flex items-center justify-between w-full">
+                <div className="flex items-center gap-2">
+                  <ShoppingCart className="w-5 h-5" />
+                  <span className="font-semibold">
+                    {isCartOpen ? 'Place Order' : `Basket • ${cartItemCount} ${cartItemCount === 1 ? 'Item' : 'Items'}`}
+                  </span>
+                </div>
+                <span className="font-bold text-lg">
+                  ${cartTotal.toFixed(2)}
+                </span>
+              </div>
+            </Button>
+          </div>
         </div>
       )}
       
