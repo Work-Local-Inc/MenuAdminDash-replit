@@ -187,10 +187,14 @@ export default function MenuBuilderPage() {
   })
   
   // Combine global library groups with legacy modifier groups
+  // Ensure all groups have modifiers property (safety check for undefined)
   const availableModifierGroups = [
     ...modifierGroups, // Global library groups
     ...allModifierGroups,   // Legacy category-specific modifier groups
-  ]
+  ].map(group => ({
+    ...group,
+    modifiers: group.modifiers || []
+  }))
   
   // Build map of category -> associated modifier group IDs
   const categoryModifierMap = new Map<number, number[]>()

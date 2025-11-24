@@ -120,7 +120,7 @@ export function CategoryModifierAssociation({
                             {group.name}
                           </Label>
                           <p className="text-xs text-muted-foreground mt-0.5">
-                            {group.modifiers.length} modifier{group.modifiers.length !== 1 ? 's' : ''}
+                            {(group.modifiers || []).length} modifier{(group.modifiers || []).length !== 1 ? 's' : ''}
                           </p>
                         </div>
                         {isAssociated && (
