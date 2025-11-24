@@ -136,9 +136,9 @@ export default function RestaurantMenu({
 
   const menuContent = (
     <div className="min-h-screen bg-background">
-      {/* Banner Image */}
+      {/* Banner Image - Responsive Height */}
       {restaurant.banner_image_url && (
-        <div className="w-full h-32 bg-muted relative overflow-hidden">
+        <div className="w-full h-20 sm:h-24 md:h-32 bg-muted relative overflow-hidden">
           <img
             src={restaurant.banner_image_url}
             alt={`${restaurant.name} banner`}
@@ -147,26 +147,26 @@ export default function RestaurantMenu({
         </div>
       )}
       
-      {/* Restaurant Header */}
+      {/* Restaurant Header - Responsive Layout */}
       <div className="border-b bg-card">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2">
+        <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
+          <div className="flex items-start justify-between gap-3 sm:gap-4">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 sm:gap-3 mb-2">
                 {restaurant.logo_url ? (
                   <img 
                     src={restaurant.logo_url} 
                     alt={restaurant.name} 
-                    className="w-12 h-12 object-contain rounded"
+                    className="w-10 h-10 sm:w-12 sm:h-12 object-contain rounded flex-shrink-0"
                   />
                 ) : (
-                  <Store className="w-8 h-8 text-primary" />
+                  <Store className="w-6 h-6 sm:w-8 sm:h-8 text-primary flex-shrink-0" />
                 )}
-                <h1 className="text-3xl font-bold" data-testid="text-restaurant-name">
+                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold truncate" data-testid="text-restaurant-name">
                   {restaurant.name}
                 </h1>
                 {editorMode && (
-                  <Badge variant="outline" className="ml-2">
+                  <Badge variant="outline" className="ml-2 hidden sm:inline-flex">
                     Editor Mode
                   </Badge>
                 )}
@@ -202,15 +202,17 @@ export default function RestaurantMenu({
               )}
             </div>
             
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-1 sm:gap-2 flex-shrink-0">
               {serviceConfig?.has_delivery_enabled && (
-                <Badge variant="secondary" data-testid="badge-delivery">
-                  Delivery Available
+                <Badge variant="secondary" className="text-xs sm:text-sm" data-testid="badge-delivery">
+                  <span className="hidden sm:inline">Delivery Available</span>
+                  <span className="sm:hidden">Delivery</span>
                 </Badge>
               )}
               {serviceConfig?.takeout_enabled && (
-                <Badge variant="secondary" data-testid="badge-takeout">
-                  Takeout Available
+                <Badge variant="secondary" className="text-xs sm:text-sm" data-testid="badge-takeout">
+                  <span className="hidden sm:inline">Takeout Available</span>
+                  <span className="sm:hidden">Takeout</span>
                 </Badge>
               )}
             </div>
@@ -221,8 +223,8 @@ export default function RestaurantMenu({
       {/* Category Navigation - Quick Jump Links (Editor Mode Only) */}
       {editorMode && courses && courses.length > 1 && (
         <div className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
-          <div className="container mx-auto px-4">
-            <div className="flex gap-2 py-3 overflow-x-auto">
+          <div className="container mx-auto px-3 sm:px-4">
+            <div className="flex gap-2 py-2 sm:py-3 overflow-x-auto">
               {courses.map((course) => (
                 <Button
                   key={course.id}
@@ -240,7 +242,7 @@ export default function RestaurantMenu({
       )}
       
       {/* Menu Items - All Categories Shown */}
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8">
         {!hasMenu ? (
           <div className="text-center py-12">
             <p className="text-lg font-medium mb-2">Menu Coming Soon</p>

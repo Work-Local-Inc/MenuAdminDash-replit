@@ -53,10 +53,11 @@ export function DishCard({ dish, restaurantId, buttonStyle }: DishCardProps) {
         data-testid={`card-dish-${dish.id}`}
       >
         <CardContent className="p-0">
-          <div className="flex gap-4">
+          {/* Responsive Layout: Vertical on mobile, horizontal on tablet+ */}
+          <div className="flex flex-col sm:flex-row sm:gap-4">
             {/* Dish Image */}
             {dish.image_url && (
-              <div className="w-32 h-32 flex-shrink-0 bg-muted">
+              <div className="w-full sm:w-32 h-40 sm:h-32 flex-shrink-0 bg-muted">
                 <img
                   src={dish.image_url}
                   alt={dish.name}
@@ -67,14 +68,16 @@ export function DishCard({ dish, restaurantId, buttonStyle }: DishCardProps) {
             )}
             
             {/* Dish Info */}
-            <div className="flex-1 p-4 flex flex-col justify-between min-h-[128px]">
+            <div className="flex-1 p-3 sm:p-4 flex flex-col justify-between min-h-[120px] sm:min-h-[128px]">
               <div>
-                <div className="flex items-start justify-between gap-2 mb-1">
-                  <h3 className="font-semibold text-base leading-tight" data-testid={`text-dish-name-${dish.id}`}>
+                {/* Name and Price - Stack on mobile, side-by-side on larger screens */}
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-2 mb-2">
+                  <h3 className="font-semibold text-base sm:text-lg leading-tight flex-1" data-testid={`text-dish-name-${dish.id}`}>
                     {dish.name}
                   </h3>
-                  <span className="text-base font-bold whitespace-nowrap" data-testid={`text-dish-price-${dish.id}`}>
-                    {hasMultiplePrices && 'Starting at '}${displayPrice}
+                  <span className="text-base sm:text-lg font-bold text-primary sm:whitespace-nowrap" data-testid={`text-dish-price-${dish.id}`}>
+                    {hasMultiplePrices && <span className="text-xs sm:text-sm font-normal">Starting at </span>}
+                    ${displayPrice}
                   </span>
                 </div>
                 
@@ -85,7 +88,7 @@ export function DishCard({ dish, restaurantId, buttonStyle }: DishCardProps) {
                 )}
               </div>
               
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center justify-between gap-2 mt-2">
                 {dish.has_customization && (
                   <Badge variant="outline" className="text-xs" data-testid={`badge-customizable-${dish.id}`}>
                     Customizable
