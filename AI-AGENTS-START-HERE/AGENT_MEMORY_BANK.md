@@ -647,7 +647,20 @@ git log origin/main..HEAD --oneline
 - `lib/utils/card-scanner.ts` - OCR + parsing logic
 - `components/customer/card-scanner-modal.tsx` - Full camera UI
 **Dependencies:** Added tesseract.js (46 packages)
-**Commit:** `2cd3cbc`, `f5d0558`
+**Commits:** `2cd3cbc`, `f5d0558`, `8d40ee1`
+
+**Files Added:**
+- `lib/utils/device.ts` (27 lines)
+- `lib/utils/card-scanner.ts` (140 lines)
+- `components/customer/card-scanner-modal.tsx` (200 lines)
+
+**Mobile Testing:**
+1. Open checkout on phone
+2. Allow camera access when prompted
+3. Position card in frame overlay
+4. Tap "Capture & Scan"
+5. Wait 2-5 seconds for OCR
+6. Verify extracted card details
 
 ### Checkout Sign-In UX Improvements
 **Problem:** After sign-in, UI didn't update - sign-in button still showing, no saved addresses visible
