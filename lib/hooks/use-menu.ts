@@ -340,8 +340,29 @@ export function useUpdateDish() {
       }
       return res.json()
     },
+    // Optimistically update cache to prevent flicker during refetch
+    onMutate: async ({ id, data }) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['/api/menu/builder'] })
+      
+      // Snapshot previous value
+      const previousData = queryClient.getQueryData(['/api/menu/builder'])
+      
+      // Optimistically update cache
+      queryClient.setQueryData(['/api/menu/builder'], (old: any) => {
+        if (!old) return old
+        return old.map((category: any) => ({
+          ...category,
+          dishes: category.dishes.map((dish: any) =>
+            dish.id === id ? { ...dish, ...data } : dish
+          ),
+        }))
+      })
+      
+      return { previousData }
+    },
     onSuccess: (_, variables) => {
-      // Invalidate menu dishes list
+      // Invalidate to refetch and confirm the change
       queryClient.invalidateQueries({ 
         predicate: (query) => {
           const [key, filters] = query.queryKey
@@ -352,7 +373,6 @@ export function useUpdateDish() {
                  filters.restaurant_id === variables.restaurant_id
         }
       })
-      // Also invalidate menu builder (used in admin menu builder page)
       queryClient.invalidateQueries({ 
         queryKey: ['/api/menu/builder'] 
       })
@@ -361,7 +381,11 @@ export function useUpdateDish() {
         description: "Dish updated successfully",
       })
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _, context) => {
+      // Rollback on error
+      if (context?.previousData) {
+        queryClient.setQueryData(['/api/menu/builder'], context.previousData)
+      }
       toast({
         variant: "destructive",
         title: "Error",

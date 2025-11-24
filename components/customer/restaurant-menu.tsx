@@ -632,8 +632,8 @@ function EditorDishCard({
       setShowActiveConfirmation(false);
       try {
         await onToggleActive();
-        // Wait longer for React Query to refetch and update the UI
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Optimistic update in mutation handles the cache, no long delay needed
+        await new Promise(resolve => setTimeout(resolve, 100));
       } finally {
         setIsUpdating(false);
         setPendingActiveState(null);
