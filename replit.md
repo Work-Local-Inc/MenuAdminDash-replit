@@ -68,6 +68,28 @@ Preferred communication style: Simple, everyday language.
     - **Bulk Operations**: Multi-select dishes with toolbar for batch actions (mark active/inactive, delete).
     - **Editor Controls**: Hover overlays on dishes (drag/edit/delete), secondary actions bar (price/active/modifiers).
     - **Inline Editing**: Click-to-edit prices, dish modifiers accessible via prominent button with count badge.
+    - **Size & Price Variants Management** (November 2025):
+        - **Status**: ✅ Production-ready, fully tested and architect-approved
+        - **Purpose**: Manage dish pricing with size variants (e.g., Small/Medium/Large) for flexible menu pricing
+        - **Location**: Integrated into Edit Dish dialog within Menu Builder (`/admin/menu/builder`)
+        - **Database**: Uses `dish_prices` table in `menuca_v3` schema
+        - **API Endpoint**: `/api/menu/dish-prices` (GET/POST/PATCH/DELETE)
+        - **Features**:
+            - Add unlimited size variants per dish (e.g., "Small (10\")", "Medium (12\")", "Large (15\")")
+            - Edit variant names and prices inline
+            - Drag-and-drop reordering with display_order persistence
+            - Delete variants with confirmation
+            - Real-time UI sync with server data after mutations
+            - State management prevents edit overwrites during drag operations (isReordering flag)
+        - **Security**: Multi-tenant restaurant ownership validation on all mutations (POST/PATCH/DELETE)
+        - **Architecture**:
+            - `SizeVariantManager` component handles all CRUD operations
+            - React Query hooks with authenticated `apiRequest` helper
+            - Toast notifications for success/error feedback
+            - Optimistic UI updates with server reconciliation
+        - **Customer-Facing**: Size variants display as dropdown selection in customer menu, prices update dynamically
+        - **Shortcut Access**: "Price" button on dish cards shows variant count badge for quick identification
+        - **Integration**: Separate from modifier groups system (size selection happens BEFORE modifier customization)
     - **Legacy Support**: Pricing (`dish_prices`), modifiers (`modifier_groups` → `dish_modifiers`), combos, inventory management.
 - **Franchise Management**: Hierarchical system for parent/child linking, bulk updates, and analytics.
 - **Categorization System**: Cuisine and tag-based discovery.
