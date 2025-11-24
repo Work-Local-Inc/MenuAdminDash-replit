@@ -78,17 +78,18 @@ export default function CheckoutPage() {
 
   const checkAuth = async () => {
     try {
+      console.log('[Checkout] Starting auth check...')
       const { data: { user } } = await supabase.auth.getUser()
       
       if (!user) {
         // Guest checkout - no redirect, just proceed
-        console.log('[Checkout] Guest checkout mode')
+        console.log('[Checkout] No auth user - Guest checkout mode')
         setCurrentUser(null)
         setLoading(false)
         return
       }
 
-      console.log('[Checkout] Auth user:', user.id)
+      console.log('[Checkout] Auth user found:', user.id, user.email)
 
       // Get full user details (query by auth_user_id, not id)
       const { data: userData, error: userError } = await supabase
@@ -97,17 +98,22 @@ export default function CheckoutPage() {
         .eq('auth_user_id', user.id)
         .single()
 
-      console.log('[Checkout] User lookup:', { userData, userError })
+      console.log('[Checkout] User lookup result:', { 
+        found: !!userData, 
+        userData: userData ? { id: userData.id, email: userData.email, first_name: userData.first_name } : null,
+        error: userError 
+      })
 
       if (!userData) {
         // User has auth but no profile - treat as guest
         console.log('[Checkout] Auth user but no profile - treating as guest')
         setCurrentUser(null)
       } else {
+        console.log('[Checkout] Setting currentUser:', userData.id, userData.email)
         setCurrentUser(userData)
       }
     } catch (error) {
-      console.error('Auth check error:', error)
+      console.error('[Checkout] Auth check error:', error)
       // Don't redirect on error - allow guest checkout
       setCurrentUser(null)
     } finally {
@@ -151,8 +157,15 @@ export default function CheckoutPage() {
 
   const handleSignInSuccess = async () => {
     // After successful sign-in, refresh auth and close modal
+    console.log('[Checkout] Sign-in success callback triggered')
     await checkAuth()
     setShowSignInModal(false)
+    
+    // Show success message
+    toast({
+      title: "Welcome back!",
+      description: "Loading your saved addresses...",
+    })
   }
 
   const handleAddressConfirmed = async (address: DeliveryAddress) => {
@@ -276,8 +289,16 @@ export default function CheckoutPage() {
               )}
             </div>
           </div>
-          <h1 className="text-3xl font-bold">Checkout</h1>
-          <p className="text-muted-foreground">Complete your order from {restaurantName}</p>
+          <div className="space-y-2">
+            <h1 className="text-3xl font-bold">Checkout</h1>
+            {currentUser ? (
+              <p className="text-lg text-primary font-medium">
+                Welcome back, {currentUser.first_name || currentUser.email}! 👋
+              </p>
+            ) : (
+              <p className="text-muted-foreground">Complete your order from {restaurantName}</p>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -210,24 +210,31 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Delivery Address</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          <MapPin className="w-5 h-5" />
+          Delivery Address
+        </CardTitle>
         <CardDescription>
-          {isGuest ? 'Enter your delivery information to continue' : 'Where should we deliver your order?'}
+          {isGuest 
+            ? 'Enter your delivery information to continue' 
+            : savedAddresses.length > 0
+            ? 'Select from your saved addresses or add a new one'
+            : 'Add your first delivery address'}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Guest Sign-In Prompt */}
         {isGuest && onSignInClick && (
-          <div className="bg-muted/50 border rounded-lg p-4">
+          <div className="bg-primary/5 border-2 border-primary/20 rounded-lg p-4">
             <div className="flex items-start gap-3">
-              <UserCircle className="w-5 h-5 text-muted-foreground mt-0.5" />
+              <UserCircle className="w-5 h-5 text-primary mt-0.5" />
               <div className="flex-1">
-                <p className="font-medium text-sm">Have an account?</p>
+                <p className="font-semibold text-sm text-primary">Have an account?</p>
                 <p className="text-sm text-muted-foreground mb-3">
-                  Sign in to use saved addresses and track your orders
+                  Sign in to access your saved addresses and enjoy faster checkout
                 </p>
                 <Button 
-                  variant="outline" 
+                  variant="default" 
                   size="sm"
                   onClick={onSignInClick}
                   data-testid="button-sign-in-address-form"
@@ -239,38 +246,75 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick 
           </div>
         )}
 
-        {/* Saved Addresses */}
+        {/* No Saved Addresses Message (Logged In Users) */}
+        {!isGuest && savedAddresses.length === 0 && !showNewAddressForm && (
+          <div className="bg-muted/30 border rounded-lg p-6 text-center">
+            <MapPin className="w-12 h-12 mx-auto mb-3 text-muted-foreground" />
+            <h3 className="font-semibold mb-2">No saved addresses yet</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Add your first delivery address to get started
+            </p>
+            <Button
+              onClick={() => setShowNewAddressForm(true)}
+              data-testid="button-add-first-address"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Your First Address
+            </Button>
+          </div>
+        )}
+
+        {/* Saved Addresses - Card Style */}
         {savedAddresses.length > 0 && !showNewAddressForm && (
           <div className="space-y-3">
-            <Label>Select a saved address</Label>
+            <Label className="text-base font-semibold">Your Saved Addresses</Label>
             <RadioGroup value={selectedAddressId?.toString()} onValueChange={(val) => setSelectedAddressId(parseInt(val))}>
-              {savedAddresses.map((address) => (
-                <div key={address.id} className="flex items-start space-x-3 space-y-0">
-                  <RadioGroupItem value={address.id!.toString()} id={`address-${address.id}`} data-testid={`radio-address-${address.id}`} />
-                  <Label htmlFor={`address-${address.id}`} className="flex-1 cursor-pointer">
-                    <div className="flex items-start gap-2">
-                      <MapPin className="w-4 h-4 mt-0.5 text-muted-foreground" />
-                      <div>
-                        {address.address_label && (
-                          <p className="font-medium">{address.address_label}</p>
-                        )}
-                        <p className="text-sm">
-                          {address.street_address}
-                          {address.unit && `, Unit ${address.unit}`}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {address.city_name}, {address.postal_code}
-                        </p>
-                        {address.delivery_instructions && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Instructions: {address.delivery_instructions}
+              <div className="space-y-3">
+                {savedAddresses.map((address) => (
+                  <Label
+                    key={address.id}
+                    htmlFor={`address-${address.id}`}
+                    className={`flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all hover:border-primary/50 hover:bg-primary/5 ${
+                      selectedAddressId === address.id
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border'
+                    }`}
+                    data-testid={`address-card-${address.id}`}
+                  >
+                    <RadioGroupItem 
+                      value={address.id!.toString()} 
+                      id={`address-${address.id}`} 
+                      className="mt-1"
+                      data-testid={`radio-address-${address.id}`} 
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start gap-2 mb-1">
+                        <MapPin className="w-4 h-4 mt-0.5 text-primary flex-shrink-0" />
+                        <div className="flex-1">
+                          {address.address_label && (
+                            <p className="font-semibold text-sm">{address.address_label}</p>
+                          )}
+                          <p className="text-sm">
+                            {address.street_address}
+                            {address.unit && `, Unit ${address.unit}`}
                           </p>
-                        )}
+                          <p className="text-sm text-muted-foreground">
+                            {address.city_name}, {address.postal_code}
+                          </p>
+                          {address.delivery_instructions && (
+                            <p className="text-xs text-muted-foreground mt-1 italic">
+                              Note: {address.delivery_instructions}
+                            </p>
+                          )}
+                        </div>
                       </div>
                     </div>
+                    {selectedAddressId === address.id && (
+                      <Check className="w-5 h-5 text-primary flex-shrink-0 mt-1" />
+                    )}
                   </Label>
-                </div>
-              ))}
+                ))}
+              </div>
             </RadioGroup>
           </div>
         )}
