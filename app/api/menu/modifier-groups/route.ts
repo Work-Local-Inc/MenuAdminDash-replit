@@ -69,9 +69,6 @@ export async function GET(request: NextRequest) {
           display_order,
           created_at,
           course_id,
-          courses!inner (
-            restaurant_id
-          ),
           course_template_modifiers (
             id,
             name,
@@ -81,10 +78,8 @@ export async function GET(request: NextRequest) {
             deleted_at
           )
         `)
-        .not('course_id', 'is', null)
-        .is('library_template_id', null)
+        .is('course_id', null)
         .is('deleted_at', null)
-        .eq('courses.restaurant_id', parseInt(restaurantId))
         .order('created_at', { ascending: false })
         .range(start, end) as any)
 
