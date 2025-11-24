@@ -96,11 +96,13 @@ export default function CheckoutPage() {
         .from('users')
         .select('*')
         .eq('auth_user_id', user.id)
-        .single()
+        .single() as { data: any; error: any }
 
       console.log('[Checkout] User lookup result:', { 
         found: !!userData, 
-        userData: userData ? { id: userData.id, email: userData.email, first_name: userData.first_name } : null,
+        userId: userData?.id,
+        userEmail: userData?.email,
+        userName: userData?.first_name,
         error: userError 
       })
 
