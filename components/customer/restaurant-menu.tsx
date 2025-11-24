@@ -75,6 +75,11 @@ export default function RestaurantMenu({
   const cartTotal = useCartStore((state) => state.getTotal());
   const setRestaurant = useCartStore((state) => state.setRestaurant);
   
+  // Debug: Log cart status
+  useEffect(() => {
+    console.log('[RestaurantMenu] Cart updated - Items:', cartItemCount, 'Total:', cartTotal);
+  }, [cartItemCount, cartTotal]);
+  
   const location = restaurant.restaurant_locations?.[0];
   const serviceConfig = restaurant.restaurant_service_configs?.[0];
   
@@ -527,21 +532,22 @@ export default function RestaurantMenu({
         )}
       </div>
       
-      {/* Sticky Footer Cart Bar - Only in customer mode */}
-      {!editorMode && cartItemCount > 0 && (
+      {/* Sticky Footer Cart Bar - Always visible in customer mode */}
+      {!editorMode && (
         <div className="fixed bottom-0 left-0 right-0 z-20 bg-background border-t shadow-lg">
           <div className="container mx-auto px-4 py-3">
             <Button
               size="lg"
               onClick={() => setIsCartOpen(true)}
               className="w-full h-14"
+              disabled={cartItemCount === 0 && !isCartOpen}
               data-testid="button-open-cart"
             >
               <div className="flex items-center justify-between w-full">
                 <div className="flex items-center gap-2">
                   <ShoppingCart className="w-5 h-5" />
                   <span className="font-semibold">
-                    {isCartOpen ? 'Place Order' : `Basket • ${cartItemCount} ${cartItemCount === 1 ? 'Item' : 'Items'}`}
+                    {isCartOpen && cartItemCount > 0 ? 'Place Order' : `Basket • ${cartItemCount} ${cartItemCount === 1 ? 'Item' : 'Items'}`}
                   </span>
                 </div>
                 <span className="font-bold text-lg">

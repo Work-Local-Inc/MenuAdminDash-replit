@@ -148,7 +148,7 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
   };
   
   const handleAddToCart = () => {
-    addItem({
+    const itemToAdd = {
       dishId: dish.id,
       dishName: dish.name,
       dishImage: dish.image_url,
@@ -157,7 +157,11 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
       quantity,
       modifiers: selectedModifiers,
       specialInstructions: specialInstructions.trim(),
-    });
+    };
+    
+    console.log('[DishModal] Adding item to cart:', itemToAdd);
+    addItem(itemToAdd);
+    console.log('[DishModal] Item added, closing modal');
     
     onClose();
   };
