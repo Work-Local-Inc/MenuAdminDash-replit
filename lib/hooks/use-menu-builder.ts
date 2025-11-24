@@ -399,11 +399,17 @@ export function useDishPrices(dishId: number | null) {
     queryKey: ['/api/menu/dish-prices', dishId],
     queryFn: async () => {
       if (!dishId) return []
-      const res = await fetch(`/api/menu/dish-prices?dish_id=${dishId}`)
-      if (!res.ok) throw new Error('Failed to fetch dish prices')
-      return res.json()
+      const response = await fetch(`/api/menu/dish-prices?dish_id=${dishId}`, {
+        credentials: 'include', // Ensure cookies are sent for auth
+      })
+      if (!response.ok) {
+        throw new Error('Failed to fetch dish prices')
+      }
+      return response.json()
     },
     enabled: !!dishId,
+    staleTime: 30000, // Cache for 30 seconds to reduce unnecessary refetches
+    gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
   })
 }
 

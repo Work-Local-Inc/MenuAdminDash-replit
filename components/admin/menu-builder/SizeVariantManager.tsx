@@ -135,7 +135,21 @@ export function SizeVariantManager({ dishId }: SizeVariantManagerProps) {
   }
 
   if (isLoading) {
-    return <div className="text-sm text-muted-foreground">Loading price variants...</div>
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="h-5 w-40 bg-muted animate-pulse rounded" />
+            <div className="h-3 w-64 bg-muted animate-pulse rounded mt-1" />
+          </div>
+        </div>
+        <div className="space-y-2">
+          {[1, 2].map((i) => (
+            <div key={i} className="h-16 bg-muted animate-pulse rounded" />
+          ))}
+        </div>
+      </div>
+    )
   }
 
   return (
