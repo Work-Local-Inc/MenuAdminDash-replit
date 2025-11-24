@@ -55,7 +55,7 @@ async function migrateToLibraryLinking() {
       // Find dish modifier groups that reference this template
       const dishGroupsQuery = `
         SELECT id, dish_id, name
-        FROM menuca_v3.dish_modifier_groups
+        FROM menuca_v3.modifier_groups
         WHERE course_template_id = $1
         AND deleted_at IS NULL
         ORDER BY dish_id;
@@ -113,7 +113,7 @@ async function migrateToLibraryLinking() {
     const orphanedQuery = `
       SELECT dm.id, dm.modifier_group_id, dm.name
       FROM menuca_v3.dish_modifiers dm
-      LEFT JOIN menuca_v3.dish_modifier_groups dmg ON dm.modifier_group_id = dmg.id
+      LEFT JOIN menuca_v3.modifier_groups dmg ON dm.modifier_group_id = dmg.id
       WHERE dmg.id IS NULL
       OR dmg.deleted_at IS NOT NULL
       LIMIT 10;
@@ -192,7 +192,7 @@ async function dryRunMigration() {
       
       const dishGroupsQuery = `
         SELECT dmg.id, dmg.dish_id, dmg.name, COUNT(dm.id) as modifier_count
-        FROM menuca_v3.dish_modifier_groups dmg
+        FROM menuca_v3.modifier_groups dmg
         LEFT JOIN menuca_v3.dish_modifiers dm ON dm.modifier_group_id = dmg.id
         WHERE dmg.course_template_id = $1
         AND dmg.deleted_at IS NULL

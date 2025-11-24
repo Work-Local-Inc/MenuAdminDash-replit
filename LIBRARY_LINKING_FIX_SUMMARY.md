@@ -157,7 +157,7 @@ if (g.course_template_id) {
 
 **What Changed:**
 - Updated `apply_template_to_dish()` function to remove modifier cloning
-- Function now ONLY creates `dish_modifier_groups` with `course_template_id`
+- Function now ONLY creates `modifier_groups` with `course_template_id`
 - NO insertion into `dish_modifiers` table
 
 **Before:**
@@ -233,7 +233,7 @@ CATEGORY B TEMPLATE (id=11, course_id=6, library_template_id=1)
     ↓ Dish Inheritance
     
 DISH IN CATEGORY A
-└── dish_modifier_groups (course_template_id=10)
+└── modifier_groups (course_template_id=10)
     └── NO modifiers here! Fetched via:
         dish → category template(10) → library template(1) → modifiers
 ```
@@ -580,7 +580,7 @@ This means the library link isn't working. Check:
 3. **Check dish modifier group has course_template_id:**
    ```sql
    SELECT id, dish_id, course_template_id, name
-   FROM menuca_v3.dish_modifier_groups
+   FROM menuca_v3.modifier_groups
    WHERE dish_id = <your_dish_id>;
    ```
 
@@ -614,7 +614,7 @@ SELECT
   cmt.library_template_id,
   cmt.name as template_name
 FROM menuca_v3.dishes d
-JOIN menuca_v3.dish_modifier_groups dmg ON dmg.dish_id = d.id
+JOIN menuca_v3.modifier_groups dmg ON dmg.dish_id = d.id
 LEFT JOIN menuca_v3.course_modifier_templates cmt ON cmt.id = dmg.course_template_id
 WHERE d.id = <your_dish_id>
 AND dmg.deleted_at IS NULL;
@@ -634,7 +634,7 @@ SELECT
   dmg.id as group_id,
   dmg.course_template_id,
   COUNT(dm.id) as cloned_modifiers
-FROM menuca_v3.dish_modifier_groups dmg
+FROM menuca_v3.modifier_groups dmg
 INNER JOIN menuca_v3.dish_modifiers dm ON dm.modifier_group_id = dmg.id
 WHERE dmg.course_template_id IS NOT NULL
 AND dmg.deleted_at IS NULL
@@ -655,7 +655,7 @@ SELECT
   dmg.id as group_id,
   dmg.course_template_id,
   COUNT(dm.id) as cloned_modifiers
-FROM menuca_v3.dish_modifier_groups dmg
+FROM menuca_v3.modifier_groups dmg
 LEFT JOIN menuca_v3.dish_modifiers dm ON dm.modifier_group_id = dmg.id
 WHERE dmg.course_template_id IS NOT NULL
 AND dmg.deleted_at IS NULL
@@ -680,7 +680,7 @@ SELECT
   lib_cmt.name as library_template_name,
   COUNT(lib_mod.id) as library_modifiers
 FROM menuca_v3.dishes d
-JOIN menuca_v3.dish_modifier_groups dmg ON dmg.dish_id = d.id
+JOIN menuca_v3.modifier_groups dmg ON dmg.dish_id = d.id
 JOIN menuca_v3.course_modifier_templates cmt ON cmt.id = dmg.course_template_id
 JOIN menuca_v3.course_modifier_templates lib_cmt ON lib_cmt.id = cmt.library_template_id
 JOIN menuca_v3.course_template_modifiers lib_mod ON lib_mod.template_id = lib_cmt.id
@@ -699,7 +699,7 @@ Find dish_modifiers that reference deleted or missing groups:
 ```sql
 SELECT dm.id, dm.modifier_group_id, dm.name
 FROM menuca_v3.dish_modifiers dm
-LEFT JOIN menuca_v3.dish_modifier_groups dmg ON dm.modifier_group_id = dmg.id
+LEFT JOIN menuca_v3.modifier_groups dmg ON dm.modifier_group_id = dmg.id
 WHERE dmg.id IS NULL
 OR dmg.deleted_at IS NOT NULL
 LIMIT 50;
@@ -720,7 +720,7 @@ SELECT
   COUNT(DISTINCT dmg.dish_id) as linked_dishes
 FROM menuca_v3.course_modifier_templates lib
 JOIN menuca_v3.course_modifier_templates cat ON cat.library_template_id = lib.id
-JOIN menuca_v3.dish_modifier_groups dmg ON dmg.course_template_id = cat.id
+JOIN menuca_v3.modifier_groups dmg ON dmg.course_template_id = cat.id
 WHERE lib.course_id IS NULL
 AND lib.deleted_at IS NULL
 AND cat.deleted_at IS NULL

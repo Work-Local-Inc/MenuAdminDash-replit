@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     const validatedData = breakInheritanceSchema.parse(body)
 
     const { data: groupBefore } = await (supabase
-      .from('dish_modifier_groups' as any)
+      .from('modifier_groups' as any)
       .select('id, course_template_id, is_custom')
       .eq('id', validatedData.modifier_group_id)
       .single() as any)
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     if (error) throw error
 
     const { data: updatedGroup } = await (supabase
-      .from('dish_modifier_groups' as any)
+      .from('modifier_groups' as any)
       .select(`
         id,
         dish_id,

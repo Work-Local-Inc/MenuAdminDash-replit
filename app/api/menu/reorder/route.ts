@@ -17,7 +17,7 @@ const reorderSchema = z.object({
 const TABLE_MAP = {
   category: 'courses',
   dish: 'dishes',
-  modifier_group: 'dish_modifier_groups',
+  modifier_group: 'modifier_groups',
   modifier: 'dish_modifiers',
   template: 'course_modifier_templates',
   template_modifier: 'course_template_modifiers',

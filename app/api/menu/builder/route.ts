@@ -170,7 +170,7 @@ export async function GET(request: NextRequest) {
       // Query modifier groups
       const { data: groupsData, error: groupsError } = await supabase
         .schema('menuca_v3')
-        .from('dish_modifier_groups' as any)
+        .from('modifier_groups' as any)
         .select(`
           id,
           dish_id,

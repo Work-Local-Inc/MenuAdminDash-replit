@@ -22,7 +22,7 @@ export async function DELETE(
     // Fetch existing dish groups that inherit from this template
     const { data: existingGroups } = await (supabase
       .schema('menuca_v3')
-      .from('dish_modifier_groups' as any)
+      .from('modifier_groups' as any)
       .select('id, is_custom')
       .eq('course_template_id', templateId)
       .is('deleted_at', null) as any)
@@ -43,7 +43,7 @@ export async function DELETE(
       if (groupsToOrphan.length > 0) {
         await (supabase
           .schema('menuca_v3')
-          .from('dish_modifier_groups' as any)
+          .from('modifier_groups' as any)
           .update({ 
             course_template_id: null,
             is_custom: true 

@@ -5,22 +5,22 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
     
-    // Check if dish_modifier_groups table exists
+    // Check if modifier_groups table exists
     const { data: groupsTableData } = await supabase
       .from('information_schema.tables')
       .select('table_name')
       .eq('table_schema', 'menuca_v3')
-      .eq('table_name', 'dish_modifier_groups')
+      .eq('table_name', 'modifier_groups')
       .single();
     
     const groupsTableExists = !!groupsTableData;
     
-    // Check if dish_modifier_items table exists
+    // Check if dish_modifiers table exists
     const { data: modifiersTableData } = await supabase
       .from('information_schema.tables')
       .select('table_name')
       .eq('table_schema', 'menuca_v3')
-      .eq('table_name', 'dish_modifier_items')
+      .eq('table_name', 'dish_modifiers')
       .single();
     
     const modifiersTableExists = !!modifiersTableData;
@@ -34,8 +34,8 @@ export async function POST(request: NextRequest) {
         success: false,
         message: 'Modifier tables do not exist. Please create them using database migrations.',
         tables: {
-          dish_modifier_groups: groupsTableExists ? 'exists' : 'missing - create via migration',
-          dish_modifier_items: modifiersTableExists ? 'exists' : 'missing - create via migration'
+          modifier_groups: groupsTableExists ? 'exists' : 'missing - create via migration',
+          dish_modifiers: modifiersTableExists ? 'exists' : 'missing - create via migration'
         }
       }, { status: 400 });
     }
@@ -44,8 +44,8 @@ export async function POST(request: NextRequest) {
       success: true,
       message: 'Modern modifier tables verified successfully',
       tables: {
-        dish_modifier_groups: 'exists',
-        dish_modifier_items: 'exists'
+        modifier_groups: 'exists',
+        dish_modifiers: 'exists'
       }
     });
     

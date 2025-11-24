@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
         // Get highest display_order for this dish's modifier groups
         const { data: existingGroups } = await (supabase
           .schema('menuca_v3')
-          .from('dish_modifier_groups' as any)
+          .from('modifier_groups' as any)
           .select('display_order')
           .eq('dish_id', dish.id)
           .is('deleted_at', null)
@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
         // Create dish modifier group (inherited from category template)
         const { data: dishGroup, error: dishGroupError } = await (supabase
           .schema('menuca_v3')
-          .from('dish_modifier_groups' as any)
+          .from('modifier_groups' as any)
           .insert({
             dish_id: dish.id,
             course_template_id: (categoryTemplate as any).id,

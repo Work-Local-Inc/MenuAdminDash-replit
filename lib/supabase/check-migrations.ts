@@ -192,7 +192,7 @@ export async function checkMixedState(): Promise<{
         dmg.id as group_id,
         dmg.course_template_id,
         COUNT(dm.id) as cloned_modifiers
-      FROM menuca_v3.dish_modifier_groups dmg
+      FROM menuca_v3.modifier_groups dmg
       INNER JOIN menuca_v3.dish_modifiers dm ON dm.modifier_group_id = dmg.id
       WHERE dmg.course_template_id IS NOT NULL
       AND dmg.deleted_at IS NULL
@@ -206,7 +206,7 @@ export async function checkMixedState(): Promise<{
     
     const countQuery = `
       SELECT COUNT(DISTINCT dmg.id) as total
-      FROM menuca_v3.dish_modifier_groups dmg
+      FROM menuca_v3.modifier_groups dmg
       INNER JOIN menuca_v3.dish_modifiers dm ON dm.modifier_group_id = dmg.id
       WHERE dmg.course_template_id IS NOT NULL
       AND dmg.deleted_at IS NULL

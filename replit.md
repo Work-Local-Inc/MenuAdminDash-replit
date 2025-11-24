@@ -54,7 +54,7 @@ Preferred communication style: Simple, everyday language.
         - **Database Schema**:
             - `course_modifier_templates`: Library groups (course_id = NULL) AND category associations (course_id = X, library_template_id = Y)
             - `course_template_modifiers`: Modifier options within library groups
-            - `dish_modifier_groups`: Dish-level groups with course_template_id for inheritance tracking
+            - `modifier_groups`: Dish-level groups with course_template_id for inheritance tracking
             - `dish_modifiers`: Custom modifiers (only when inheritance is broken)
         - **⚠️ MANUAL MIGRATION REQUIRED**:
             - **Migration 009**: Make `course_id` nullable, add `library_template_id` column
