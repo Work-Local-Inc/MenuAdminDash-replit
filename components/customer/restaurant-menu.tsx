@@ -709,7 +709,7 @@ function EditorDishCard({
                   Modifiers
                   {dish.modifier_groups && dish.modifier_groups.length > 0 && (
                     <Badge variant="secondary" className="ml-1 px-1.5 py-0 text-xs h-5 min-w-[20px]">
-                      {dish.modifier_groups.length}
+                      ({(dish.modifier_groups.map((g: any) => g.name) ?? []).join(', ')})
                     </Badge>
                   )}
                 </Button>
