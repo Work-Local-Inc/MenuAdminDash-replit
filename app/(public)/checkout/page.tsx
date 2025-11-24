@@ -43,7 +43,7 @@ interface DeliveryAddress {
 export default function CheckoutPage() {
   const router = useRouter()
   const { toast } = useToast()
-  const supabase = createClient()
+  const [supabase] = useState(() => createClient())
   
   const { items, restaurantName, restaurantSlug, getSubtotal, deliveryFee, getTax, getTotal, minOrder } = useCartStore()
   
@@ -195,14 +195,14 @@ export default function CheckoutPage() {
   const handleSignInSuccess = async () => {
     // After successful sign-in, refresh auth and close modal
     console.log('[Checkout] Sign-in success callback triggered')
-    await checkAuth()
     setShowSignInModal(false)
     
-    // Show success message
-    toast({
-      title: "Welcome back!",
-      description: "Loading your saved addresses...",
-    })
+    // Small delay to let auth state propagate through cookies
+    await new Promise(resolve => setTimeout(resolve, 500))
+    
+    // Refresh the page to pick up new auth session
+    console.log('[Checkout] Reloading page to pick up auth session')
+    window.location.reload()
   }
 
   const handleAddressConfirmed = async (address: DeliveryAddress) => {
