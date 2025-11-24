@@ -629,6 +629,18 @@ git log origin/main..HEAD --oneline
 
 ## 🔄 Recent Fixes (Nov 24, 2025)
 
+### No-Image-First Design & Button Overflow Fix
+**Problem:** 80x80px placeholder wasted space (80%+ dishes have no images), buttons broke on narrow screens  
+**Solution:** Redesigned for no-image-first, image is optional bonus  
+**Details:**
+- **Removed Placeholder:** No more icon placeholder - saves space for majority case
+- **Optional Images:** Only render if dish.image_url exists (64x64px when present)
+- **Full-Width Content:** Text uses full width when no image (better readability)
+- **Button Fix:** Icon-only on narrow screens, "Add" text appears on sm+, h-8 fixed height
+- **Responsive Gaps:** gap-1 sm:gap-2 for tight spacing, flex-shrink-0 prevents crushing
+- **Better Overflow:** whitespace-nowrap on price, min-w-0 on name for proper truncation
+**Commit:** `6d4db67`
+
 ### Compact List Layout Redesign (GrabFood/UberEats Style)
 **Problem:** Menu cards wasted space, not optimized for 100+ item menus, poor density  
 **Solution:** Complete redesign to professional food delivery app patterns  
@@ -641,6 +653,7 @@ git log origin/main..HEAD --oneline
 - **Spacing:** Tighter throughout - p-2 sm:p-3 cards, space-y-8 categories, gap-2 sm:gap-3
 - **Estimated Impact:** 5-7 dishes visible mobile (was 3-4), 12-20 desktop (was 8-10)
 **Commit:** `859cd7b`
+**Note:** Improved in `6d4db67` with no-image-first design
 
 ### Responsive Design Overhaul
 **Problem:** Menu page layout broke on mobile - text cutoff, cramped spacing, poor usability  
