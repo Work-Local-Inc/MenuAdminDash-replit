@@ -165,6 +165,7 @@ export async function GET(request: NextRequest) {
     // Query modifier groups WITHOUT nested dish_modifiers (no FK relationship)
     let modifierGroups: any[] = []
     let dishModifiers: any[] = []
+    let modifierPrices: any[] = []
     
     if (dishIds.length > 0) {
       // Query modifier groups
@@ -199,7 +200,6 @@ export async function GET(request: NextRequest) {
             id,
             modifier_group_id,
             name,
-            price,
             is_included,
             is_default,
             display_order,
@@ -213,6 +213,27 @@ export async function GET(request: NextRequest) {
         } else {
           dishModifiers = modifiersData || []
           console.log('[MENU BUILDER] Modifiers loaded:', dishModifiers.length)
+        }
+
+        // Query dish_modifier_prices separately (pricing is in separate table)
+        if (dishModifiers.length > 0) {
+          const modifierIds = dishModifiers.map((m: any) => m.id)
+          const { data: pricesData, error: pricesError } = await supabase
+            .schema('menuca_v3')
+            .from('dish_modifier_prices' as any)
+            .select(`
+              id,
+              dish_modifier_id,
+              price
+            `)
+            .in('dish_modifier_id', modifierIds)
+          
+          if (pricesError) {
+            console.log('[MENU BUILDER] Modifier prices query error:', pricesError)
+          } else {
+            modifierPrices = pricesData || []
+            console.log('[MENU BUILDER] Modifier prices loaded:', modifierPrices.length)
+          }
         }
       }
     }
@@ -349,9 +370,21 @@ export async function GET(request: NextRequest) {
                 }
               }
               
+              // Join modifier prices from separate query (dish_modifier_prices table)
+              const modifiersWithPrices = modifiers.map((m: any) => {
+                const pricesForModifier = modifierPrices.filter((p: any) => p.dish_modifier_id === m.id)
+                const price = pricesForModifier[0]?.price || 0
+                
+                return {
+                  ...m,
+                  prices: pricesForModifier,
+                  price // Default price for display
+                }
+              })
+              
               return {
                 ...g,
-                dish_modifiers: modifiers
+                dish_modifiers: modifiersWithPrices
               }
             }) || []
         }
