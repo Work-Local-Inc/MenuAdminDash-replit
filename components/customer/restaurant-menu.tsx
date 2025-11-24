@@ -629,13 +629,13 @@ function EditorDishCard({
   const confirmActiveToggle = async () => {
     if (pendingActiveState !== null) {
       setIsUpdating(true);
+      setShowActiveConfirmation(false);
       try {
         await onToggleActive();
-        // Wait a bit for React Query to refetch
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Wait longer for React Query to refetch and update the UI
+        await new Promise(resolve => setTimeout(resolve, 1000));
       } finally {
         setIsUpdating(false);
-        setShowActiveConfirmation(false);
         setPendingActiveState(null);
       }
     }
@@ -704,10 +704,10 @@ function EditorDishCard({
               </span>
             </div>
 
-            {/* Active/Inactive Status Badge */}
+            {/* Active/Inactive Status Badge - Compact */}
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="flex items-center gap-2 flex-shrink-0">
+                <div className="flex items-center gap-1.5 flex-shrink-0">
                   <Switch
                     id={`active-${dish.id}`}
                     checked={pendingActiveState !== null ? pendingActiveState : dish.is_active}
@@ -715,8 +715,9 @@ function EditorDishCard({
                     disabled={isUpdating}
                     data-testid={`switch-active-${dish.id}`}
                     aria-label={dish.is_active ? "Mark as inactive" : "Mark as active"}
+                    className="scale-75"
                   />
-                  <Label className="text-xs text-muted-foreground cursor-pointer whitespace-nowrap" htmlFor={`active-${dish.id}`}>
+                  <Label className="text-[10px] text-muted-foreground cursor-pointer whitespace-nowrap" htmlFor={`active-${dish.id}`}>
                     {(pendingActiveState !== null ? pendingActiveState : dish.is_active) ? 'Active' : 'Inactive'}
                   </Label>
                 </div>
