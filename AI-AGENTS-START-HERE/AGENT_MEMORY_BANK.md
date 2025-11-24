@@ -629,18 +629,25 @@ git log origin/main..HEAD --oneline
 
 ## 🔄 Recent Fixes (Nov 24, 2025)
 
-### Card Scanning & Save Card Features (Payment Form)
-**Problem:** Manual card entry only, no quick scan option, cards not saved for future use
-**Solution:** Added GrabFood-style card scanning UI and Stripe card saving functionality
+### Mobile Card Scanning with OCR (COMPLETE IMPLEMENTATION)
+**Problem:** Manual card entry only, no quick scan option on mobile devices
+**Solution:** Full mobile-only card scanning with camera + Tesseract.js OCR
 **Details:**
-- **Scan Card Button:** Prominent "Scan Card for Quick Entry" with camera icon
-- **Scanning Modal:** Full-screen with camera preview placeholder, card frame overlay, tips
-- **Save Card Checkbox:** Only for logged-in users, Shield icon, security messaging
-- **Visual Hierarchy:** "Or enter manually" divider between scan and form
-- **Professional UX:** Ready for OCR integration (requires camera library)
-- **Backend Ready:** Code prepared for Stripe setup_future_usage integration
-**Technical:** Camera access + OCR library needed for full implementation
-**Commit:** `2cd3cbc`
+- **Mobile-Only:** Scan button only appears on mobile devices (touch + camera detection)
+- **Live Camera:** Real rear-camera preview with environment facingMode
+- **Card Frame Overlay:** Visual guides with corner markers for card positioning
+- **OCR Processing:** Tesseract.js scans and extracts card number + expiry
+- **Luhn Validation:** Validates card numbers (13-19 digits) with Luhn algorithm
+- **Expiry Parsing:** Handles MM/YY, MM/YYYY, VALID THRU, EXP: formats
+- **Desktop:** Seamlessly skips scan UI, shows manual entry only
+- **Security:** Client-side only, no uploads, camera stops on close
+- **Save Card:** Checkbox for logged-in users to save with Stripe
+**New Files:**
+- `lib/utils/device.ts` - Mobile/camera detection
+- `lib/utils/card-scanner.ts` - OCR + parsing logic
+- `components/customer/card-scanner-modal.tsx` - Full camera UI
+**Dependencies:** Added tesseract.js (46 packages)
+**Commit:** `2cd3cbc`, `f5d0558`
 
 ### Checkout Sign-In UX Improvements
 **Problem:** After sign-in, UI didn't update - sign-in button still showing, no saved addresses visible
