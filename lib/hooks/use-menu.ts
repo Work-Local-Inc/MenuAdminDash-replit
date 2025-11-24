@@ -293,6 +293,7 @@ export function useCreateDish() {
       return res.json()
     },
     onSuccess: (_, variables) => {
+      // Invalidate menu dishes list
       queryClient.invalidateQueries({ 
         predicate: (query) => {
           const [key, filters] = query.queryKey
@@ -302,6 +303,10 @@ export function useCreateDish() {
                  'restaurant_id' in filters && 
                  filters.restaurant_id === variables.restaurant_id
         }
+      })
+      // Also invalidate menu builder (used in admin menu builder page)
+      queryClient.invalidateQueries({ 
+        queryKey: ['/api/menu/builder'] 
       })
       toast({
         title: "Success",
@@ -336,6 +341,7 @@ export function useUpdateDish() {
       return res.json()
     },
     onSuccess: (_, variables) => {
+      // Invalidate menu dishes list
       queryClient.invalidateQueries({ 
         predicate: (query) => {
           const [key, filters] = query.queryKey
@@ -345,6 +351,10 @@ export function useUpdateDish() {
                  'restaurant_id' in filters && 
                  filters.restaurant_id === variables.restaurant_id
         }
+      })
+      // Also invalidate menu builder (used in admin menu builder page)
+      queryClient.invalidateQueries({ 
+        queryKey: ['/api/menu/builder'] 
       })
       toast({
         title: "Success",
@@ -377,6 +387,7 @@ export function useDeleteDish() {
       return res.json()
     },
     onSuccess: (_, variables) => {
+      // Invalidate menu dishes list
       queryClient.invalidateQueries({ 
         predicate: (query) => {
           const [key, filters] = query.queryKey
@@ -386,6 +397,10 @@ export function useDeleteDish() {
                  'restaurant_id' in filters && 
                  filters.restaurant_id === variables.restaurant_id
         }
+      })
+      // Also invalidate menu builder (used in admin menu builder page)
+      queryClient.invalidateQueries({ 
+        queryKey: ['/api/menu/builder'] 
       })
       toast({
         title: "Success",
