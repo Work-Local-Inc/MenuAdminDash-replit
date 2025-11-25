@@ -25,21 +25,19 @@ export function DishListRow({ dish, restaurantId, buttonStyle, priceColor, isEve
     ? 'rounded-full' 
     : '';
   
-  // Get all prices to display
+  // Get price display - show "From $X.XX" for multiple prices
   const getPriceDisplay = () => {
     // If we have a prices array with variations
     if (dish.prices && Array.isArray(dish.prices) && dish.prices.length > 0) {
+      // Sort by price to get the lowest
+      const sortedPrices = [...dish.prices].sort((a, b) => Number(a.price) - Number(b.price));
+      const lowestPrice = Number(sortedPrices[0].price).toFixed(2);
+      
       if (dish.prices.length === 1) {
-        return `$${Number(dish.prices[0].price).toFixed(2)}`;
+        return `$${lowestPrice}`;
       }
-      // Multiple prices - show inline
-      return dish.prices
-        .map((p: any) => {
-          const label = p.label || p.size || '';
-          const price = `$${Number(p.price).toFixed(2)}`;
-          return label ? `${label} ${price}` : price;
-        })
-        .join(' • ');
+      // Multiple prices - show "From $X.XX" like grid view
+      return `From $${lowestPrice}`;
     }
     // Fallback to base_price
     if (dish.base_price) {
