@@ -157,9 +157,17 @@ export default function CheckoutPage() {
     console.log('[Checkout] Sign-in success - closing modal')
     setShowSignInModal(false)
     
+    // IMPORTANT: Clear payment intent if one exists - user context changed!
+    // The new user_id needs to be in the payment intent metadata
+    if (clientSecret) {
+      console.log('[Checkout] Clearing existing payment intent - user signed in')
+      setClientSecret('')
+      setStep('address') // Go back to address to recreate payment intent with new user
+    }
+    
     toast({
       title: "Welcome back!",
-      description: "Loading your saved addresses...",
+      description: clientSecret ? "Please confirm your address again." : "Loading your saved addresses...",
     })
   }
 
