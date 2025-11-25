@@ -13,7 +13,10 @@ import { Plus, MapPin, Check, Shield, UserCircle } from 'lucide-react'
 import { GooglePlacesAutocomplete } from './google-places-autocomplete'
 import { DeliveryMapPreview } from './delivery-map-preview'
 import { useCartStore } from '@/lib/stores/cart-store'
+import { useLoadScript } from '@react-google-maps/api'
 import Link from 'next/link'
+
+const googleMapsLibraries: ("places")[] = ["places"]
 
 interface DeliveryAddress {
   id?: number
@@ -49,6 +52,12 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick 
   const [supabase] = useState(() => createClient())
   const { restaurantId, setDeliveryFee, setMinOrder } = useCartStore()
   
+  // Load Google Maps script for geocoding saved addresses
+  const { isLoaded: googleMapsLoaded } = useLoadScript({
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_API_KEY || '',
+    libraries: googleMapsLibraries,
+  })
+  
   // Derive guest status from userId
   const isGuest = !userId
   
@@ -74,6 +83,73 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick 
   const [validatedZone, setValidatedZone] = useState<DeliveryZone | null>(null)
   const [isWithinDeliveryArea, setIsWithinDeliveryArea] = useState<boolean | null>(null)
   
+  // Selected address coordinates for map preview
+  const [selectedAddressCoords, setSelectedAddressCoords] = useState<{
+    latitude: number
+    longitude: number
+    address: string
+  } | null>(null)
+  const [geocodingAddress, setGeocodingAddress] = useState(false)
+  
+  // Geocode a saved address to get coordinates
+  const geocodeAddress = useCallback(async (address: DeliveryAddress) => {
+    const fullAddress = `${address.street_address}${address.unit ? `, ${address.unit}` : ''}, ${address.city_name || ''}, ${address.postal_code}`
+    
+    // If address already has coordinates, use them
+    if (address.latitude && address.longitude) {
+      setSelectedAddressCoords({
+        latitude: address.latitude,
+        longitude: address.longitude,
+        address: fullAddress
+      })
+      return
+    }
+    
+    // Check if Google Maps is loaded
+    if (!googleMapsLoaded || typeof google === 'undefined' || !google.maps) {
+      console.log('[Checkout] Google Maps not loaded yet, skipping geocode')
+      return
+    }
+    
+    setGeocodingAddress(true)
+    try {
+      // Use Google Geocoding API
+      const geocoder = new google.maps.Geocoder()
+      const result = await new Promise<google.maps.GeocoderResult[]>((resolve, reject) => {
+        geocoder.geocode({ address: fullAddress }, (results, status) => {
+          if (status === 'OK' && results) {
+            resolve(results)
+          } else {
+            reject(new Error(`Geocoding failed: ${status}`))
+          }
+        })
+      })
+      
+      if (result && result[0]) {
+        const location = result[0].geometry.location
+        setSelectedAddressCoords({
+          latitude: location.lat(),
+          longitude: location.lng(),
+          address: fullAddress
+        })
+      }
+    } catch (error) {
+      console.error('[Checkout] Geocoding error:', error)
+      // Still allow checkout even if geocoding fails
+    } finally {
+      setGeocodingAddress(false)
+    }
+  }, [googleMapsLoaded])
+  
+  // Handle saved address selection
+  const handleSavedAddressSelect = useCallback((addressId: number) => {
+    setSelectedAddressId(addressId)
+    const address = savedAddresses.find(a => a.id === addressId)
+    if (address) {
+      geocodeAddress(address)
+    }
+  }, [savedAddresses, geocodeAddress])
+  
   // Handle zone validation callback
   const handleZoneValidated = useCallback((zone: DeliveryZone | null, isWithin: boolean) => {
     setValidatedZone(zone)
@@ -95,6 +171,16 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick 
       loadSavedAddresses()
     }
   }, [userId, isGuest])
+  
+  // Retry geocoding when Google Maps becomes available
+  useEffect(() => {
+    if (googleMapsLoaded && selectedAddressId && !selectedAddressCoords) {
+      const address = savedAddresses.find(a => a.id === selectedAddressId)
+      if (address) {
+        geocodeAddress(address)
+      }
+    }
+  }, [googleMapsLoaded, selectedAddressId, selectedAddressCoords, savedAddresses, geocodeAddress])
 
   const loadSavedAddresses = async () => {
     if (!userId) return
@@ -123,10 +209,12 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick 
 
       setSavedAddresses(addresses)
       
-      // Auto-select default address
+      // Auto-select default address and geocode it
       const defaultAddr = addresses.find((a: any) => (data as any[]).find((d: any) => d.id === a.id)?.is_default)
       if (defaultAddr?.id) {
         setSelectedAddressId(defaultAddr.id)
+        // Geocode the default address for map preview
+        geocodeAddress(defaultAddr)
       }
     } catch (error: any) {
       console.error('Error loading addresses:', error)
@@ -300,11 +388,24 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick 
           </div>
         )}
 
+        {/* Delivery Map Preview - Show initially with restaurant location */}
+        {restaurantId && !showNewAddressForm && (
+          <div className="mb-4">
+            <DeliveryMapPreview
+              latitude={selectedAddressCoords?.latitude}
+              longitude={selectedAddressCoords?.longitude}
+              address={selectedAddressCoords?.address}
+              restaurantId={restaurantId}
+              onZoneValidated={handleZoneValidated}
+            />
+          </div>
+        )}
+
         {/* Saved Addresses - Card Style */}
         {savedAddresses.length > 0 && !showNewAddressForm && (
           <div className="space-y-3">
             <Label className="text-base font-semibold">Your Saved Addresses</Label>
-            <RadioGroup value={selectedAddressId?.toString()} onValueChange={(val) => setSelectedAddressId(parseInt(val))}>
+            <RadioGroup value={selectedAddressId?.toString()} onValueChange={(val) => handleSavedAddressSelect(parseInt(val))}>
               <div className="space-y-3">
                 {savedAddresses.map((address) => (
                   <Label
