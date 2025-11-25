@@ -66,9 +66,23 @@ export async function GET(
     // AUTHORIZATION: Verify access rights
     if (user) {
       // Authenticated user: must own the order
-      if (order.user_id !== user.id) {
-        console.error('[Order API] Access denied: User does not own order', { userId: user.id, orderUserId: order.user_id })
-        return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+      // Note: user.id is the Supabase Auth UUID, order.user_id is the numeric ID from users table
+      // We need to look up the user's numeric ID from their auth_user_id
+      const { data: userData } = await supabase
+        .from('users')
+        .select('id')
+        .eq('auth_user_id', user.id)
+        .single()
+      
+      const userNumericId = userData?.id
+      
+      if (!userNumericId || order.user_id !== userNumericId) {
+        console.error('[Order API] Access denied: User does not own order', { 
+          authUserId: user.id, 
+          userNumericId,
+          orderUserId: order.user_id 
+        })
+        return NextResponse.json({ error: 'Access denied. Please check your link.' }, { status: 403 })
       }
     } else {
       // Guest user: must be guest order AND provide matching payment intent ID
