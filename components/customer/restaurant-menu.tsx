@@ -109,6 +109,9 @@ export default function RestaurantMenu({
   const serviceConfig = restaurant.restaurant_service_configs?.[0];
   
   // Initialize cart with restaurant details (only in customer mode)
+  const streetAddress = location?.street_address;
+  const postalCode = location?.postal_code;
+  
   useEffect(() => {
     if (!editorMode) {
       const activeZone = restaurant.restaurant_delivery_zones?.find(
@@ -120,13 +123,13 @@ export default function RestaurantMenu({
       const slug = `${restaurant.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${restaurant.id}`;
       
       // Build restaurant address for pickup display
-      const address = location?.street_address 
-        ? `${location.street_address}${location.postal_code ? `, ${location.postal_code}` : ''}`
+      const address = streetAddress 
+        ? `${streetAddress}${postalCode ? `, ${postalCode}` : ''}`
         : undefined;
       
       setRestaurant(restaurant.id, restaurant.name, slug, deliveryFee, minOrder, address);
     }
-  }, [editorMode, restaurant.id, restaurant.name, restaurant.restaurant_delivery_zones, serviceConfig, setRestaurant, location]);
+  }, [editorMode, restaurant.id, restaurant.name, restaurant.restaurant_delivery_zones, serviceConfig, setRestaurant, streetAddress, postalCode]);
   
   // Scroll to category section
   const scrollToCategory = (courseId: string) => {

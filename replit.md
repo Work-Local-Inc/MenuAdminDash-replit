@@ -111,6 +111,23 @@ Preferred communication style: Simple, everyday language.
   - **Google OAuth**: Enabled during checkout with secure profile creation via `ensureOAuthProfileForSession` helper
   - **Security Model**: Verified email requirement, conflict detection, guest account linking
   - **OAuth Flow**: Google → Supabase → `/auth/callback` → Profile creation → Checkout redirect
+- **Order Type Selection** (November 2025):
+    - **Status**: ✅ Production-ready, architect-approved
+    - **Purpose**: Industry-standard DoorDash/Uber Eats style order type selection (Delivery vs Pickup)
+    - **Components**:
+        - `OrderTypeSelector`: Tabbed interface with Delivery/Pickup toggle, contextual fee copy
+        - `PickupTimeSelector`: ASAP vs Scheduled selection with 30-minute time slots
+    - **Cart Store Updates**:
+        - `orderType`: 'delivery' | 'pickup' (default: 'delivery')
+        - `pickupTime`: { type: 'asap' | 'scheduled', date?: string, timeSlot?: string }
+        - `getEffectiveDeliveryFee()`: Returns 0 for pickup orders, actual fee for delivery
+        - `restaurantAddress`: Stored for pickup display
+    - **Checkout Flow**:
+        - Delivery: Address form → Delivery zone validation → Payment
+        - Pickup: Restaurant address display → Time selection → Guest email (if needed) → Payment
+    - **Order Summary**: Shows "Pickup: Free" (green) for pickup, delivery fee for delivery
+    - **Payment Metadata**: Includes `order_type`, `pickup_time`, `restaurant_address` for order processing
+    - **Test IDs**: `button-order-type-delivery`, `button-order-type-pickup`, `button-pickup-asap`, `button-pickup-schedule`
 - **Checkout Flow**: Multi-step process with Zustand-based cart, address confirmation (Google Places Autocomplete), and Stripe payment.
 - **Address Management**: CRUD for delivery addresses (`user_delivery_addresses`), fraud prevention with verified addresses.
 - **Payment Processing**: Stripe integration for secure payments, server-side payment intent creation, `stripe_customer_id` linkage, and `payment_transactions` tracking (CAD).
