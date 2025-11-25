@@ -148,12 +148,13 @@ export const useCartStore = create<CartStore>()(
           });
         } else {
           // No conflict, just update restaurant info
+          // Always update primaryColor to ensure current restaurant's color is used
           set({
             restaurantId: id,
             restaurantName: name,
             restaurantSlug: slug,
             restaurantAddress: address || get().restaurantAddress,
-            restaurantPrimaryColor: primaryColor || get().restaurantPrimaryColor,
+            restaurantPrimaryColor: primaryColor ?? null,
             deliveryFee,
             minOrder,
           });

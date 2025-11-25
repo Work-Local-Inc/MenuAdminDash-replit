@@ -13,6 +13,7 @@ interface OrderTypeSelectorProps {
   className?: string
   schedules?: Schedule[]
   onDeliveryBlocked?: (isBlocked: boolean) => void
+  brandedColor?: string
 }
 
 // Check if restaurant is currently open for a service type
@@ -110,7 +111,7 @@ function formatTimeForDisplay(time: string): string {
   return format(date, 'h:mm a');
 }
 
-export function OrderTypeSelector({ className, schedules = [], onDeliveryBlocked }: OrderTypeSelectorProps) {
+export function OrderTypeSelector({ className, schedules = [], onDeliveryBlocked, brandedColor }: OrderTypeSelectorProps) {
   const { orderType, setOrderType, getEffectiveDeliveryFee } = useCartStore()
   const effectiveDeliveryFee = getEffectiveDeliveryFee()
   
@@ -125,6 +126,14 @@ export function OrderTypeSelector({ className, schedules = [], onDeliveryBlocked
     }
   }, [orderType, isDeliveryClosed, onDeliveryBlocked]);
 
+  // Create branded style for active tabs
+  const getActiveStyle = (isActive: boolean) => {
+    if (!isActive) return undefined;
+    return brandedColor 
+      ? { backgroundColor: brandedColor, borderColor: brandedColor, color: 'white' }
+      : undefined;
+  };
+
   return (
     <div className={className}>
       <Tabs 
@@ -135,7 +144,8 @@ export function OrderTypeSelector({ className, schedules = [], onDeliveryBlocked
         <TabsList className="grid w-full grid-cols-2 h-14">
           <TabsTrigger 
             value="delivery" 
-            className="flex flex-col items-center gap-0.5 h-full py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            className={`flex flex-col items-center gap-0.5 h-full py-2 ${!brandedColor ? 'data-[state=active]:bg-primary data-[state=active]:text-primary-foreground' : ''}`}
+            style={getActiveStyle(orderType === 'delivery')}
             data-testid="button-order-type-delivery"
           >
             <div className="flex items-center gap-2">
@@ -151,7 +161,8 @@ export function OrderTypeSelector({ className, schedules = [], onDeliveryBlocked
           </TabsTrigger>
           <TabsTrigger 
             value="pickup" 
-            className="flex flex-col items-center gap-0.5 h-full py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            className={`flex flex-col items-center gap-0.5 h-full py-2 ${!brandedColor ? 'data-[state=active]:bg-primary data-[state=active]:text-primary-foreground' : ''}`}
+            style={getActiveStyle(orderType === 'pickup')}
             data-testid="button-order-type-pickup"
           >
             <div className="flex items-center gap-2">
@@ -206,7 +217,8 @@ export function OrderTypeSelector({ className, schedules = [], onDeliveryBlocked
           <Separator className="my-4" />
           <PickupTimeSelector 
             schedules={schedules} 
-            orderType={orderType} 
+            orderType={orderType}
+            brandedColor={brandedColor}
           />
         </>
       )}

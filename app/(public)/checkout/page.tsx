@@ -426,7 +426,7 @@ export default function CheckoutPage() {
             {/* Order Type Selector - Always visible */}
             <Card>
               <CardContent className="p-6">
-                <OrderTypeSelector schedules={schedules} onDeliveryBlocked={setIsDeliveryBlocked} />
+                <OrderTypeSelector schedules={schedules} onDeliveryBlocked={setIsDeliveryBlocked} brandedColor={restaurantPrimaryColor || undefined} />
               </CardContent>
             </Card>
 

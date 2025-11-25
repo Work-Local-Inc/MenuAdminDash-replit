@@ -32,6 +32,7 @@ interface PickupTimeSelectorProps {
   className?: string
   schedules?: Schedule[]
   orderType?: 'delivery' | 'pickup'
+  brandedColor?: string
 }
 
 function getAllSchedulesForDay(schedules: Schedule[], dayOfWeek: number, serviceType: 'delivery' | 'takeout'): TimeWindow[] {
@@ -174,7 +175,7 @@ function generateDateOptions(schedules: Schedule[], serviceType: 'delivery' | 't
   return options;
 }
 
-export function PickupTimeSelector({ className, schedules = [], orderType = 'pickup' }: PickupTimeSelectorProps) {
+export function PickupTimeSelector({ className, schedules = [], orderType = 'pickup', brandedColor }: PickupTimeSelectorProps) {
   const { pickupTime, setPickupTime } = useCartStore();
   const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
   const [selectedSlotIndex, setSelectedSlotIndex] = useState<number>(-1);
@@ -334,6 +335,12 @@ export function PickupTimeSelector({ className, schedules = [], orderType = 'pic
   const asapSubtext = isDelivery ? '30-45 min' : '15-25 min';
   const scheduleSubtext = isDelivery ? 'Choose delivery time' : 'Pick a time';
 
+  // Create branded style for active buttons
+  const getActiveStyle = (isActive: boolean) => {
+    if (!isActive || !brandedColor) return undefined;
+    return { backgroundColor: brandedColor, borderColor: brandedColor, color: 'white' };
+  };
+
   return (
     <div className={className}>
       <Label className="text-base font-semibold mb-3 block">{timeLabel}</Label>
@@ -344,6 +351,7 @@ export function PickupTimeSelector({ className, schedules = [], orderType = 'pic
           variant={pickupTime.type === 'asap' ? 'default' : 'outline'}
           className="h-auto py-4 flex flex-col items-center gap-1"
           onClick={() => handleTypeChange('asap')}
+          style={getActiveStyle(pickupTime.type === 'asap')}
           data-testid="button-pickup-asap"
         >
           <Zap className="w-5 h-5" />
@@ -356,6 +364,7 @@ export function PickupTimeSelector({ className, schedules = [], orderType = 'pic
           variant={pickupTime.type === 'scheduled' ? 'default' : 'outline'}
           className="h-auto py-4 flex flex-col items-center gap-1"
           onClick={() => handleTypeChange('scheduled')}
+          style={getActiveStyle(pickupTime.type === 'scheduled')}
           data-testid="button-pickup-scheduled"
         >
           <Calendar className="w-5 h-5" />
