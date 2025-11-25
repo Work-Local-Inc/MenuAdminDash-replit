@@ -250,11 +250,36 @@ export async function POST(request: NextRequest) {
 
     // SECURITY: Verify payment amount matches server-calculated total
     const paymentTotal = paymentIntent.amount / 100
+    
+    console.log('[Order API] Total breakdown:', {
+      serverSubtotal,
+      deliveryFee,
+      deliveryFeeCents,
+      tax,
+      serverTotal,
+      paymentTotal,
+      paymentAmountCents: paymentIntent.amount,
+      difference: Math.abs(paymentTotal - serverTotal)
+    })
+    
     if (Math.abs(paymentTotal - serverTotal) > 0.01) {
-      console.error('Total mismatch:', { paymentTotal, serverTotal })
+      console.error('[Order API] Total mismatch:', { 
+        paymentTotal, 
+        serverTotal,
+        difference: paymentTotal - serverTotal,
+        serverSubtotal,
+        deliveryFee,
+        tax
+      })
       return NextResponse.json({ 
         error: 'Payment amount does not match order total',
-        details: { expected: serverTotal, received: paymentTotal }
+        details: { 
+          expected: serverTotal.toFixed(2), 
+          received: paymentTotal.toFixed(2),
+          serverSubtotal: serverSubtotal.toFixed(2),
+          deliveryFee: deliveryFee.toFixed(2),
+          tax: tax.toFixed(2)
+        }
       }, { status: 400 })
     }
 
