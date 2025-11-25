@@ -13,7 +13,7 @@ import { CheckoutAddressForm } from '@/components/customer/checkout-address-form
 import { CheckoutPaymentForm } from '@/components/customer/checkout-payment-form'
 import { CheckoutSignInModal } from '@/components/customer/checkout-signin-modal'
 import { OrderTypeSelector } from '@/components/customer/order-type-selector'
-import { PickupTimeSelector, Schedule } from '@/components/customer/pickup-time-selector'
+import { Schedule } from '@/components/customer/pickup-time-selector'
 import { useToast } from '@/hooks/use-toast'
 import { ShoppingCart, MapPin, CreditCard, ArrowLeft, LogIn, LogOut, User, ShoppingBag, Store } from 'lucide-react'
 import Link from 'next/link'
@@ -218,6 +218,9 @@ export default function CheckoutPage() {
   const handleAddressConfirmed = async (address: DeliveryAddress) => {
     setSelectedAddress(address)
     
+    // Debug: Log pickup time when creating payment intent
+    console.log('[Checkout] Creating payment intent with service_time:', JSON.stringify(pickupTime), 'orderType:', orderType)
+    
     // Create payment intent
     try {
       const response = await fetch('/api/customer/create-payment-intent', {
@@ -232,7 +235,7 @@ export default function CheckoutPage() {
             restaurant_slug: restaurantSlug,
             guest_email: address.email, // Store in metadata too
             order_type: orderType,
-            pickup_time: orderType === 'pickup' ? JSON.stringify(pickupTime) : undefined,
+            service_time: JSON.stringify(pickupTime), // Always include for both delivery and pickup
           }
         }),
       })
@@ -275,6 +278,9 @@ export default function CheckoutPage() {
     
     setSelectedAddress(pickupAddress)
     
+    // Debug: Log pickup time when creating payment intent
+    console.log('[Checkout] Creating pickup payment intent with service_time:', JSON.stringify(pickupTime), 'orderType: pickup')
+    
     // Create payment intent
     try {
       const response = await fetch('/api/customer/create-payment-intent', {
@@ -287,7 +293,7 @@ export default function CheckoutPage() {
           metadata: {
             restaurant_slug: restaurantSlug,
             order_type: 'pickup',
-            pickup_time: JSON.stringify(pickupTime),
+            service_time: JSON.stringify(pickupTime), // Use consistent naming for both delivery and pickup
             restaurant_address: restaurantAddress,
           }
         }),
@@ -477,9 +483,6 @@ export default function CheckoutPage() {
                       </div>
                     </div>
                   </div>
-                  
-                  {/* Pickup Time Selector */}
-                  <PickupTimeSelector schedules={schedules} orderType="pickup" />
                   
                   {/* Guest Email for pickup */}
                   {!currentUser && (

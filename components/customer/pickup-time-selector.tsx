@@ -327,10 +327,16 @@ export function PickupTimeSelector({ className, schedules = [], orderType = 'pic
   };
   
   const isCurrentDayClosed = !hasNoSchedules && windowsForDay.length === 0;
+  
+  // Order type-specific labels
+  const isDelivery = orderType === 'delivery';
+  const timeLabel = isDelivery ? 'When would you like it delivered?' : 'When would you like to pick up?';
+  const asapSubtext = isDelivery ? '30-45 min' : '15-25 min';
+  const scheduleSubtext = isDelivery ? 'Choose delivery time' : 'Pick a time';
 
   return (
     <div className={className}>
-      <Label className="text-base font-semibold mb-3 block">When would you like to pick up?</Label>
+      <Label className="text-base font-semibold mb-3 block">{timeLabel}</Label>
       
       <div className="grid grid-cols-2 gap-3 mb-4">
         <Button
@@ -342,7 +348,7 @@ export function PickupTimeSelector({ className, schedules = [], orderType = 'pic
         >
           <Zap className="w-5 h-5" />
           <span className="font-medium">ASAP</span>
-          <span className="text-xs opacity-80">15-25 min</span>
+          <span className="text-xs opacity-80">{asapSubtext}</span>
         </Button>
         
         <Button
@@ -354,7 +360,7 @@ export function PickupTimeSelector({ className, schedules = [], orderType = 'pic
         >
           <Calendar className="w-5 h-5" />
           <span className="font-medium">Schedule</span>
-          <span className="text-xs opacity-80">Pick a time</span>
+          <span className="text-xs opacity-80">{scheduleSubtext}</span>
         </Button>
       </div>
       

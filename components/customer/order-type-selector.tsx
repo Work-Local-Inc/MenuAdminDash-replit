@@ -5,8 +5,9 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useCartStore, OrderType } from '@/lib/stores/cart-store'
 import { Truck, ShoppingBag, AlertCircle, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
 import { format, getDay, setHours, setMinutes } from 'date-fns'
-import { Schedule } from './pickup-time-selector'
+import { PickupTimeSelector, Schedule } from './pickup-time-selector'
 
 interface OrderTypeSelectorProps {
   className?: string
@@ -197,6 +198,17 @@ export function OrderTypeSelector({ className, schedules = [], onDeliveryBlocked
             </div>
           </div>
         </div>
+      )}
+      
+      {/* Time Selector - Show for both delivery and pickup when not blocked */}
+      {!(orderType === 'delivery' && isDeliveryClosed) && (
+        <>
+          <Separator className="my-4" />
+          <PickupTimeSelector 
+            schedules={schedules} 
+            orderType={orderType} 
+          />
+        </>
       )}
     </div>
   )
