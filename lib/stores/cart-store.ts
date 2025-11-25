@@ -1,6 +1,13 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
+export type OrderType = 'delivery' | 'pickup';
+
+export interface PickupTime {
+  type: 'asap' | 'scheduled';
+  scheduledTime?: string; // ISO date string for scheduled pickup
+}
+
 export interface CartModifier {
   id: number;
   name: string;
@@ -25,16 +32,24 @@ interface CartStore {
   restaurantId: number | null;
   restaurantName: string | null;
   restaurantSlug: string | null;
+  restaurantAddress: string | null; // For pickup display
   deliveryFee: number;
   minOrder: number;
+  
+  // Order type
+  orderType: OrderType;
+  pickupTime: PickupTime;
   
   // Cart items
   items: CartItem[];
   
   // Actions
-  setRestaurant: (id: number, name: string, slug: string, deliveryFee: number, minOrder: number) => void;
+  setRestaurant: (id: number, name: string, slug: string, deliveryFee: number, minOrder: number, address?: string) => void;
+  setRestaurantAddress: (address: string) => void;
   setDeliveryFee: (fee: number) => void;
   setMinOrder: (minOrder: number) => void;
+  setOrderType: (type: OrderType) => void;
+  setPickupTime: (time: PickupTime) => void;
   addItem: (item: Omit<CartItem, 'id' | 'subtotal'>) => void;
   removeItem: (itemId: string) => void;
   updateQuantity: (itemId: string, quantity: number) => void;
@@ -45,6 +60,7 @@ interface CartStore {
   getSubtotal: () => number;
   getTax: () => number; // 13% HST (Ontario)
   getTotal: () => number;
+  getEffectiveDeliveryFee: () => number; // Returns 0 for pickup
 }
 
 // Helper function to generate unique cart item ID
@@ -88,12 +104,15 @@ export const useCartStore = create<CartStore>()(
       restaurantId: null,
       restaurantName: null,
       restaurantSlug: null,
+      restaurantAddress: null,
       deliveryFee: 0,
       minOrder: 0,
+      orderType: 'delivery' as OrderType,
+      pickupTime: { type: 'asap' } as PickupTime,
       items: [],
       
       // Set restaurant info
-      setRestaurant: (id, name, slug, deliveryFee, minOrder) => {
+      setRestaurant: (id, name, slug, deliveryFee, minOrder, address) => {
         const currentRestaurantId = get().restaurantId;
         
         // If switching to a different restaurant with items in cart, confirm clear
@@ -117,8 +136,11 @@ export const useCartStore = create<CartStore>()(
             restaurantId: id,
             restaurantName: name,
             restaurantSlug: slug,
+            restaurantAddress: address || null,
             deliveryFee,
             minOrder,
+            orderType: 'delivery',
+            pickupTime: { type: 'asap' },
             items: [],
           });
         } else {
@@ -127,10 +149,16 @@ export const useCartStore = create<CartStore>()(
             restaurantId: id,
             restaurantName: name,
             restaurantSlug: slug,
+            restaurantAddress: address || get().restaurantAddress,
             deliveryFee,
             minOrder,
           });
         }
+      },
+      
+      // Set restaurant address for pickup display
+      setRestaurantAddress: (address) => {
+        set({ restaurantAddress: address });
       },
       
       // Update delivery fee (from zone validation)
@@ -141,6 +169,16 @@ export const useCartStore = create<CartStore>()(
       // Update min order (from zone validation)
       setMinOrder: (minOrder) => {
         set({ minOrder });
+      },
+      
+      // Set order type (delivery or pickup)
+      setOrderType: (type) => {
+        set({ orderType: type });
+      },
+      
+      // Set pickup time
+      setPickupTime: (time) => {
+        set({ pickupTime: time });
       },
       
       // Add item to cart
@@ -217,8 +255,11 @@ export const useCartStore = create<CartStore>()(
           restaurantId: null,
           restaurantName: null,
           restaurantSlug: null,
+          restaurantAddress: null,
           deliveryFee: 0,
           minOrder: 0,
+          orderType: 'delivery',
+          pickupTime: { type: 'asap' },
           items: [],
         });
       },
@@ -233,19 +274,25 @@ export const useCartStore = create<CartStore>()(
         return get().items.reduce((sum, item) => sum + item.subtotal, 0);
       },
       
+      // Get effective delivery fee (0 for pickup orders)
+      getEffectiveDeliveryFee: () => {
+        const orderType = get().orderType;
+        return orderType === 'pickup' ? 0 : get().deliveryFee;
+      },
+      
       // Get tax (13% HST Ontario)
       getTax: () => {
         const subtotal = get().getSubtotal();
-        const deliveryFee = get().deliveryFee;
-        return (subtotal + deliveryFee) * 0.13;
+        const effectiveDeliveryFee = get().getEffectiveDeliveryFee();
+        return (subtotal + effectiveDeliveryFee) * 0.13;
       },
       
       // Get total (subtotal + delivery fee + tax)
       getTotal: () => {
         const subtotal = get().getSubtotal();
-        const deliveryFee = get().deliveryFee;
+        const effectiveDeliveryFee = get().getEffectiveDeliveryFee();
         const tax = get().getTax();
-        return subtotal + deliveryFee + tax;
+        return subtotal + effectiveDeliveryFee + tax;
       },
     }),
     {
