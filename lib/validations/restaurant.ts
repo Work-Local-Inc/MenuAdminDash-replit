@@ -13,6 +13,8 @@ export const restaurantUpdateSchema = z.object({
   banner_image_url: z.string().url().nullable().optional(),
   primary_color: z.string().regex(/^#[0-9A-F]{6}$/i).nullable().optional(),
   secondary_color: z.string().regex(/^#[0-9A-F]{6}$/i).nullable().optional(),
+  checkout_button_color: z.string().regex(/^#[0-9A-F]{6}$/i).nullable().optional(),
+  price_color: z.string().regex(/^#[0-9A-F]{6}$/i).nullable().optional(),
   font_family: z.string().nullable().optional(),
   button_style: z.enum(["rounded", "square"]).nullable().optional(),
   menu_layout: z.enum(["grid", "list"]).nullable().optional(),
