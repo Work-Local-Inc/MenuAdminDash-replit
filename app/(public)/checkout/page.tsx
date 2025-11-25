@@ -12,8 +12,10 @@ import { Separator } from '@/components/ui/separator'
 import { CheckoutAddressForm } from '@/components/customer/checkout-address-form'
 import { CheckoutPaymentForm } from '@/components/customer/checkout-payment-form'
 import { CheckoutSignInModal } from '@/components/customer/checkout-signin-modal'
+import { OrderTypeSelector } from '@/components/customer/order-type-selector'
+import { PickupTimeSelector } from '@/components/customer/pickup-time-selector'
 import { useToast } from '@/hooks/use-toast'
-import { ShoppingCart, MapPin, CreditCard, ArrowLeft, LogIn, LogOut, User } from 'lucide-react'
+import { ShoppingCart, MapPin, CreditCard, ArrowLeft, LogIn, LogOut, User, ShoppingBag, Store } from 'lucide-react'
 import Link from 'next/link'
 
 // Use TEST publishable key to match backend test secret key
@@ -45,7 +47,19 @@ export default function CheckoutPage() {
   const { toast } = useToast()
   const [supabase] = useState(() => createClient())
   
-  const { items, restaurantName, restaurantSlug, getSubtotal, deliveryFee, getTax, getTotal, minOrder } = useCartStore()
+  const { 
+    items, 
+    restaurantName, 
+    restaurantSlug, 
+    restaurantAddress,
+    getSubtotal, 
+    getEffectiveDeliveryFee, 
+    getTax, 
+    getTotal, 
+    minOrder,
+    orderType,
+    pickupTime
+  } = useCartStore()
   
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -131,6 +145,7 @@ export default function CheckoutPage() {
   }, [items, loading, restaurantSlug, router, toast])
 
   const subtotal = getSubtotal()
+  const effectiveDeliveryFee = getEffectiveDeliveryFee()
   const tax = getTax()
   const total = getTotal()
 
@@ -187,6 +202,52 @@ export default function CheckoutPage() {
             delivery_address: JSON.stringify(address),
             restaurant_slug: restaurantSlug,
             guest_email: address.email, // Store in metadata too
+            order_type: orderType,
+            pickup_time: orderType === 'pickup' ? JSON.stringify(pickupTime) : undefined,
+          }
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to create payment intent')
+      }
+
+      const data = await response.json()
+      setClientSecret(data.clientSecret)
+      setStep('payment')
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to initialize payment",
+        variant: "destructive",
+      })
+    }
+  }
+  
+  // Handler for pickup flow - skip address, go straight to payment
+  const handlePickupConfirmed = async () => {
+    // For pickup, we don't need a delivery address - just the restaurant address
+    const pickupAddress: DeliveryAddress = {
+      street_address: restaurantAddress || restaurantName || 'Pickup at restaurant',
+      postal_code: '',
+      email: currentUser?.email,
+    }
+    
+    setSelectedAddress(pickupAddress)
+    
+    // Create payment intent
+    try {
+      const response = await fetch('/api/customer/create-payment-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: total,
+          user_id: currentUser?.id ? String(currentUser.id) : undefined,
+          guest_email: pickupAddress.email,
+          metadata: {
+            restaurant_slug: restaurantSlug,
+            order_type: 'pickup',
+            pickup_time: JSON.stringify(pickupTime),
           }
         }),
       })
@@ -307,15 +368,24 @@ export default function CheckoutPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Order Type Selector - Always visible */}
+            <Card>
+              <CardContent className="p-6">
+                <OrderTypeSelector />
+              </CardContent>
+            </Card>
+
             {/* Progress Steps */}
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center gap-4">
                   <div className={`flex items-center gap-2 ${step === 'address' ? 'text-primary' : 'text-muted-foreground'}`}>
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'address' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-                      <MapPin className="w-4 h-4" />
+                      {orderType === 'pickup' ? <ShoppingBag className="w-4 h-4" /> : <MapPin className="w-4 h-4" />}
                     </div>
-                    <span className="font-medium">Delivery Address</span>
+                    <span className="font-medium">
+                      {orderType === 'pickup' ? 'Pickup Details' : 'Delivery Address'}
+                    </span>
                   </div>
                   <Separator className="flex-1" />
                   <div className={`flex items-center gap-2 ${step === 'payment' ? 'text-primary' : 'text-muted-foreground'}`}>
@@ -328,14 +398,110 @@ export default function CheckoutPage() {
               </CardContent>
             </Card>
 
-            {/* Step Content */}
-            {step === 'address' && (
+            {/* Step Content - Delivery Flow */}
+            {step === 'address' && orderType === 'delivery' && (
               <CheckoutAddressForm 
                 key={currentUser?.id || 'guest'} 
                 userId={currentUser?.id}
                 onAddressConfirmed={handleAddressConfirmed}
                 onSignInClick={() => setShowSignInModal(true)}
               />
+            )}
+            
+            {/* Step Content - Pickup Flow */}
+            {step === 'address' && orderType === 'pickup' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Store className="w-5 h-5" />
+                    Pickup Details
+                  </CardTitle>
+                  <CardDescription>
+                    Pick up your order from {restaurantName}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Restaurant Address */}
+                  <div className="bg-muted/50 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <MapPin className="w-5 h-5 text-primary mt-0.5" />
+                      <div>
+                        <p className="font-medium">{restaurantName}</p>
+                        {restaurantAddress ? (
+                          <p className="text-sm text-muted-foreground">{restaurantAddress}</p>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">Address will be provided after ordering</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Pickup Time Selector */}
+                  <PickupTimeSelector />
+                  
+                  {/* Guest Email for pickup */}
+                  {!currentUser && (
+                    <div className="space-y-2">
+                      <label htmlFor="guest-pickup-email" className="text-sm font-medium">
+                        Email Address *
+                      </label>
+                      <input
+                        type="email"
+                        id="guest-pickup-email"
+                        placeholder="your@email.com"
+                        className="w-full px-3 py-2 border rounded-md"
+                        data-testid="input-guest-pickup-email"
+                        onChange={(e) => {
+                          // Store email in a way the handler can access
+                          (window as any).__guestPickupEmail = e.target.value
+                        }}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        We'll send your order confirmation to this email
+                      </p>
+                    </div>
+                  )}
+                  
+                  {/* Continue Button */}
+                  <Button
+                    onClick={() => {
+                      // For guests, check email
+                      if (!currentUser) {
+                        const email = (window as any).__guestPickupEmail
+                        if (!email || !email.includes('@')) {
+                          toast({
+                            title: "Email required",
+                            description: "Please enter a valid email address",
+                            variant: "destructive",
+                          })
+                          return
+                        }
+                      }
+                      handlePickupConfirmed()
+                    }}
+                    className="w-full"
+                    size="lg"
+                    data-testid="button-continue-pickup"
+                  >
+                    Continue to Payment
+                  </Button>
+                  
+                  {/* Sign In Prompt for Guests */}
+                  {!currentUser && (
+                    <div className="text-center text-sm text-muted-foreground">
+                      <span>Have an account? </span>
+                      <button 
+                        onClick={() => setShowSignInModal(true)}
+                        className="text-primary hover:underline font-medium"
+                        data-testid="button-signin-pickup"
+                      >
+                        Sign in
+                      </button>
+                      <span> for faster checkout</span>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             )}
 
             {step === 'payment' && clientSecret && selectedAddress && (
@@ -386,10 +552,17 @@ export default function CheckoutPage() {
                     <span>Subtotal</span>
                     <span data-testid="text-subtotal">${subtotal.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>Delivery Fee</span>
-                    <span data-testid="text-delivery-fee">${deliveryFee.toFixed(2)}</span>
-                  </div>
+                  {orderType === 'delivery' ? (
+                    <div className="flex justify-between">
+                      <span>Delivery Fee</span>
+                      <span data-testid="text-delivery-fee">${effectiveDeliveryFee.toFixed(2)}</span>
+                    </div>
+                  ) : (
+                    <div className="flex justify-between text-green-600">
+                      <span>Pickup</span>
+                      <span data-testid="text-delivery-fee">Free</span>
+                    </div>
+                  )}
                   <div className="flex justify-between">
                     <span>Tax (HST 13%)</span>
                     <span data-testid="text-tax">${tax.toFixed(2)}</span>
