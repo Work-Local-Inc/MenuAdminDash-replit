@@ -170,7 +170,12 @@ export function CartDrawer({ isOpen, onClose, restaurant, buttonStyle }: CartDra
                 
                 <div className="flex justify-between font-bold text-lg">
                   <span>Total</span>
-                  <span data-testid="text-total">${Number(total).toFixed(2)}</span>
+                  <span 
+                    data-testid="text-total"
+                    style={restaurant.price_color ? { color: restaurant.price_color } : undefined}
+                  >
+                    ${Number(total).toFixed(2)}
+                  </span>
                 </div>
               </div>
               
@@ -181,6 +186,10 @@ export function CartDrawer({ isOpen, onClose, restaurant, buttonStyle }: CartDra
                   window.location.href = '/checkout';
                 }}
                 data-testid="button-checkout"
+                style={restaurant.checkout_button_color ? { 
+                  backgroundColor: restaurant.checkout_button_color,
+                  borderColor: restaurant.checkout_button_color 
+                } : undefined}
               >
                 Proceed to Checkout
               </Button>

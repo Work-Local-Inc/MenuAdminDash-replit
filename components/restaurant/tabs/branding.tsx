@@ -37,6 +37,8 @@ const brandingSchema = z.object({
   banner_image_url: z.string().url('Must be a valid URL').or(z.literal('')).optional(),
   primary_color: z.string().regex(/^#[0-9A-F]{6}$/i, 'Must be a valid hex color').optional(),
   secondary_color: z.string().regex(/^#[0-9A-F]{6}$/i, 'Must be a valid hex color').optional(),
+  checkout_button_color: z.string().regex(/^#[0-9A-F]{6}$/i, 'Must be a valid hex color').or(z.literal('')).optional(),
+  price_color: z.string().regex(/^#[0-9A-F]{6}$/i, 'Must be a valid hex color').or(z.literal('')).optional(),
   font_family: z.string().optional(),
   button_style: z.enum(['rounded', 'square']).optional(),
   menu_layout: z.enum(['grid', 'list']).optional(),
@@ -51,6 +53,8 @@ interface Restaurant {
   banner_image_url?: string | null
   primary_color?: string | null
   secondary_color?: string | null
+  checkout_button_color?: string | null
+  price_color?: string | null
   font_family?: string | null
   button_style?: 'rounded' | 'square' | null
   menu_layout?: 'grid' | 'list' | null
@@ -92,6 +96,8 @@ export function RestaurantBranding({ restaurantId }: RestaurantBrandingProps) {
       banner_image_url: restaurant?.banner_image_url || '',
       primary_color: restaurant?.primary_color || '#000000',
       secondary_color: restaurant?.secondary_color || '#666666',
+      checkout_button_color: restaurant?.checkout_button_color || '',
+      price_color: restaurant?.price_color || '',
       font_family: restaurant?.font_family || 'Inter',
       button_style: restaurant?.button_style || 'rounded',
       menu_layout: restaurant?.menu_layout || 'grid',
@@ -139,6 +145,8 @@ export function RestaurantBranding({ restaurantId }: RestaurantBrandingProps) {
         banner_image_url: bannerUrl || null,
         primary_color: data.primary_color || null,
         secondary_color: data.secondary_color || null,
+        checkout_button_color: data.checkout_button_color || null,
+        price_color: data.price_color || null,
         font_family: data.font_family || null,
         button_style: data.button_style || null,
         menu_layout: data.menu_layout || null,
@@ -210,6 +218,8 @@ export function RestaurantBranding({ restaurantId }: RestaurantBrandingProps) {
 
   const currentPrimaryColor = form.watch('primary_color') || '#000000'
   const currentSecondaryColor = form.watch('secondary_color') || '#666666'
+  const currentCheckoutButtonColor = form.watch('checkout_button_color') || currentPrimaryColor
+  const currentPriceColor = form.watch('price_color') || currentPrimaryColor
   const currentFont = form.watch('font_family') || 'Inter'
   const currentButtonStyle = form.watch('button_style') || 'rounded'
   const currentMenuLayout = form.watch('menu_layout') || 'grid'
@@ -407,6 +417,90 @@ export function RestaurantBranding({ restaurantId }: RestaurantBrandingProps) {
                       </FormItem>
                     )}
                   />
+
+                  <FormField
+                    control={form.control}
+                    name="checkout_button_color"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Checkout Button Color</FormLabel>
+                        <FormControl>
+                          <div className="flex items-center gap-3">
+                            <Input
+                              type="color"
+                              value={field.value || currentPrimaryColor}
+                              onChange={(e) => field.onChange(e.target.value)}
+                              className="w-20 h-10 cursor-pointer"
+                              data-testid="input-checkout-button-color"
+                            />
+                            <Input
+                              type="text"
+                              value={field.value || ''}
+                              onChange={(e) => field.onChange(e.target.value)}
+                              placeholder="Uses Primary Color"
+                              className="flex-1 font-mono"
+                            />
+                            {field.value && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => field.onChange('')}
+                              >
+                                Reset
+                              </Button>
+                            )}
+                          </div>
+                        </FormControl>
+                        <FormDescription>
+                          Color for cart and checkout buttons. Leave empty to use Primary Color.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="price_color"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Price Color</FormLabel>
+                        <FormControl>
+                          <div className="flex items-center gap-3">
+                            <Input
+                              type="color"
+                              value={field.value || currentPrimaryColor}
+                              onChange={(e) => field.onChange(e.target.value)}
+                              className="w-20 h-10 cursor-pointer"
+                              data-testid="input-price-color"
+                            />
+                            <Input
+                              type="text"
+                              value={field.value || ''}
+                              onChange={(e) => field.onChange(e.target.value)}
+                              placeholder="Uses Primary Color"
+                              className="flex-1 font-mono"
+                            />
+                            {field.value && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => field.onChange('')}
+                              >
+                                Reset
+                              </Button>
+                            )}
+                          </div>
+                        </FormControl>
+                        <FormDescription>
+                          Color for price displays on menu items. Leave empty to use Primary Color.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
               </div>
 
@@ -598,11 +692,11 @@ export function RestaurantBranding({ restaurantId }: RestaurantBrandingProps) {
                 </div>
 
                 {/* Color Swatches */}
-                <div className="flex gap-4">
+                <div className="flex flex-wrap gap-4">
                   <div className="space-y-2">
                     <div className="text-xs font-medium text-muted-foreground">Primary Color</div>
                     <div 
-                      className="w-20 h-20 rounded-lg border-2 border-background shadow-sm"
+                      className="w-16 h-16 rounded-lg border-2 border-background shadow-sm"
                       style={{ backgroundColor: currentPrimaryColor }}
                     />
                     <div className="text-xs font-mono">{currentPrimaryColor}</div>
@@ -610,10 +704,26 @@ export function RestaurantBranding({ restaurantId }: RestaurantBrandingProps) {
                   <div className="space-y-2">
                     <div className="text-xs font-medium text-muted-foreground">Secondary Color</div>
                     <div 
-                      className="w-20 h-20 rounded-lg border-2 border-background shadow-sm"
+                      className="w-16 h-16 rounded-lg border-2 border-background shadow-sm"
                       style={{ backgroundColor: currentSecondaryColor }}
                     />
                     <div className="text-xs font-mono">{currentSecondaryColor}</div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="text-xs font-medium text-muted-foreground">Checkout Button</div>
+                    <div 
+                      className="w-16 h-16 rounded-lg border-2 border-background shadow-sm"
+                      style={{ backgroundColor: currentCheckoutButtonColor }}
+                    />
+                    <div className="text-xs font-mono">{form.watch('checkout_button_color') ? currentCheckoutButtonColor : '(Primary)'}</div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="text-xs font-medium text-muted-foreground">Price Color</div>
+                    <div 
+                      className="w-16 h-16 rounded-lg border-2 border-background shadow-sm"
+                      style={{ backgroundColor: currentPriceColor }}
+                    />
+                    <div className="text-xs font-mono">{form.watch('price_color') ? currentPriceColor : '(Primary)'}</div>
                   </div>
                 </div>
 
@@ -621,7 +731,13 @@ export function RestaurantBranding({ restaurantId }: RestaurantBrandingProps) {
                 <div className="space-y-3">
                   <div className="text-sm font-medium">Button Style: {currentButtonStyle === 'rounded' ? 'Rounded' : 'Square'}</div>
                   <div className="flex gap-3">
-                    <Button className={currentButtonStyle === 'square' ? 'rounded-none' : ''}>
+                    <Button 
+                      className={currentButtonStyle === 'square' ? 'rounded-none' : ''}
+                      style={{
+                        backgroundColor: currentCheckoutButtonColor,
+                        borderColor: currentCheckoutButtonColor,
+                      }}
+                    >
                       Add to Cart
                     </Button>
                     <Button 
@@ -646,7 +762,7 @@ export function RestaurantBranding({ restaurantId }: RestaurantBrandingProps) {
                         <div key={i} className="border rounded-lg p-3 space-y-2">
                           <div className="h-20 bg-muted rounded" />
                           <div className="text-xs font-medium">Menu Item {i}</div>
-                          <div className="text-xs text-muted-foreground">$12.99</div>
+                          <div className="text-xs font-semibold" style={{ color: currentPriceColor }}>$12.99</div>
                         </div>
                       ))}
                     </div>
@@ -658,7 +774,7 @@ export function RestaurantBranding({ restaurantId }: RestaurantBrandingProps) {
                           <div className="flex-1">
                             <div className="text-sm font-medium">Menu Item {i}</div>
                             <div className="text-xs text-muted-foreground">Delicious item description</div>
-                            <div className="text-sm font-semibold text-primary mt-1">$12.99</div>
+                            <div className="text-sm font-semibold mt-1" style={{ color: currentPriceColor }}>$12.99</div>
                           </div>
                         </div>
                       ))}

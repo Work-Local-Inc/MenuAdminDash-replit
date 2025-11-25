@@ -539,6 +539,7 @@ export default function RestaurantMenu({
                           dish={dish} 
                           restaurantId={restaurant.id}
                           buttonStyle={restaurant.button_style}
+                          priceColor={restaurant.price_color}
                         />
                       ))}
                     </div>
@@ -566,6 +567,10 @@ export default function RestaurantMenu({
               className="w-full h-14"
               disabled={displayCartCount === 0 && !isCartOpen}
               data-testid="button-open-cart"
+              style={restaurant.checkout_button_color ? { 
+                backgroundColor: restaurant.checkout_button_color,
+                borderColor: restaurant.checkout_button_color 
+              } : undefined}
             >
               <div className="flex items-center justify-between w-full">
                 <div className="flex items-center gap-2">

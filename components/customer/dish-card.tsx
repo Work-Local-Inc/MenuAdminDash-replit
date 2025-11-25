@@ -12,9 +12,10 @@ interface DishCardProps {
   dish: any;
   restaurantId: number;
   buttonStyle?: 'rounded' | 'square' | null;
+  priceColor?: string | null;
 }
 
-export function DishCard({ dish, restaurantId, buttonStyle }: DishCardProps) {
+export function DishCard({ dish, restaurantId, buttonStyle, priceColor }: DishCardProps) {
   // Apply button style based on branding
   const buttonClassName = buttonStyle === 'square' 
     ? 'rounded-none' 
@@ -73,7 +74,11 @@ export function DishCard({ dish, restaurantId, buttonStyle }: DishCardProps) {
                   <h3 className="font-semibold text-sm sm:text-base leading-tight line-clamp-2 flex-1 min-w-0" data-testid={`text-dish-name-${dish.id}`}>
                     {dish.name}
                   </h3>
-                  <span className="text-sm sm:text-base font-bold text-primary flex-shrink-0 whitespace-nowrap" data-testid={`text-dish-price-${dish.id}`}>
+                  <span 
+                    className={`text-sm sm:text-base font-bold flex-shrink-0 whitespace-nowrap ${!priceColor ? 'text-primary' : ''}`}
+                    style={priceColor ? { color: priceColor } : undefined}
+                    data-testid={`text-dish-price-${dish.id}`}
+                  >
                     {hasMultiplePrices && <span className="text-xs font-normal">From </span>}
                     ${displayPrice}
                   </span>
