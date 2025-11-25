@@ -535,7 +535,7 @@ export default function RestaurantMenu({
                   className="scroll-mt-24"
                 >
                   {/* Category Header - Customer View */}
-                  <div className={`flex items-center gap-3 mb-4 pb-2 border-b ${layout === 'list' ? 'mb-0 pb-0 border-b-0' : ''}`}>
+                  <div className={`flex items-center gap-3 mb-4 pb-2 border-b ${layout === 'list' ? 'mb-0 pb-0 border-b-0 lg:max-w-2xl lg:mx-auto' : ''}`}>
                     <h2 
                       className={`font-bold flex-1 ${layout === 'list' ? 'text-lg text-primary py-2 border-b-2 border-primary' : 'text-2xl'}`}
                       data-testid={`heading-category-${course.id}`}
@@ -547,18 +547,20 @@ export default function RestaurantMenu({
                   {/* Dishes - Render based on layout */}
                   {courseDishes.length > 0 && (
                     layout === 'list' ? (
-                      // Compact List View - Single column rows
-                      <div className="border rounded-lg divide-y overflow-hidden mb-4">
-                        {courseDishes.map((dish: any, index: number) => (
-                          <DishListRow 
-                            key={dish.id} 
-                            dish={dish} 
-                            restaurantId={restaurant.id}
-                            buttonStyle={restaurant.button_style}
-                            priceColor={restaurant.price_color}
-                            isEven={index % 2 === 0}
-                          />
-                        ))}
+                      // Compact List View - Single column rows, max-width on large screens
+                      <div className="lg:max-w-2xl lg:mx-auto">
+                        <div className="border rounded-lg divide-y overflow-hidden mb-4">
+                          {courseDishes.map((dish: any, index: number) => (
+                            <DishListRow 
+                              key={dish.id} 
+                              dish={dish} 
+                              restaurantId={restaurant.id}
+                              buttonStyle={restaurant.button_style}
+                              priceColor={restaurant.price_color}
+                              isEven={index % 2 === 0}
+                            />
+                          ))}
+                        </div>
                       </div>
                     ) : (
                       // Grid View (grid2 or grid4)
