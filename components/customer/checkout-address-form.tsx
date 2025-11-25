@@ -79,14 +79,12 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick 
     setValidatedZone(zone)
     setIsWithinDeliveryArea(isWithin)
     
-    // Update cart store with delivery fee from zone
+    // Always synchronize cart store - prevents stale values when switching zones
     if (zone && isWithin) {
-      setDeliveryFee(zone.delivery_fee)
-      if (zone.min_order) {
-        setMinOrder(zone.min_order)
-      }
+      setDeliveryFee(zone.delivery_fee ?? 0)
+      setMinOrder(zone.min_order ?? 0)
     } else {
-      // Clear delivery fee when out of area or no zone
+      // Clear when out of area or no zone
       setDeliveryFee(0)
       setMinOrder(0)
     }
