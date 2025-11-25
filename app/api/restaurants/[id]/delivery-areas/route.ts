@@ -45,27 +45,53 @@ export async function GET(
       .order('created_at', { ascending: false })
     
     console.log('[DELIVERY AREAS API] Areas table:', { count: areasData?.length || 0, error: areasError?.message })
-    console.log('[DELIVERY AREAS API] Areas sample:', areasData?.[0])
+    console.log('[DELIVERY AREAS API] Areas sample:', JSON.stringify(areasData?.[0], null, 2))
+    console.log('[DELIVERY AREAS API] Areas columns:', areasData?.[0] ? Object.keys(areasData[0]) : 'no data')
     
-    // Use whichever table has data
-    const data = (zonesData?.length || 0) > 0 ? zonesData : areasData
-    const error = zonesError || areasError
+    // Determine which table has data and which schema to use
+    const useZonesTable = (zonesData?.length || 0) > 0
+    const useAreasTable = !useZonesTable && (areasData?.length || 0) > 0
     
-    if (error) {
-      throw error
+    console.log('[DELIVERY AREAS API] Using table:', useZonesTable ? 'zones' : useAreasTable ? 'areas' : 'none')
+    
+    if (zonesError && areasError) {
+      throw new Error(`Both tables failed: zones=${zonesError.message}, areas=${areasError.message}`)
     }
     
-    const transformed = (data || []).map(zone => ({
-      id: zone.id,
-      restaurant_id: zone.restaurant_id,
-      name: zone.zone_name,
-      description: null,
-      delivery_fee: zone.delivery_fee_cents / 100,
-      min_order: zone.minimum_order_cents !== null ? zone.minimum_order_cents / 100 : null,
-      polygon: zone.zone_geometry,
-      is_active: zone.is_active,
-      created_at: zone.created_at
-    }))
+    let transformed: any[] = []
+    
+    if (useZonesTable && zonesData) {
+      // Transform from restaurant_delivery_zones schema
+      transformed = zonesData.map(zone => ({
+        id: zone.id,
+        restaurant_id: zone.restaurant_id,
+        name: zone.zone_name,
+        description: null,
+        delivery_fee: (zone.delivery_fee_cents || 0) / 100,
+        min_order: zone.minimum_order_cents !== null ? zone.minimum_order_cents / 100 : null,
+        polygon: zone.zone_geometry,
+        is_active: zone.is_active ?? true,
+        created_at: zone.created_at
+      }))
+    } else if (useAreasTable && areasData) {
+      // Transform from restaurant_delivery_areas schema
+      // Column names may be different - let's map them correctly
+      transformed = areasData.map((area: any) => ({
+        id: area.id,
+        restaurant_id: area.restaurant_id,
+        name: area.name || area.area_name || area.zone_name || `Area ${area.id}`,
+        description: area.description || null,
+        // Try different column names for delivery fee
+        delivery_fee: (area.delivery_fee_cents || area.delivery_fee || 0) / (area.delivery_fee_cents ? 100 : 1),
+        min_order: area.minimum_order_cents 
+          ? area.minimum_order_cents / 100 
+          : area.min_order || area.minimum_order || null,
+        // Try different column names for geometry
+        polygon: area.geometry || area.zone_geometry || area.polygon || area.geojson || null,
+        is_active: area.is_active ?? area.active ?? true,
+        created_at: area.created_at
+      }))
+    }
     
     return NextResponse.json(transformed)
   } catch (error: any) {
