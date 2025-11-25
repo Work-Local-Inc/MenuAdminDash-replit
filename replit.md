@@ -115,13 +115,25 @@ Preferred communication style: Simple, everyday language.
     - **Status**: ✅ Production-ready, architect-approved
     - **Purpose**: Industry-standard DoorDash/Uber Eats style order type selection (Delivery vs Pickup)
     - **Components**:
-        - `OrderTypeSelector`: Tabbed interface with Delivery/Pickup toggle, contextual fee copy
-        - `PickupTimeSelector`: ASAP vs Scheduled selection with 30-minute time slots
+        - `OrderTypeSelector`: Tabbed interface with Delivery/Pickup toggle, contextual fee copy, delivery-closed blocking UI
+        - `PickupTimeSelector`: ASAP vs Scheduled selection with 30-minute time slots from database schedules
+    - **Operating Hours Integration** (November 2025):
+        - **Database**: Uses `restaurant_schedules` table with `type` field ('delivery' | 'takeout')
+        - **API**: `/api/customer/restaurants/[slug]/schedules` returns delivery and takeout hours
+        - **Schedule Features**:
+            - Multiple time windows per day (e.g., 11 AM-2 PM lunch, 5 PM-10 PM dinner)
+            - Overnight schedule handling (e.g., 8 PM-2 AM) with "(next day)" slot labels
+            - 7-day date picker with closed day indication
+            - 30-minute time slot intervals (configurable)
+        - **Delivery Blocking**: When restaurant closed for delivery, shows inline alert with pickup CTA, blocks delivery address form
+        - **Overnight Hydration**: 6 AM threshold detects late-night windows for proper slot rehydration
+        - **Service Type Switching**: Cart store resets pickupTime to ASAP when toggling delivery/pickup; selector resets internal state
     - **Cart Store Updates**:
         - `orderType`: 'delivery' | 'pickup' (default: 'delivery')
-        - `pickupTime`: { type: 'asap' | 'scheduled', date?: string, timeSlot?: string }
+        - `pickupTime`: { type: 'asap' | 'scheduled', scheduledTime?: string } (ISO date string)
         - `getEffectiveDeliveryFee()`: Returns 0 for pickup orders, actual fee for delivery
         - `restaurantAddress`: Stored for pickup display
+        - `setOrderType`: Resets pickupTime to ASAP when switching service types
     - **Checkout Flow**:
         - Delivery: Address form → Delivery zone validation → Payment
         - Pickup: Restaurant address display → Time selection → Guest email (if needed) → Payment
