@@ -84,8 +84,8 @@ export function DishCard({ dish, restaurantId, buttonStyle, priceColor }: DishCa
                   </span>
                 </div>
                 
-                {/* Description - only show if exists, line-clamp-1 for single line */}
-                {dish.description && (
+                {/* Description - only show if meaningful (not empty, not just dash) */}
+                {dish.description && dish.description.trim() !== '' && dish.description.trim() !== '-' && (
                   <p className="text-xs sm:text-sm text-muted-foreground line-clamp-1 mb-1" data-testid={`text-dish-description-${dish.id}`}>
                     {dish.description}
                   </p>

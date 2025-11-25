@@ -41,7 +41,7 @@ const brandingSchema = z.object({
   price_color: z.string().regex(/^#[0-9A-F]{6}$/i, 'Must be a valid hex color').or(z.literal('')).optional(),
   font_family: z.string().optional(),
   button_style: z.enum(['rounded', 'square']).optional(),
-  menu_layout: z.enum(['grid', 'list']).optional(),
+  menu_layout: z.enum(['list', 'grid2', 'grid4']).optional(),
 })
 
 type BrandingFormData = z.infer<typeof brandingSchema>
@@ -57,7 +57,7 @@ interface Restaurant {
   price_color?: string | null
   font_family?: string | null
   button_style?: 'rounded' | 'square' | null
-  menu_layout?: 'grid' | 'list' | null
+  menu_layout?: 'list' | 'grid2' | 'grid4' | null
 }
 
 interface RestaurantBrandingProps {
@@ -100,7 +100,7 @@ export function RestaurantBranding({ restaurantId }: RestaurantBrandingProps) {
       price_color: restaurant?.price_color || '',
       font_family: restaurant?.font_family || 'Inter',
       button_style: restaurant?.button_style || 'rounded',
-      menu_layout: restaurant?.menu_layout || 'grid',
+      menu_layout: restaurant?.menu_layout || 'grid4',
     },
   })
 
@@ -222,7 +222,7 @@ export function RestaurantBranding({ restaurantId }: RestaurantBrandingProps) {
   const currentPriceColor = form.watch('price_color') || currentPrimaryColor
   const currentFont = form.watch('font_family') || 'Inter'
   const currentButtonStyle = form.watch('button_style') || 'rounded'
-  const currentMenuLayout = form.watch('menu_layout') || 'grid'
+  const currentMenuLayout = form.watch('menu_layout') || 'grid4'
   const currentLogoUrl = logoPreview || form.watch('logo_url') || restaurant?.logo_url
   const currentBannerUrl = bannerPreview || form.watch('banner_image_url') || restaurant?.banner_image_url
 
@@ -599,36 +599,68 @@ export function RestaurantBranding({ restaurantId }: RestaurantBrandingProps) {
                             value={field.value}
                             className="flex flex-col space-y-2"
                           >
-                            <div className="flex items-center space-x-3 space-y-0">
-                              <RadioGroupItem value="grid" id="grid" />
-                              <Label htmlFor="grid" className="font-normal cursor-pointer">
-                                <div className="flex items-center gap-2">
-                                  <div className="grid grid-cols-3 gap-1">
-                                    <div className="w-3 h-3 bg-muted rounded" />
-                                    <div className="w-3 h-3 bg-muted rounded" />
-                                    <div className="w-3 h-3 bg-muted rounded" />
-                                  </div>
-                                  <span>Grid View</span>
-                                </div>
-                              </Label>
-                            </div>
+                            {/* Compact List - single column rows */}
                             <div className="flex items-center space-x-3 space-y-0">
                               <RadioGroupItem value="list" id="list" />
                               <Label htmlFor="list" className="font-normal cursor-pointer">
                                 <div className="flex items-center gap-2">
-                                  <div className="flex flex-col gap-1">
-                                    <div className="w-12 h-2 bg-muted rounded" />
-                                    <div className="w-12 h-2 bg-muted rounded" />
-                                    <div className="w-12 h-2 bg-muted rounded" />
+                                  <div className="flex flex-col gap-0.5 w-14">
+                                    <div className="h-1.5 bg-muted rounded w-full" />
+                                    <div className="h-1.5 bg-muted/60 rounded w-full" />
+                                    <div className="h-1.5 bg-muted rounded w-full" />
+                                    <div className="h-1.5 bg-muted/60 rounded w-full" />
                                   </div>
-                                  <span>List View</span>
+                                  <div>
+                                    <span className="font-medium">Compact List</span>
+                                    <p className="text-xs text-muted-foreground">Single rows, best for 100+ items</p>
+                                  </div>
+                                </div>
+                              </Label>
+                            </div>
+                            {/* Grid 2 Column */}
+                            <div className="flex items-center space-x-3 space-y-0">
+                              <RadioGroupItem value="grid2" id="grid2" />
+                              <Label htmlFor="grid2" className="font-normal cursor-pointer">
+                                <div className="flex items-center gap-2">
+                                  <div className="grid grid-cols-2 gap-0.5 w-14">
+                                    <div className="w-6 h-4 bg-muted rounded" />
+                                    <div className="w-6 h-4 bg-muted rounded" />
+                                    <div className="w-6 h-4 bg-muted rounded" />
+                                    <div className="w-6 h-4 bg-muted rounded" />
+                                  </div>
+                                  <div>
+                                    <span className="font-medium">Grid (2 col)</span>
+                                    <p className="text-xs text-muted-foreground">Cards with images/descriptions</p>
+                                  </div>
+                                </div>
+                              </Label>
+                            </div>
+                            {/* Grid 4 Column - Responsive */}
+                            <div className="flex items-center space-x-3 space-y-0">
+                              <RadioGroupItem value="grid4" id="grid4" />
+                              <Label htmlFor="grid4" className="font-normal cursor-pointer">
+                                <div className="flex items-center gap-2">
+                                  <div className="grid grid-cols-4 gap-0.5 w-14">
+                                    <div className="w-3 h-3 bg-muted rounded" />
+                                    <div className="w-3 h-3 bg-muted rounded" />
+                                    <div className="w-3 h-3 bg-muted rounded" />
+                                    <div className="w-3 h-3 bg-muted rounded" />
+                                    <div className="w-3 h-3 bg-muted rounded" />
+                                    <div className="w-3 h-3 bg-muted rounded" />
+                                    <div className="w-3 h-3 bg-muted rounded" />
+                                    <div className="w-3 h-3 bg-muted rounded" />
+                                  </div>
+                                  <div>
+                                    <span className="font-medium">Grid (4 col)</span>
+                                    <p className="text-xs text-muted-foreground">Responsive 1→2→3→4 columns</p>
+                                  </div>
                                 </div>
                               </Label>
                             </div>
                           </RadioGroup>
                         </FormControl>
                         <FormDescription>
-                          Choose how menu items are displayed
+                          Choose how menu items are displayed on the customer page
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -755,27 +787,44 @@ export function RestaurantBranding({ restaurantId }: RestaurantBrandingProps) {
 
                 {/* Menu Layout Preview */}
                 <div className="space-y-3">
-                  <div className="text-sm font-medium">Menu Layout: {currentMenuLayout === 'grid' ? 'Grid View' : 'List View'}</div>
-                  {currentMenuLayout === 'grid' ? (
-                    <div className="grid grid-cols-3 gap-3">
-                      {[1, 2, 3].map((i) => (
+                  <div className="text-sm font-medium">
+                    Menu Layout: {currentMenuLayout === 'list' ? 'Compact List' : currentMenuLayout === 'grid2' ? 'Grid (2 col)' : 'Grid (4 col)'}
+                  </div>
+                  {currentMenuLayout === 'list' ? (
+                    // Compact List Preview
+                    <div className="border rounded-lg divide-y overflow-hidden">
+                      {[1, 2, 3, 4].map((i) => (
+                        <div key={i} className={`flex items-center justify-between px-3 py-2 ${i % 2 === 0 ? 'bg-muted/20' : ''}`}>
+                          <span className="text-sm font-medium">Menu Item {i}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold" style={{ color: currentPriceColor }}>$12.99</span>
+                            <div 
+                              className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs"
+                              style={{ backgroundColor: currentPrimaryColor }}
+                            >+</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : currentMenuLayout === 'grid2' ? (
+                    // Grid 2 Column Preview
+                    <div className="grid grid-cols-2 gap-3">
+                      {[1, 2, 3, 4].map((i) => (
                         <div key={i} className="border rounded-lg p-3 space-y-2">
-                          <div className="h-20 bg-muted rounded" />
+                          <div className="h-16 bg-muted rounded" />
                           <div className="text-xs font-medium">Menu Item {i}</div>
+                          <div className="text-xs text-muted-foreground">Description</div>
                           <div className="text-xs font-semibold" style={{ color: currentPriceColor }}>$12.99</div>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="space-y-2">
-                      {[1, 2, 3].map((i) => (
-                        <div key={i} className="border rounded-lg p-3 flex gap-3">
-                          <div className="w-16 h-16 bg-muted rounded flex-shrink-0" />
-                          <div className="flex-1">
-                            <div className="text-sm font-medium">Menu Item {i}</div>
-                            <div className="text-xs text-muted-foreground">Delicious item description</div>
-                            <div className="text-sm font-semibold mt-1" style={{ color: currentPriceColor }}>$12.99</div>
-                          </div>
+                    // Grid 4 Column Preview
+                    <div className="grid grid-cols-4 gap-2">
+                      {[1, 2, 3, 4].map((i) => (
+                        <div key={i} className="border rounded-lg p-2 space-y-1">
+                          <div className="text-xs font-medium truncate">Menu Item {i}</div>
+                          <div className="text-xs font-semibold" style={{ color: currentPriceColor }}>$12.99</div>
                         </div>
                       ))}
                     </div>

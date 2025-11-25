@@ -25,6 +25,7 @@ import {
   TooltipProvider,
 } from '@/components/ui/tooltip';
 import { DishCard } from './dish-card';
+import { DishListRow } from './dish-list-row';
 import { CartDrawer } from './cart-drawer';
 import { useCartStore } from '@/lib/stores/cart-store';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
@@ -500,18 +501,23 @@ export default function RestaurantMenu({
           <div className="space-y-8">
             {courses?.map((course) => {
               const courseDishes = course.dishes || [];
+              // Map old layout values to new ones for backwards compatibility
+              const rawLayout = restaurant.menu_layout;
+              const layout = rawLayout === 'grid' ? 'grid2' 
+                : rawLayout === 'list' ? 'grid4'  // old 'list' was actually grid4
+                : rawLayout || 'grid4';
               
               // Determine grid classes based on menu_layout
               const getGridClasses = () => {
-                const layout = restaurant.menu_layout || 'list';
-                
-                if (layout === 'grid') {
-                  // Grid: larger cards, max 2 columns on desktop
+                if (layout === 'grid2') {
+                  // Grid 2: larger cards, max 2 columns
                   return 'grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4';
-                } else {
-                  // List: compact cards, up to 4 columns on wide screens
+                } else if (layout === 'grid4') {
+                  // Grid 4: compact cards, up to 4 columns on wide screens
                   return 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3';
                 }
+                // 'list' layout doesn't use grid classes
+                return '';
               };
               
               return (
@@ -521,28 +527,45 @@ export default function RestaurantMenu({
                   className="scroll-mt-24"
                 >
                   {/* Category Header - Customer View */}
-                  <div className="flex items-center gap-3 mb-4 pb-2 border-b">
+                  <div className={`flex items-center gap-3 mb-4 pb-2 border-b ${layout === 'list' ? 'mb-0 pb-0 border-b-0' : ''}`}>
                     <h2 
-                      className="text-2xl font-bold flex-1" 
+                      className={`font-bold flex-1 ${layout === 'list' ? 'text-lg text-primary py-2 border-b-2 border-primary' : 'text-2xl'}`}
                       data-testid={`heading-category-${course.id}`}
                     >
                       {course.name}
                     </h2>
                   </div>
                   
-                  {/* Dishes Grid - Customer View with Responsive Columns */}
+                  {/* Dishes - Render based on layout */}
                   {courseDishes.length > 0 && (
-                    <div className={getGridClasses()}>
-                      {courseDishes.map((dish: any) => (
-                        <DishCard 
-                          key={dish.id} 
-                          dish={dish} 
-                          restaurantId={restaurant.id}
-                          buttonStyle={restaurant.button_style}
-                          priceColor={restaurant.price_color}
-                        />
-                      ))}
-                    </div>
+                    layout === 'list' ? (
+                      // Compact List View - Single column rows
+                      <div className="border rounded-lg divide-y overflow-hidden mb-4">
+                        {courseDishes.map((dish: any, index: number) => (
+                          <DishListRow 
+                            key={dish.id} 
+                            dish={dish} 
+                            restaurantId={restaurant.id}
+                            buttonStyle={restaurant.button_style}
+                            priceColor={restaurant.price_color}
+                            isEven={index % 2 === 0}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      // Grid View (grid2 or grid4)
+                      <div className={getGridClasses()}>
+                        {courseDishes.map((dish: any) => (
+                          <DishCard 
+                            key={dish.id} 
+                            dish={dish} 
+                            restaurantId={restaurant.id}
+                            buttonStyle={restaurant.button_style}
+                            priceColor={restaurant.price_color}
+                          />
+                        ))}
+                      </div>
+                    )
                   )}
                 </div>
               );
