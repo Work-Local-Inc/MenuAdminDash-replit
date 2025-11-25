@@ -511,9 +511,9 @@ export default function RestaurantMenu({
               const courseDishes = course.dishes || [];
               // Map old layout values to new ones for backwards compatibility
               const rawLayout = restaurant.menu_layout;
-              const layout = rawLayout === 'grid' ? 'grid2' 
-                : rawLayout === 'list' ? 'grid4'  // old 'list' was actually grid4
-                : rawLayout || 'grid4';
+              // 'list' = compact list rows, 'grid2' = 2-column grid, 'grid4' = 4-column grid
+              // Old 'grid' maps to 'grid2'
+              const layout = rawLayout === 'grid' ? 'grid2' : rawLayout || 'grid4';
               
               // Determine grid classes based on menu_layout
               const getGridClasses = () => {
