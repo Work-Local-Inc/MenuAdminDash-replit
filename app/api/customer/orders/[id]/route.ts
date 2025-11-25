@@ -22,6 +22,7 @@ export async function GET(
     const supabase = createAdminClient()
 
     // Fetch order with restaurant details (include address info for pickup)
+    // Note: restaurant_locations uses city_id/province_id foreign keys, so we just get basic info
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .select(`
@@ -31,8 +32,6 @@ export async function GET(
           name,
           restaurant_locations(
             street_address,
-            city,
-            province,
             postal_code,
             phone
           )
@@ -63,8 +62,6 @@ export async function GET(
             name: string
             restaurant_locations?: Array<{
               street_address?: string
-              city?: string
-              province?: string
               postal_code?: string
               phone?: string
             }>
