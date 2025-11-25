@@ -13,7 +13,7 @@ import { CheckoutAddressForm } from '@/components/customer/checkout-address-form
 import { CheckoutPaymentForm } from '@/components/customer/checkout-payment-form'
 import { CheckoutSignInModal } from '@/components/customer/checkout-signin-modal'
 import { OrderTypeSelector } from '@/components/customer/order-type-selector'
-import { PickupTimeSelector } from '@/components/customer/pickup-time-selector'
+import { PickupTimeSelector, Schedule } from '@/components/customer/pickup-time-selector'
 import { useToast } from '@/hooks/use-toast'
 import { ShoppingCart, MapPin, CreditCard, ArrowLeft, LogIn, LogOut, User, ShoppingBag, Store } from 'lucide-react'
 import Link from 'next/link'
@@ -68,6 +68,8 @@ export default function CheckoutPage() {
   const [clientSecret, setClientSecret] = useState<string>('')
   const [showSignInModal, setShowSignInModal] = useState(false)
   const [guestPickupEmail, setGuestPickupEmail] = useState('')
+  const [schedules, setSchedules] = useState<Schedule[]>([])
+  const [schedulesLoading, setSchedulesLoading] = useState(false)
 
   // Debug: Log currentUser changes
   useEffect(() => {
@@ -78,6 +80,31 @@ export default function CheckoutPage() {
   useEffect(() => {
     console.log('[Checkout] ⭐ loading state changed:', loading)
   }, [loading])
+  
+  // Fetch restaurant schedules for time slot validation
+  useEffect(() => {
+    const fetchSchedules = async () => {
+      if (!restaurantSlug) return
+      
+      setSchedulesLoading(true)
+      try {
+        const response = await fetch(`/api/customer/restaurants/${restaurantSlug}/schedules`)
+        if (response.ok) {
+          const data = await response.json()
+          console.log('[Checkout] Schedules loaded:', data.schedules?.length || 0)
+          setSchedules(data.schedules || [])
+        } else {
+          console.warn('[Checkout] Failed to fetch schedules, using defaults')
+        }
+      } catch (error) {
+        console.error('[Checkout] Error fetching schedules:', error)
+      } finally {
+        setSchedulesLoading(false)
+      }
+    }
+    
+    fetchSchedules()
+  }, [restaurantSlug])
 
   useEffect(() => {
     checkAuth()
@@ -451,7 +478,7 @@ export default function CheckoutPage() {
                   </div>
                   
                   {/* Pickup Time Selector */}
-                  <PickupTimeSelector />
+                  <PickupTimeSelector schedules={schedules} orderType="pickup" />
                   
                   {/* Guest Email for pickup */}
                   {!currentUser && (
