@@ -148,7 +148,7 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
           })),
         };
         
-        console.log('[Payment] Creating order with userId:', userId, 'Payment Intent metadata user_id:', paymentIntent.metadata.user_id);
+        console.log('[Payment] Creating order with userId:', userId, 'Payment Intent ID:', paymentIntent.id);
         
         const orderResponse = await fetch('/api/customer/orders', {
           method: 'POST',
