@@ -70,6 +70,7 @@ export default function CheckoutPage() {
   const [guestPickupEmail, setGuestPickupEmail] = useState('')
   const [schedules, setSchedules] = useState<Schedule[]>([])
   const [schedulesLoading, setSchedulesLoading] = useState(false)
+  const [isDeliveryBlocked, setIsDeliveryBlocked] = useState(false)
 
   // Debug: Log currentUser changes
   useEffect(() => {
@@ -412,7 +413,7 @@ export default function CheckoutPage() {
             {/* Order Type Selector - Always visible */}
             <Card>
               <CardContent className="p-6">
-                <OrderTypeSelector />
+                <OrderTypeSelector schedules={schedules} onDeliveryBlocked={setIsDeliveryBlocked} />
               </CardContent>
             </Card>
 
@@ -439,8 +440,8 @@ export default function CheckoutPage() {
               </CardContent>
             </Card>
 
-            {/* Step Content - Delivery Flow */}
-            {step === 'address' && orderType === 'delivery' && (
+            {/* Step Content - Delivery Flow - Only show when not blocked */}
+            {step === 'address' && orderType === 'delivery' && !isDeliveryBlocked && (
               <CheckoutAddressForm 
                 key={currentUser?.id || 'guest'} 
                 userId={currentUser?.id}
