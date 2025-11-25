@@ -307,7 +307,7 @@ export function RestaurantDeliveryAreas({ restaurantId }: RestaurantDeliveryArea
             source: sourceId,
             paint: {
               'fill-color': color.fill,
-              'fill-opacity': 0.25,
+              'fill-opacity': 0.35,
             }
           })
           
@@ -318,7 +318,7 @@ export function RestaurantDeliveryAreas({ restaurantId }: RestaurantDeliveryArea
             source: sourceId,
             paint: {
               'line-color': color.stroke,
-              'line-width': 2,
+              'line-width': 3,
             }
           })
           

@@ -31,7 +31,7 @@ export async function GET(
       .select('id, restaurant_id, zone_name, delivery_fee_cents, minimum_order_cents, estimated_delivery_minutes, zone_geometry, is_active, created_at')
       .eq('restaurant_id', parseInt(params.id))
       .is('deleted_at', null)
-      .order('created_at', { ascending: false })
+      .order('id', { ascending: true })
     
     console.log('[DELIVERY AREAS API] Restaurant ID:', params.id)
     console.log('[DELIVERY AREAS API] Zones table:', { count: zonesData?.length || 0, error: zonesError?.message })
@@ -42,7 +42,7 @@ export async function GET(
       .from('restaurant_delivery_areas')
       .select('*')
       .eq('restaurant_id', parseInt(params.id))
-      .order('created_at', { ascending: false })
+      .order('id', { ascending: true })
     
     console.log('[DELIVERY AREAS API] Areas table:', { count: areasData?.length || 0, error: areasError?.message })
     console.log('[DELIVERY AREAS API] Areas sample:', JSON.stringify(areasData?.[0], null, 2))
