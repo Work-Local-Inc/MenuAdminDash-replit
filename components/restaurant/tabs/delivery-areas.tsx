@@ -133,6 +133,8 @@ export function RestaurantDeliveryAreas({ restaurantId }: RestaurantDeliveryArea
     },
   })
 
+  const [mapLoaded, setMapLoaded] = useState(false)
+  
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return
 
@@ -140,7 +142,7 @@ export function RestaurantDeliveryAreas({ restaurantId }: RestaurantDeliveryArea
       const map = new mapboxgl.Map({
         container: mapContainerRef.current,
         style: "mapbox://styles/mapbox/streets-v12",
-        center: [-79.3832, 43.6532], // Toronto center
+        center: [-79.3832, 43.6532], // Default Toronto center, will be updated when areas load
         zoom: 10,
       })
 
@@ -153,8 +155,15 @@ export function RestaurantDeliveryAreas({ restaurantId }: RestaurantDeliveryArea
         defaultMode: "simple_select",
       })
 
-      map.addControl(draw)
-      map.addControl(new mapboxgl.NavigationControl(), "top-right")
+      map.on("load", () => {
+        map.addControl(draw)
+        map.addControl(new mapboxgl.NavigationControl(), "top-right")
+        
+        mapRef.current = map
+        drawRef.current = draw
+        setMapLoaded(true)
+        console.log("[Delivery Areas] Map loaded successfully")
+      })
 
       map.on("draw.create", (e: any) => {
         const feature = e.features?.[0]
@@ -168,10 +177,10 @@ export function RestaurantDeliveryAreas({ restaurantId }: RestaurantDeliveryArea
         setDrawnPolygon(feature)
       })
 
-      mapRef.current = map
-      drawRef.current = draw
-
       return () => {
+        mapRef.current = null
+        drawRef.current = null
+        setMapLoaded(false)
         map.remove()
       }
     } catch (error) {
@@ -181,8 +190,8 @@ export function RestaurantDeliveryAreas({ restaurantId }: RestaurantDeliveryArea
   }, [])
 
   useEffect(() => {
-    // Only update map if we have refs and areas
-    if (!mapRef.current || !drawRef.current || areas.length === 0) return
+    // Only update map if map is loaded and we have areas
+    if (!mapLoaded || !mapRef.current || !drawRef.current || areas.length === 0) return
     
     // Skip if currently editing
     if (showAreaDialog || selectedArea) return
@@ -190,8 +199,15 @@ export function RestaurantDeliveryAreas({ restaurantId }: RestaurantDeliveryArea
     try {
       drawRef.current.deleteAll()
 
+      // Calculate bounds from all polygons
+      let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity
+      let hasPolygons = false
+
       areas.forEach((area) => {
-        if (area.polygon && drawRef.current) {
+        if (area.polygon && area.polygon.coordinates && drawRef.current) {
+          hasPolygons = true
+          
+          // Add polygon to map
           drawRef.current.add({
             type: "Feature",
             properties: {
@@ -201,12 +217,32 @@ export function RestaurantDeliveryAreas({ restaurantId }: RestaurantDeliveryArea
             },
             geometry: area.polygon,
           })
+          
+          // Calculate bounds from coordinates
+          const coords = area.polygon.coordinates[0] // First ring of polygon
+          if (coords) {
+            coords.forEach((coord: number[]) => {
+              if (coord[0] < minLng) minLng = coord[0]
+              if (coord[0] > maxLng) maxLng = coord[0]
+              if (coord[1] < minLat) minLat = coord[1]
+              if (coord[1] > maxLat) maxLat = coord[1]
+            })
+          }
         }
       })
+      
+      // Fit map to bounds if we have polygons
+      if (hasPolygons && mapRef.current && minLng !== Infinity) {
+        console.log("[Delivery Areas] Fitting map to bounds:", { minLng, maxLng, minLat, maxLat })
+        mapRef.current.fitBounds(
+          [[minLng, minLat], [maxLng, maxLat]],
+          { padding: 50, duration: 1000 }
+        )
+      }
     } catch (error) {
       console.error("[Delivery Areas] Error updating map:", error)
     }
-  }, [areas, showAreaDialog, selectedArea])
+  }, [areas, showAreaDialog, selectedArea, mapLoaded])
 
   const startDrawing = () => {
     if (drawRef.current) {
@@ -225,24 +261,53 @@ export function RestaurantDeliveryAreas({ restaurantId }: RestaurantDeliveryArea
       is_active: area.is_active,
     })
     
-    if (drawRef.current && area.polygon) {
-      // Clear all features first
-      drawRef.current.deleteAll()
-      
-      // Add the polygon to be edited and get the feature ID
-      const addedFeatures = drawRef.current.add({
+    // Set the polygon for the form even if map isn't available
+    if (area.polygon) {
+      setDrawnPolygon({
         type: "Feature",
         properties: { id: area.id },
         geometry: area.polygon,
       })
-      
-      // Get the full feature from MapboxDraw using the returned ID
-      if (addedFeatures && addedFeatures[0]) {
-        const featureId = addedFeatures[0]
-        const fullFeature = drawRef.current.get(featureId as string)
-        if (fullFeature) {
-          setDrawnPolygon(fullFeature)
+    }
+    
+    // Update map if available
+    if (mapLoaded && drawRef.current && area.polygon) {
+      try {
+        // Clear all features first
+        drawRef.current.deleteAll()
+        
+        // Add the polygon to be edited and get the feature ID
+        const addedFeatures = drawRef.current.add({
+          type: "Feature",
+          properties: { id: area.id },
+          geometry: area.polygon,
+        })
+        
+        // Get the full feature from MapboxDraw using the returned ID
+        if (addedFeatures && addedFeatures[0]) {
+          const featureId = addedFeatures[0]
+          const fullFeature = drawRef.current.get(featureId as string)
+          if (fullFeature) {
+            setDrawnPolygon(fullFeature)
+          }
         }
+        
+        // Center map on this polygon
+        if (mapRef.current && area.polygon.coordinates) {
+          const coords = area.polygon.coordinates[0]
+          if (coords && coords.length > 0) {
+            let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity
+            coords.forEach((coord: number[]) => {
+              if (coord[0] < minLng) minLng = coord[0]
+              if (coord[0] > maxLng) maxLng = coord[0]
+              if (coord[1] < minLat) minLat = coord[1]
+              if (coord[1] > maxLat) maxLat = coord[1]
+            })
+            mapRef.current.fitBounds([[minLng, minLat], [maxLng, maxLat]], { padding: 50 })
+          }
+        }
+      } catch (error) {
+        console.error("[Delivery Areas] Error updating map for edit:", error)
       }
     }
     
@@ -280,17 +345,21 @@ export function RestaurantDeliveryAreas({ restaurantId }: RestaurantDeliveryArea
     setFormData({ name: "", description: "", delivery_fee: "", min_order: "", is_active: true })
     setSelectedArea(null)
     setDrawnPolygon(null)
-    if (drawRef.current) {
-      drawRef.current.deleteAll()
-      areas.forEach((area) => {
-        if (area.polygon) {
-          drawRef.current!.add({
-            type: "Feature",
-            properties: { id: area.id, name: area.name },
-            geometry: area.polygon,
-          })
-        }
-      })
+    if (mapLoaded && drawRef.current) {
+      try {
+        drawRef.current.deleteAll()
+        areas.forEach((area) => {
+          if (area.polygon && drawRef.current) {
+            drawRef.current.add({
+              type: "Feature",
+              properties: { id: area.id, name: area.name },
+              geometry: area.polygon,
+            })
+          }
+        })
+      } catch (error) {
+        console.error("[Delivery Areas] Error resetting map:", error)
+      }
     }
   }
 
