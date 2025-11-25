@@ -87,16 +87,22 @@ export default function RestaurantMenu({
   onToggleSelectDish,
 }: RestaurantMenuProps) {
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  
   const cartItemCount = useCartStore((state) => 
     state.items.reduce((sum, item) => sum + item.quantity, 0)
   );
   const cartTotal = useCartStore((state) => state.getTotal());
   const setRestaurant = useCartStore((state) => state.setRestaurant);
   
-  // Debug: Log cart status
+  // Fix hydration mismatch - only show cart values after client mount
   useEffect(() => {
-    console.log('[RestaurantMenu] Cart updated - Items:', cartItemCount, 'Total:', cartTotal);
-  }, [cartItemCount, cartTotal]);
+    setMounted(true);
+  }, []);
+  
+  // Use 0 values during SSR to match server render
+  const displayCartCount = mounted ? cartItemCount : 0;
+  const displayCartTotal = mounted ? cartTotal : 0;
   
   const location = restaurant.restaurant_locations?.[0];
   const serviceConfig = restaurant.restaurant_service_configs?.[0];
@@ -558,18 +564,18 @@ export default function RestaurantMenu({
               size="lg"
               onClick={() => setIsCartOpen(true)}
               className="w-full h-14"
-              disabled={cartItemCount === 0 && !isCartOpen}
+              disabled={displayCartCount === 0 && !isCartOpen}
               data-testid="button-open-cart"
             >
               <div className="flex items-center justify-between w-full">
                 <div className="flex items-center gap-2">
                   <ShoppingCart className="w-5 h-5" />
                   <span className="font-semibold">
-                    {isCartOpen && cartItemCount > 0 ? 'Place Order' : `Basket • ${cartItemCount} ${cartItemCount === 1 ? 'Item' : 'Items'}`}
+                    {isCartOpen && displayCartCount > 0 ? 'Place Order' : `Basket • ${displayCartCount} ${displayCartCount === 1 ? 'Item' : 'Items'}`}
                   </span>
                 </div>
                 <span className="font-bold text-lg">
-                  ${cartTotal.toFixed(2)}
+                  ${displayCartTotal.toFixed(2)}
                 </span>
               </div>
             </Button>
