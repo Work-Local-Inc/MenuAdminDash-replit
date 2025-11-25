@@ -535,7 +535,7 @@ export default function RestaurantMenu({
                   className="scroll-mt-24"
                 >
                   {/* Category Header - Customer View */}
-                  <div className={`flex items-center gap-3 mb-4 pb-2 border-b ${layout === 'list' ? 'mb-0 pb-0 border-b-0 lg:max-w-2xl lg:mx-auto' : ''}`}>
+                  <div className={`flex items-center gap-3 mb-4 pb-2 border-b ${layout === 'list' ? 'mb-0 pb-0 border-b-0 lg:max-w-2xl lg:mx-auto xl:max-w-none' : ''}`}>
                     <h2 
                       className={`font-bold flex-1 ${layout === 'list' ? 'text-lg text-primary py-2 border-b-2 border-primary' : 'text-2xl'}`}
                       data-testid={`heading-category-${course.id}`}
