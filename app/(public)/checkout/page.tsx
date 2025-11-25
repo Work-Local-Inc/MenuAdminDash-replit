@@ -67,6 +67,7 @@ export default function CheckoutPage() {
   const [selectedAddress, setSelectedAddress] = useState<DeliveryAddress | null>(null)
   const [clientSecret, setClientSecret] = useState<string>('')
   const [showSignInModal, setShowSignInModal] = useState(false)
+  const [guestPickupEmail, setGuestPickupEmail] = useState('')
 
   // Debug: Log currentUser changes
   useEffect(() => {
@@ -226,11 +227,22 @@ export default function CheckoutPage() {
   
   // Handler for pickup flow - skip address, go straight to payment
   const handlePickupConfirmed = async () => {
+    // For guests, validate email
+    const email = currentUser?.email || guestPickupEmail
+    if (!currentUser && (!email || !email.includes('@'))) {
+      toast({
+        title: "Email required",
+        description: "Please enter a valid email address",
+        variant: "destructive",
+      })
+      return
+    }
+    
     // For pickup, we don't need a delivery address - just the restaurant address
     const pickupAddress: DeliveryAddress = {
       street_address: restaurantAddress || restaurantName || 'Pickup at restaurant',
       postal_code: '',
-      email: currentUser?.email,
+      email: email,
     }
     
     setSelectedAddress(pickupAddress)
@@ -243,17 +255,19 @@ export default function CheckoutPage() {
         body: JSON.stringify({
           amount: total,
           user_id: currentUser?.id ? String(currentUser.id) : undefined,
-          guest_email: pickupAddress.email,
+          guest_email: !currentUser ? email : undefined,
           metadata: {
             restaurant_slug: restaurantSlug,
             order_type: 'pickup',
             pickup_time: JSON.stringify(pickupTime),
+            restaurant_address: restaurantAddress,
           }
         }),
       })
 
       if (!response.ok) {
-        throw new Error('Failed to create payment intent')
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to create payment intent')
       }
 
       const data = await response.json()
@@ -451,10 +465,8 @@ export default function CheckoutPage() {
                         placeholder="your@email.com"
                         className="w-full px-3 py-2 border rounded-md"
                         data-testid="input-guest-pickup-email"
-                        onChange={(e) => {
-                          // Store email in a way the handler can access
-                          (window as any).__guestPickupEmail = e.target.value
-                        }}
+                        value={guestPickupEmail}
+                        onChange={(e) => setGuestPickupEmail(e.target.value)}
                       />
                       <p className="text-xs text-muted-foreground">
                         We'll send your order confirmation to this email
@@ -464,21 +476,7 @@ export default function CheckoutPage() {
                   
                   {/* Continue Button */}
                   <Button
-                    onClick={() => {
-                      // For guests, check email
-                      if (!currentUser) {
-                        const email = (window as any).__guestPickupEmail
-                        if (!email || !email.includes('@')) {
-                          toast({
-                            title: "Email required",
-                            description: "Please enter a valid email address",
-                            variant: "destructive",
-                          })
-                          return
-                        }
-                      }
-                      handlePickupConfirmed()
-                    }}
+                    onClick={handlePickupConfirmed}
                     className="w-full"
                     size="lg"
                     data-testid="button-continue-pickup"

@@ -119,9 +119,14 @@ export default function RestaurantMenu({
       const minOrder = serviceConfig?.delivery_min_order || 0;
       const slug = `${restaurant.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${restaurant.id}`;
       
-      setRestaurant(restaurant.id, restaurant.name, slug, deliveryFee, minOrder);
+      // Build restaurant address for pickup display
+      const address = location?.street_address 
+        ? `${location.street_address}${location.postal_code ? `, ${location.postal_code}` : ''}`
+        : undefined;
+      
+      setRestaurant(restaurant.id, restaurant.name, slug, deliveryFee, minOrder, address);
     }
-  }, [editorMode, restaurant.id, restaurant.name, restaurant.restaurant_delivery_zones, serviceConfig, setRestaurant]);
+  }, [editorMode, restaurant.id, restaurant.name, restaurant.restaurant_delivery_zones, serviceConfig, setRestaurant, location]);
   
   // Scroll to category section
   const scrollToCategory = (courseId: string) => {
