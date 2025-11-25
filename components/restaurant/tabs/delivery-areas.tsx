@@ -163,6 +163,12 @@ export function RestaurantDeliveryAreas({ restaurantId }: RestaurantDeliveryArea
         mapRef.current = map
         drawRef.current = draw
         setMapLoaded(true)
+        
+        // Trigger resize after a short delay to ensure container is fully rendered
+        setTimeout(() => {
+          map.resize()
+        }, 100)
+        
         console.log("[Delivery Areas] Map loaded successfully")
       })
 
@@ -178,7 +184,19 @@ export function RestaurantDeliveryAreas({ restaurantId }: RestaurantDeliveryArea
         setDrawnPolygon(feature)
       })
 
+      // Use ResizeObserver to handle container size changes
+      const resizeObserver = new ResizeObserver(() => {
+        if (mapRef.current) {
+          mapRef.current.resize()
+        }
+      })
+      
+      if (mapContainerRef.current) {
+        resizeObserver.observe(mapContainerRef.current)
+      }
+
       return () => {
+        resizeObserver.disconnect()
         mapRef.current = null
         drawRef.current = null
         setMapLoaded(false)
