@@ -48,11 +48,12 @@ export async function GET(
     console.log('[DELIVERY AREAS API] Areas sample:', JSON.stringify(areasData?.[0], null, 2))
     console.log('[DELIVERY AREAS API] Areas columns:', areasData?.[0] ? Object.keys(areasData[0]) : 'no data')
     
-    // Determine which table has data and which schema to use
-    const useZonesTable = (zonesData?.length || 0) > 0
-    const useAreasTable = !useZonesTable && (areasData?.length || 0) > 0
+    // PRIORITY: Use restaurant_delivery_areas (legacy) if it has data
+    // Only fall back to restaurant_delivery_zones if no legacy data exists
+    const useAreasTable = (areasData?.length || 0) > 0
+    const useZonesTable = !useAreasTable && (zonesData?.length || 0) > 0
     
-    console.log('[DELIVERY AREAS API] Using table:', useZonesTable ? 'zones' : useAreasTable ? 'areas' : 'none')
+    console.log('[DELIVERY AREAS API] Using table:', useAreasTable ? 'areas (legacy)' : useZonesTable ? 'zones' : 'none')
     
     if (zonesError && areasError) {
       throw new Error(`Both tables failed: zones=${zonesError.message}, areas=${areasError.message}`)
@@ -111,39 +112,103 @@ export async function POST(
   try {
     await verifyAdminAuth(request)
     const supabase = createAdminClient()
+    const restaurantId = parseInt(params.id)
     
     const body = await request.json()
     const validatedData = deliveryAreaSchema.parse(body)
     
-    const { data, error } = await supabase
+    // Check if restaurant has legacy data in restaurant_delivery_areas
+    const { data: areasData } = await supabase
       .schema('menuca_v3')
-      .from('restaurant_delivery_zones')
-      .insert({
-        restaurant_id: parseInt(params.id),
-        zone_name: validatedData.name,
-        zone_geometry: validatedData.polygon,
-        delivery_fee_cents: Math.round(validatedData.delivery_fee * 100),
-        minimum_order_cents: validatedData.min_order !== undefined ? Math.round(validatedData.min_order * 100) : null,
-        estimated_delivery_minutes: 30,
-        is_active: validatedData.is_active ?? true,
-      })
-      .select()
-      .single()
+      .from('restaurant_delivery_areas')
+      .select('id')
+      .eq('restaurant_id', restaurantId)
+      .limit(1)
     
-    if (error) {
-      throw error
-    }
+    const useLegacyTable = (areasData?.length || 0) > 0
+    console.log('[DELIVERY AREAS API] POST - Using table:', useLegacyTable ? 'areas (legacy)' : 'zones')
     
-    const transformed = {
-      id: data.id,
-      restaurant_id: data.restaurant_id,
-      name: data.zone_name,
-      description: null,
-      delivery_fee: data.delivery_fee_cents / 100,
-      min_order: data.minimum_order_cents !== null ? data.minimum_order_cents / 100 : null,
-      polygon: data.zone_geometry,
-      is_active: data.is_active,
-      created_at: data.created_at
+    let transformed: any
+    
+    if (useLegacyTable) {
+      // Insert into restaurant_delivery_areas (legacy table)
+      // Get max area_number for this restaurant
+      const { data: maxArea } = await supabase
+        .schema('menuca_v3')
+        .from('restaurant_delivery_areas')
+        .select('area_number')
+        .eq('restaurant_id', restaurantId)
+        .order('area_number', { ascending: false })
+        .limit(1)
+      
+      const nextAreaNumber = (maxArea?.[0]?.area_number || 0) + 1
+      
+      const { data, error } = await supabase
+        .schema('menuca_v3')
+        .from('restaurant_delivery_areas')
+        .insert({
+          restaurant_id: restaurantId,
+          area_number: nextAreaNumber,
+          area_name: validatedData.name,
+          display_name: validatedData.name,
+          geometry: validatedData.polygon,
+          delivery_fee: validatedData.delivery_fee,
+          min_order_value: validatedData.min_order || null,
+          notes: validatedData.description || null,
+          is_active: validatedData.is_active ?? true,
+        })
+        .select()
+        .single()
+      
+      if (error) {
+        console.error('[DELIVERY AREAS API] POST error:', error)
+        throw error
+      }
+      
+      transformed = {
+        id: data.id,
+        restaurant_id: data.restaurant_id,
+        name: data.display_name || data.area_name,
+        description: data.notes,
+        delivery_fee: data.delivery_fee || 0,
+        min_order: data.min_order_value,
+        polygon: data.geometry,
+        is_active: data.is_active,
+        created_at: data.created_at
+      }
+    } else {
+      // Insert into restaurant_delivery_zones (new table)
+      const { data, error } = await supabase
+        .schema('menuca_v3')
+        .from('restaurant_delivery_zones')
+        .insert({
+          restaurant_id: restaurantId,
+          zone_name: validatedData.name,
+          zone_geometry: validatedData.polygon,
+          delivery_fee_cents: Math.round(validatedData.delivery_fee * 100),
+          minimum_order_cents: validatedData.min_order !== undefined ? Math.round(validatedData.min_order * 100) : null,
+          estimated_delivery_minutes: 30,
+          is_active: validatedData.is_active ?? true,
+        })
+        .select()
+        .single()
+      
+      if (error) {
+        console.error('[DELIVERY AREAS API] POST error:', error)
+        throw error
+      }
+      
+      transformed = {
+        id: data.id,
+        restaurant_id: data.restaurant_id,
+        name: data.zone_name,
+        description: null,
+        delivery_fee: data.delivery_fee_cents / 100,
+        min_order: data.minimum_order_cents !== null ? data.minimum_order_cents / 100 : null,
+        polygon: data.zone_geometry,
+        is_active: data.is_active,
+        created_at: data.created_at
+      }
     }
     
     return NextResponse.json(transformed)
@@ -157,6 +222,7 @@ export async function POST(
         details: error.errors 
       }, { status: 400 })
     }
+    console.error('[DELIVERY AREAS API] POST failed:', error)
     return NextResponse.json({ 
       error: error.message || 'Failed to create delivery area' 
     }, { status: 500 })
