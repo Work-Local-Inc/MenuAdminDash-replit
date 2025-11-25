@@ -75,20 +75,20 @@ export async function GET(
       }))
     } else if (useAreasTable && areasData) {
       // Transform from restaurant_delivery_areas schema
-      // Column names may be different - let's map them correctly
+      // Actual columns: id, uuid, restaurant_id, area_number, area_name, display_name, 
+      // fee_type, delivery_fee, conditional_fee, conditional_threshold, min_order_value,
+      // is_complex, coordinates, geometry, notes, is_active, created_at, etc.
       transformed = areasData.map((area: any) => ({
         id: area.id,
         restaurant_id: area.restaurant_id,
-        name: area.name || area.area_name || area.zone_name || `Area ${area.id}`,
-        description: area.description || null,
-        // Try different column names for delivery fee
-        delivery_fee: (area.delivery_fee_cents || area.delivery_fee || 0) / (area.delivery_fee_cents ? 100 : 1),
-        min_order: area.minimum_order_cents 
-          ? area.minimum_order_cents / 100 
-          : area.min_order || area.minimum_order || null,
-        // Try different column names for geometry
-        polygon: area.geometry || area.zone_geometry || area.polygon || area.geojson || null,
-        is_active: area.is_active ?? area.active ?? true,
+        name: area.display_name || area.area_name || `Delivery Zone ${area.area_number || area.id}`,
+        description: area.notes || null,
+        // delivery_fee is already in dollars (not cents)
+        delivery_fee: area.delivery_fee || 0,
+        min_order: area.min_order_value || null,
+        // geometry column contains the polygon data
+        polygon: area.geometry || null,
+        is_active: area.is_active ?? true,
         created_at: area.created_at
       }))
     }

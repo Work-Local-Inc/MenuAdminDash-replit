@@ -181,15 +181,18 @@ export function RestaurantDeliveryAreas({ restaurantId }: RestaurantDeliveryArea
   }, [])
 
   useEffect(() => {
-    if (!mapRef.current || !drawRef.current) return
+    // Only update map if we have refs and areas
+    if (!mapRef.current || !drawRef.current || areas.length === 0) return
+    
+    // Skip if currently editing
+    if (showAreaDialog || selectedArea) return
 
-    // Only update map if we have areas and not currently editing
-    if (areas.length > 0 && !showAreaDialog && !selectedArea) {
+    try {
       drawRef.current.deleteAll()
 
       areas.forEach((area) => {
-        if (area.polygon) {
-          drawRef.current!.add({
+        if (area.polygon && drawRef.current) {
+          drawRef.current.add({
             type: "Feature",
             properties: {
               id: area.id,
@@ -200,6 +203,8 @@ export function RestaurantDeliveryAreas({ restaurantId }: RestaurantDeliveryArea
           })
         }
       })
+    } catch (error) {
+      console.error("[Delivery Areas] Error updating map:", error)
     }
   }, [areas, showAreaDialog, selectedArea])
 
