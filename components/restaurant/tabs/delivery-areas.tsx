@@ -378,9 +378,9 @@ export function RestaurantDeliveryAreas({ restaurantId }: RestaurantDeliveryArea
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4">
-        <Card>
+        <Card className="overflow-hidden">
           <CardContent className="p-0">
-            <div ref={mapContainerRef} className="h-[380px] rounded-lg" data-testid="map-container" />
+            <div ref={mapContainerRef} className="w-full h-[380px]" data-testid="map-container" />
           </CardContent>
         </Card>
 
