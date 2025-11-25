@@ -156,15 +156,15 @@ export function RestaurantDeliveryAreas({ restaurantId }: RestaurantDeliveryArea
       map.addControl(draw)
       map.addControl(new mapboxgl.NavigationControl(), "top-right")
 
-      map.on("draw.create", (e) => {
-        const feature = e.features[0]
+      map.on("draw.create", (e: any) => {
+        const feature = e.features?.[0]
         setDrawnPolygon(feature)
         setIsDrawing(false)
         setShowAreaDialog(true)
       })
 
-      map.on("draw.update", (e) => {
-        const feature = e.features[0]
+      map.on("draw.update", (e: any) => {
+        const feature = e.features?.[0]
         setDrawnPolygon(feature)
       })
 
