@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -11,6 +11,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { useToast } from '@/hooks/use-toast'
 import { Plus, MapPin, Check, Shield, UserCircle } from 'lucide-react'
 import { GooglePlacesAutocomplete } from './google-places-autocomplete'
+import { DeliveryMapPreview } from './delivery-map-preview'
+import { useCartStore } from '@/lib/stores/cart-store'
 import Link from 'next/link'
 
 interface DeliveryAddress {
@@ -25,6 +27,15 @@ interface DeliveryAddress {
   postal_code: string
   delivery_instructions?: string
   email?: string // For guest checkouts
+  latitude?: number
+  longitude?: number
+}
+
+interface DeliveryZone {
+  id: number
+  name: string
+  delivery_fee: number
+  min_order: number | null
 }
 
 interface CheckoutAddressFormProps {
@@ -36,6 +47,7 @@ interface CheckoutAddressFormProps {
 export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick }: CheckoutAddressFormProps) {
   const { toast } = useToast()
   const [supabase] = useState(() => createClient())
+  const { restaurantId, setDeliveryFee, setMinOrder } = useCartStore()
   
   // Derive guest status from userId
   const isGuest = !userId
@@ -55,6 +67,26 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick 
   const [postalCode, setPostalCode] = useState('')
   const [deliveryInstructions, setDeliveryInstructions] = useState('')
   const [addressLabel, setAddressLabel] = useState('')
+  const [latitude, setLatitude] = useState<number | undefined>()
+  const [longitude, setLongitude] = useState<number | undefined>()
+  
+  // Delivery zone validation
+  const [validatedZone, setValidatedZone] = useState<DeliveryZone | null>(null)
+  const [isWithinDeliveryArea, setIsWithinDeliveryArea] = useState<boolean | null>(null)
+  
+  // Handle zone validation callback
+  const handleZoneValidated = useCallback((zone: DeliveryZone | null, isWithin: boolean) => {
+    setValidatedZone(zone)
+    setIsWithinDeliveryArea(isWithin)
+    
+    // Update cart store with delivery fee from zone
+    if (zone) {
+      setDeliveryFee(zone.delivery_fee)
+      if (zone.min_order) {
+        setMinOrder(zone.min_order)
+      }
+    }
+  }, [setDeliveryFee, setMinOrder])
 
   useEffect(() => {
     if (!isGuest && userId) {
@@ -135,6 +167,8 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick 
           postal_code: postalCode.toUpperCase().replace(/\s/g, ''),
           delivery_instructions: deliveryInstructions || undefined,
           email: email,
+          latitude: latitude,
+          longitude: longitude,
           // DO NOT include city_id for guests
         }
         
@@ -412,6 +446,8 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick 
                   setCity(address.city)
                   setProvince(address.province)
                   setPostalCode(address.postal_code)
+                  setLatitude(address.latitude)
+                  setLongitude(address.longitude)
                 }}
                 placeholder="Start typing your address..."
                 testId="input-street-address"
@@ -467,9 +503,23 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick 
               />
             </div>
 
+            {/* Delivery Map Preview - Show after address is selected from Google Places */}
+            {latitude && longitude && restaurantId && (
+              <div className="mt-4">
+                <Label className="text-base font-semibold mb-2 block">Delivery Location</Label>
+                <DeliveryMapPreview
+                  latitude={latitude}
+                  longitude={longitude}
+                  address={`${streetAddress}${city ? `, ${city}` : ''}${province ? `, ${province}` : ''} ${postalCode}`}
+                  restaurantId={restaurantId}
+                  onZoneValidated={handleZoneValidated}
+                />
+              </div>
+            )}
+
             <Button
               onClick={handleSubmitAddress}
-              disabled={submitting}
+              disabled={submitting || (isWithinDeliveryArea === false)}
               className="w-full"
               size="lg"
               data-testid={isGuest ? "button-guest-continue" : "button-save-new-address"}

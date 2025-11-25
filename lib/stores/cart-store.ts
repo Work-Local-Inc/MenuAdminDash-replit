@@ -33,6 +33,8 @@ interface CartStore {
   
   // Actions
   setRestaurant: (id: number, name: string, slug: string, deliveryFee: number, minOrder: number) => void;
+  setDeliveryFee: (fee: number) => void;
+  setMinOrder: (minOrder: number) => void;
   addItem: (item: Omit<CartItem, 'id' | 'subtotal'>) => void;
   removeItem: (itemId: string) => void;
   updateQuantity: (itemId: string, quantity: number) => void;
@@ -129,6 +131,16 @@ export const useCartStore = create<CartStore>()(
             minOrder,
           });
         }
+      },
+      
+      // Update delivery fee (from zone validation)
+      setDeliveryFee: (fee) => {
+        set({ deliveryFee: fee });
+      },
+      
+      // Update min order (from zone validation)
+      setMinOrder: (minOrder) => {
+        set({ minOrder });
       },
       
       // Add item to cart

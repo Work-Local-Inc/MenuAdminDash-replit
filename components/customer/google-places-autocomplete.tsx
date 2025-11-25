@@ -13,6 +13,8 @@ interface GooglePlacesAutocompleteProps {
     province: string
     postal_code: string
     country: string
+    latitude?: number
+    longitude?: number
   }) => void
   value: string
   onChange: (value: string) => void
@@ -55,7 +57,7 @@ export function GooglePlacesAutocomplete({
     // Initialize Google Places Autocomplete
     autocompleteRef.current = new google.maps.places.Autocomplete(inputRef.current, {
       componentRestrictions: { country: "ca" }, // Restrict to Canada
-      fields: ["address_components", "formatted_address"],
+      fields: ["address_components", "formatted_address", "geometry"],
       types: ["address"],
     })
 
@@ -70,12 +72,22 @@ export function GooglePlacesAutocomplete({
       console.log('[Google Places] Place selected:', place.formatted_address)
 
       const components = place.address_components
-      const addressData = {
+      const addressData: {
+        street_address: string
+        city: string
+        province: string
+        postal_code: string
+        country: string
+        latitude?: number
+        longitude?: number
+      } = {
         street_address: '',
         city: '',
         province: '',
         postal_code: '',
-        country: 'Canada'
+        country: 'Canada',
+        latitude: place.geometry?.location?.lat(),
+        longitude: place.geometry?.location?.lng(),
       }
 
       // Parse address components
