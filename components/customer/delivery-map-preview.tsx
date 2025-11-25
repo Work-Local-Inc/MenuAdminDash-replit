@@ -3,11 +3,10 @@
 import { useEffect, useRef, useState } from "react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, MapPin, CheckCircle, AlertCircle, DollarSign, ShoppingCart } from "lucide-react"
-import mapboxgl from "mapbox-gl"
+import { Loader2, MapPin, CheckCircle, AlertCircle, DollarSign, ShoppingCart, MapIcon } from "lucide-react"
 import "mapbox-gl/dist/mapbox-gl.css"
 
-mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!
+const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN
 
 const ZONE_COLORS = [
   { fill: '#3b82f6', stroke: '#1d4ed8', name: 'Blue' },
@@ -26,8 +25,8 @@ interface DeliveryZone {
   delivery_fee: number
   min_order: number | null
   polygon: {
-    type: 'Polygon'
-    coordinates: number[][][]
+    type: string
+    coordinates: any
   }
 }
 
@@ -47,42 +46,64 @@ export function DeliveryMapPreview({
   onZoneValidated 
 }: DeliveryMapPreviewProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null)
-  const mapRef = useRef<mapboxgl.Map | null>(null)
-  const markerRef = useRef<mapboxgl.Marker | null>(null)
+  const mapRef = useRef<any>(null)
+  const markerRef = useRef<any>(null)
   
   const [zones, setZones] = useState<DeliveryZone[]>([])
   const [matchedZone, setMatchedZone] = useState<DeliveryZone | null>(null)
   const [isWithinDeliveryArea, setIsWithinDeliveryArea] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(true)
   const [mapLoaded, setMapLoaded] = useState(false)
+  const [mapboxLoaded, setMapboxLoaded] = useState(false)
+  const [mapError, setMapError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!mapContainerRef.current || mapRef.current) return
-
-    const map = new mapboxgl.Map({
-      container: mapContainerRef.current,
-      style: "mapbox://styles/mapbox/streets-v12",
-      center: [longitude, latitude],
-      zoom: 13,
-      interactive: true,
-      attributionControl: false,
-    })
-
-    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "top-right")
-
-    map.on("load", () => {
-      mapRef.current = map
-      setMapLoaded(true)
-    })
-
-    return () => {
-      if (markerRef.current) {
-        markerRef.current.remove()
-      }
-      map.remove()
-      mapRef.current = null
+    if (!MAPBOX_TOKEN) {
+      setMapError('Map configuration missing')
+      setLoading(false)
+      return
     }
+
+    import('mapbox-gl').then((mapboxgl) => {
+      mapboxgl.default.accessToken = MAPBOX_TOKEN
+      setMapboxLoaded(true)
+    }).catch(() => {
+      setMapError('Failed to load map')
+      setLoading(false)
+    })
   }, [])
+
+  useEffect(() => {
+    if (!mapContainerRef.current || mapRef.current || !mapboxLoaded || !MAPBOX_TOKEN) return
+
+    import('mapbox-gl').then((mapboxgl) => {
+      if (!mapContainerRef.current) return
+
+      const map = new mapboxgl.default.Map({
+        container: mapContainerRef.current,
+        style: "mapbox://styles/mapbox/streets-v12",
+        center: [longitude, latitude],
+        zoom: 13,
+        interactive: true,
+        attributionControl: false,
+      })
+
+      map.addControl(new mapboxgl.default.NavigationControl({ showCompass: false }), "top-right")
+
+      map.on("load", () => {
+        mapRef.current = map
+        setMapLoaded(true)
+      })
+
+      return () => {
+        if (markerRef.current) {
+          markerRef.current.remove()
+        }
+        map.remove()
+        mapRef.current = null
+      }
+    })
+  }, [mapboxLoaded, latitude, longitude])
 
   useEffect(() => {
     const fetchZones = async () => {
@@ -90,7 +111,9 @@ export function DeliveryMapPreview({
         const response = await fetch(`/api/customer/validate-delivery?restaurantId=${restaurantId}&lat=${latitude}&lng=${longitude}`)
         
         if (!response.ok) {
-          throw new Error('Failed to fetch delivery zones')
+          const errorData = await response.json().catch(() => ({}))
+          console.error('[DeliveryMap] API error:', errorData)
+          throw new Error(errorData.error || 'Failed to fetch delivery zones')
         }
         
         const data = await response.json()
@@ -104,6 +127,9 @@ export function DeliveryMapPreview({
       } catch (error) {
         console.error('[DeliveryMap] Error fetching zones:', error)
         setIsWithinDeliveryArea(false)
+        if (onZoneValidated) {
+          onZoneValidated(null, false)
+        }
       } finally {
         setLoading(false)
       }
@@ -116,43 +142,45 @@ export function DeliveryMapPreview({
 
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !mapLoaded) return
+    if (!map || !mapLoaded || !mapboxLoaded) return
 
-    map.flyTo({
-      center: [longitude, latitude],
-      zoom: 13,
-      duration: 1000,
+    import('mapbox-gl').then((mapboxgl) => {
+      map.flyTo({
+        center: [longitude, latitude],
+        zoom: 13,
+        duration: 1000,
+      })
+
+      if (markerRef.current) {
+        markerRef.current.setLngLat([longitude, latitude])
+      } else {
+        const el = document.createElement('div')
+        el.className = 'delivery-marker'
+        el.innerHTML = `
+          <div style="
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            border: 3px solid white;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          ">
+            <svg style="transform: rotate(45deg); width: 20px; height: 20px; color: white;" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+            </svg>
+          </div>
+        `
+        
+        markerRef.current = new mapboxgl.default.Marker({ element: el, anchor: 'bottom' })
+          .setLngLat([longitude, latitude])
+          .addTo(map)
+      }
     })
-
-    if (markerRef.current) {
-      markerRef.current.setLngLat([longitude, latitude])
-    } else {
-      const el = document.createElement('div')
-      el.className = 'delivery-marker'
-      el.innerHTML = `
-        <div style="
-          width: 40px;
-          height: 40px;
-          background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-          border-radius: 50% 50% 50% 0;
-          transform: rotate(-45deg);
-          border: 3px solid white;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        ">
-          <svg style="transform: rotate(45deg); width: 20px; height: 20px; color: white;" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-          </svg>
-        </div>
-      `
-      
-      markerRef.current = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
-        .setLngLat([longitude, latitude])
-        .addTo(map)
-    }
-  }, [latitude, longitude, mapLoaded])
+  }, [latitude, longitude, mapLoaded, mapboxLoaded])
 
   useEffect(() => {
     const map = mapRef.current
@@ -202,10 +230,20 @@ export function DeliveryMapPreview({
       }
     })
 
-    if (zones.length > 0 && zones[0].polygon?.coordinates) {
-      const allCoords = zones.flatMap(zone => 
-        zone.polygon?.coordinates?.[0] || []
-      )
+    if (zones.length > 0) {
+      const allCoords: number[][] = []
+      zones.forEach(zone => {
+        if (zone.polygon?.coordinates) {
+          const coords = zone.polygon.coordinates
+          if (zone.polygon.type === 'Polygon' && coords[0]) {
+            allCoords.push(...coords[0])
+          } else if (zone.polygon.type === 'MultiPolygon') {
+            coords.forEach((poly: number[][][]) => {
+              if (poly[0]) allCoords.push(...poly[0])
+            })
+          }
+        }
+      })
       
       if (allCoords.length > 0) {
         const bounds = allCoords.reduce((bounds, coord) => {
@@ -232,11 +270,26 @@ export function DeliveryMapPreview({
 
   return (
     <Card className="overflow-hidden" data-testid="delivery-map-preview">
-      <div 
-        ref={mapContainerRef} 
-        className="w-full h-48 relative"
-        data-testid="delivery-map-container"
-      />
+      {mapError ? (
+        <div className="w-full h-48 bg-muted flex items-center justify-center">
+          <div className="text-center text-muted-foreground">
+            <MapIcon className="w-8 h-8 mx-auto mb-2 opacity-50" />
+            <p className="text-sm">Map preview unavailable</p>
+          </div>
+        </div>
+      ) : (
+        <div 
+          ref={mapContainerRef} 
+          className="w-full h-48 relative bg-muted"
+          data-testid="delivery-map-container"
+        >
+          {!mapLoaded && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            </div>
+          )}
+        </div>
+      )}
       
       <div className="p-4 space-y-3">
         <div className="flex items-start gap-3">
@@ -273,6 +326,13 @@ export function DeliveryMapPreview({
                 </Badge>
               )}
             </div>
+          </div>
+        ) : zones.length === 0 ? (
+          <div className="flex items-center gap-2">
+            <CheckCircle className="w-4 h-4 text-green-600" />
+            <span className="text-sm text-green-700" data-testid="text-no-zones">
+              No delivery zone restrictions
+            </span>
           </div>
         ) : (
           <div className="flex items-center gap-2">
