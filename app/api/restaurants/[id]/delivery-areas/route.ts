@@ -36,13 +36,12 @@ export async function GET(
     console.log('[DELIVERY AREAS API] Restaurant ID:', params.id)
     console.log('[DELIVERY AREAS API] Zones table:', { count: zonesData?.length || 0, error: zonesError?.message })
     
-    // Try restaurant_delivery_areas as fallback
+    // Try restaurant_delivery_areas as fallback (no deleted_at column in this table)
     const { data: areasData, error: areasError } = await supabase
       .schema('menuca_v3')
       .from('restaurant_delivery_areas')
       .select('*')
       .eq('restaurant_id', parseInt(params.id))
-      .is('deleted_at', null)
       .order('created_at', { ascending: false })
     
     console.log('[DELIVERY AREAS API] Areas table:', { count: areasData?.length || 0, error: areasError?.message })
