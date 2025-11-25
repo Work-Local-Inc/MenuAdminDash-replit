@@ -21,14 +21,19 @@ export async function GET(
     // Use admin client to fetch order (bypasses RLS, but we validate access below)
     const supabase = createAdminClient()
 
-    // Fetch order with restaurant details (only query existing columns)
+    // Fetch order with restaurant details (include address info for pickup)
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .select(`
         *,
         restaurant:restaurants(
           id,
-          name
+          name,
+          phone,
+          address,
+          city,
+          province,
+          postal_code
         )
       `)
       .eq('id', orderId)
@@ -40,6 +45,7 @@ export async function GET(
           guest_email: string | null
           guest_name: string | null
           restaurant_id: number
+          order_type: 'delivery' | 'pickup'
           payment_status: string
           stripe_payment_intent_id: string
           total_amount: string
@@ -53,6 +59,11 @@ export async function GET(
           restaurant: {
             id: number
             name: string
+            phone?: string
+            address?: string
+            city?: string
+            province?: string
+            postal_code?: string
           }
         } | null
         error: any 
@@ -137,6 +148,19 @@ export async function GET(
       })) || []
     }))
     
+    // Parse delivery_address JSONB - includes service_time for scheduled orders
+    const parsedDeliveryAddress = typeof order.delivery_address === 'string' 
+      ? JSON.parse(order.delivery_address) 
+      : order.delivery_address
+    
+    // Debug: Log what we're returning
+    console.log('[Order API] Order details:', {
+      order_id: order.id,
+      order_type: order.order_type,
+      service_time: parsedDeliveryAddress?.service_time,
+      has_delivery_address: !!parsedDeliveryAddress
+    })
+    
     const parsedOrder = {
       ...order,
       total_amount: typeof order.total_amount === 'string' ? parseFloat(order.total_amount) : order.total_amount,
@@ -144,9 +168,7 @@ export async function GET(
       delivery_fee: typeof order.delivery_fee === 'string' ? parseFloat(order.delivery_fee) : order.delivery_fee,
       tax_amount: typeof order.tax_amount === 'string' ? parseFloat(order.tax_amount) : order.tax_amount,
       items: parsedItems,
-      delivery_address: typeof order.delivery_address === 'string' 
-        ? JSON.parse(order.delivery_address) 
-        : order.delivery_address,
+      delivery_address: parsedDeliveryAddress,
       current_status: statusHistory?.status || 'pending',
     }
 

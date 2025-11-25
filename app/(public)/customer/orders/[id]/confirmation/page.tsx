@@ -27,6 +27,11 @@ interface OrderItem {
   }>
 }
 
+interface ServiceTime {
+  type: 'asap' | 'scheduled'
+  scheduledTime?: string
+}
+
 interface DeliveryAddress {
   name?: string
   street?: string
@@ -37,6 +42,7 @@ interface DeliveryAddress {
   province?: string
   postal_code?: string
   delivery_instructions?: string
+  service_time?: ServiceTime
 }
 
 interface Restaurant {
@@ -56,6 +62,7 @@ interface Order {
   guest_email: string | null
   guest_name: string | null
   restaurant_id: number
+  order_type: 'delivery' | 'pickup'
   payment_status: string
   stripe_payment_intent_id: string
   total_amount: string
@@ -186,7 +193,18 @@ export default function OrderConfirmationPage() {
   }
 
   const deliveryAddress = order.delivery_address
-  const estimatedDeliveryTime = '45-60 minutes'
+  const isPickup = order.order_type === 'pickup'
+  const serviceTime = deliveryAddress?.service_time
+  
+  // Format the estimated time based on ASAP vs scheduled
+  const getEstimatedTimeText = () => {
+    if (serviceTime?.type === 'scheduled' && serviceTime.scheduledTime) {
+      const scheduledDate = new Date(serviceTime.scheduledTime)
+      return format(scheduledDate, 'MMM d, yyyy \'at\' h:mm a')
+    }
+    return isPickup ? 'ASAP (Ready for pickup)' : 'ASAP (45-60 minutes)'
+  }
+  const estimatedDeliveryTime = getEstimatedTimeText()
 
   return (
     <>
@@ -213,7 +231,9 @@ export default function OrderConfirmationPage() {
                 </div>
                 <Separator orientation="vertical" className="hidden sm:block h-12" />
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1">Estimated Delivery</p>
+                  <p className="text-sm text-muted-foreground mb-1">
+                    {isPickup ? 'Pickup Time' : 'Estimated Delivery'}
+                  </p>
                   <p className="text-lg font-semibold text-primary" data-testid="text-estimated-delivery">
                     {estimatedDeliveryTime}
                   </p>
@@ -246,9 +266,14 @@ export default function OrderConfirmationPage() {
                     <Clock className="w-5 h-5 text-primary" />
                   </div>
                   <div className="flex-1">
-                    <p className="font-medium mb-1">Estimated delivery: {estimatedDeliveryTime}</p>
+                    <p className="font-medium mb-1">
+                      {isPickup ? `Ready for pickup: ${estimatedDeliveryTime}` : `Estimated delivery: ${estimatedDeliveryTime}`}
+                    </p>
                     <p className="text-sm text-muted-foreground">
-                      Your food will be delivered to {deliveryAddress.street || deliveryAddress.street_address}.
+                      {isPickup 
+                        ? `Head to ${order.restaurant.name} to pick up your order.`
+                        : `Your food will be delivered to ${deliveryAddress.street || deliveryAddress.street_address}.`
+                      }
                     </p>
                   </div>
                 </div>
@@ -299,32 +324,58 @@ export default function OrderConfirmationPage() {
                 </CardContent>
               </Card>
 
-              {/* Delivery Information */}
+              {/* Delivery/Pickup Information */}
               <Card data-testid="card-delivery-info">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <MapPin className="w-5 h-5" />
-                    Delivery Address
+                    {isPickup ? <Store className="w-5 h-5" /> : <MapPin className="w-5 h-5" />}
+                    {isPickup ? 'Pickup Location' : 'Delivery Address'}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  {deliveryAddress.name && (
-                    <p className="font-medium">{deliveryAddress.name}</p>
-                  )}
-                  <p className="text-sm">
-                    {deliveryAddress.street || deliveryAddress.street_address}
-                    {deliveryAddress.unit && `, Unit ${deliveryAddress.unit}`}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {deliveryAddress.city || deliveryAddress.city_name}, {deliveryAddress.province} {deliveryAddress.postal_code}
-                  </p>
-                  {(deliveryAddress.delivery_instructions || order.delivery_instructions) && (
-                    <div className="mt-3 pt-3 border-t">
-                      <p className="text-xs font-medium text-muted-foreground mb-1">Delivery Instructions:</p>
+                  {isPickup ? (
+                    <>
+                      <p className="font-medium text-lg">{order.restaurant.name}</p>
+                      {order.restaurant.address && (
+                        <p className="text-sm">
+                          {order.restaurant.address}
+                        </p>
+                      )}
+                      {(order.restaurant.city || order.restaurant.province) && (
+                        <p className="text-sm text-muted-foreground">
+                          {order.restaurant.city && order.restaurant.city}
+                          {order.restaurant.province && `, ${order.restaurant.province}`}
+                          {order.restaurant.postal_code && ` ${order.restaurant.postal_code}`}
+                        </p>
+                      )}
+                      {order.restaurant.phone && (
+                        <p className="text-sm text-muted-foreground flex items-center gap-2 mt-2">
+                          <Phone className="w-4 h-4" />
+                          {order.restaurant.phone}
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {deliveryAddress.name && (
+                        <p className="font-medium">{deliveryAddress.name}</p>
+                      )}
                       <p className="text-sm">
-                        {deliveryAddress.delivery_instructions || order.delivery_instructions}
+                        {deliveryAddress.street || deliveryAddress.street_address}
+                        {deliveryAddress.unit && `, Unit ${deliveryAddress.unit}`}
                       </p>
-                    </div>
+                      <p className="text-sm text-muted-foreground">
+                        {deliveryAddress.city || deliveryAddress.city_name}, {deliveryAddress.province} {deliveryAddress.postal_code}
+                      </p>
+                      {(deliveryAddress.delivery_instructions || order.delivery_instructions) && (
+                        <div className="mt-3 pt-3 border-t">
+                          <p className="text-xs font-medium text-muted-foreground mb-1">Delivery Instructions:</p>
+                          <p className="text-sm">
+                            {deliveryAddress.delivery_instructions || order.delivery_instructions}
+                          </p>
+                        </div>
+                      )}
+                    </>
                   )}
                 </CardContent>
               </Card>
@@ -404,8 +455,12 @@ export default function OrderConfirmationPage() {
                     <span data-testid="text-subtotal">${parseFloat(order.subtotal).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Delivery Fee</span>
-                    <span data-testid="text-delivery-fee">${parseFloat(order.delivery_fee).toFixed(2)}</span>
+                    <span className="text-muted-foreground">
+                      {isPickup ? 'Pickup' : 'Delivery Fee'}
+                    </span>
+                    <span data-testid="text-delivery-fee" className={isPickup ? 'text-green-600' : ''}>
+                      {isPickup ? 'Free' : `$${parseFloat(order.delivery_fee).toFixed(2)}`}
+                    </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">HST (13%)</span>
