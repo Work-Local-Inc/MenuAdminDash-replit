@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
       .from('orders')
       .select('id')
       .eq('stripe_payment_intent_id', payment_intent_id)
-      .single() as { data: { id: number } | null }
+      .maybeSingle()
 
     if (existingOrder) {
       return NextResponse.json({ 
