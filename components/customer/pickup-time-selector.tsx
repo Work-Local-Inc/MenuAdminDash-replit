@@ -203,6 +203,15 @@ export function PickupTimeSelector({ className, schedules = [], orderType = 'pic
     ? availableSlots[selectedSlotIndex] 
     : null;
   
+  // Reset internal state when service type changes or pickupTime is reset to ASAP
+  useEffect(() => {
+    if (pickupTime.type === 'asap') {
+      // Reset to today and clear slot selection when switching to ASAP
+      setSelectedDate(format(new Date(), 'yyyy-MM-dd'));
+      setSelectedSlotIndex(-1);
+    }
+  }, [serviceType, pickupTime.type]);
+  
   useEffect(() => {
     if (pickupTime.type === 'scheduled' && pickupTime.scheduledTime) {
       const scheduledDateTime = new Date(pickupTime.scheduledTime);

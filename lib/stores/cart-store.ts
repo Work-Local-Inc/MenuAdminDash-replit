@@ -172,8 +172,16 @@ export const useCartStore = create<CartStore>()(
       },
       
       // Set order type (delivery or pickup)
+      // Reset pickupTime to ASAP when switching to avoid stale scheduled times
+      // that might not be valid for the new service type's schedule
       setOrderType: (type) => {
-        set({ orderType: type });
+        const currentType = get().orderType;
+        if (currentType !== type) {
+          // Reset to ASAP when switching order types
+          set({ orderType: type, pickupTime: { type: 'asap' } });
+        } else {
+          set({ orderType: type });
+        }
       },
       
       // Set pickup time
