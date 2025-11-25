@@ -127,9 +127,12 @@ export default function RestaurantMenu({
         ? `${streetAddress}${postalCode ? `, ${postalCode}` : ''}`
         : undefined;
       
-      setRestaurant(restaurant.id, restaurant.name, slug, deliveryFee, minOrder, address);
+      // Pass restaurant's primary color for branded checkout
+      const primaryColor = restaurant.primary_color || undefined;
+      
+      setRestaurant(restaurant.id, restaurant.name, slug, deliveryFee, minOrder, address, primaryColor);
     }
-  }, [editorMode, restaurant.id, restaurant.name, restaurant.restaurant_delivery_zones, serviceConfig, setRestaurant, streetAddress, postalCode]);
+  }, [editorMode, restaurant.id, restaurant.name, restaurant.restaurant_delivery_zones, serviceConfig, setRestaurant, streetAddress, postalCode, restaurant.primary_color]);
   
   // Scroll to category section
   const scrollToCategory = (courseId: string) => {

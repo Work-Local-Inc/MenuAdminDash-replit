@@ -34,14 +34,20 @@ interface CheckoutPaymentFormProps {
   deliveryAddress: DeliveryAddress
   userId?: string
   onBack: () => void
+  brandedButtonStyle?: React.CSSProperties // Restaurant branding
 }
 
-export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onBack }: CheckoutPaymentFormProps) {
+export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onBack, brandedButtonStyle }: CheckoutPaymentFormProps) {
   const stripe = useStripe()
   const elements = useElements()
   const router = useRouter()
   const { toast } = useToast()
-  const { clearCart, restaurantSlug } = useCartStore()
+  const { clearCart, restaurantSlug, restaurantPrimaryColor } = useCartStore()
+  
+  // Use passed style or create from store
+  const buttonStyle = brandedButtonStyle || (restaurantPrimaryColor 
+    ? { backgroundColor: restaurantPrimaryColor, borderColor: restaurantPrimaryColor }
+    : undefined)
   
   const [processing, setProcessing] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
@@ -318,6 +324,7 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
               className="flex-1"
               size="lg"
               data-testid="button-place-order"
+              style={buttonStyle}
             >
               {isLoading ? "Loading..." : processing ? "Processing..." : "Place Order"}
             </Button>

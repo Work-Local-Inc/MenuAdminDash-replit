@@ -33,6 +33,7 @@ interface CartStore {
   restaurantName: string | null;
   restaurantSlug: string | null;
   restaurantAddress: string | null; // For pickup display
+  restaurantPrimaryColor: string | null; // For branded checkout
   deliveryFee: number;
   minOrder: number;
   
@@ -44,7 +45,7 @@ interface CartStore {
   items: CartItem[];
   
   // Actions
-  setRestaurant: (id: number, name: string, slug: string, deliveryFee: number, minOrder: number, address?: string) => void;
+  setRestaurant: (id: number, name: string, slug: string, deliveryFee: number, minOrder: number, address?: string, primaryColor?: string) => void;
   setRestaurantAddress: (address: string) => void;
   setDeliveryFee: (fee: number) => void;
   setMinOrder: (minOrder: number) => void;
@@ -105,6 +106,7 @@ export const useCartStore = create<CartStore>()(
       restaurantName: null,
       restaurantSlug: null,
       restaurantAddress: null,
+      restaurantPrimaryColor: null,
       deliveryFee: 0,
       minOrder: 0,
       orderType: 'delivery' as OrderType,
@@ -112,7 +114,7 @@ export const useCartStore = create<CartStore>()(
       items: [],
       
       // Set restaurant info
-      setRestaurant: (id, name, slug, deliveryFee, minOrder, address) => {
+      setRestaurant: (id, name, slug, deliveryFee, minOrder, address, primaryColor) => {
         const currentRestaurantId = get().restaurantId;
         
         // If switching to a different restaurant with items in cart, confirm clear
@@ -137,6 +139,7 @@ export const useCartStore = create<CartStore>()(
             restaurantName: name,
             restaurantSlug: slug,
             restaurantAddress: address || null,
+            restaurantPrimaryColor: primaryColor || null,
             deliveryFee,
             minOrder,
             orderType: 'delivery',
@@ -150,6 +153,7 @@ export const useCartStore = create<CartStore>()(
             restaurantName: name,
             restaurantSlug: slug,
             restaurantAddress: address || get().restaurantAddress,
+            restaurantPrimaryColor: primaryColor || get().restaurantPrimaryColor,
             deliveryFee,
             minOrder,
           });

@@ -45,9 +45,10 @@ interface CheckoutAddressFormProps {
   userId?: number // Optional for guest checkout
   onAddressConfirmed: (address: DeliveryAddress) => void
   onSignInClick?: () => void // Optional callback for sign in button
+  brandedButtonStyle?: React.CSSProperties // Restaurant branding
 }
 
-export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick }: CheckoutAddressFormProps) {
+export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick, brandedButtonStyle }: CheckoutAddressFormProps) {
   const { toast } = useToast()
   const [supabase] = useState(() => createClient())
   const { restaurantId, setDeliveryFee, setMinOrder } = useCartStore()
@@ -464,6 +465,7 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick 
             className="w-full"
             size="lg"
             data-testid="button-continue-to-payment"
+            style={brandedButtonStyle}
           >
             Continue to Payment
           </Button>
@@ -626,6 +628,7 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick 
               className="w-full"
               size="lg"
               data-testid={isGuest ? "button-guest-continue" : "button-save-new-address"}
+              style={brandedButtonStyle}
             >
               <Check className="w-4 h-4 mr-2" />
               {submitting ? "Processing..." : (isGuest ? "Continue to Payment" : "Save & Continue to Payment")}

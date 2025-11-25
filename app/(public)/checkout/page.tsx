@@ -52,6 +52,7 @@ export default function CheckoutPage() {
     restaurantName, 
     restaurantSlug, 
     restaurantAddress,
+    restaurantPrimaryColor,
     getSubtotal, 
     getEffectiveDeliveryFee, 
     getTax, 
@@ -60,6 +61,11 @@ export default function CheckoutPage() {
     orderType,
     pickupTime
   } = useCartStore()
+  
+  // Create button style with restaurant's primary color
+  const brandedButtonStyle = restaurantPrimaryColor 
+    ? { backgroundColor: restaurantPrimaryColor, borderColor: restaurantPrimaryColor }
+    : undefined
   
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -394,6 +400,7 @@ export default function CheckoutPage() {
                   size="sm"
                   onClick={() => setShowSignInModal(true)}
                   data-testid="button-sign-in"
+                  style={brandedButtonStyle}
                 >
                   <LogIn className="w-4 h-4 mr-2" />
                   Sign In
@@ -453,6 +460,7 @@ export default function CheckoutPage() {
                 userId={currentUser?.id}
                 onAddressConfirmed={handleAddressConfirmed}
                 onSignInClick={() => setShowSignInModal(true)}
+                brandedButtonStyle={brandedButtonStyle}
               />
             )}
             
@@ -511,6 +519,7 @@ export default function CheckoutPage() {
                     className="w-full"
                     size="lg"
                     data-testid="button-continue-pickup"
+                    style={brandedButtonStyle}
                   >
                     Continue to Payment
                   </Button>
@@ -540,6 +549,7 @@ export default function CheckoutPage() {
                   deliveryAddress={selectedAddress}
                   userId={currentUser?.id?.toString()}
                   onBack={() => setStep('address')}
+                  brandedButtonStyle={brandedButtonStyle}
                 />
               </Elements>
             )}
