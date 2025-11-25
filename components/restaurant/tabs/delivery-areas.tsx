@@ -38,6 +38,17 @@ import {
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!
 
+const ZONE_COLORS = [
+  { fill: '#3b82f6', stroke: '#1d4ed8', name: 'Blue' },
+  { fill: '#10b981', stroke: '#059669', name: 'Green' },
+  { fill: '#f59e0b', stroke: '#d97706', name: 'Amber' },
+  { fill: '#ef4444', stroke: '#dc2626', name: 'Red' },
+  { fill: '#8b5cf6', stroke: '#7c3aed', name: 'Purple' },
+  { fill: '#ec4899', stroke: '#db2777', name: 'Pink' },
+  { fill: '#06b6d4', stroke: '#0891b2', name: 'Cyan' },
+  { fill: '#84cc16', stroke: '#65a30d', name: 'Lime' },
+]
+
 interface DeliveryArea {
   id: number
   restaurant_id: number
@@ -210,50 +221,149 @@ export function RestaurantDeliveryAreas({ restaurantId }: RestaurantDeliveryArea
 
   useEffect(() => {
     // Only update map if map is loaded and we have areas
-    if (!mapLoaded || !mapRef.current || !drawRef.current || areas.length === 0) return
+    if (!mapLoaded || !mapRef.current || !drawRef.current) return
     
     // Skip if currently editing
     if (showAreaDialog || selectedArea) return
 
+    const map = mapRef.current
+
     try {
+      // Clear MapboxDraw (only used for drawing new zones)
       drawRef.current.deleteAll()
+      
+      // Remove existing zone layers and sources
+      areas.forEach((_, index) => {
+        const layerId = `zone-fill-${index}`
+        const outlineId = `zone-outline-${index}`
+        const labelId = `zone-label-${index}`
+        const sourceId = `zone-source-${index}`
+        
+        if (map.getLayer(layerId)) map.removeLayer(layerId)
+        if (map.getLayer(outlineId)) map.removeLayer(outlineId)
+        if (map.getLayer(labelId)) map.removeLayer(labelId)
+        if (map.getSource(sourceId)) map.removeSource(sourceId)
+      })
+      
+      // Also clean up any extra layers from previous renders
+      for (let i = areas.length; i < areas.length + 10; i++) {
+        const layerId = `zone-fill-${i}`
+        const outlineId = `zone-outline-${i}`
+        const labelId = `zone-label-${i}`
+        const sourceId = `zone-source-${i}`
+        
+        if (map.getLayer(layerId)) map.removeLayer(layerId)
+        if (map.getLayer(outlineId)) map.removeLayer(outlineId)
+        if (map.getLayer(labelId)) map.removeLayer(labelId)
+        if (map.getSource(sourceId)) map.removeSource(sourceId)
+      }
+
+      if (areas.length === 0) return
 
       // Calculate bounds from all polygons
       let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity
       let hasPolygons = false
 
-      areas.forEach((area) => {
-        if (area.polygon && area.polygon.coordinates && drawRef.current) {
+      areas.forEach((area, index) => {
+        if (area.polygon && area.polygon.coordinates) {
           hasPolygons = true
+          const color = ZONE_COLORS[index % ZONE_COLORS.length]
+          const sourceId = `zone-source-${index}`
           
-          // Add polygon to map
-          drawRef.current.add({
-            type: "Feature",
-            properties: {
-              id: area.id,
-              name: area.name,
-              delivery_fee: area.delivery_fee,
-            },
-            geometry: area.polygon,
-          })
-          
-          // Calculate bounds from coordinates
-          const coords = area.polygon.coordinates[0] // First ring of polygon
-          if (coords) {
+          // Calculate centroid for label placement
+          const coords = area.polygon.coordinates[0]
+          let centroidLng = 0, centroidLat = 0
+          if (coords && coords.length > 0) {
             coords.forEach((coord: number[]) => {
+              centroidLng += coord[0]
+              centroidLat += coord[1]
               if (coord[0] < minLng) minLng = coord[0]
               if (coord[0] > maxLng) maxLng = coord[0]
               if (coord[1] < minLat) minLat = coord[1]
               if (coord[1] > maxLat) maxLat = coord[1]
             })
+            centroidLng /= coords.length
+            centroidLat /= coords.length
           }
+          
+          // Add source for this zone
+          map.addSource(sourceId, {
+            type: 'geojson',
+            data: {
+              type: 'Feature',
+              properties: {
+                id: area.id,
+                name: area.name,
+                delivery_fee: area.delivery_fee,
+              },
+              geometry: area.polygon,
+            }
+          })
+          
+          // Add fill layer
+          map.addLayer({
+            id: `zone-fill-${index}`,
+            type: 'fill',
+            source: sourceId,
+            paint: {
+              'fill-color': color.fill,
+              'fill-opacity': 0.25,
+            }
+          })
+          
+          // Add outline layer
+          map.addLayer({
+            id: `zone-outline-${index}`,
+            type: 'line',
+            source: sourceId,
+            paint: {
+              'line-color': color.stroke,
+              'line-width': 2,
+            }
+          })
+          
+          // Add label source and layer
+          const labelSourceId = `zone-label-source-${index}`
+          if (map.getSource(labelSourceId)) map.removeSource(labelSourceId)
+          
+          map.addSource(labelSourceId, {
+            type: 'geojson',
+            data: {
+              type: 'Feature',
+              properties: {
+                name: area.name,
+                fee: `$${area.delivery_fee.toFixed(2)}`,
+              },
+              geometry: {
+                type: 'Point',
+                coordinates: [centroidLng, centroidLat]
+              }
+            }
+          })
+          
+          map.addLayer({
+            id: `zone-label-${index}`,
+            type: 'symbol',
+            source: labelSourceId,
+            layout: {
+              'text-field': ['get', 'name'],
+              'text-size': 12,
+              'text-anchor': 'center',
+              'text-allow-overlap': false,
+            },
+            paint: {
+              'text-color': color.stroke,
+              'text-halo-color': '#ffffff',
+              'text-halo-width': 2,
+            }
+          })
         }
       })
       
       // Fit map to bounds if we have polygons
-      if (hasPolygons && mapRef.current && minLng !== Infinity) {
+      if (hasPolygons && minLng !== Infinity) {
         console.log("[Delivery Areas] Fitting map to bounds:", { minLng, maxLng, minLat, maxLat })
-        mapRef.current.fitBounds(
+        map.fitBounds(
           [[minLng, minLat], [maxLng, maxLat]],
           { padding: 50, duration: 1000 }
         )
@@ -412,51 +522,61 @@ export function RestaurantDeliveryAreas({ restaurantId }: RestaurantDeliveryArea
               {areas.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">No delivery areas yet</p>
               ) : (
-                areas.map((area) => (
-                  <div key={area.id} className="p-2 border rounded-md" data-testid={`area-${area.id}`}>
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <p className="font-medium text-sm truncate">{area.name}</p>
-                          {!area.is_active && <Badge variant="secondary" className="text-[10px] px-1 py-0">Off</Badge>}
+                areas.map((area, index) => {
+                  const color = ZONE_COLORS[index % ZONE_COLORS.length]
+                  return (
+                    <div key={area.id} className="p-2 border rounded-md" data-testid={`area-${area.id}`}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex gap-2 flex-1 min-w-0">
+                          <div 
+                            className="w-3 h-3 rounded-sm shrink-0 mt-0.5" 
+                            style={{ backgroundColor: color.fill, border: `2px solid ${color.stroke}` }}
+                            aria-label={`Zone color: ${color.name}`}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <p className="font-medium text-sm truncate">{area.name}</p>
+                              {!area.is_active && <Badge variant="secondary" className="text-[10px] px-1 py-0">Off</Badge>}
+                            </div>
+                            {area.description && (
+                              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{area.description}</p>
+                            )}
+                            <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+                              <span className="flex items-center gap-0.5">
+                                <DollarSign className="h-3 w-3" />
+                                ${area.delivery_fee.toFixed(2)}
+                              </span>
+                              {area.min_order && (
+                                <span className="flex items-center gap-0.5">
+                                  <ShoppingCart className="h-3 w-3" />
+                                  Min ${area.min_order.toFixed(2)}
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        {area.description && (
-                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{area.description}</p>
-                        )}
-                        <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-                          <span className="flex items-center gap-0.5">
-                            <DollarSign className="h-3 w-3" />
-                            ${area.delivery_fee.toFixed(2)}
-                          </span>
-                          {area.min_order && (
-                            <span className="flex items-center gap-0.5">
-                              <ShoppingCart className="h-3 w-3" />
-                              Min ${area.min_order.toFixed(2)}
-                            </span>
-                          )}
+                        <div className="flex gap-1 shrink-0">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEdit(area)} aria-label="Edit delivery area" data-testid={`button-edit-${area.id}`}>
+                                <Edit className="h-3.5 w-3.5" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Edit</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => handleDelete(area)} aria-label="Delete delivery area" data-testid={`button-delete-${area.id}`}>
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Delete</TooltipContent>
+                          </Tooltip>
                         </div>
-                      </div>
-                      <div className="flex gap-1 shrink-0">
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEdit(area)} aria-label="Edit delivery area" data-testid={`button-edit-${area.id}`}>
-                              <Edit className="h-3.5 w-3.5" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Edit</TooltipContent>
-                        </Tooltip>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => handleDelete(area)} aria-label="Delete delivery area" data-testid={`button-delete-${area.id}`}>
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Delete</TooltipContent>
-                        </Tooltip>
                       </div>
                     </div>
-                  </div>
-                ))
+                  )
+                })
               )}
             </div>
           </CardContent>
