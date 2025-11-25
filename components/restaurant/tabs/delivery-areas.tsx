@@ -364,78 +364,71 @@ export function RestaurantDeliveryAreas({ restaurantId }: RestaurantDeliveryArea
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold">Delivery Areas</h3>
           <p className="text-sm text-muted-foreground">Draw delivery zones and set fees</p>
         </div>
-        <Button onClick={startDrawing} disabled={isDrawing} data-testid="button-draw-area">
+        <Button size="sm" onClick={startDrawing} disabled={isDrawing} data-testid="button-draw-area">
           <Plus className="h-4 w-4 mr-2" />
           {isDrawing ? "Drawing..." : "Draw New Area"}
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <Card>
-            <CardContent className="p-0">
-              <div ref={mapContainerRef} className="h-[500px] rounded-lg" data-testid="map-container" />
-            </CardContent>
-          </Card>
-        </div>
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4">
+        <Card>
+          <CardContent className="p-0">
+            <div ref={mapContainerRef} className="h-[380px] rounded-lg" data-testid="map-container" />
+          </CardContent>
+        </Card>
 
-        <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Delivery Zones</CardTitle>
-              <CardDescription>{areas.length} area{areas.length !== 1 ? 's' : ''} configured</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
+        <Card className="h-fit max-h-[420px] overflow-hidden flex flex-col">
+          <CardHeader className="py-3 px-4">
+            <CardTitle className="text-sm">Delivery Zones</CardTitle>
+            <CardDescription className="text-xs">{areas.length} area{areas.length !== 1 ? 's' : ''} configured</CardDescription>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 pt-0 overflow-y-auto flex-1">
+            <div className="space-y-2">
               {areas.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">No delivery areas yet</p>
               ) : (
                 areas.map((area) => (
-                  <div key={area.id} className="p-3 border rounded-lg space-y-2" data-testid={`area-${area.id}`}>
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-1 flex-1">
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium text-sm">{area.name}</p>
-                          {!area.is_active && <Badge variant="secondary">Inactive</Badge>}
+                  <div key={area.id} className="p-2 border rounded-md" data-testid={`area-${area.id}`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <p className="font-medium text-sm truncate">{area.name}</p>
+                          {!area.is_active && <Badge variant="secondary" className="text-[10px] px-1 py-0">Off</Badge>}
                         </div>
-                        {area.description && (
-                          <p className="text-xs text-muted-foreground">{area.description}</p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <DollarSign className="h-3 w-3" />
-                        <span>${area.delivery_fee.toFixed(2)}</span>
-                      </div>
-                      {area.min_order && (
-                        <div className="flex items-center gap-1">
-                          <ShoppingCart className="h-3 w-3" />
-                          <span>Min: ${area.min_order.toFixed(2)}</span>
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+                          <span className="flex items-center gap-0.5">
+                            <DollarSign className="h-3 w-3" />
+                            ${area.delivery_fee.toFixed(2)}
+                          </span>
+                          {area.min_order && (
+                            <span className="flex items-center gap-0.5">
+                              <ShoppingCart className="h-3 w-3" />
+                              Min ${area.min_order.toFixed(2)}
+                            </span>
+                          )}
                         </div>
-                      )}
-                    </div>
-                    <div className="flex gap-2 pt-2">
-                      <Button variant="outline" size="sm" onClick={() => handleEdit(area)} data-testid={`button-edit-${area.id}`}>
-                        <Edit className="h-3 w-3 mr-1" />
-                        Edit
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={() => handleDelete(area)} data-testid={`button-delete-${area.id}`}>
-                        <Trash2 className="h-3 w-3 mr-1" />
-                        Delete
-                      </Button>
+                      </div>
+                      <div className="flex gap-1 shrink-0">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEdit(area)} data-testid={`button-edit-${area.id}`}>
+                          <Edit className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => handleDelete(area)} data-testid={`button-delete-${area.id}`}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ))
               )}
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <Dialog open={showAreaDialog} onOpenChange={(open) => { setShowAreaDialog(open); if (!open) resetForm(); }}>
