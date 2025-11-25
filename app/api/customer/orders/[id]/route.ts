@@ -29,11 +29,13 @@ export async function GET(
         restaurant:restaurants(
           id,
           name,
-          phone,
-          address,
-          city,
-          province,
-          postal_code
+          restaurant_locations(
+            street_address,
+            city,
+            province,
+            postal_code,
+            phone
+          )
         )
       `)
       .eq('id', orderId)
@@ -59,11 +61,13 @@ export async function GET(
           restaurant: {
             id: number
             name: string
-            phone?: string
-            address?: string
-            city?: string
-            province?: string
-            postal_code?: string
+            restaurant_locations?: Array<{
+              street_address?: string
+              city?: string
+              province?: string
+              postal_code?: string
+              phone?: string
+            }>
           }
         } | null
         error: any 
