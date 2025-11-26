@@ -18,6 +18,7 @@ interface RestaurantRecord {
   name: string;
   banner_image_url: string | null;
   logo_url: string | null;
+  logo_display_mode: 'icon_text' | 'full_logo' | null;
   primary_color: string | null;
   secondary_color: string | null;
   font_family: string | null;
@@ -39,6 +40,7 @@ const getRestaurant = cache(async (restaurantId: number) => {
       name,
       banner_image_url,
       logo_url,
+      logo_display_mode,
       primary_color,
       secondary_color,
       font_family,
