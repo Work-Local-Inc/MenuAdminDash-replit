@@ -151,6 +151,7 @@ export function RestaurantBranding({ restaurantId }: RestaurantBrandingProps) {
         logo_url: logoUrl || null,
         banner_image_url: bannerUrl || null,
         logo_display_mode: data.logo_display_mode || 'icon_text',
+        show_order_online_badge: data.show_order_online_badge || false,
         primary_color: data.primary_color || null,
         secondary_color: data.secondary_color || null,
         checkout_button_color: data.checkout_button_color || null,
