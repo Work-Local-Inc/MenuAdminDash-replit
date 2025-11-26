@@ -34,7 +34,9 @@ interface RestaurantRecord {
 
 const getRestaurant = cache(async (restaurantId: number) => {
   const supabase = await createClient();
-  const { data, error } = await supabase
+  
+  // Try with show_order_online_badge first, fall back without it if column doesn't exist
+  let { data, error } = await supabase
     .from('restaurants')
     .select(`
       id,
@@ -56,6 +58,35 @@ const getRestaurant = cache(async (restaurantId: number) => {
     `)
     .eq('id', restaurantId)
     .single<RestaurantRecord>();
+
+  // If the show_order_online_badge column doesn't exist, retry without it
+  if (error?.code === '42703') {
+    console.log('[Restaurant Page] show_order_online_badge column not found, retrying without it');
+    const result = await supabase
+      .from('restaurants')
+      .select(`
+        id,
+        name,
+        banner_image_url,
+        logo_url,
+        logo_display_mode,
+        primary_color,
+        secondary_color,
+        font_family,
+        menu_layout,
+        button_style,
+        price_color,
+        checkout_button_color,
+        restaurant_delivery_areas(id, delivery_fee, min_order_value, is_active),
+        restaurant_service_configs(id, delivery_min_order, has_delivery_enabled, delivery_time_minutes, takeout_enabled, takeout_time_minutes),
+        restaurant_locations(id, street_address, postal_code, phone)
+      `)
+      .eq('id', restaurantId)
+      .single<RestaurantRecord>();
+    
+    data = result.data;
+    error = result.error;
+  }
 
   if (error) {
     console.error('[Restaurant Page] Failed to load restaurant:', error);
