@@ -11,11 +11,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Separator } from '@/components/ui/separator'
 import { CheckoutAddressForm } from '@/components/customer/checkout-address-form'
 import { CheckoutPaymentForm } from '@/components/customer/checkout-payment-form'
+import { CheckoutPaymentSelection } from '@/components/customer/checkout-payment-selection'
 import { CheckoutSignInModal } from '@/components/customer/checkout-signin-modal'
 import { OrderTypeSelector } from '@/components/customer/order-type-selector'
 import { Schedule } from '@/components/customer/pickup-time-selector'
 import { useToast } from '@/hooks/use-toast'
-import { ShoppingCart, MapPin, CreditCard, ArrowLeft, LogIn, LogOut, User, ShoppingBag, Store } from 'lucide-react'
+import { ShoppingCart, MapPin, CreditCard, ArrowLeft, LogIn, LogOut, User, ShoppingBag, Store, Wallet } from 'lucide-react'
 import Link from 'next/link'
 
 // Use TEST publishable key to match backend test secret key
@@ -59,7 +60,8 @@ export default function CheckoutPage() {
     getTotal, 
     minOrder,
     orderType,
-    pickupTime
+    pickupTime,
+    clearCart
   } = useCartStore()
   
   // Create button style with restaurant's primary color
@@ -69,14 +71,16 @@ export default function CheckoutPage() {
   
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [step, setStep] = useState<'address' | 'payment'>('address')
+  const [step, setStep] = useState<'address' | 'payment-method' | 'payment'>('address')
   const [selectedAddress, setSelectedAddress] = useState<DeliveryAddress | null>(null)
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('')
   const [clientSecret, setClientSecret] = useState<string>('')
   const [showSignInModal, setShowSignInModal] = useState(false)
   const [guestPickupEmail, setGuestPickupEmail] = useState('')
   const [schedules, setSchedules] = useState<Schedule[]>([])
   const [schedulesLoading, setSchedulesLoading] = useState(false)
   const [isDeliveryBlocked, setIsDeliveryBlocked] = useState(false)
+  const [isSubmittingCashOrder, setIsSubmittingCashOrder] = useState(false)
 
   // Debug: Log currentUser changes
   useEffect(() => {
@@ -209,9 +213,10 @@ export default function CheckoutPage() {
     
     // IMPORTANT: Clear payment intent if one exists - user context changed!
     // The new user_id needs to be in the payment intent metadata
-    if (clientSecret) {
+    if (clientSecret || step === 'payment-method') {
       console.log('[Checkout] Clearing existing payment intent - user signed in')
       setClientSecret('')
+      setSelectedPaymentMethod('')
       setStep('address') // Go back to address to recreate payment intent with new user
     }
     
@@ -223,46 +228,12 @@ export default function CheckoutPage() {
 
   const handleAddressConfirmed = async (address: DeliveryAddress) => {
     setSelectedAddress(address)
-    
-    // Debug: Log pickup time when creating payment intent
-    console.log('[Checkout] Creating payment intent with service_time:', JSON.stringify(pickupTime), 'orderType:', orderType)
-    
-    // Create payment intent
-    try {
-      const response = await fetch('/api/customer/create-payment-intent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: total,
-          user_id: currentUser?.id ? String(currentUser.id) : undefined, // MUST be string to match order validation
-          guest_email: address.email, // For guest checkouts
-          metadata: {
-            delivery_address: JSON.stringify(address),
-            restaurant_slug: restaurantSlug,
-            guest_email: address.email, // Store in metadata too
-            order_type: orderType,
-            service_time: JSON.stringify(pickupTime), // Always include for both delivery and pickup
-          }
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to create payment intent')
-      }
-
-      const data = await response.json()
-      setClientSecret(data.clientSecret)
-      setStep('payment')
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to initialize payment",
-        variant: "destructive",
-      })
-    }
+    // Move to payment method selection - don't create payment intent yet
+    console.log('[Checkout] Address confirmed, moving to payment method selection')
+    setStep('payment-method')
   }
   
-  // Handler for pickup flow - skip address, go straight to payment
+  // Handler for pickup flow - go to payment method selection
   const handlePickupConfirmed = async () => {
     // For guests, validate email
     const email = currentUser?.email || guestPickupEmail
@@ -283,42 +254,113 @@ export default function CheckoutPage() {
     }
     
     setSelectedAddress(pickupAddress)
-    
-    // Debug: Log pickup time when creating payment intent
-    console.log('[Checkout] Creating pickup payment intent with service_time:', JSON.stringify(pickupTime), 'orderType: pickup')
-    
-    // Create payment intent
-    try {
-      const response = await fetch('/api/customer/create-payment-intent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: total,
-          user_id: currentUser?.id ? String(currentUser.id) : undefined,
-          guest_email: !currentUser ? email : undefined,
-          metadata: {
-            restaurant_slug: restaurantSlug,
-            order_type: 'pickup',
-            service_time: JSON.stringify(pickupTime), // Use consistent naming for both delivery and pickup
-            restaurant_address: restaurantAddress,
-          }
-        }),
-      })
+    // Move to payment method selection - don't create payment intent yet
+    console.log('[Checkout] Pickup confirmed, moving to payment method selection')
+    setStep('payment-method')
+  }
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || 'Failed to create payment intent')
+  // Handler for payment method selection
+  const handlePaymentMethodSelected = async (paymentMethod: string) => {
+    console.log('[Checkout] Payment method selected:', paymentMethod)
+    setSelectedPaymentMethod(paymentMethod)
+
+    if (paymentMethod === 'credit_card') {
+      // Credit card: Create payment intent and go to Stripe payment form
+      console.log('[Checkout] Creating payment intent for credit card')
+      try {
+        const response = await fetch('/api/customer/create-payment-intent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount: total,
+            user_id: currentUser?.id ? String(currentUser.id) : undefined,
+            guest_email: selectedAddress?.email,
+            metadata: {
+              delivery_address: JSON.stringify(selectedAddress),
+              restaurant_slug: restaurantSlug,
+              guest_email: selectedAddress?.email,
+              order_type: orderType,
+              service_time: JSON.stringify(pickupTime),
+            }
+          }),
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}))
+          throw new Error(errorData.error || 'Failed to create payment intent')
+        }
+
+        const data = await response.json()
+        setClientSecret(data.clientSecret)
+        setStep('payment')
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to initialize payment",
+          variant: "destructive",
+        })
       }
+    } else {
+      // Non-card payment: Call cash order API directly
+      console.log('[Checkout] Submitting cash order with payment type:', paymentMethod)
+      setIsSubmittingCashOrder(true)
+      
+      try {
+        // Format cart items as required by API
+        const cartItems = items.map(item => ({
+          dishId: item.dishId,
+          quantity: item.quantity,
+          size: item.size,
+          modifiers: item.modifiers,
+          specialInstructions: item.specialInstructions
+        }))
 
-      const data = await response.json()
-      setClientSecret(data.clientSecret)
-      setStep('payment')
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to initialize payment",
-        variant: "destructive",
-      })
+        // Calculate delivery fee and tax for non-card orders
+        const cashDeliveryFee = orderType === 'delivery' ? effectiveDeliveryFee : 0
+        const cashTax = tax
+
+        const response = await fetch('/api/customer/orders/cash', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            payment_type: paymentMethod,
+            delivery_address: selectedAddress,
+            cart_items: cartItems,
+            user_id: currentUser?.id ? String(currentUser.id) : undefined,
+            guest_email: selectedAddress?.email,
+            restaurant_slug: restaurantSlug,
+            order_type: orderType,
+            service_time: pickupTime,
+            delivery_fee: cashDeliveryFee,
+            tax_amount: cashTax
+          }),
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}))
+          throw new Error(errorData.error || 'Failed to create order')
+        }
+
+        const data = await response.json()
+        console.log('[Checkout] Cash order created:', data)
+        
+        // Clear cart and redirect to confirmation
+        clearCart()
+        toast({
+          title: "Order Placed!",
+          description: `Your order has been placed successfully. Order #${data.orderId}`,
+        })
+        router.push(`/customer/orders/${data.orderId}/confirmation`)
+      } catch (error: any) {
+        console.error('[Checkout] Cash order error:', error)
+        toast({
+          title: "Error",
+          description: error.message || "Failed to place order",
+          variant: "destructive",
+        })
+      } finally {
+        setIsSubmittingCashOrder(false)
+      }
     }
   }
 
@@ -435,19 +477,26 @@ export default function CheckoutPage() {
               <CardContent className="p-6">
                 <div className="flex items-center gap-4">
                   <div className={`flex items-center gap-2 ${step === 'address' ? 'text-primary' : 'text-muted-foreground'}`}>
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'address' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'address' ? 'bg-primary text-primary-foreground' : step !== 'address' ? 'bg-green-500 text-white' : 'bg-muted'}`}>
                       {orderType === 'pickup' ? <ShoppingBag className="w-4 h-4" /> : <MapPin className="w-4 h-4" />}
                     </div>
-                    <span className="font-medium">
-                      {orderType === 'pickup' ? 'Pickup Details' : 'Delivery Address'}
+                    <span className="font-medium hidden sm:inline">
+                      {orderType === 'pickup' ? 'Pickup' : 'Address'}
                     </span>
+                  </div>
+                  <Separator className="flex-1" />
+                  <div className={`flex items-center gap-2 ${step === 'payment-method' ? 'text-primary' : 'text-muted-foreground'}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'payment-method' ? 'bg-primary text-primary-foreground' : step === 'payment' ? 'bg-green-500 text-white' : 'bg-muted'}`}>
+                      <Wallet className="w-4 h-4" />
+                    </div>
+                    <span className="font-medium hidden sm:inline">Method</span>
                   </div>
                   <Separator className="flex-1" />
                   <div className={`flex items-center gap-2 ${step === 'payment' ? 'text-primary' : 'text-muted-foreground'}`}>
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'payment' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                       <CreditCard className="w-4 h-4" />
                     </div>
-                    <span className="font-medium">Payment</span>
+                    <span className="font-medium hidden sm:inline">Payment</span>
                   </div>
                 </div>
               </CardContent>
@@ -542,13 +591,28 @@ export default function CheckoutPage() {
               </Card>
             )}
 
+            {/* Step Content - Payment Method Selection */}
+            {step === 'payment-method' && restaurantSlug && (
+              <CheckoutPaymentSelection
+                restaurantSlug={restaurantSlug}
+                orderType={orderType}
+                onSelect={handlePaymentMethodSelected}
+                onBack={() => setStep('address')}
+                brandedButtonStyle={brandedButtonStyle}
+              />
+            )}
+
+            {/* Step Content - Stripe Payment (only for credit card) */}
             {step === 'payment' && clientSecret && selectedAddress && (
               <Elements stripe={stripePromise} options={{ clientSecret }}>
                 <CheckoutPaymentForm 
                   clientSecret={clientSecret}
                   deliveryAddress={selectedAddress}
                   userId={currentUser?.id?.toString()}
-                  onBack={() => setStep('address')}
+                  onBack={() => {
+                    setStep('payment-method')
+                    setClientSecret('')
+                  }}
                   brandedButtonStyle={brandedButtonStyle}
                 />
               </Elements>

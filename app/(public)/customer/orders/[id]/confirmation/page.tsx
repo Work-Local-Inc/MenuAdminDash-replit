@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { useToast } from '@/hooks/use-toast'
-import { CheckCircle, MapPin, Phone, Store, Package, Home, Clock, Mail, Utensils } from 'lucide-react'
+import { CheckCircle, MapPin, Phone, Store, Package, Home, Clock, Mail, Utensils, Banknote, CreditCard, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { PostOrderSignupModal } from '@/components/customer/post-order-signup-modal'
@@ -65,6 +65,7 @@ interface Order {
   restaurant_id: number
   order_type: 'delivery' | 'pickup'
   payment_status: string
+  payment_method: string | null
   stripe_payment_intent_id: string
   total_amount: string
   subtotal: string
@@ -215,6 +216,37 @@ export default function OrderConfirmationPage() {
   const brandButtonStyle = brandColor ? { backgroundColor: brandColor, borderColor: brandColor } : undefined
   const brandBadgeStyle = brandColor ? { backgroundColor: brandColor, borderColor: brandColor, color: 'white' } : undefined
   const brandBorderStyle = brandColor ? { borderColor: `${brandColor}40` } : undefined
+  
+  // Payment method helpers
+  const isCashPayment = order.payment_method && order.payment_method !== 'credit_card'
+  const getPaymentMethodLabel = (method: string | null) => {
+    switch (method) {
+      case 'cash': return 'Cash'
+      case 'interac': return 'Interac e-Transfer'
+      case 'credit_at_door': return 'Credit Card at Door'
+      case 'debit_at_door': return 'Debit Card at Door'
+      case 'credit_debit_at_door': return 'Credit/Debit at Door'
+      case 'credit_card': return 'Credit Card'
+      default: return method || 'Credit Card'
+    }
+  }
+  const getPaymentInstructions = (method: string | null) => {
+    const payWhen = isPickup ? 'when you pick up your order' : 'when your order arrives'
+    switch (method) {
+      case 'cash':
+        return `Please have cash ready ${payWhen}. The total amount due is $${parseFloat(order.total_amount).toFixed(2)}.`
+      case 'interac':
+        return `Please complete your Interac e-Transfer ${payWhen}.`
+      case 'credit_at_door':
+        return `Please have your credit card ready ${payWhen} for the driver/staff to process.`
+      case 'debit_at_door':
+        return `Please have your debit card ready ${payWhen} for the driver/staff to process.`
+      case 'credit_debit_at_door':
+        return `Please have your credit or debit card ready ${payWhen} for the driver/staff to process.`
+      default:
+        return null
+    }
+  }
 
   return (
     <>
@@ -262,6 +294,41 @@ export default function OrderConfirmationPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Pay on Delivery/Pickup Banner for non-card payments */}
+          {isCashPayment && (
+            <Card 
+              className="mb-6 border-2 border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700"
+              data-testid="card-payment-due"
+            >
+              <CardContent className="p-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-full bg-amber-200 dark:bg-amber-900 flex items-center justify-center shrink-0">
+                    <Banknote className="w-6 h-6 text-amber-700 dark:text-amber-300" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <h3 className="text-lg font-semibold text-amber-800 dark:text-amber-200">
+                        Payment Due {isPickup ? 'at Pickup' : 'on Delivery'}
+                      </h3>
+                      <Badge className="bg-amber-200 text-amber-800 dark:bg-amber-800 dark:text-amber-200 no-default-hover-elevate">
+                        {getPaymentMethodLabel(order.payment_method)}
+                      </Badge>
+                    </div>
+                    <p className="text-amber-700 dark:text-amber-300 mb-3">
+                      {getPaymentInstructions(order.payment_method)}
+                    </p>
+                    <div className="flex items-center gap-2 bg-amber-100 dark:bg-amber-900/50 rounded-md px-4 py-3">
+                      <span className="text-sm text-amber-700 dark:text-amber-300">Amount to pay:</span>
+                      <span className="text-xl font-bold text-amber-800 dark:text-amber-200">
+                        ${parseFloat(order.total_amount).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* What Happens Next Section */}
           <Card 

@@ -49,6 +49,7 @@ export async function GET(
           restaurant_id: number
           order_type: 'delivery' | 'pickup'
           payment_status: string
+          payment_method: string | null
           stripe_payment_intent_id: string
           total_amount: string
           subtotal: string
