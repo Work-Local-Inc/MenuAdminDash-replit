@@ -21,7 +21,7 @@ export async function GET(
     // Use admin client to fetch order (bypasses RLS, but we validate access below)
     const supabase = createAdminClient()
 
-    // Fetch order with restaurant details (include address info for pickup)
+    // Fetch order with restaurant details (include address info for pickup and brand color)
     // Note: restaurant_locations uses city_id/province_id foreign keys, so we just get basic info
     const { data: order, error: orderError } = await supabase
       .from('orders')
@@ -30,6 +30,7 @@ export async function GET(
         restaurant:restaurants(
           id,
           name,
+          primary_color,
           restaurant_locations(
             street_address,
             postal_code,
@@ -60,6 +61,7 @@ export async function GET(
           restaurant: {
             id: number
             name: string
+            primary_color?: string | null
             restaurant_locations?: Array<{
               street_address?: string
               postal_code?: string

@@ -53,6 +53,7 @@ interface Restaurant {
   city: string | null
   province: string | null
   postal_code: string | null
+  primary_color?: string | null
 }
 
 interface Order {
@@ -195,6 +196,7 @@ export default function OrderConfirmationPage() {
   const deliveryAddress = order.delivery_address
   const isPickup = order.order_type === 'pickup'
   const serviceTime = deliveryAddress?.service_time
+  const brandColor = order.restaurant.primary_color || null
   
   // Format the estimated time based on ASAP vs scheduled
   const getEstimatedTimeText = () => {
@@ -205,16 +207,31 @@ export default function OrderConfirmationPage() {
     return isPickup ? 'ASAP (Ready for pickup)' : 'ASAP (45-60 minutes)'
   }
   const estimatedDeliveryTime = getEstimatedTimeText()
+  
+  // Brand color styles for dynamic theming
+  const brandIconStyle = brandColor ? { backgroundColor: `${brandColor}20` } : undefined
+  const brandIconTextStyle = brandColor ? { color: brandColor } : undefined
+  const brandCardStyle = brandColor ? { backgroundColor: `${brandColor}10`, borderColor: `${brandColor}40` } : undefined
+  const brandButtonStyle = brandColor ? { backgroundColor: brandColor, borderColor: brandColor } : undefined
+  const brandBadgeStyle = brandColor ? { backgroundColor: brandColor, borderColor: brandColor, color: 'white' } : undefined
+  const brandBorderStyle = brandColor ? { borderColor: `${brandColor}40` } : undefined
 
   return (
     <>
       <div className="min-h-screen bg-muted/30">
         <div className="container mx-auto px-4 py-8 max-w-4xl">
           {/* Success Hero Section */}
-          <Card className="mb-6 border-2 border-primary/20">
+          <Card className={`mb-6 border-2 ${!brandColor ? 'border-primary/20' : ''}`} style={brandBorderStyle}>
             <CardContent className="p-8 text-center">
-              <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
-                <CheckCircle className="w-12 h-12 text-primary" data-testid="icon-success" />
+              <div 
+                className={`w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center ${!brandColor ? 'bg-primary/10' : ''}`}
+                style={brandIconStyle}
+              >
+                <CheckCircle 
+                  className={`w-12 h-12 ${!brandColor ? 'text-primary' : ''}`} 
+                  style={brandIconTextStyle}
+                  data-testid="icon-success" 
+                />
               </div>
               <h1 className="text-3xl font-bold mb-2" data-testid="heading-order-confirmed">
                 Order Confirmed!
@@ -234,7 +251,11 @@ export default function OrderConfirmationPage() {
                   <p className="text-sm text-muted-foreground mb-1">
                     {isPickup ? 'Pickup Time' : 'Estimated Delivery'}
                   </p>
-                  <p className="text-lg font-semibold text-primary" data-testid="text-estimated-delivery">
+                  <p 
+                    className={`text-lg font-semibold ${!brandColor ? 'text-primary' : ''}`} 
+                    style={brandIconTextStyle}
+                    data-testid="text-estimated-delivery"
+                  >
                     {estimatedDeliveryTime}
                   </p>
                 </div>
@@ -243,15 +264,22 @@ export default function OrderConfirmationPage() {
           </Card>
 
           {/* What Happens Next Section */}
-          <Card className="mb-6 bg-primary/5 border-primary/20" data-testid="card-what-happens-next">
+          <Card 
+            className={`mb-6 ${!brandColor ? 'bg-primary/5 border-primary/20' : ''}`} 
+            style={brandCardStyle}
+            data-testid="card-what-happens-next"
+          >
             <CardHeader>
               <CardTitle className="text-lg">What Happens Next?</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 <div className="flex gap-4">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <Utensils className="w-5 h-5 text-primary" />
+                  <div 
+                    className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${!brandColor ? 'bg-primary/10' : ''}`}
+                    style={brandIconStyle}
+                  >
+                    <Utensils className={`w-5 h-5 ${!brandColor ? 'text-primary' : ''}`} style={brandIconTextStyle} />
                   </div>
                   <div className="flex-1">
                     <p className="font-medium mb-1">Restaurant is preparing your order</p>
@@ -262,8 +290,11 @@ export default function OrderConfirmationPage() {
                 </div>
                 
                 <div className="flex gap-4">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <Clock className="w-5 h-5 text-primary" />
+                  <div 
+                    className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${!brandColor ? 'bg-primary/10' : ''}`}
+                    style={brandIconStyle}
+                  >
+                    <Clock className={`w-5 h-5 ${!brandColor ? 'text-primary' : ''}`} style={brandIconTextStyle} />
                   </div>
                   <div className="flex-1">
                     <p className="font-medium mb-1">
@@ -279,8 +310,11 @@ export default function OrderConfirmationPage() {
                 </div>
                 
                 <div className="flex gap-4">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <Mail className="w-5 h-5 text-primary" />
+                  <div 
+                    className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${!brandColor ? 'bg-primary/10' : ''}`}
+                    style={brandIconStyle}
+                  >
+                    <Mail className={`w-5 h-5 ${!brandColor ? 'text-primary' : ''}`} style={brandIconTextStyle} />
                   </div>
                   <div className="flex-1">
                     <p className="font-medium mb-1">Order confirmation sent</p>
@@ -472,7 +506,11 @@ export default function OrderConfirmationPage() {
                     <span data-testid="text-total">${parseFloat(order.total_amount).toFixed(2)}</span>
                   </div>
                   <div className="pt-2">
-                    <Badge variant="default" className="w-full justify-center no-default-hover-elevate no-default-active-elevate">
+                    <Badge 
+                      variant="default" 
+                      className="w-full justify-center no-default-hover-elevate no-default-active-elevate"
+                      style={brandBadgeStyle}
+                    >
                       Payment Confirmed
                     </Badge>
                   </div>
@@ -483,7 +521,13 @@ export default function OrderConfirmationPage() {
 
           {/* Action Buttons */}
           <div className="mt-8 flex justify-center">
-            <Button asChild variant="default" size="lg" data-testid="button-continue-browsing">
+            <Button 
+              asChild 
+              variant="default" 
+              size="lg" 
+              data-testid="button-continue-browsing"
+              style={brandButtonStyle}
+            >
               <Link href="/">
                 <Home className="w-4 h-4 mr-2" />
                 Continue Browsing
