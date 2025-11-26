@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
     const supabase = createAdminClient()
 
     // Build query - orders for this restaurant only
-    // Note: Using users!orders_user_id_fkey to specify which FK to use for the join
+    // Skip user join - guest info is already on the order, registered users are rare
     let query = supabase
       .from('orders')
       .select(`
@@ -69,14 +69,7 @@ export async function GET(request: NextRequest) {
         total_amount,
         payment_status,
         acknowledged_at,
-        acknowledged_by_device_id,
-        users!orders_user_id_fkey (
-          id,
-          first_name,
-          last_name,
-          phone,
-          email
-        )
+        acknowledged_by_device_id
       `)
       .eq('restaurant_id', deviceContext.restaurant_id)
       .order('created_at', { ascending: false })
@@ -109,16 +102,10 @@ export async function GET(request: NextRequest) {
       let customerPhone = ''
       let customerEmail = ''
 
-      if (order.is_guest_order) {
-        customerName = order.guest_name || 'Guest'
-        customerPhone = order.guest_phone || ''
-        customerEmail = order.guest_email || ''
-      } else if (order.users) {
-        const user = order.users
-        customerName = [user.first_name, user.last_name].filter(Boolean).join(' ') || 'Customer'
-        customerPhone = user.phone || ''
-        customerEmail = user.email || ''
-      }
+      // Use guest info from order (most orders are guest orders)
+      customerName = order.guest_name || 'Customer'
+      customerPhone = order.guest_phone || ''
+      customerEmail = order.guest_email || ''
 
       // Parse items and delivery address
       const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items || []
