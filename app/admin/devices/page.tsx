@@ -37,7 +37,8 @@ import {
 } from "@/components/ui/alert-dialog"
 import { useDevices, useToggleDevice, useDeleteDevice, useRegenerateDeviceKey } from "@/lib/hooks/use-devices"
 import { formatDate, formatTime } from "@/lib/utils"
-import { Search, Plus, Tablet, Wifi, WifiOff, Printer, Settings, MoreHorizontal, Key, Trash2, Copy, Check } from "lucide-react"
+import { Search, Plus, Tablet, Wifi, WifiOff, Printer, Settings, MoreHorizontal, Key, Trash2, Copy, Check, QrCode } from "lucide-react"
+import { QRCodeSVG } from "qrcode.react"
 import { toast } from "sonner"
 
 export default function DevicesPage() {
@@ -310,6 +311,13 @@ export default function DevicesPage() {
                               onClick={() => handleRegenerateKey(device)}
                               disabled={regenerateKey.isPending}
                             >
+                              <QrCode className="h-4 w-4 mr-2" />
+                              Get QR Code
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleRegenerateKey(device)}
+                              disabled={regenerateKey.isPending}
+                            >
                               <Key className="h-4 w-4 mr-2" />
                               Regenerate Key
                             </DropdownMenuItem>
@@ -411,6 +419,24 @@ export default function DevicesPage() {
                       {copiedField === 'key' ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
                     </Button>
                   </div>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t">
+                <label className="text-sm font-medium flex items-center gap-2 mb-3">
+                  <QrCode className="h-4 w-4" />
+                  Scan QR Code on Tablet
+                </label>
+                <div className="flex flex-col items-center justify-center p-4 bg-white rounded-lg border-2 border-dashed">
+                  <QRCodeSVG
+                    value={regeneratedCredentials.qr_code_data}
+                    size={180}
+                    level="M"
+                    includeMargin={true}
+                  />
+                  <p className="text-xs text-muted-foreground mt-3 text-center">
+                    Scan with any QR reader app on your tablet
+                  </p>
                 </div>
               </div>
             </div>

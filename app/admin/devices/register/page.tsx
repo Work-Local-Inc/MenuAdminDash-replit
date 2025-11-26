@@ -13,6 +13,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { useRestaurants } from "@/lib/hooks/use-restaurants"
 import { useRegisterDevice } from "@/lib/hooks/use-devices"
 import { ArrowLeft, Tablet, Copy, Check, AlertTriangle, QrCode } from "lucide-react"
+import { QRCodeSVG } from "qrcode.react"
 import { toast } from "sonner"
 
 export default function RegisterDevicePage() {
@@ -147,27 +148,24 @@ export default function RegisterDevicePage() {
               </p>
             </div>
 
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <QrCode className="h-4 w-4" />
-                QR Code Data (for tablet scanner)
+            <div className="space-y-4 pt-4 border-t">
+              <Label className="flex items-center gap-2 text-lg font-semibold">
+                <QrCode className="h-5 w-5" />
+                Scan QR Code on Tablet
               </Label>
-              <div className="flex gap-2">
-                <Input
+              <div className="flex flex-col items-center justify-center p-6 bg-white rounded-lg border-2 border-dashed">
+                <QRCodeSVG
                   value={registrationResult.qr_code_data}
-                  readOnly
-                  className="font-mono text-xs"
+                  size={200}
+                  level="M"
+                  includeMargin={true}
                 />
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => copyToClipboard(registrationResult.qr_code_data)}
-                >
-                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                </Button>
+                <p className="text-sm text-muted-foreground mt-4 text-center">
+                  Open any QR scanner app on your tablet and scan this code
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Use this to generate a QR code for easy tablet setup
+              <p className="text-xs text-muted-foreground text-center">
+                The QR code contains both the UUID and Device Key for easy setup
               </p>
             </div>
           </CardContent>
