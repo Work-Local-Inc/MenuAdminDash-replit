@@ -113,7 +113,7 @@ function formatTimeForDisplay(time: string): string {
 }
 
 export function OrderTypeSelector({ className, schedules = [], onDeliveryBlocked, brandedColor }: OrderTypeSelectorProps) {
-  const { orderType, setOrderType, getEffectiveDeliveryFee } = useCartStore()
+  const { orderType, setOrderType, getEffectiveDeliveryFee, pickupTime } = useCartStore()
   const effectiveDeliveryFee = getEffectiveDeliveryFee()
   
   // Memoize service open status to prevent inconsistent results across component
@@ -133,12 +133,17 @@ export function OrderTypeSelector({ className, schedules = [], onDeliveryBlocked
     ? !deliveryStatus.hasAnySchedules 
     : !pickupStatus.hasAnySchedules;
   
+  // Check if user has scheduled a future time - if so, they can proceed even when closed
+  const hasScheduledFutureTime = pickupTime?.type === 'scheduled' && !!pickupTime.scheduledTime;
+  
   // Notify parent about delivery blocked status - use effect to avoid render-time state updates
+  // Only block if closed AND user hasn't scheduled a future time
   useEffect(() => {
     if (onDeliveryBlocked) {
-      onDeliveryBlocked(orderType === 'delivery' && isDeliveryClosed);
+      const isBlocked = orderType === 'delivery' && isDeliveryClosed && !hasScheduledFutureTime;
+      onDeliveryBlocked(isBlocked);
     }
-  }, [orderType, isDeliveryClosed, onDeliveryBlocked]);
+  }, [orderType, isDeliveryClosed, hasScheduledFutureTime, onDeliveryBlocked]);
 
   // Create branded style for active tabs
   const getActiveStyle = (isActive: boolean) => {
@@ -169,9 +174,6 @@ export function OrderTypeSelector({ className, schedules = [], onDeliveryBlocked
             {orderType === 'delivery' && effectiveDeliveryFee > 0 && (
               <span className="text-xs opacity-80">${effectiveDeliveryFee.toFixed(2)} fee</span>
             )}
-            {isDeliveryClosed && orderType !== 'delivery' && (
-              <span className="text-xs opacity-60">Currently closed</span>
-            )}
           </TabsTrigger>
           <TabsTrigger 
             value="pickup" 
@@ -184,9 +186,6 @@ export function OrderTypeSelector({ className, schedules = [], onDeliveryBlocked
               <span className="font-medium">Pickup</span>
             </div>
             <span className="text-xs opacity-80">No fee</span>
-            {isPickupClosed && orderType !== 'pickup' && (
-              <span className="text-xs opacity-60">Currently closed</span>
-            )}
           </TabsTrigger>
         </TabsList>
       </Tabs>
