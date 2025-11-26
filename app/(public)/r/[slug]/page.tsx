@@ -137,13 +137,6 @@ export default async function RestaurantPage({ params }: RestaurantPageProps) {
     redirect('/');
   }
   
-  // DEBUG: Log badge field
-  console.log('[Restaurant Page] Badge fields:', {
-    show_order_online_badge: restaurant.show_order_online_badge,
-    banner_image_url: restaurant.banner_image_url ? 'exists' : 'null',
-    logo_display_mode: restaurant.logo_display_mode
-  });
-  
   // Redirect to correct slug if needed
   const correctSlug = createRestaurantSlug(restaurant.id, restaurant.name);
   if (params.slug !== correctSlug) {
