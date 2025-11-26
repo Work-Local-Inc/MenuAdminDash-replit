@@ -89,12 +89,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify device key
+    // Handle bytea encoding from PostgreSQL - convert hex-encoded string to actual string
+    let hashToVerify = device.device_key_hash
+    if (hashToVerify.startsWith('\\x')) {
+      // Convert hex-encoded bytea to string
+      const hexString = hashToVerify.slice(2) // Remove \x prefix
+      hashToVerify = Buffer.from(hexString, 'hex').toString('utf8')
+      console.log('[Device Login] Converted bytea hash to string')
+    }
+
     console.log('[Device Login] Verifying key for device:', device.id)
     console.log('[Device Login] Key length:', device_key.length)
-    console.log('[Device Login] Hash exists:', !!device.device_key_hash)
-    console.log('[Device Login] Hash length:', device.device_key_hash?.length)
+    console.log('[Device Login] Hash exists:', !!hashToVerify)
+    console.log('[Device Login] Hash length:', hashToVerify?.length)
+    console.log('[Device Login] Hash is bcrypt format:', hashToVerify?.startsWith('$2'))
 
-    const isValidKey = await verifyDeviceKey(device_key, device.device_key_hash)
+    const isValidKey = await verifyDeviceKey(device_key, hashToVerify)
     console.log('[Device Login] Key valid:', isValidKey)
 
     if (!isValidKey) {
