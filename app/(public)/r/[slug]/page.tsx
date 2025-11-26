@@ -25,7 +25,7 @@ interface RestaurantRecord {
   button_style: string | null;
   price_color: string | null;
   checkout_button_color: string | null;
-  restaurant_delivery_zones?: { id: number; delivery_fee_cents: number; is_active: boolean; deleted_at: string | null }[] | null;
+  restaurant_delivery_areas?: { id: number; delivery_fee: number | null; min_order_value: number | null; is_active: boolean }[] | null;
   restaurant_service_configs?: { id: number; delivery_min_order: number | null; has_delivery_enabled: boolean; delivery_time_minutes: number | null; takeout_enabled: boolean; takeout_time_minutes: number | null }[] | null;
   restaurant_locations?: { id: number; street_address: string | null; postal_code: string | null; phone: string | null }[] | null;
 }
@@ -46,7 +46,7 @@ const getRestaurant = cache(async (restaurantId: number) => {
       button_style,
       price_color,
       checkout_button_color,
-      restaurant_delivery_zones(id, delivery_fee_cents, is_active, deleted_at),
+      restaurant_delivery_areas(id, delivery_fee, min_order_value, is_active),
       restaurant_service_configs(id, delivery_min_order, has_delivery_enabled, delivery_time_minutes, takeout_enabled, takeout_time_minutes),
       restaurant_locations(id, street_address, postal_code, phone)
     `)

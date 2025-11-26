@@ -43,12 +43,13 @@ export default function RestaurantMenuPublic({
   const postalCode = location?.postal_code
 
   useEffect(() => {
-    const activeZone = restaurant.restaurant_delivery_zones?.find(
-      (zone: any) => zone.is_active && !zone.deleted_at
+    // Use restaurant_delivery_areas table (same as admin UI)
+    // Note: delivery_fee is already in dollars, not cents
+    const activeArea = restaurant.restaurant_delivery_areas?.find(
+      (area: any) => area.is_active
     )
-    const deliveryFeeCents = activeZone?.delivery_fee_cents ?? 0
-    const deliveryFee = deliveryFeeCents / 100
-    const minOrder = serviceConfig?.delivery_min_order || 0
+    const deliveryFee = activeArea?.delivery_fee ?? 0
+    const minOrder = activeArea?.min_order_value || serviceConfig?.delivery_min_order || 0
     const slug = `${restaurant.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${restaurant.id}`
 
     const address = streetAddress
@@ -57,7 +58,7 @@ export default function RestaurantMenuPublic({
 
     const primaryColor = restaurant.primary_color || undefined
     setRestaurant(restaurant.id, restaurant.name, slug, deliveryFee, minOrder, address, primaryColor)
-  }, [restaurant.id, restaurant.name, restaurant.restaurant_delivery_zones, serviceConfig, setRestaurant, streetAddress, postalCode, restaurant.primary_color])
+  }, [restaurant.id, restaurant.name, restaurant.restaurant_delivery_areas, serviceConfig, setRestaurant, streetAddress, postalCode, restaurant.primary_color])
 
   const scrollToCategory = (courseId: string) => {
     const element = document.getElementById(`category-${courseId}`)

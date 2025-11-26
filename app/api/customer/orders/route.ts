@@ -113,21 +113,22 @@ export async function POST(request: NextRequest) {
     
     console.log('[Order API] Order type:', orderType, 'Service time:', serviceTime)
     
-    // Get restaurant with delivery zones for delivery fee
+    // Get restaurant with delivery areas for delivery fee
+    // Note: Using restaurant_delivery_areas table (same as admin UI), not restaurant_delivery_zones
     console.log('[Order API] Looking for restaurant ID:', restaurantId)
     const { data: restaurant, error: restaurantError } = await adminSupabase
       .from('restaurants')
       .select(`
         id, 
         name,
-        restaurant_delivery_zones(id, delivery_fee_cents, is_active, deleted_at)
+        restaurant_delivery_areas(id, delivery_fee, min_order_value, is_active)
       `)
       .eq('id', restaurantId)
       .single() as { 
         data: { 
           id: number; 
           name: string;
-          restaurant_delivery_zones: { id: number; delivery_fee_cents: number; is_active: boolean; deleted_at: string | null }[]
+          restaurant_delivery_areas: { id: number; delivery_fee: number | null; min_order_value: number | null; is_active: boolean }[]
         } | null; 
         error: any 
       }
@@ -308,12 +309,12 @@ export async function POST(request: NextRequest) {
     // Pickup orders have NO delivery fee
     let deliveryFee = 0
     if (orderType === 'delivery') {
-      // Get delivery fee from first active delivery zone (or $0 if none configured)
-      const activeZone = restaurant.restaurant_delivery_zones?.find(
-        zone => zone.is_active && !zone.deleted_at
+      // Get delivery fee from first active delivery area (or $0 if none configured)
+      // Note: Using restaurant_delivery_areas table - delivery_fee is already in dollars
+      const activeArea = restaurant.restaurant_delivery_areas?.find(
+        area => area.is_active
       )
-      const deliveryFeeCents = activeZone?.delivery_fee_cents ?? 0
-      deliveryFee = deliveryFeeCents / 100
+      deliveryFee = activeArea?.delivery_fee ?? 0
     }
     
     const tax = (serverSubtotal + deliveryFee) * 0.13 // 13% HST
