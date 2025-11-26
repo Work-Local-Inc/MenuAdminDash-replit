@@ -82,7 +82,21 @@ export async function PATCH(
         .select()
         .single()
 
-      if (error) throw error
+      // If error is about unknown column (logo_display_mode not yet added to DB), 
+      // retry without that field
+      if (error && error.message?.includes('logo_display_mode')) {
+        const { logo_display_mode, ...dataWithoutLogoMode } = validatedData as any
+        const { data: retryData, error: retryError } = await supabase
+          .from('restaurants')
+          .update(dataWithoutLogoMode)
+          .eq('id', params.id)
+          .select()
+          .single()
+        
+        if (retryError) throw retryError
+      } else if (error) {
+        throw error
+      }
     }
 
     // Fetch and return the updated restaurant
