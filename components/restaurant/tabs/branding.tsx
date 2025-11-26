@@ -35,6 +35,7 @@ import { hexToHSL } from "@/lib/utils"
 const brandingSchema = z.object({
   logo_url: z.string().url('Must be a valid URL').or(z.literal('')).optional(),
   banner_image_url: z.string().url('Must be a valid URL').or(z.literal('')).optional(),
+  logo_display_mode: z.enum(['icon_text', 'full_logo']).optional(),
   primary_color: z.string().regex(/^#[0-9A-F]{6}$/i, 'Must be a valid hex color').optional(),
   secondary_color: z.string().regex(/^#[0-9A-F]{6}$/i, 'Must be a valid hex color').optional(),
   checkout_button_color: z.string().regex(/^#[0-9A-F]{6}$/i, 'Must be a valid hex color').or(z.literal('')).optional(),
@@ -51,6 +52,7 @@ interface Restaurant {
   name: string
   logo_url?: string | null
   banner_image_url?: string | null
+  logo_display_mode?: 'icon_text' | 'full_logo' | null
   primary_color?: string | null
   secondary_color?: string | null
   checkout_button_color?: string | null
@@ -94,6 +96,7 @@ export function RestaurantBranding({ restaurantId }: RestaurantBrandingProps) {
     values: {
       logo_url: restaurant?.logo_url || '',
       banner_image_url: restaurant?.banner_image_url || '',
+      logo_display_mode: restaurant?.logo_display_mode || 'icon_text',
       primary_color: restaurant?.primary_color || '#000000',
       secondary_color: restaurant?.secondary_color || '#666666',
       checkout_button_color: restaurant?.checkout_button_color || '',
@@ -143,6 +146,7 @@ export function RestaurantBranding({ restaurantId }: RestaurantBrandingProps) {
       const payload = {
         logo_url: logoUrl || null,
         banner_image_url: bannerUrl || null,
+        logo_display_mode: data.logo_display_mode || 'icon_text',
         primary_color: data.primary_color || null,
         secondary_color: data.secondary_color || null,
         checkout_button_color: data.checkout_button_color || null,
@@ -225,6 +229,7 @@ export function RestaurantBranding({ restaurantId }: RestaurantBrandingProps) {
   const currentMenuLayout = form.watch('menu_layout') || 'grid4'
   const currentLogoUrl = logoPreview || form.watch('logo_url') || restaurant?.logo_url
   const currentBannerUrl = bannerPreview || form.watch('banner_image_url') || restaurant?.banner_image_url
+  const currentLogoDisplayMode = form.watch('logo_display_mode') || 'icon_text'
 
   // Convert hex to HSL for preview using the utility function
   const primaryColorHSL = currentPrimaryColor ? hexToHSL(currentPrimaryColor) : null
@@ -346,6 +351,72 @@ export function RestaurantBranding({ restaurantId }: RestaurantBrandingProps) {
                       </div>
                     </div>
                   </div>
+                </div>
+
+                {/* Logo Display Mode */}
+                <div className="pt-4 border-t">
+                  <FormField
+                    control={form.control}
+                    name="logo_display_mode"
+                    render={({ field }) => (
+                      <FormItem className="space-y-4">
+                        <FormLabel className="text-base font-semibold">Logo Display Mode</FormLabel>
+                        <FormDescription>
+                          Choose how your logo appears on the public menu page
+                        </FormDescription>
+                        <FormControl>
+                          <RadioGroup
+                            onValueChange={field.onChange}
+                            value={field.value}
+                            className="flex flex-col space-y-3"
+                          >
+                            <div className="flex items-start space-x-3 p-4 border rounded-lg hover-elevate cursor-pointer">
+                              <RadioGroupItem value="icon_text" id="icon_text" className="mt-1" />
+                              <Label htmlFor="icon_text" className="font-normal cursor-pointer flex-1">
+                                <div className="flex flex-col gap-2">
+                                  <span className="font-medium">Icon + Name (Default)</span>
+                                  <span className="text-sm text-muted-foreground">
+                                    Square logo icon displayed alongside the restaurant name text
+                                  </span>
+                                  {currentLogoUrl && (
+                                    <div className="flex items-center gap-3 mt-2 p-3 bg-muted/50 rounded-md">
+                                      <img
+                                        src={currentLogoUrl}
+                                        alt="Logo preview"
+                                        className="w-10 h-10 object-contain rounded flex-shrink-0"
+                                      />
+                                      <span className="text-lg font-bold truncate">{restaurant?.name || 'Restaurant Name'}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </Label>
+                            </div>
+                            <div className="flex items-start space-x-3 p-4 border rounded-lg hover-elevate cursor-pointer">
+                              <RadioGroupItem value="full_logo" id="full_logo" className="mt-1" />
+                              <Label htmlFor="full_logo" className="font-normal cursor-pointer flex-1">
+                                <div className="flex flex-col gap-2">
+                                  <span className="font-medium">Full Logo</span>
+                                  <span className="text-sm text-muted-foreground">
+                                    Display logo at full width (no text). Great for logos that already include the restaurant name.
+                                  </span>
+                                  {currentLogoUrl && (
+                                    <div className="mt-2 p-3 bg-muted/50 rounded-md">
+                                      <img
+                                        src={currentLogoUrl}
+                                        alt="Logo preview"
+                                        className="h-10 w-auto object-contain"
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              </Label>
+                            </div>
+                          </RadioGroup>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
               </div>
 

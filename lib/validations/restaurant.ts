@@ -11,6 +11,7 @@ export const restaurantUpdateSchema = z.object({
   // Branding fields
   logo_url: z.string().url().nullable().optional(),
   banner_image_url: z.string().url().nullable().optional(),
+  logo_display_mode: z.enum(["icon_text", "full_logo"]).nullable().optional(),
   primary_color: z.string().regex(/^#[0-9A-F]{6}$/i).nullable().optional(),
   secondary_color: z.string().regex(/^#[0-9A-F]{6}$/i).nullable().optional(),
   checkout_button_color: z.string().regex(/^#[0-9A-F]{6}$/i).nullable().optional(),
