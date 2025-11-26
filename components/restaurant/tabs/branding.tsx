@@ -437,7 +437,7 @@ export function RestaurantBranding({ restaurantId }: RestaurantBrandingProps) {
                             <FormLabel className="text-base font-semibold">Order Online Badge</FormLabel>
                           </div>
                           <FormDescription>
-                            Show an "Order Online" badge on the left side of your banner image to attract customers
+                            Show an "Order Online" badge on the right side of your banner image to attract customers
                           </FormDescription>
                           {field.value && currentBannerUrl && (
                             <div className="mt-3 relative inline-block">
@@ -449,7 +449,7 @@ export function RestaurantBranding({ restaurantId }: RestaurantBrandingProps) {
                               <img
                                 src="/images/order-online-badge.png"
                                 alt="Order Online Badge"
-                                className="absolute left-2 top-1/2 -translate-y-1/2 h-12 w-auto drop-shadow-lg"
+                                className="absolute right-2 top-1/2 -translate-y-1/2 h-12 w-auto drop-shadow-lg"
                               />
                             </div>
                           )}

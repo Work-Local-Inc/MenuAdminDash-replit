@@ -80,7 +80,7 @@ export default function RestaurantMenuPublic({
             <img
               src="/images/order-online-badge.png"
               alt="Order Online"
-              className="absolute left-3 sm:left-4 md:left-6 top-1/2 -translate-y-1/2 h-14 sm:h-16 md:h-24 w-auto drop-shadow-lg"
+              className="absolute right-3 sm:right-4 md:right-6 top-1/2 -translate-y-1/2 h-14 sm:h-16 md:h-24 w-auto drop-shadow-lg"
               data-testid="img-order-online-badge"
             />
           )}
