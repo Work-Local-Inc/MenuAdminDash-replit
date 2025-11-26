@@ -97,9 +97,16 @@ export function RestaurantPaymentMethods({ restaurantId }: RestaurantPaymentMeth
       }
       return res.json()
     },
+    staleTime: 60000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
 
   useEffect(() => {
+    if (hasChanges) {
+      return
+    }
+    
     const initialOptions: PaymentOption[] = PAYMENT_OPTIONS.map((opt, index) => {
       const saved = savedOptions.find(s => s.payment_type === opt.type)
       return {
@@ -114,8 +121,7 @@ export function RestaurantPaymentMethods({ restaurantId }: RestaurantPaymentMeth
       }
     })
     setOptions(initialOptions)
-    setHasChanges(false)
-  }, [savedOptions])
+  }, [savedOptions, hasChanges])
 
   const updateMutation = useMutation({
     mutationFn: async (data: PaymentOption[]) => {
@@ -140,10 +146,10 @@ export function RestaurantPaymentMethods({ restaurantId }: RestaurantPaymentMeth
     },
   })
 
-  const handleToggle = (type: PaymentType) => {
+  const handleToggle = (type: PaymentType, checked: boolean) => {
     setOptions(prev => prev.map(opt => 
       opt.payment_type === type 
-        ? { ...opt, enabled: !opt.enabled }
+        ? { ...opt, enabled: checked }
         : opt
     ))
     setHasChanges(true)
@@ -247,7 +253,7 @@ export function RestaurantPaymentMethods({ restaurantId }: RestaurantPaymentMeth
                       <div className="flex items-center gap-3">
                         <Checkbox
                           checked={option?.enabled ?? false}
-                          onCheckedChange={() => handleToggle(paymentOpt.type)}
+                          onCheckedChange={(checked) => handleToggle(paymentOpt.type, !!checked)}
                           data-testid={`checkbox-${paymentOpt.type}`}
                         />
                         <Icon className="h-4 w-4 text-muted-foreground" />
