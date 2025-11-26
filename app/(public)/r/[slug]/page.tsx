@@ -1,8 +1,9 @@
 import { notFound, redirect } from 'next/navigation';
 import { Metadata } from 'next';
+import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { extractIdFromSlug, createRestaurantSlug } from '@/lib/utils/slugify';
-import RestaurantMenu from '@/components/customer/restaurant-menu';
+import RestaurantMenu from '@/components/customer/restaurant-menu-public';
 import type { RestaurantMenuResponse } from '@/lib/types/menu';
 import { hexToHSL } from '@/lib/utils';
 
@@ -12,8 +13,45 @@ interface RestaurantPageProps {
   };
 }
 
-export async function generateMetadata({ params }: RestaurantPageProps): Promise<Metadata> {
+interface RestaurantRecord {
+  id: number;
+  name: string;
+  banner_image_url: string | null;
+  primary_color: string | null;
+  secondary_color: string | null;
+  font_family: string | null;
+  restaurant_delivery_zones?: { id: number; delivery_fee_cents: number; is_active: boolean; deleted_at: string | null }[] | null;
+  restaurant_service_configs?: { id: number; delivery_min_order: number | null }[] | null;
+  restaurant_locations?: { id: number; street_address: string | null; postal_code: string | null }[] | null;
+}
+
+const getRestaurant = cache(async (restaurantId: number) => {
   const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('restaurants')
+    .select(`
+      id,
+      name,
+      banner_image_url,
+      primary_color,
+      secondary_color,
+      font_family,
+      restaurant_delivery_zones(id, delivery_fee_cents, is_active, deleted_at),
+      restaurant_service_configs(id, delivery_min_order),
+      restaurant_locations(id, street_address, postal_code)
+    `)
+    .eq('id', restaurantId)
+    .single<RestaurantRecord>();
+
+  if (error) {
+    console.error('[Restaurant Page] Failed to load restaurant:', error);
+    return null;
+  }
+
+  return data;
+});
+
+export async function generateMetadata({ params }: RestaurantPageProps): Promise<Metadata> {
   const restaurantId = extractIdFromSlug(params.slug);
   
   if (!restaurantId) {
@@ -21,13 +59,9 @@ export async function generateMetadata({ params }: RestaurantPageProps): Promise
       title: 'Restaurant Not Found | Menu.ca',
     };
   }
-  
-  const { data: restaurant } = await supabase
-    .from('restaurants')
-    .select('id, name')
-    .eq('id', restaurantId)
-    .single<{ id: number; name: string }>();
-  
+
+  const restaurant = await getRestaurant(restaurantId);
+
   if (!restaurant) {
     return {
       title: 'Restaurant Not Found | Menu.ca',
@@ -51,14 +85,8 @@ export default async function RestaurantPage({ params }: RestaurantPageProps) {
     redirect('/');
   }
   
-  const { data: restaurant, error: restaurantError } = await supabase
-    .from('restaurants')
-    .select('*')
-    .eq('id', restaurantId)
-    .single<any>();
-  
-  console.log('[Restaurant Page] Query result:', { restaurant, error: restaurantError });
-  
+  const restaurant = await getRestaurant(restaurantId);
+
   if (!restaurant) {
     console.log('[Restaurant Page] No restaurant found - redirecting to homepage');
     redirect('/');

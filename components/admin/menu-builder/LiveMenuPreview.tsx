@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Eye, EyeOff } from 'lucide-react'
 import { MenuBuilderCategory } from '@/lib/hooks/use-menu-builder'
-import RestaurantMenu from '@/components/customer/restaurant-menu'
+import RestaurantMenu from '@/components/customer/restaurant-menu-public'
 
 interface LiveMenuPreviewProps {
   restaurant: any

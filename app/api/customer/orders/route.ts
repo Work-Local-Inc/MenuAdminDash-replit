@@ -140,6 +140,98 @@ export async function POST(request: NextRequest) {
 
     console.log('[Order API] Found restaurant:', restaurant.id, restaurant.name)
 
+    // Preload dishes, prices, and modifiers to avoid per-item round trips
+    const dishIds = Array.from(new Set(cart_items.map((item: any) => item.dishId)))
+    const modifierIds = Array.from(new Set(
+      cart_items.flatMap((item: any) => item.modifiers?.map((mod: any) => mod.id) || [])
+    ))
+
+    if (dishIds.length === 0) {
+      return NextResponse.json({ error: 'No dishes found in cart' }, { status: 400 })
+    }
+
+    const { data: dishesData, error: dishesError } = await adminSupabase
+      .from('dishes')
+      .select('id, restaurant_id, name')
+      .in('id', dishIds)
+      .eq('restaurant_id', restaurant.id)
+
+    if (dishesError) {
+      console.error('[Order API] Dish preload error:', dishesError)
+      return NextResponse.json({ error: 'Failed to validate dishes' }, { status: 500 })
+    }
+
+    const dishMap = new Map<number, { id: number; restaurant_id: number; name: string }>()
+    dishesData?.forEach((dish: any) => {
+      dishMap.set(dish.id, dish)
+    })
+
+    const { data: dishPricesData, error: dishPricesError } = await adminSupabase
+      .from('dish_prices')
+      .select('dish_id, size_variant, price')
+      .in('dish_id', dishIds)
+      .eq('is_active', true)
+
+    if (dishPricesError) {
+      console.error('[Order API] Dish price preload error:', dishPricesError)
+      return NextResponse.json({ error: 'Failed to load dish prices' }, { status: 500 })
+    }
+
+    const dishPriceMap = new Map<string, { price: number; size_variant: string | null }>()
+    const dishPriceOptions = new Map<number, { size_variant: string | null; price: string }[]>()
+    dishPricesData?.forEach((priceRow: any) => {
+      const key = `${priceRow.dish_id}-${priceRow.size_variant}`
+      dishPriceMap.set(key, {
+        price: parseFloat(priceRow.price),
+        size_variant: priceRow.size_variant,
+      })
+      const existing = dishPriceOptions.get(priceRow.dish_id) || []
+      existing.push({ size_variant: priceRow.size_variant, price: priceRow.price })
+      dishPriceOptions.set(priceRow.dish_id, existing)
+    })
+
+    let modifierMap = new Map<number, { id: number; name: string; modifier_group: { id: number; dish_id: number } }>()
+    let modifierPriceMap = new Map<string, number>()
+
+    if (modifierIds.length > 0) {
+      const { data: modifiersData, error: modifiersError } = await adminSupabase
+        .from('dish_modifiers')
+        .select(`
+          id,
+          name,
+          modifier_group:modifier_groups!inner(
+            id,
+            dish_id
+          )
+        `)
+        .in('id', modifierIds)
+
+      if (modifiersError) {
+        console.error('[Order API] Modifier preload error:', modifiersError)
+        return NextResponse.json({ error: 'Failed to load modifiers' }, { status: 500 })
+      }
+
+      modifiersData?.forEach((mod: any) => {
+        modifierMap.set(mod.id, mod)
+      })
+
+      const { data: modifierPricesData, error: modifierPricesError } = await adminSupabase
+        .from('dish_modifier_prices')
+        .select('dish_modifier_id, dish_id, price')
+        .in('dish_modifier_id', modifierIds)
+        .eq('is_active', true)
+
+      if (modifierPricesError) {
+        console.error('[Order API] Modifier price preload error:', modifierPricesError)
+        return NextResponse.json({ error: 'Failed to load modifier prices' }, { status: 500 })
+      }
+
+      modifierPricesData?.forEach((priceRow: any) => {
+        const key = `${priceRow.dish_modifier_id}-${priceRow.dish_id}`
+        modifierPriceMap.set(key, parseFloat(priceRow.price))
+      })
+    }
+
     // SECURITY: Recompute totals on server to prevent client manipulation
     let serverSubtotal = 0
     const validatedItems = []
@@ -152,41 +244,20 @@ export async function POST(request: NextRequest) {
         }, { status: 400 })
       }
 
-      // SECURITY: Verify dish belongs to this restaurant before fetching price
-      const { data: dish } = await adminSupabase
-        .from('dishes')
-        .select('id, restaurant_id, name')
-        .eq('id', item.dishId)
-        .eq('restaurant_id', restaurant.id)
-        .single() as { data: { id: number; restaurant_id: number; name: string } | null }
-
+      const dish = dishMap.get(item.dishId)
       if (!dish) {
         return NextResponse.json({ 
           error: `Dish ${item.dishId} does not belong to this restaurant` 
         }, { status: 400 })
       }
 
-      // Fetch actual price from database (column is size_variant, not size)
-      console.log(`[Order API] Looking for price - dish: ${item.dishId}, size_variant: "${item.size}"`)
-      const { data: dishPrice, error: priceError } = await adminSupabase
-        .from('dish_prices')
-        .select('price, size_variant')
-        .eq('dish_id', item.dishId)
-        .eq('size_variant', item.size)
-        .eq('is_active', true)
-        .single() as { data: { price: string; size_variant: string } | null; error: any }
+      const priceKey = `${item.dishId}-${item.size}`
+      const dishPrice = dishPriceMap.get(priceKey)
 
       if (!dishPrice) {
-        // Get available sizes for better error message
-        const { data: availableSizes } = await adminSupabase
-          .from('dish_prices')
-          .select('size_variant, price')
-          .eq('dish_id', item.dishId)
-          .eq('is_active', true)
-        
+        const availableSizes = dishPriceOptions.get(item.dishId) || []
         console.error(`[Order API] Price not found for dish ${item.dishId}, size_variant: "${item.size}"`)
         console.error('[Order API] Available size_variants:', availableSizes)
-        console.error('[Order API] Price query error:', priceError)
         return NextResponse.json({ 
           error: `Invalid dish price: dish ${item.dishId}, size "${item.size}" not found. Available sizes: ${JSON.stringify(availableSizes)}` 
         }, { status: 400 })
@@ -195,25 +266,13 @@ export async function POST(request: NextRequest) {
       console.log(`[Order API] Found price: ${dishPrice.price} for size_variant "${dishPrice.size_variant}"`)
 
       // Calculate item total using server prices
-      let itemTotal = parseFloat(dishPrice.price) * item.quantity
+      let itemTotal = dishPrice.price * item.quantity
       
       // SECURITY: Validate modifier prices from database and verify they belong to this dish
       let validatedModifiers = []
       if (item.modifiers && item.modifiers.length > 0) {
         for (const mod of item.modifiers) {
-          // Verify modifier belongs to a modifier group for this dish
-          const { data: modifierData } = await adminSupabase
-            .from('dish_modifiers')
-            .select(`
-              id,
-              name,
-              modifier_group:modifier_groups!inner(
-                id,
-                dish_id
-              )
-            `)
-            .eq('id', mod.id)
-            .single() as { data: { id: number; name: string; modifier_group: { id: number; dish_id: number } } | null }
+          const modifierData = modifierMap.get(mod.id)
 
           if (!modifierData || modifierData.modifier_group.dish_id !== item.dishId) {
             return NextResponse.json({ 
@@ -221,16 +280,8 @@ export async function POST(request: NextRequest) {
             }, { status: 400 })
           }
 
-          // Query modifier price - default to $0 if no price record exists (included/free modifiers)
-          const { data: priceData } = await adminSupabase
-            .from('dish_modifier_prices')
-            .select('price')
-            .eq('dish_modifier_id', mod.id)
-            .eq('dish_id', item.dishId)
-            .eq('is_active', true)
-            .maybeSingle() as { data: { price: string } | null }
-
-          const modPrice = priceData ? parseFloat(priceData.price) : 0
+          const modifierPriceKey = `${mod.id}-${item.dishId}`
+          const modPrice = modifierPriceMap.get(modifierPriceKey) ?? 0
 
           itemTotal += modPrice * item.quantity
           validatedModifiers.push({
@@ -247,7 +298,7 @@ export async function POST(request: NextRequest) {
         name: dish.name,
         size: item.size,
         quantity: item.quantity,
-        unit_price: parseFloat(dishPrice.price),
+        unit_price: dishPrice.price,
         modifiers: validatedModifiers,
         subtotal: itemTotal
       })

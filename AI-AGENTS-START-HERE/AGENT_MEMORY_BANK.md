@@ -417,7 +417,7 @@ git commit -m "Merge: <description>"
 
 ---
 
-## 🔄 Recent Fixes (Nov 20, 2025)
+## 🔄 Recent Fixes (Nov 20-21, 2025)
 
 ### Schema Doubling Issue
 **Problem:** `menuca_v3.menuca_v3.restaurants` error  
@@ -442,6 +442,21 @@ git commit -m "Merge: <description>"
 **Cause:** Using `restaurant_service_configs` instead of `restaurant_delivery_zones`  
 **Fix:** Query `restaurant_delivery_zones` table  
 **Commit:** Replit Agent (multiple commits)
+
+### Checkout Order API Performance
+**Problem:** `/api/customer/orders` validated each cart item with sequential Supabase calls (dish + price + modifier per item), causing O(n) network traffic and latency spikes.  
+**Fix:** Preload dishes, dish_prices, and modifiers using batched `.in(...)` queries, build lookup maps, then validate/price in memory. Same security checks, far fewer round trips.  
+**Testing Tip:** After pulling, run checkout/Stripe integration scripts (e.g., `test-integration-direct.mjs`) with multi-item carts to confirm totals + logging match expectations.
+
+### Public Restaurant Page Caching
+**Problem:** `/r/[slug]` fetched the same restaurant twice (metadata + page) and used `select('*')`, shipping admin-only columns to customers.  
+**Fix:** Added a cached helper that selects only branding/delivery fields and reuses the result. Cuts Supabase calls in half and shrinks payloads.  
+**Note:** Keep the cached select list updated if you add new branding fields so metadata + render stay consistent.
+
+### Customer Menu Bundle Split
+**Problem:** `components/customer/restaurant-menu.tsx` served both admin + public flows, so `/r/[slug]` shipped drag-and-drop + admin dialogs.  
+**Fix:** Added `components/customer/restaurant-menu-public.tsx` for the storefront; public routes now import this lean version while admin builder retains the editor-heavy component.  
+**Next Steps:** Any menu UI change should be reflected in both components or abstracted into shared primitives to keep parity without bloating the public bundle.
 
 ---
 
@@ -747,4 +762,3 @@ git log origin/main..HEAD --oneline
 
 **Last Updated By:** Cursor Agent (CSS Agent)  
 **Next Update:** After next feature implementation
-
