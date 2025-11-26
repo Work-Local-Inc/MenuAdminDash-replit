@@ -55,8 +55,9 @@ export default function RestaurantMenuPublic({
       ? `${streetAddress}${postalCode ? `, ${postalCode}` : ''}`
       : undefined
 
-    setRestaurant(restaurant.id, restaurant.name, slug, deliveryFee, minOrder, address)
-  }, [restaurant.id, restaurant.name, restaurant.restaurant_delivery_zones, serviceConfig, setRestaurant, streetAddress, postalCode])
+    const primaryColor = restaurant.primary_color || undefined
+    setRestaurant(restaurant.id, restaurant.name, slug, deliveryFee, minOrder, address, primaryColor)
+  }, [restaurant.id, restaurant.name, restaurant.restaurant_delivery_zones, serviceConfig, setRestaurant, streetAddress, postalCode, restaurant.primary_color])
 
   const scrollToCategory = (courseId: string) => {
     const element = document.getElementById(`category-${courseId}`)
