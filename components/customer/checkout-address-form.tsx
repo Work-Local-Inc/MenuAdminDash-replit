@@ -94,7 +94,26 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick,
   
   // Geocode a saved address to get coordinates
   const geocodeAddress = useCallback(async (address: DeliveryAddress) => {
-    const fullAddress = `${address.street_address}${address.unit ? `, ${address.unit}` : ''}, ${address.city_name || ''}, ${address.postal_code}`
+    // Build full address, handling missing city gracefully
+    const cityPart = address.city_name || address.city || ''
+    const provincePart = address.province || ''
+    
+    // Don't attempt geocoding without minimum required address components
+    if (!address.street_address || (!cityPart && !address.postal_code)) {
+      console.log('[Checkout] Insufficient address data for geocoding, skipping')
+      return
+    }
+    
+    // Build address string, filtering out empty parts
+    const addressParts = [
+      address.street_address,
+      address.unit,
+      cityPart,
+      provincePart,
+      address.postal_code
+    ].filter(Boolean)
+    
+    const fullAddress = addressParts.join(', ')
     
     // If address already has coordinates, use them
     if (address.latitude && address.longitude) {
@@ -135,7 +154,8 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick,
         })
       }
     } catch (error) {
-      console.error('[Checkout] Geocoding error:', error)
+      // Only log as warning since this is non-critical - map preview is optional
+      console.warn('[Checkout] Could not geocode address for map preview:', fullAddress)
       // Still allow checkout even if geocoding fails
     } finally {
       setGeocodingAddress(false)
