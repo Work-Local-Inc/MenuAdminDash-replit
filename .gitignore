@@ -6,3 +6,8 @@ vite.config.ts.*
 *.tar.gz
 attached_assets
 .next
+
+# Environment variables
+.env
+.env.local
+.env*.local
