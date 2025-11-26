@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
 
     const supabase = createAdminClient()
 
-    // Find device by UUID
+    // Find device by UUID (without inner join to avoid silent failures)
     const { data: device, error: deviceError } = await supabase
       .from('devices')
       .select(`
@@ -38,11 +38,7 @@ export async function POST(request: NextRequest) {
         device_name,
         device_key_hash,
         restaurant_id,
-        is_active,
-        restaurants!inner (
-          id,
-          name
-        )
+        is_active
       `)
       .eq('uuid', device_uuid)
       .single()
@@ -52,6 +48,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Invalid credentials' },
         { status: 401 }
+      )
+    }
+
+    // Fetch restaurant separately to avoid join issues
+    let restaurant: { id: number; name: string } | null = null
+    if (device.restaurant_id) {
+      const { data: restaurantData } = await supabase
+        .from('restaurants')
+        .select('id, name')
+        .eq('id', device.restaurant_id)
+        .single()
+      restaurant = restaurantData
+    }
+
+    if (!restaurant) {
+      console.warn('[Device Login] Device not assigned to restaurant:', device.id)
+      return NextResponse.json(
+        { error: 'Device not assigned to a restaurant' },
+        { status: 403 }
       )
     }
 
@@ -111,8 +126,6 @@ export async function POST(request: NextRequest) {
         print_kitchen_copy: deviceConfig.print_kitchen_copy,
       }
     }
-
-    const restaurant = device.restaurants as any
 
     console.log(`[Device Login] Device ${device.id} logged in for restaurant ${restaurant.id}`)
 
