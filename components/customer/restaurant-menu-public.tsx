@@ -205,18 +205,54 @@ export default function RestaurantMenuPublic({
 
                   {courseDishes.length > 0 && (
                     layout === 'list' ? (
-                      <div className="border rounded-lg divide-y overflow-hidden mb-4">
-                        {courseDishes.map((dish: any, index: number) => (
-                          <DishListRow
-                            key={dish.id}
-                            dish={dish}
-                            restaurantId={restaurant.id}
-                            buttonStyle={restaurant.button_style}
-                            priceColor={restaurant.price_color}
-                            isEven={index % 2 === 0}
-                          />
-                        ))}
-                      </div>
+                      <>
+                        {/* Mobile/Tablet/Large: Single column, centered */}
+                        <div className="xl:hidden lg:max-w-2xl lg:mx-auto">
+                          <div className="border rounded-lg divide-y overflow-hidden mb-4">
+                            {courseDishes.map((dish: any, index: number) => (
+                              <DishListRow
+                                key={dish.id}
+                                dish={dish}
+                                restaurantId={restaurant.id}
+                                buttonStyle={restaurant.button_style}
+                                priceColor={restaurant.price_color}
+                                isEven={index % 2 === 0}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                        {/* Extra Large screens: 2 columns */}
+                        <div className="hidden xl:grid xl:grid-cols-2 xl:gap-4">
+                          <div className="border rounded-lg divide-y overflow-hidden">
+                            {courseDishes
+                              .filter((_: any, i: number) => i % 2 === 0)
+                              .map((dish: any, index: number) => (
+                                <DishListRow
+                                  key={dish.id}
+                                  dish={dish}
+                                  restaurantId={restaurant.id}
+                                  buttonStyle={restaurant.button_style}
+                                  priceColor={restaurant.price_color}
+                                  isEven={index % 2 === 0}
+                                />
+                              ))}
+                          </div>
+                          <div className="border rounded-lg divide-y overflow-hidden">
+                            {courseDishes
+                              .filter((_: any, i: number) => i % 2 === 1)
+                              .map((dish: any, index: number) => (
+                                <DishListRow
+                                  key={dish.id}
+                                  dish={dish}
+                                  restaurantId={restaurant.id}
+                                  buttonStyle={restaurant.button_style}
+                                  priceColor={restaurant.price_color}
+                                  isEven={index % 2 === 0}
+                                />
+                              ))}
+                          </div>
+                        </div>
+                      </>
                     ) : (
                       <div className={getGridClasses()}>
                         {courseDishes.map((dish: any) => (
