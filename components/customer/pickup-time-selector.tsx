@@ -33,6 +33,8 @@ interface PickupTimeSelectorProps {
   schedules?: Schedule[]
   orderType?: 'delivery' | 'pickup'
   brandedColor?: string
+  isServiceClosed?: boolean // True if the current service type is closed right now
+  serviceOpensAt?: string // HH:MM format - when the service opens today (if closed)
 }
 
 function getAllSchedulesForDay(schedules: Schedule[], dayOfWeek: number, serviceType: 'delivery' | 'takeout'): TimeWindow[] {
@@ -118,10 +120,14 @@ function generateTimeSlotsForWindow(window: TimeWindow, date: Date, minPickupTim
   return slots;
 }
 
-function generateAllTimeSlots(windows: TimeWindow[], date: Date): TimeSlot[] {
+function generateAllTimeSlots(windows: TimeWindow[], dateStr: string): TimeSlot[] {
   const now = new Date();
-  const isToday = format(date, 'yyyy-MM-dd') === format(now, 'yyyy-MM-dd');
+  const todayStr = format(now, 'yyyy-MM-dd');
+  const isToday = dateStr === todayStr;
   const minPickupTime = isToday ? addMinutes(now, 20) : undefined;
+  
+  // Parse date string properly - use startOfDay to get correct local date
+  const date = startOfDay(new Date(dateStr + 'T00:00:00'));
   
   const allSlots: TimeSlot[] = [];
   const seenTimes = new Set<string>();
@@ -175,7 +181,7 @@ function generateDateOptions(schedules: Schedule[], serviceType: 'delivery' | 't
   return options;
 }
 
-export function PickupTimeSelector({ className, schedules = [], orderType = 'pickup', brandedColor }: PickupTimeSelectorProps) {
+export function PickupTimeSelector({ className, schedules = [], orderType = 'pickup', brandedColor, isServiceClosed = false, serviceOpensAt }: PickupTimeSelectorProps) {
   const { pickupTime, setPickupTime } = useCartStore();
   const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
   const [selectedSlotIndex, setSelectedSlotIndex] = useState<number>(-1);
@@ -188,14 +194,14 @@ export function PickupTimeSelector({ className, schedules = [], orderType = 'pic
   
   const timeSlots = useMemo(() => {
     if (windowsForDay.length === 0) return [];
-    return generateAllTimeSlots(windowsForDay, new Date(selectedDate));
+    return generateAllTimeSlots(windowsForDay, selectedDate);
   }, [windowsForDay, selectedDate]);
   
   const hasNoSchedules = schedules.length === 0 || !schedules.some(s => s.type === serviceType && s.is_enabled);
   
   const fallbackTimeSlots = useMemo(() => {
     if (!hasNoSchedules) return [];
-    return generateAllTimeSlots([{ open: '11:00', close: '22:00' }], new Date(selectedDate));
+    return generateAllTimeSlots([{ open: '11:00', close: '22:00' }], selectedDate);
   }, [hasNoSchedules, selectedDate]);
   
   const availableSlots = hasNoSchedules ? fallbackTimeSlots : timeSlots;
@@ -204,14 +210,29 @@ export function PickupTimeSelector({ className, schedules = [], orderType = 'pic
     ? availableSlots[selectedSlotIndex] 
     : null;
   
+  // When service is closed, force scheduled mode and select first available slot
+  // Include pickupTime.type in deps to re-check if user somehow gets back to ASAP while closed
+  useEffect(() => {
+    if (isServiceClosed && pickupTime.type === 'asap') {
+      // Service is closed, force scheduled mode
+      if (availableSlots.length > 0) {
+        setSelectedSlotIndex(0);
+        setPickupTime({ type: 'scheduled', scheduledTime: availableSlots[0].dateTime.toISOString() });
+      } else {
+        // No slots today, need to switch to another day
+        setPickupTime({ type: 'scheduled' });
+      }
+    }
+  }, [isServiceClosed, availableSlots.length, pickupTime.type, setPickupTime, availableSlots]);
+
   // Reset internal state when service type changes or pickupTime is reset to ASAP
   useEffect(() => {
-    if (pickupTime.type === 'asap') {
-      // Reset to today and clear slot selection when switching to ASAP
+    if (pickupTime.type === 'asap' && !isServiceClosed) {
+      // Reset to today and clear slot selection when switching to ASAP (only if service is open)
       setSelectedDate(format(new Date(), 'yyyy-MM-dd'));
       setSelectedSlotIndex(-1);
     }
-  }, [serviceType, pickupTime.type]);
+  }, [serviceType, pickupTime.type, isServiceClosed]);
   
   useEffect(() => {
     if (pickupTime.type === 'scheduled' && pickupTime.scheduledTime) {
@@ -240,8 +261,8 @@ export function PickupTimeSelector({ className, schedules = [], orderType = 'pic
       
       setTimeout(() => {
         const currentSlots = hasNoSchedules 
-          ? generateAllTimeSlots([{ open: '11:00', close: '22:00' }], new Date(serviceDateStr))
-          : generateAllTimeSlots(getAllSchedulesForDay(schedules, getDay(new Date(serviceDateStr)), serviceType), new Date(serviceDateStr));
+          ? generateAllTimeSlots([{ open: '11:00', close: '22:00' }], serviceDateStr)
+          : generateAllTimeSlots(getAllSchedulesForDay(schedules, getDay(new Date(serviceDateStr + 'T12:00:00')), serviceType), serviceDateStr);
         
         const slotIndex = currentSlots.findIndex(s => 
           Math.abs(s.dateTime.getTime() - scheduledDateTime.getTime()) < 60000
@@ -267,16 +288,16 @@ export function PickupTimeSelector({ className, schedules = [], orderType = 'pic
     }
   };
   
-  const handleDateChange = (date: string) => {
-    setSelectedDate(date);
-    const newDayOfWeek = getDay(new Date(date));
+  const handleDateChange = (dateStr: string) => {
+    setSelectedDate(dateStr);
+    const newDayOfWeek = getDay(new Date(dateStr + 'T12:00:00'));
     const newWindows = getAllSchedulesForDay(schedules, newDayOfWeek, serviceType);
     
     let newSlots: TimeSlot[] = [];
     if (newWindows.length > 0) {
-      newSlots = generateAllTimeSlots(newWindows, new Date(date));
+      newSlots = generateAllTimeSlots(newWindows, dateStr);
     } else if (hasNoSchedules) {
-      newSlots = generateAllTimeSlots([{ open: '11:00', close: '22:00' }], new Date(date));
+      newSlots = generateAllTimeSlots([{ open: '11:00', close: '22:00' }], dateStr);
     }
     
     if (newSlots.length > 0) {
@@ -314,11 +335,17 @@ export function PickupTimeSelector({ className, schedules = [], orderType = 'pic
   const formatSlotDisplay = (slot: TimeSlot) => {
     const displayTime = formatTimeDisplay(slot.time);
     const slotDateStr = format(slot.dateTime, 'yyyy-MM-dd');
-    const selectedDateStr = selectedDate;
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
     
-    if (slotDateStr !== selectedDateStr) {
+    // Check if slot is tomorrow relative to TODAY (not relative to selectedDate)
+    // This handles overnight windows where close time rolls into next day
+    if (slotDateStr !== selectedDate) {
+      // Slot date differs from selected date - could be overnight into next day
       return `${displayTime} (next day)`;
     }
+    
+    // If selected date is today but slot is tomorrow, that means restaurant is closed today
+    // and user should select tomorrow instead
     return displayTime;
   };
   
@@ -332,7 +359,9 @@ export function PickupTimeSelector({ className, schedules = [], orderType = 'pic
   // Order type-specific labels
   const isDelivery = orderType === 'delivery';
   const timeLabel = isDelivery ? 'When would you like it delivered?' : 'When would you like to pick up?';
-  const asapSubtext = isDelivery ? '30-45 min' : '15-25 min';
+  const asapSubtext = isServiceClosed 
+    ? (serviceOpensAt ? `Opens at ${formatTimeDisplay(serviceOpensAt)}` : 'Closed now')
+    : (isDelivery ? '30-45 min' : '15-25 min');
   const scheduleSubtext = isDelivery ? 'Choose delivery time' : 'Pick a time';
 
   // Create branded style for active buttons
@@ -348,10 +377,11 @@ export function PickupTimeSelector({ className, schedules = [], orderType = 'pic
       <div className="grid grid-cols-2 gap-3 mb-4">
         <Button
           type="button"
-          variant={pickupTime.type === 'asap' ? 'default' : 'outline'}
-          className="h-auto py-4 flex flex-col items-center gap-1"
-          onClick={() => handleTypeChange('asap')}
-          style={getActiveStyle(pickupTime.type === 'asap')}
+          variant={pickupTime.type === 'asap' && !isServiceClosed ? 'default' : 'outline'}
+          className={`h-auto py-4 flex flex-col items-center gap-1 ${isServiceClosed ? 'opacity-50 cursor-not-allowed' : ''}`}
+          onClick={() => !isServiceClosed && handleTypeChange('asap')}
+          disabled={isServiceClosed}
+          style={!isServiceClosed ? getActiveStyle(pickupTime.type === 'asap') : undefined}
           data-testid="button-pickup-asap"
         >
           <Zap className="w-5 h-5" />

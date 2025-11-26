@@ -13,7 +13,53 @@ import { PostOrderSignupModal } from '@/components/customer/post-order-signup-mo
 import { CardScannerModal } from '@/components/customer/card-scanner-modal'
 import { isMobileDevice, hasCamera } from '@/lib/utils/device'
 import { ScannedCardData } from '@/lib/utils/card-scanner'
-import { ArrowLeft, CreditCard, Camera, Shield } from 'lucide-react'
+import { ArrowLeft, CreditCard, Camera, Shield, MapPin, ShoppingBag } from 'lucide-react'
+
+// Order confirmation block that shows either pickup location or delivery address
+function OrderConfirmationBlock({ deliveryAddress }: { deliveryAddress: DeliveryAddress }) {
+  const { orderType, restaurantName, restaurantAddress } = useCartStore();
+  
+  if (orderType === 'pickup') {
+    return (
+      <div className="bg-muted/50 p-4 rounded-lg">
+        <p className="text-sm font-medium mb-1 flex items-center gap-2">
+          <ShoppingBag className="w-4 h-4" />
+          Order for pickup
+        </p>
+        <p className="text-sm font-medium">
+          {restaurantName}
+        </p>
+        {restaurantAddress && (
+          <p className="text-sm text-muted-foreground">
+            {restaurantAddress}
+          </p>
+        )}
+      </div>
+    );
+  }
+  
+  // Delivery order
+  return (
+    <div className="bg-muted/50 p-4 rounded-lg">
+      <p className="text-sm font-medium mb-1 flex items-center gap-2">
+        <MapPin className="w-4 h-4" />
+        Delivering to:
+      </p>
+      <p className="text-sm">
+        {deliveryAddress.street_address}
+        {deliveryAddress.unit && `, Unit ${deliveryAddress.unit}`}
+      </p>
+      <p className="text-sm text-muted-foreground">
+        {deliveryAddress.city_name || deliveryAddress.city}, {deliveryAddress.postal_code}
+      </p>
+      {deliveryAddress.delivery_instructions && (
+        <p className="text-xs text-muted-foreground mt-2">
+          Instructions: {deliveryAddress.delivery_instructions}
+        </p>
+      )}
+    </div>
+  );
+}
 
 interface DeliveryAddress {
   id?: number
@@ -207,22 +253,8 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Delivery Address Confirmation */}
-        <div className="bg-muted/50 p-4 rounded-lg">
-          <p className="text-sm font-medium mb-1">Delivering to:</p>
-          <p className="text-sm">
-            {deliveryAddress.street_address}
-            {deliveryAddress.unit && `, Unit ${deliveryAddress.unit}`}
-          </p>
-          <p className="text-sm text-muted-foreground">
-            {deliveryAddress.city_name}, {deliveryAddress.postal_code}
-          </p>
-          {deliveryAddress.delivery_instructions && (
-            <p className="text-xs text-muted-foreground mt-2">
-              Instructions: {deliveryAddress.delivery_instructions}
-            </p>
-          )}
-        </div>
+        {/* Order Type Confirmation - Shows pickup location or delivery address */}
+        <OrderConfirmationBlock deliveryAddress={deliveryAddress} />
 
         {/* Payment Element */}
         <form onSubmit={handleSubmit} className="space-y-6">

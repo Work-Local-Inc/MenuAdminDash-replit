@@ -1,11 +1,12 @@
 "use client"
 
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useCartStore, OrderType } from '@/lib/stores/cart-store'
-import { Truck, ShoppingBag, AlertCircle, Clock } from 'lucide-react'
+import { Truck, ShoppingBag, AlertCircle, Clock, Info } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { format, getDay, setHours, setMinutes } from 'date-fns'
 import { PickupTimeSelector, Schedule } from './pickup-time-selector'
 
@@ -115,9 +116,22 @@ export function OrderTypeSelector({ className, schedules = [], onDeliveryBlocked
   const { orderType, setOrderType, getEffectiveDeliveryFee } = useCartStore()
   const effectiveDeliveryFee = getEffectiveDeliveryFee()
   
-  const deliveryStatus = isServiceOpen(schedules, 'delivery');
+  // Memoize service open status to prevent inconsistent results across component
+  const deliveryStatus = useMemo(() => isServiceOpen(schedules, 'delivery'), [schedules]);
+  const pickupStatus = useMemo(() => isServiceOpen(schedules, 'takeout'), [schedules]);
   
+  // Derive closed states from memoized status
   const isDeliveryClosed = deliveryStatus.hasAnySchedules && !deliveryStatus.isOpen;
+  const isPickupClosed = pickupStatus.hasAnySchedules && !pickupStatus.isOpen;
+  
+  // Determine if current service type is closed
+  const isCurrentServiceClosed = orderType === 'delivery' ? isDeliveryClosed : isPickupClosed;
+  const currentServiceOpensAt = orderType === 'delivery' ? deliveryStatus.opensAt : pickupStatus.opensAt;
+  
+  // Check if schedules are missing for the current service type
+  const hasNoSchedulesForService = orderType === 'delivery' 
+    ? !deliveryStatus.hasAnySchedules 
+    : !pickupStatus.hasAnySchedules;
   
   // Notify parent about delivery blocked status - use effect to avoid render-time state updates
   useEffect(() => {
@@ -170,58 +184,45 @@ export function OrderTypeSelector({ className, schedules = [], onDeliveryBlocked
               <span className="font-medium">Pickup</span>
             </div>
             <span className="text-xs opacity-80">No fee</span>
+            {isPickupClosed && orderType !== 'pickup' && (
+              <span className="text-xs opacity-60">Currently closed</span>
+            )}
           </TabsTrigger>
         </TabsList>
       </Tabs>
       
-      {/* Delivery closed alert - BLOCKING */}
-      {orderType === 'delivery' && isDeliveryClosed && (
-        <div className="mt-4 p-4 border border-amber-200 dark:border-amber-800 rounded-lg bg-amber-50 dark:bg-amber-950/50">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-            <div className="flex-1 space-y-3">
-              <div>
-                <p className="font-medium text-amber-800 dark:text-amber-200">
-                  Delivery is currently closed
-                </p>
-                <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
-                  {deliveryStatus.opensAt ? (
-                    <>
-                      <Clock className="w-3.5 h-3.5 inline-block mr-1" />
-                      Opens at {formatTimeForDisplay(deliveryStatus.opensAt)}
-                    </>
-                  ) : (
-                    "The restaurant is not accepting delivery orders right now."
-                  )}
-                </p>
-              </div>
-              
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setOrderType('pickup')}
-                className="border-amber-300 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900"
-                data-testid="button-switch-to-pickup"
-              >
-                <ShoppingBag className="w-4 h-4 mr-2" />
-                Switch to Pickup
-              </Button>
-            </div>
-          </div>
-        </div>
+      {/* Alert for closed service - show when current service type is closed */}
+      {isCurrentServiceClosed && (
+        <Alert className="mt-4" variant="default">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            {orderType === 'delivery' ? 'Delivery' : 'Pickup'} is currently closed
+            {currentServiceOpensAt && `. Opens at ${formatTimeForDisplay(currentServiceOpensAt)}`}
+            . You can schedule your order for a later time below.
+          </AlertDescription>
+        </Alert>
       )}
       
-      {/* Time Selector - Show for both delivery and pickup when not blocked */}
-      {!(orderType === 'delivery' && isDeliveryClosed) && (
-        <>
-          <Separator className="my-4" />
-          <PickupTimeSelector 
-            schedules={schedules} 
-            orderType={orderType}
-            brandedColor={brandedColor}
-          />
-        </>
+      {/* Alert for missing schedules - inform user that no hours are configured */}
+      {hasNoSchedulesForService && (
+        <Alert className="mt-4" variant="default">
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            No {orderType === 'delivery' ? 'delivery' : 'pickup'} hours are configured for this restaurant. 
+            Please contact the restaurant directly to confirm availability.
+          </AlertDescription>
+        </Alert>
       )}
+      
+      {/* Time Selector - Always show, pass service status so it can disable ASAP when closed */}
+      <Separator className="my-4" />
+      <PickupTimeSelector 
+        schedules={schedules} 
+        orderType={orderType}
+        brandedColor={brandedColor}
+        isServiceClosed={isCurrentServiceClosed}
+        serviceOpensAt={currentServiceOpensAt}
+      />
     </div>
   )
 }
