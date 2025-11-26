@@ -89,7 +89,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify device key
+    console.log('[Device Login] Verifying key for device:', device.id)
+    console.log('[Device Login] Key length:', device_key.length)
+    console.log('[Device Login] Hash exists:', !!device.device_key_hash)
+    console.log('[Device Login] Hash length:', device.device_key_hash?.length)
+
     const isValidKey = await verifyDeviceKey(device_key, device.device_key_hash)
+    console.log('[Device Login] Key valid:', isValidKey)
+
     if (!isValidKey) {
       console.warn('[Device Login] Invalid key for device:', device.id)
       return NextResponse.json(

@@ -1,6 +1,6 @@
 # AGENT MEMORY BANK
 **Purpose:** Critical knowledge for AI agents working on Menu.ca Admin Dashboard  
-**Last Updated:** November 20, 2025  
+**Last Updated:** November 26, 2025  
 **Read This FIRST Before Any Work**
 
 ---
@@ -620,15 +620,20 @@ git log origin/main..HEAD --oneline
 - Restaurant management
 - Primary color branding
 - Schema fixes (no more doubling)
+- Checkout flow with Stripe integration
+- Mobile card scanning with OCR
+- Tablet Bridge API endpoints (all routes implemented)
+- Tablet Bridge database schema (migration complete)
 
 ### 🚧 In Progress
-- Checkout flow (Replit Agent working on modifier validation)
-- Order creation (fixing included/free modifiers)
+- Admin Devices UI (register/manage tablet devices)
+- Tablet app integration testing
 
 ### ⏳ Not Started
 - Order history UI
 - Customer account pages
 - Admin analytics dashboard
+- Realtime order notifications (WebSocket/Supabase Realtime)
 
 ---
 
@@ -785,12 +790,17 @@ Complete API for Samsung tablet bridge app to receive and print orders at restau
 
 ### Database Tables
 - `menuca_v3.devices` - Device registration (existing)
-- `menuca_v3.device_sessions` - Session tokens (NEW - run migration)
-- `menuca_v3.device_configs` - Per-device settings (NEW - run migration)
-- `menuca_v3.orders.acknowledged_at` - Track order acknowledgment (NEW column)
+- `menuca_v3.device_sessions` - Session tokens ✅ MIGRATED
+- `menuca_v3.device_configs` - Per-device settings ✅ MIGRATED
+- `menuca_v3.orders.acknowledged_by_device_id` - FK to device ✅ MIGRATED
+- `menuca_v3.orders.acknowledged_at` - Track order acknowledgment ✅ MIGRATED
 
-### Migration Required
-Run: `db/migrations/create_device_sessions.sql`
+### Migration Status: ✅ COMPLETE (Nov 26, 2025)
+Migration `create_device_sessions` applied via Supabase MCP.
+- Created `device_sessions` table with indexes
+- Created `device_configs` table
+- Added acknowledgment columns to `orders` table
+- Created `cleanup_expired_device_sessions()` function
 
 ### Key Files
 - `types/tablet.ts` - TypeScript interfaces
@@ -851,5 +861,6 @@ See: `TABLET_BRIDGE_IMPLEMENTATION_PLAN.md` in project root
 
 ---
 
-**Last Updated By:** Claude Code (Opus)
-**Next Update:** After tablet app development or admin devices UI
+**Last Updated By:** Claude (Cursor Agent)
+**Last Update:** Nov 26, 2025 - Database migration for tablet bridge completed
+**Next Update:** After admin devices UI or tablet app integration testing

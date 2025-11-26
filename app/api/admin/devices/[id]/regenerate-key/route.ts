@@ -47,11 +47,22 @@ export async function POST(
     const newDeviceKey = generateDeviceKey()
     const newKeyHash = await hashDeviceKey(newDeviceKey)
 
+    // DEBUG: Verify the key matches the hash we just generated
+    const bcrypt = await import('bcryptjs')
+    const testVerify = await bcrypt.compare(newDeviceKey, newKeyHash)
+    console.log('[Regenerate Key] Self-test verification:', testVerify)
+    console.log('[Regenerate Key] Key length:', newDeviceKey.length)
+    console.log('[Regenerate Key] Hash length:', newKeyHash.length)
+
     // Update device with new key hash
-    const { error: updateError } = await supabase
+    const { data: updateResult, error: updateError } = await supabase
       .from('devices')
       .update({ device_key_hash: newKeyHash })
       .eq('id', deviceId)
+      .select('device_key_hash')
+      .single()
+
+    console.log('[Regenerate Key] Saved hash matches:', updateResult?.device_key_hash === newKeyHash)
 
     if (updateError) {
       console.error('[Admin Device Regenerate Key] Error:', updateError)
@@ -78,6 +89,13 @@ export async function POST(
       device_key: newDeviceKey,
       qr_code_data: qrCodeData,
       message: 'Device key regenerated. Save the new key - it cannot be retrieved later!',
+      // DEBUG info (remove after testing)
+      _debug: {
+        selfTestPassed: testVerify,
+        keyLength: newDeviceKey.length,
+        hashLength: newKeyHash.length,
+        hashSavedCorrectly: updateResult?.device_key_hash === newKeyHash,
+      }
     })
   } catch (error: any) {
     console.error('[Admin Device Regenerate Key] Error:', error)
