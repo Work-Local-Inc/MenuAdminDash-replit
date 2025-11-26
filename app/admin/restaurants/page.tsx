@@ -30,6 +30,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox"
 import { Search, Filter, MoreVertical, Plus, Download, Edit, Trash2, Copy, ExternalLink, CheckCircle2 } from "lucide-react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { formatCurrency } from "@/lib/utils"
 import { createRestaurantSlug } from "@/lib/utils/slugify"
 import { TableSkeleton } from "@/components/ui/loading-skeletons"
@@ -40,6 +41,7 @@ const statuses = ["All", "active", "suspended", "inactive"]
 const verifiedOptions = ["All", "Verified", "Unverified"]
 
 export default function RestaurantsPage() {
+  const router = useRouter()
   const [selectedRestaurants, setSelectedRestaurants] = useState<number[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [provinceFilter, setProvinceFilter] = useState("All")
@@ -231,8 +233,13 @@ export default function RestaurantsPage() {
                     </TableCell>
                   </TableRow>
                 ) : filteredRestaurants.map((restaurant: any) => (
-                  <TableRow key={restaurant.id} data-testid={`row-restaurant-${restaurant.id}`}>
-                    <TableCell>
+                  <TableRow 
+                    key={restaurant.id} 
+                    data-testid={`row-restaurant-${restaurant.id}`}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => router.push(`/admin/restaurants/${restaurant.id}`)}
+                  >
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       <Checkbox
                         checked={selectedRestaurants.includes(restaurant.id)}
                         onCheckedChange={() => toggleRestaurant(restaurant.id)}
@@ -265,7 +272,7 @@ export default function RestaurantsPage() {
                     <TableCell>{restaurant.city || 'N/A'}, {restaurant.province || 'N/A'}</TableCell>
                     <TableCell className="text-right">{restaurant.orders || 0}</TableCell>
                     <TableCell className="text-right">{formatCurrency(restaurant.revenue || 0, 'CAD')}</TableCell>
-                    <TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" data-testid={`button-actions-${restaurant.id}`}>
