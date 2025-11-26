@@ -277,6 +277,10 @@ export function PickupTimeSelector({ className, schedules = [], orderType = 'pic
   
   const handleTypeChange = (type: 'asap' | 'scheduled') => {
     if (type === 'asap') {
+      // GUARD: Don't allow ASAP when service is closed
+      if (isServiceClosed) {
+        return;
+      }
       setPickupTime({ type: 'asap' });
     } else {
       if (availableSlots.length > 0 && selectedSlotIndex < 0) {
