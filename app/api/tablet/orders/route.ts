@@ -46,6 +46,7 @@ export async function GET(request: NextRequest) {
     const supabase = createAdminClient()
 
     // Build query - orders for this restaurant only
+    // Note: Using users!orders_user_id_fkey to specify which FK to use for the join
     let query = supabase
       .from('orders')
       .select(`
@@ -69,7 +70,7 @@ export async function GET(request: NextRequest) {
         payment_status,
         acknowledged_at,
         acknowledged_by_device_id,
-        users (
+        users!orders_user_id_fkey (
           id,
           first_name,
           last_name,
