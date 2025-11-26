@@ -83,20 +83,33 @@ export default function RestaurantMenuPublic({
         <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
           <div className="flex items-start justify-between gap-3 sm:gap-4">
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 sm:gap-3 mb-2">
-                {restaurant.logo_url ? (
+              {/* Logo display mode: icon_text (default) or full_logo */}
+              {restaurant.logo_display_mode === 'full_logo' && restaurant.logo_url ? (
+                <div className="mb-2">
                   <img
                     src={restaurant.logo_url}
                     alt={restaurant.name}
-                    className="w-10 h-10 sm:w-12 sm:h-12 object-contain rounded flex-shrink-0"
+                    className="h-10 sm:h-12 w-auto object-contain"
+                    data-testid="img-restaurant-logo-full"
                   />
-                ) : (
-                  <Store className="w-6 h-6 sm:w-8 sm:h-8 text-primary flex-shrink-0" />
-                )}
-                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold truncate" data-testid="text-restaurant-name">
-                  {restaurant.name}
-                </h1>
-              </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 sm:gap-3 mb-2">
+                  {restaurant.logo_url ? (
+                    <img
+                      src={restaurant.logo_url}
+                      alt={restaurant.name}
+                      className="w-10 h-10 sm:w-12 sm:h-12 object-contain rounded flex-shrink-0"
+                      data-testid="img-restaurant-logo-icon"
+                    />
+                  ) : (
+                    <Store className="w-6 h-6 sm:w-8 sm:h-8 text-primary flex-shrink-0" />
+                  )}
+                  <h1 className="text-xl sm:text-2xl md:text-3xl font-bold truncate" data-testid="text-restaurant-name">
+                    {restaurant.name}
+                  </h1>
+                </div>
+              )}
 
               {location && (
                 <div className="flex flex-col gap-2 text-sm text-muted-foreground">
