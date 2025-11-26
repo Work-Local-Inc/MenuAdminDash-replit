@@ -27,7 +27,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Palette, Upload, Eye, Image as ImageIcon, Layout, Square } from "lucide-react"
+import { Switch } from "@/components/ui/switch"
+import { Palette, Upload, Eye, Image as ImageIcon, Layout, Square, BadgeCheck } from "lucide-react"
 import { queryClient, apiRequest } from "@/lib/queryClient"
 import { useToast } from "@/hooks/use-toast"
 import { hexToHSL } from "@/lib/utils"
@@ -36,6 +37,7 @@ const brandingSchema = z.object({
   logo_url: z.string().url('Must be a valid URL').or(z.literal('')).optional(),
   banner_image_url: z.string().url('Must be a valid URL').or(z.literal('')).optional(),
   logo_display_mode: z.enum(['icon_text', 'full_logo']).optional(),
+  show_order_online_badge: z.boolean().optional(),
   primary_color: z.string().regex(/^#[0-9A-F]{6}$/i, 'Must be a valid hex color').optional(),
   secondary_color: z.string().regex(/^#[0-9A-F]{6}$/i, 'Must be a valid hex color').optional(),
   checkout_button_color: z.string().regex(/^#[0-9A-F]{6}$/i, 'Must be a valid hex color').or(z.literal('')).optional(),
@@ -53,6 +55,7 @@ interface Restaurant {
   logo_url?: string | null
   banner_image_url?: string | null
   logo_display_mode?: 'icon_text' | 'full_logo' | null
+  show_order_online_badge?: boolean | null
   primary_color?: string | null
   secondary_color?: string | null
   checkout_button_color?: string | null
@@ -97,6 +100,7 @@ export function RestaurantBranding({ restaurantId }: RestaurantBrandingProps) {
       logo_url: restaurant?.logo_url || '',
       banner_image_url: restaurant?.banner_image_url || '',
       logo_display_mode: restaurant?.logo_display_mode || 'icon_text',
+      show_order_online_badge: restaurant?.show_order_online_badge || false,
       primary_color: restaurant?.primary_color || '#000000',
       secondary_color: restaurant?.secondary_color || '#666666',
       checkout_button_color: restaurant?.checkout_button_color || '',
@@ -414,6 +418,48 @@ export function RestaurantBranding({ restaurantId }: RestaurantBrandingProps) {
                           </RadioGroup>
                         </FormControl>
                         <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                {/* Order Online Badge Toggle */}
+                <div className="pt-4 border-t">
+                  <FormField
+                    control={form.control}
+                    name="show_order_online_badge"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5 flex-1">
+                          <div className="flex items-center gap-2">
+                            <BadgeCheck className="h-5 w-5 text-primary" />
+                            <FormLabel className="text-base font-semibold">Order Online Badge</FormLabel>
+                          </div>
+                          <FormDescription>
+                            Show an "Order Online" badge on the left side of your banner image to attract customers
+                          </FormDescription>
+                          {field.value && currentBannerUrl && (
+                            <div className="mt-3 relative inline-block">
+                              <img
+                                src={currentBannerUrl}
+                                alt="Banner preview"
+                                className="h-20 w-auto object-cover rounded-md"
+                              />
+                              <img
+                                src="/images/order-online-badge.png"
+                                alt="Order Online Badge"
+                                className="absolute left-2 top-1/2 -translate-y-1/2 h-12 w-auto drop-shadow-lg"
+                              />
+                            </div>
+                          )}
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="switch-order-online-badge"
+                          />
+                        </FormControl>
                       </FormItem>
                     )}
                   />
