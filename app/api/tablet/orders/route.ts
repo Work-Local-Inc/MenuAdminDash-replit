@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
     if (ordersError) {
       console.error('[Tablet Orders] Query error:', ordersError)
       return NextResponse.json(
-        { error: 'Failed to fetch orders' },
+        { error: 'Failed to fetch orders', details: ordersError.message, code: ordersError.code },
         { status: 500 }
       )
     }
