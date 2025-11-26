@@ -72,6 +72,14 @@ const menuItems = [
     icon: ShoppingCart,
   },
   {
+    title: "Devices",
+    icon: Tablet,
+    items: [
+      { title: "All Devices", url: "/admin/devices" },
+      { title: "Register Device", url: "/admin/devices/register" },
+    ],
+  },
+  {
     title: "Coupons",
     url: "/admin/coupons",
     icon: Tag,

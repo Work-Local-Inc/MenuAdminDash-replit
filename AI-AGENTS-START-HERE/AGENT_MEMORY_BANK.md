@@ -756,9 +756,100 @@ git log origin/main..HEAD --oneline
 
 ---
 
+## 📱 Tablet Bridge API (Nov 26, 2025)
+
+### Overview
+Complete API for Samsung tablet bridge app to receive and print orders at restaurant locations.
+
+### API Endpoints
+```
+/api/tablet/
+├── auth/
+│   ├── register/    POST - Register new device (admin-only)
+│   ├── login/       POST - Device authentication
+│   └── refresh/     POST - Refresh session token
+├── orders/
+│   ├── route.ts     GET  - List orders for restaurant
+│   └── [id]/
+│       ├── route.ts GET/POST - Order details / Acknowledge
+│       └── status/  PATCH - Update order status
+└── heartbeat/       POST - Device health check
+```
+
+### Authentication Flow
+1. Admin registers device via `/api/tablet/auth/register`
+2. Returns one-time `device_key` (store securely!)
+3. Tablet calls `/api/tablet/auth/login` with `device_uuid` + `device_key`
+4. Receives `session_token` (24h expiry)
+5. All subsequent requests use `Authorization: Bearer {token}`
+
+### Database Tables
+- `menuca_v3.devices` - Device registration (existing)
+- `menuca_v3.device_sessions` - Session tokens (NEW - run migration)
+- `menuca_v3.device_configs` - Per-device settings (NEW - run migration)
+- `menuca_v3.orders.acknowledged_at` - Track order acknowledgment (NEW column)
+
+### Migration Required
+Run: `db/migrations/create_device_sessions.sql`
+
+### Key Files
+- `types/tablet.ts` - TypeScript interfaces
+- `lib/validations/tablet.ts` - Zod schemas
+- `lib/tablet/auth.ts` - Auth helpers (key generation, sessions)
+- `lib/tablet/verify-device.ts` - Request verification middleware
+- `lib/tablet/receipt-format.ts` - ESC/POS receipt formatting
+
+### Order Status Flow
+```
+pending → confirmed → preparing → ready → out_for_delivery → delivered
+                                      └→ completed
+Any state → cancelled
+```
+
+### Security Notes
+- Device keys are bcrypt hashed (never stored plaintext)
+- Session tokens are 48-byte random, expire in 24 hours
+- Tablets only see orders for their assigned restaurant
+- Customer emails/phones are masked for privacy
+- Rate limited: 60 requests/minute per device
+
+### Testing with curl
+```bash
+# Register device (requires admin auth)
+curl -X POST http://localhost:5000/api/tablet/auth/register \
+  -H "Content-Type: application/json" \
+  -H "Cookie: <admin_session>" \
+  -d '{"device_name": "Kitchen Tablet", "restaurant_id": 73}'
+
+# Login
+curl -X POST http://localhost:5000/api/tablet/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"device_uuid": "xxx", "device_key": "yyy"}'
+
+# Get orders
+curl http://localhost:5000/api/tablet/orders \
+  -H "Authorization: Bearer {token}"
+
+# Update status
+curl -X PATCH http://localhost:5000/api/tablet/orders/123/status \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{"status": "confirmed"}'
+```
+
+### Sidebar Navigation
+Added "Devices" section to admin sidebar:
+- All Devices: `/admin/devices`
+- Register Device: `/admin/devices/register`
+
+### Full Implementation Plan
+See: `TABLET_BRIDGE_IMPLEMENTATION_PLAN.md` in project root
+
+---
+
 **Remember:** This is a REAL production app with LIVE data. Take time to understand before changing. When in doubt, ASK or CHECK the schema first!
 
 ---
 
-**Last Updated By:** Cursor Agent (CSS Agent)  
-**Next Update:** After next feature implementation
+**Last Updated By:** Claude Code (Opus)
+**Next Update:** After tablet app development or admin devices UI
