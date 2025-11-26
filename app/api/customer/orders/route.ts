@@ -367,9 +367,13 @@ export async function POST(request: NextRequest) {
       service_time: serviceTime, // { type: 'asap' | 'scheduled', scheduledTime?: string }
     }
     
+    // Database expects 'delivery' or 'takeout' (not 'pickup')
+    // Map 'pickup' -> 'takeout' for database compatibility
+    const dbOrderType = orderType === 'pickup' ? 'takeout' : orderType
+    
     const orderData = {
       order_number: orderNumber,
-      order_type: orderType, // From metadata: "delivery" or "pickup"
+      order_type: dbOrderType, // Database values: "delivery" or "takeout"
       order_status: 'pending', // Required: Initial status for new orders
       user_id: user_id || null, // NULL for guest orders
       is_guest_order: !user_id, // TRUE for guest checkouts
