@@ -404,7 +404,7 @@ export function RestaurantBranding({ restaurantId }: RestaurantBrandingProps) {
                                       <img
                                         src={currentLogoUrl}
                                         alt="Logo preview"
-                                        className="h-10 w-auto object-contain"
+                                        className="h-14 w-auto object-contain"
                                       />
                                     </div>
                                   )}
