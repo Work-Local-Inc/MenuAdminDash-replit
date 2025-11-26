@@ -10,19 +10,49 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
-import { useDevices, useToggleDevice } from "@/lib/hooks/use-devices"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { useDevices, useToggleDevice, useDeleteDevice, useRegenerateDeviceKey } from "@/lib/hooks/use-devices"
 import { formatDate, formatTime } from "@/lib/utils"
-import { Search, Plus, Tablet, Wifi, WifiOff, Printer, Settings } from "lucide-react"
+import { Search, Plus, Tablet, Wifi, WifiOff, Printer, Settings, MoreHorizontal, Key, Trash2, Copy, Check } from "lucide-react"
 import { toast } from "sonner"
 
 export default function DevicesPage() {
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [deleteDevice, setDeleteDevice] = useState<any>(null)
+  const [regeneratedCredentials, setRegeneratedCredentials] = useState<any>(null)
+  const [copiedField, setCopiedField] = useState<string | null>(null)
 
   const { data: devices = [], isLoading } = useDevices(
     statusFilter !== "all" ? { is_active: statusFilter === "active" } : undefined
   )
   const toggleDevice = useToggleDevice()
+  const deleteDeviceMutation = useDeleteDevice()
+  const regenerateKey = useRegenerateDeviceKey()
 
   const filteredDevices = devices.filter((device: any) => {
     const searchLower = search.toLowerCase()
@@ -47,6 +77,36 @@ export default function DevicesPage() {
     } catch (error: any) {
       toast.error(error.message || "Failed to update device")
     }
+  }
+
+  const handleDeleteDevice = async () => {
+    if (!deleteDevice) return
+    try {
+      await deleteDeviceMutation.mutateAsync(deleteDevice.id)
+      toast.success(`Device "${deleteDevice.device_name}" deleted`)
+      setDeleteDevice(null)
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete device")
+    }
+  }
+
+  const handleRegenerateKey = async (device: any) => {
+    try {
+      const result = await regenerateKey.mutateAsync(device.id)
+      setRegeneratedCredentials({
+        ...result,
+        device_name: device.device_name,
+      })
+      toast.success("Device key regenerated successfully")
+    } catch (error: any) {
+      toast.error(error.message || "Failed to regenerate key")
+    }
+  }
+
+  const copyToClipboard = async (text: string, field: string) => {
+    await navigator.clipboard.writeText(text)
+    setCopiedField(field)
+    setTimeout(() => setCopiedField(null), 2000)
   }
 
   // Stats
@@ -180,6 +240,7 @@ export default function DevicesPage() {
                     <TableHead>Last Seen</TableHead>
                     <TableHead>Features</TableHead>
                     <TableHead>Active</TableHead>
+                    <TableHead className="w-[70px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -237,6 +298,32 @@ export default function DevicesPage() {
                           data-testid={`switch-active-${device.id}`}
                         />
                       </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => handleRegenerateKey(device)}
+                              disabled={regenerateKey.isPending}
+                            >
+                              <Key className="h-4 w-4 mr-2" />
+                              Regenerate Key
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => setDeleteDevice(device)}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete Device
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -245,6 +332,96 @@ export default function DevicesPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteDevice} onOpenChange={() => setDeleteDevice(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Device</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{deleteDevice?.device_name}"? This action cannot be undone.
+              The device will need to be re-registered to connect again.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteDevice}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete Device
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Regenerated Credentials Dialog */}
+      <Dialog open={!!regeneratedCredentials} onOpenChange={() => setRegeneratedCredentials(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>New Device Credentials</DialogTitle>
+            <DialogDescription>
+              Save these credentials securely. The device key cannot be retrieved again after you close this dialog.
+            </DialogDescription>
+          </DialogHeader>
+          {regeneratedCredentials && (
+            <div className="space-y-4">
+              <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                <p className="text-sm text-yellow-800 dark:text-yellow-200 font-medium">
+                  Important: Save these credentials now!
+                </p>
+                <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
+                  The device key is shown only once and cannot be recovered.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Device Name</label>
+                  <p className="font-mono text-sm mt-1">{regeneratedCredentials.device_name}</p>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Device UUID</label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <code className="flex-1 p-2 bg-muted rounded text-xs font-mono break-all">
+                      {regeneratedCredentials.device_uuid}
+                    </code>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => copyToClipboard(regeneratedCredentials.device_uuid, 'uuid')}
+                    >
+                      {copiedField === 'uuid' ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Device Key</label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <code className="flex-1 p-2 bg-muted rounded text-xs font-mono break-all">
+                      {regeneratedCredentials.device_key}
+                    </code>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => copyToClipboard(regeneratedCredentials.device_key, 'key')}
+                    >
+                      {copiedField === 'key' ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button onClick={() => setRegeneratedCredentials(null)}>
+              I've Saved the Credentials
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

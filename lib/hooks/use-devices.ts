@@ -104,3 +104,50 @@ export function useToggleDevice() {
     },
   })
 }
+
+export function useDeleteDevice() {
+  const queryClient = useQueryClient()
+
+  return useMutation<void, Error, number>({
+    mutationFn: async (id) => {
+      const res = await fetch(`/api/admin/devices/${id}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || 'Failed to delete device')
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/devices'] })
+    },
+  })
+}
+
+interface RegenerateKeyResponse {
+  device_id: number
+  device_uuid: string
+  device_key: string
+  qr_code_data: string
+  message: string
+}
+
+export function useRegenerateDeviceKey() {
+  const queryClient = useQueryClient()
+
+  return useMutation<RegenerateKeyResponse, Error, number>({
+    mutationFn: async (id) => {
+      const res = await fetch(`/api/admin/devices/${id}/regenerate-key`, {
+        method: 'POST',
+      })
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || 'Failed to regenerate key')
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/devices'] })
+    },
+  })
+}
