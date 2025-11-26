@@ -44,9 +44,9 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (deviceError || !device) {
-      console.warn('[Device Login] Device not found:', device_uuid)
+      console.warn('[Device Login] Device not found:', device_uuid, deviceError)
       return NextResponse.json(
-        { error: 'Invalid credentials' },
+        { error: 'Invalid credentials', code: 'DEVICE_NOT_FOUND' },
         { status: 401 }
       )
     }
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
     if (!isValidKey) {
       console.warn('[Device Login] Invalid key for device:', device.id)
       return NextResponse.json(
-        { error: 'Invalid credentials' },
+        { error: 'Invalid credentials', code: 'INVALID_KEY' },
         { status: 401 }
       )
     }
