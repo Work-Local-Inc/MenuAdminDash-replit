@@ -31,13 +31,27 @@ export async function POST(request: NextRequest) {
     // Check if the provided key verifies against the stored hash
     let keyVerifies = false
     let hashInfo = null
+    let convertedHash = null
 
     if (device.device_key_hash) {
-      keyVerifies = await bcrypt.compare(device_key, device.device_key_hash)
+      let hashToVerify = device.device_key_hash
+
+      // Handle bytea encoding from PostgreSQL
+      if (hashToVerify.startsWith('\\x')) {
+        const hexString = hashToVerify.slice(2)
+        convertedHash = Buffer.from(hexString, 'hex').toString('utf8')
+        hashToVerify = convertedHash
+      }
+
+      keyVerifies = await bcrypt.compare(device_key, hashToVerify)
       hashInfo = {
-        hashLength: device.device_key_hash.length,
-        hashPrefix: device.device_key_hash.substring(0, 15) + '...',
-        hashIsBcrypt: device.device_key_hash.startsWith('$2'),
+        rawHashLength: device.device_key_hash.length,
+        rawHashPrefix: device.device_key_hash.substring(0, 20) + '...',
+        rawHashIsBcrypt: device.device_key_hash.startsWith('$2'),
+        convertedHashLength: convertedHash?.length,
+        convertedHashPrefix: convertedHash?.substring(0, 20) + '...',
+        convertedHashIsBcrypt: convertedHash?.startsWith('$2'),
+        wasBytea: !!convertedHash,
       }
     }
 
