@@ -194,7 +194,11 @@ export async function GET(request: NextRequest) {
   } catch (error: any) {
     console.error('[Tablet Orders] Error:', error)
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch orders' },
+      {
+        error: error.message || 'Failed to fetch orders',
+        stack: error.stack?.split('\n').slice(0, 3).join('\n'),
+        name: error.name,
+      },
       { status: 500 }
     )
   }
