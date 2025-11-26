@@ -175,13 +175,14 @@ export default function RestaurantMenuPublic({
             </p>
           </div>
         ) : (
-          <div className="space-y-12">
+          <div className="space-y-8">
             {courses?.map((course) => {
               const courseDishes = course.dishes || []
+              // Map old layout values to new ones for backwards compatibility
               const rawLayout = restaurant.menu_layout
-              const layout = rawLayout === 'grid2' || rawLayout === 'grid4' || rawLayout === 'list'
-                ? rawLayout
-                : 'grid4'
+              // 'list' = compact list rows, 'grid2' = 2-column grid, 'grid4' = 4-column grid
+              // Old 'grid' maps to 'grid2'
+              const layout = rawLayout === 'grid' ? 'grid2' : rawLayout || 'grid4'
 
               const getGridClasses = () => {
                 if (layout === 'grid2') {
@@ -194,7 +195,7 @@ export default function RestaurantMenuPublic({
 
               return (
                 <div key={course.id} id={`category-${course.id}`} className="scroll-mt-24">
-                  <div className={`flex items-center gap-3 mb-4 pb-2 border-b ${layout === 'list' ? 'mb-0 pb-0 border-b-0' : ''}`}>
+                  <div className={`flex items-center gap-3 mb-4 pb-2 border-b ${layout === 'list' ? 'mb-0 pb-0 border-b-0 lg:max-w-2xl lg:mx-auto xl:max-w-none' : ''}`}>
                     <h2
                       className={`font-bold flex-1 ${layout === 'list' ? 'text-lg text-primary py-2 border-b-2 border-primary' : 'text-2xl'}`}
                       data-testid={`heading-category-${course.id}`}
