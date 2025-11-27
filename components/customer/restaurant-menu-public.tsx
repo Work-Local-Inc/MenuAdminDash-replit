@@ -335,15 +335,13 @@ export default function RestaurantMenuPublic({
 
       <div className="fixed bottom-0 left-0 right-0 z-20 bg-background border-t shadow-lg">
         <div className="container mx-auto px-4 py-3">
-          <Button
-            size="lg"
+          <button
             onClick={() => setIsCartOpen(true)}
-            className="w-full h-14"
+            className="w-full h-14 rounded-md text-white font-medium flex items-center justify-center disabled:opacity-50 disabled:pointer-events-none"
             disabled={displayCartCount === 0 && !isCartOpen}
             data-testid="button-open-cart"
             style={{
               backgroundColor: restaurant.checkout_button_color || effectivePrimaryColor,
-              borderColor: restaurant.checkout_button_color || effectivePrimaryColor,
             }}
           >
             <div className="flex items-center justify-between w-full">
@@ -357,7 +355,7 @@ export default function RestaurantMenuPublic({
                 ${displayCartTotal.toFixed(2)}
               </span>
             </div>
-          </Button>
+          </button>
         </div>
       </div>
 

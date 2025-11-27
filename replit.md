@@ -51,6 +51,7 @@ Preferred communication style: Simple, everyday language.
     -   Default banner: Red gradient header with decorative circular elements when no custom banner image is set.
     -   Default icon: Styled rounded square container with UtensilsCrossed icon when no custom logo is set.
     -   Order Online badge: Always displayed on all restaurant pages (both custom and default banners).
+    -   Cart/basket button: Uses plain HTML button with inline styles to ensure brand color takes precedence over CSS framework defaults.
     -   Consistent application: Default color flows through to cart button, checkout buttons, confirmation page, and all interactive elements.
 
 ## External Dependencies
