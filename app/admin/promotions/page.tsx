@@ -1,13 +1,21 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { useQuery } from "@tanstack/react-query"
+import { useRestaurants } from "@/lib/hooks/use-restaurants"
 import { 
   Megaphone, 
   Tag, 
@@ -25,6 +33,8 @@ import {
   ChevronRight,
   BarChart3,
   Target,
+  Store,
+  Building2,
 } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
 
@@ -34,16 +44,20 @@ function QuickActionCard({
   title, 
   description, 
   href, 
-  color 
+  color,
+  restaurantId,
 }: { 
   icon: any
   title: string
   description: string
   href: string
-  color: string 
+  color: string
+  restaurantId?: string
 }) {
+  const fullHref = restaurantId ? `${href}?restaurant=${restaurantId}` : href
+  
   return (
-    <Link href={href}>
+    <Link href={fullHref}>
       <Card className="group hover:shadow-lg transition-all duration-200 cursor-pointer border-2 hover:border-primary/50">
         <CardContent className="p-6">
           <div className="flex items-start gap-4">
@@ -160,9 +174,40 @@ function ActivePromoCard({
 }
 
 export default function MarketingHubPage() {
-  // Fetch marketing stats
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  
+  // Restaurant selection state
+  const initialRestaurantId = searchParams.get('restaurant') || ''
+  const [selectedRestaurantId, setSelectedRestaurantId] = useState<string>(initialRestaurantId)
+  
+  // Update state when URL changes
+  useEffect(() => {
+    const urlRestaurantId = searchParams.get('restaurant') || ''
+    if (urlRestaurantId !== selectedRestaurantId) {
+      setSelectedRestaurantId(urlRestaurantId)
+    }
+  }, [searchParams])
+  
+  // Handler to update both state and URL
+  const handleRestaurantChange = (restaurantId: string) => {
+    setSelectedRestaurantId(restaurantId)
+    if (restaurantId) {
+      router.push(`/admin/promotions?restaurant=${restaurantId}`)
+    } else {
+      router.push('/admin/promotions')
+    }
+  }
+  
+  // Fetch restaurants
+  const { data: restaurants = [], isLoading: loadingRestaurants } = useRestaurants({ status: 'active' })
+  
+  // Get selected restaurant info
+  const selectedRestaurant = restaurants.find((r: any) => r.id.toString() === selectedRestaurantId)
+
+  // Fetch marketing stats for selected restaurant
   const { data: stats, isLoading: statsLoading } = useQuery({
-    queryKey: ['/api/admin/promotions/stats'],
+    queryKey: ['/api/admin/promotions/stats', selectedRestaurantId],
     queryFn: async () => {
       // For now, return mock data - will be replaced with real API
       return {
@@ -176,11 +221,12 @@ export default function MarketingHubPage() {
         revenueChange: '+18%',
       }
     },
+    enabled: !!selectedRestaurantId,
   })
 
-  // Fetch active promotions
+  // Fetch active promotions for selected restaurant
   const { data: activePromos, isLoading: promosLoading } = useQuery({
-    queryKey: ['/api/admin/promotions/active'],
+    queryKey: ['/api/admin/promotions/active', selectedRestaurantId],
     queryFn: async () => {
       // Mock data for now
       return [
@@ -189,6 +235,7 @@ export default function MarketingHubPage() {
         { id: 3, name: 'Drink Upsell', code: 'ADDDRINK', type: 'upsell' as const, discount: '$2 off drinks', usageCount: 89, isActive: true },
       ]
     },
+    enabled: !!selectedRestaurantId,
   })
 
   return (
@@ -206,165 +253,231 @@ export default function MarketingHubPage() {
             Manage coupons, deals, and promotions to boost your sales
           </p>
         </div>
-        <div className="flex gap-3">
-          <Button variant="outline" asChild>
-            <Link href="/admin/promotions/analytics">
-              <BarChart3 className="h-4 w-4 mr-2" />
-              Analytics
-            </Link>
-          </Button>
-          <Button asChild>
-            <Link href="/admin/promotions/create">
-              <Plus className="h-4 w-4 mr-2" />
-              Create Campaign
-            </Link>
-          </Button>
-        </div>
-      </div>
-
-      {/* Stats Overview */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard 
-          title="Active Coupons" 
-          value={stats?.activeCoupons ?? 0}
-          change={stats?.couponChange}
-          icon={Tag}
-          loading={statsLoading}
-        />
-        <StatCard 
-          title="Active Deals" 
-          value={stats?.activeDeals ?? 0}
-          change={stats?.dealChange}
-          icon={Gift}
-          loading={statsLoading}
-        />
-        <StatCard 
-          title="Total Redemptions" 
-          value={stats?.totalRedemptions ?? 0}
-          change={stats?.redemptionChange}
-          icon={Users}
-          loading={statsLoading}
-        />
-        <StatCard 
-          title="Revenue Impact" 
-          value={statsLoading ? '...' : formatCurrency(stats?.revenueImpact ?? 0, 'CAD')}
-          change={stats?.revenueChange}
-          icon={TrendingUp}
-          loading={statsLoading}
-        />
-      </div>
-
-      {/* Quick Actions */}
-      <div>
-        <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-          <Zap className="h-5 w-5 text-yellow-500" />
-          Quick Actions
-        </h2>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <QuickActionCard
-            icon={Tag}
-            title="Create Coupon"
-            description="Discount codes for customers to use at checkout"
-            href="/admin/coupons"
-            color="bg-blue-500"
-          />
-          <QuickActionCard
-            icon={Gift}
-            title="Create Deal"
-            description="BOGO, combo deals, and limited-time offers"
-            href="/admin/promotions/deals"
-            color="bg-purple-500"
-          />
-          <QuickActionCard
-            icon={TrendingUp}
-            title="Create Upsell"
-            description="Suggest add-ons to increase order value"
-            href="/admin/promotions/upsells"
-            color="bg-green-500"
-          />
-        </div>
-      </div>
-
-      {/* Active Promotions */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-yellow-500" />
-                Active Promotions
-              </CardTitle>
-              <CardDescription>
-                Currently running campaigns across all restaurants
-              </CardDescription>
-            </div>
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/admin/promotions/all">
-                View All
-                <ArrowRight className="h-4 w-4 ml-1" />
+        {selectedRestaurantId && (
+          <div className="flex gap-3">
+            <Button variant="outline" asChild>
+              <Link href={`/admin/promotions/analytics?restaurant=${selectedRestaurantId}`}>
+                <BarChart3 className="h-4 w-4 mr-2" />
+                Analytics
+              </Link>
+            </Button>
+            <Button asChild>
+              <Link href={`/admin/promotions/create?restaurant=${selectedRestaurantId}`}>
+                <Plus className="h-4 w-4 mr-2" />
+                Create Campaign
               </Link>
             </Button>
           </div>
+        )}
+      </div>
+
+      {/* Restaurant Selector */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Store className="h-5 w-5" />
+            Select Location
+          </CardTitle>
+          <CardDescription>
+            Choose a restaurant location to manage its marketing campaigns
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          {promosLoading ? (
-            <div className="space-y-3">
-              {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-16 w-full" />
-              ))}
-            </div>
-          ) : activePromos && activePromos.length > 0 ? (
-            <div className="space-y-3">
-              {activePromos.map((promo) => (
-                <ActivePromoCard key={promo.id} promo={promo} />
-              ))}
-            </div>
+          {loadingRestaurants ? (
+            <Skeleton className="h-10 w-full max-w-md" />
           ) : (
-            <div className="text-center py-8">
-              <Megaphone className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-              <p className="text-muted-foreground">No active promotions</p>
-              <Button className="mt-4" asChild>
-                <Link href="/admin/promotions/create">
-                  Create Your First Campaign
-                </Link>
-              </Button>
-            </div>
+            <Select value={selectedRestaurantId} onValueChange={handleRestaurantChange}>
+              <SelectTrigger className="w-full max-w-md" data-testid="select-restaurant">
+                <SelectValue placeholder="Select a restaurant location" />
+              </SelectTrigger>
+              <SelectContent>
+                {restaurants.map((restaurant: any) => (
+                  <SelectItem key={restaurant.id} value={restaurant.id.toString()}>
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4 text-muted-foreground" />
+                      {restaurant.name} - {restaurant.city}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           )}
         </CardContent>
       </Card>
 
-      {/* Campaign Templates */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Target className="h-5 w-5 text-primary" />
-            Campaign Templates
-          </CardTitle>
-          <CardDescription>
-            Start with a pre-built template to save time
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+      {/* Show content only when restaurant is selected */}
+      {!selectedRestaurantId ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Store className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <p className="text-lg font-medium mb-2">No Location Selected</p>
+            <p className="text-muted-foreground">
+              Please select a restaurant location above to manage its marketing campaigns
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {/* Selected Restaurant Badge */}
+          {selectedRestaurant && (
+            <div className="flex items-center gap-2 p-3 bg-primary/5 border border-primary/20 rounded-lg">
+              <Building2 className="h-5 w-5 text-primary" />
+              <span className="font-medium">Managing:</span>
+              <Badge variant="secondary" className="text-sm">
+                {selectedRestaurant.name} - {selectedRestaurant.city}
+              </Badge>
+            </div>
+          )}
+
+          {/* Stats Overview */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {[
-              { name: 'First Order Discount', icon: Sparkles, desc: '15% off first purchase', color: 'from-green-500 to-emerald-600' },
-              { name: 'Happy Hour', icon: Clock, desc: '20% off 2-5pm', color: 'from-orange-500 to-amber-600' },
-              { name: 'Weekend Special', icon: Calendar, desc: 'BOGO on weekends', color: 'from-blue-500 to-indigo-600' },
-              { name: 'Loyalty Reward', icon: Gift, desc: 'Free item after 10 orders', color: 'from-purple-500 to-pink-600' },
-            ].map((template) => (
-              <button
-                key={template.name}
-                className="group relative overflow-hidden rounded-xl border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 p-6 text-left transition-all hover:shadow-lg"
-              >
-                <div className={`absolute inset-0 bg-gradient-to-br ${template.color} opacity-0 group-hover:opacity-10 transition-opacity`} />
-                <template.icon className="h-8 w-8 mb-3 text-muted-foreground group-hover:text-primary transition-colors" />
-                <h4 className="font-semibold group-hover:text-primary transition-colors">{template.name}</h4>
-                <p className="text-sm text-muted-foreground mt-1">{template.desc}</p>
-              </button>
-            ))}
+            <StatCard 
+              title="Active Coupons" 
+              value={stats?.activeCoupons ?? 0}
+              change={stats?.couponChange}
+              icon={Tag}
+              loading={statsLoading}
+            />
+            <StatCard 
+              title="Active Deals" 
+              value={stats?.activeDeals ?? 0}
+              change={stats?.dealChange}
+              icon={Gift}
+              loading={statsLoading}
+            />
+            <StatCard 
+              title="Total Redemptions" 
+              value={stats?.totalRedemptions ?? 0}
+              change={stats?.redemptionChange}
+              icon={Users}
+              loading={statsLoading}
+            />
+            <StatCard 
+              title="Revenue Impact" 
+              value={statsLoading ? '...' : formatCurrency(stats?.revenueImpact ?? 0, 'CAD')}
+              change={stats?.revenueChange}
+              icon={TrendingUp}
+              loading={statsLoading}
+            />
           </div>
-        </CardContent>
-      </Card>
+
+          {/* Quick Actions */}
+          <div>
+            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+              <Zap className="h-5 w-5 text-yellow-500" />
+              Quick Actions
+            </h2>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <QuickActionCard
+                icon={Tag}
+                title="Create Coupon"
+                description="Discount codes for customers to use at checkout"
+                href="/admin/coupons"
+                color="bg-blue-500"
+                restaurantId={selectedRestaurantId}
+              />
+              <QuickActionCard
+                icon={Gift}
+                title="Create Deal"
+                description="BOGO, combo deals, and limited-time offers"
+                href="/admin/promotions/deals"
+                color="bg-purple-500"
+                restaurantId={selectedRestaurantId}
+              />
+              <QuickActionCard
+                icon={TrendingUp}
+                title="Create Upsell"
+                description="Suggest add-ons to increase order value"
+                href="/admin/promotions/upsells"
+                color="bg-green-500"
+                restaurantId={selectedRestaurantId}
+              />
+            </div>
+          </div>
+
+          {/* Active Promotions */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Sparkles className="h-5 w-5 text-yellow-500" />
+                    Active Promotions
+                  </CardTitle>
+                  <CardDescription>
+                    Currently running campaigns for this location
+                  </CardDescription>
+                </div>
+                <Button variant="ghost" size="sm" asChild>
+                  <Link href={`/admin/promotions/all?restaurant=${selectedRestaurantId}`}>
+                    View All
+                    <ArrowRight className="h-4 w-4 ml-1" />
+                  </Link>
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {promosLoading ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map((i) => (
+                    <Skeleton key={i} className="h-16 w-full" />
+                  ))}
+                </div>
+              ) : activePromos && activePromos.length > 0 ? (
+                <div className="space-y-3">
+                  {activePromos.map((promo) => (
+                    <ActivePromoCard key={promo.id} promo={promo} />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Megaphone className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                  <p className="text-muted-foreground">No active promotions for this location</p>
+                  <Button className="mt-4" asChild>
+                    <Link href={`/admin/promotions/create?restaurant=${selectedRestaurantId}`}>
+                      Create Your First Campaign
+                    </Link>
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Campaign Templates */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Target className="h-5 w-5 text-primary" />
+                Campaign Templates
+              </CardTitle>
+              <CardDescription>
+                Start with a pre-built template to save time
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                {[
+                  { name: 'First Order Discount', icon: Sparkles, desc: '15% off first purchase', color: 'from-green-500 to-emerald-600' },
+                  { name: 'Happy Hour', icon: Clock, desc: '20% off 2-5pm', color: 'from-orange-500 to-amber-600' },
+                  { name: 'Weekend Special', icon: Calendar, desc: 'BOGO on weekends', color: 'from-blue-500 to-indigo-600' },
+                  { name: 'Loyalty Reward', icon: Gift, desc: 'Free item after 10 orders', color: 'from-purple-500 to-pink-600' },
+                ].map((template) => (
+                  <button
+                    key={template.name}
+                    className="group relative overflow-hidden rounded-xl border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 p-6 text-left transition-all hover:shadow-lg"
+                    onClick={() => router.push(`/admin/promotions/create?restaurant=${selectedRestaurantId}&template=${template.name.toLowerCase().replace(/ /g, '-')}`)}
+                  >
+                    <div className={`absolute inset-0 bg-gradient-to-br ${template.color} opacity-0 group-hover:opacity-10 transition-opacity`} />
+                    <template.icon className="h-8 w-8 mb-3 text-muted-foreground group-hover:text-primary transition-colors" />
+                    <h4 className="font-semibold group-hover:text-primary transition-colors">{template.name}</h4>
+                    <p className="text-sm text-muted-foreground mt-1">{template.desc}</p>
+                  </button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
     </div>
   )
 }

@@ -1,6 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -12,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useRestaurants } from "@/lib/hooks/use-restaurants"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -32,6 +35,9 @@ import {
   Eye,
   Pause,
   Play,
+  Store,
+  Building2,
+  ArrowLeft,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -208,10 +214,36 @@ function DealCard({ deal, onEdit, onDelete }: { deal: any; onEdit: () => void; o
 }
 
 export default function DealsPage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const { toast } = useToast()
+  
+  // Restaurant selection
+  const initialRestaurantId = searchParams.get('restaurant') || ''
+  const [selectedRestaurantId, setSelectedRestaurantId] = useState<string>(initialRestaurantId)
+  
+  useEffect(() => {
+    const urlRestaurantId = searchParams.get('restaurant') || ''
+    if (urlRestaurantId !== selectedRestaurantId) {
+      setSelectedRestaurantId(urlRestaurantId)
+    }
+  }, [searchParams])
+  
+  const handleRestaurantChange = (restaurantId: string) => {
+    setSelectedRestaurantId(restaurantId)
+    if (restaurantId) {
+      router.push(`/admin/promotions/deals?restaurant=${restaurantId}`)
+    } else {
+      router.push('/admin/promotions/deals')
+    }
+  }
+  
+  const { data: restaurants = [], isLoading: loadingRestaurants } = useRestaurants({ status: 'active' })
+  const selectedRestaurant = restaurants.find((r: any) => r.id.toString() === selectedRestaurantId)
+  
   const [search, setSearch] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [activeTab, setActiveTab] = useState("all")
-  const { toast } = useToast()
 
   const form = useForm<DealFormValues>({
     resolver: zodResolver(dealSchema),
@@ -259,18 +291,26 @@ export default function DealsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-            <div className="p-2 bg-purple-500 rounded-xl">
-              <Gift className="h-6 w-6 text-white" />
-            </div>
-            Deals & Promotions
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Create BOGO offers, combo deals, happy hour specials, and more
-          </p>
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" asChild>
+            <Link href={selectedRestaurantId ? `/admin/promotions?restaurant=${selectedRestaurantId}` : '/admin/promotions'}>
+              <ArrowLeft className="h-5 w-5" />
+            </Link>
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
+              <div className="p-2 bg-purple-500 rounded-xl">
+                <Gift className="h-6 w-6 text-white" />
+              </div>
+              Deals & Promotions
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Create BOGO offers, combo deals, happy hour specials, and more
+            </p>
+          </div>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        {selectedRestaurantId && (
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
@@ -464,10 +504,68 @@ export default function DealsPage() {
               </form>
             </Form>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        )}
       </div>
 
-      {/* Deal Type Quick Filters */}
+      {/* Restaurant Selector */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Store className="h-5 w-5" />
+            Select Location
+          </CardTitle>
+          <CardDescription>
+            Choose a restaurant location to manage its deals
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loadingRestaurants ? (
+            <Skeleton className="h-10 w-full max-w-md" />
+          ) : (
+            <Select value={selectedRestaurantId} onValueChange={handleRestaurantChange}>
+              <SelectTrigger className="w-full max-w-md">
+                <SelectValue placeholder="Select a restaurant location" />
+              </SelectTrigger>
+              <SelectContent>
+                {restaurants.map((restaurant: any) => (
+                  <SelectItem key={restaurant.id} value={restaurant.id.toString()}>
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4 text-muted-foreground" />
+                      {restaurant.name} - {restaurant.city}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </CardContent>
+      </Card>
+
+      {!selectedRestaurantId ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Store className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <p className="text-lg font-medium mb-2">No Location Selected</p>
+            <p className="text-muted-foreground">
+              Please select a restaurant location above to manage its deals
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {/* Selected Restaurant Badge */}
+          {selectedRestaurant && (
+            <div className="flex items-center gap-2 p-3 bg-primary/5 border border-primary/20 rounded-lg">
+              <Building2 className="h-5 w-5 text-primary" />
+              <span className="font-medium">Managing:</span>
+              <Badge variant="secondary" className="text-sm">
+                {selectedRestaurant.name} - {selectedRestaurant.city}
+              </Badge>
+            </div>
+          )}
+
+          {/* Deal Type Quick Filters */}
       <div className="flex flex-wrap gap-2">
         {dealTypes.map((type) => (
           <Button
@@ -532,6 +630,8 @@ export default function DealsPage() {
           ))
         )}
       </div>
+        </>
+      )}
     </div>
   )
 }

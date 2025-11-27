@@ -1,14 +1,18 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
+import { useRestaurants } from "@/lib/hooks/use-restaurants"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -30,6 +34,9 @@ import {
   Eye,
   GripVertical,
   ChevronRight,
+  Store,
+  Building2,
+  ArrowLeft,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -229,9 +236,35 @@ function UpsellCard({ upsell, onEdit, onDelete }: { upsell: any; onEdit: () => v
 }
 
 export default function UpsellsPage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const { toast } = useToast()
+  
+  // Restaurant selection
+  const initialRestaurantId = searchParams.get('restaurant') || ''
+  const [selectedRestaurantId, setSelectedRestaurantId] = useState<string>(initialRestaurantId)
+  
+  useEffect(() => {
+    const urlRestaurantId = searchParams.get('restaurant') || ''
+    if (urlRestaurantId !== selectedRestaurantId) {
+      setSelectedRestaurantId(urlRestaurantId)
+    }
+  }, [searchParams])
+  
+  const handleRestaurantChange = (restaurantId: string) => {
+    setSelectedRestaurantId(restaurantId)
+    if (restaurantId) {
+      router.push(`/admin/promotions/upsells?restaurant=${restaurantId}`)
+    } else {
+      router.push('/admin/promotions/upsells')
+    }
+  }
+  
+  const { data: restaurants = [], isLoading: loadingRestaurants } = useRestaurants({ status: 'active' })
+  const selectedRestaurant = restaurants.find((r: any) => r.id.toString() === selectedRestaurantId)
+
   const [search, setSearch] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const { toast } = useToast()
 
   const form = useForm<UpsellFormValues>({
     resolver: zodResolver(upsellSchema),
@@ -280,18 +313,26 @@ export default function UpsellsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-            <div className="p-2 bg-green-500 rounded-xl">
-              <TrendingUp className="h-6 w-6 text-white" />
-            </div>
-            Upsells
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Increase average order value with smart product suggestions
-          </p>
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" asChild>
+            <Link href={selectedRestaurantId ? `/admin/promotions?restaurant=${selectedRestaurantId}` : '/admin/promotions'}>
+              <ArrowLeft className="h-5 w-5" />
+            </Link>
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
+              <div className="p-2 bg-green-500 rounded-xl">
+                <TrendingUp className="h-6 w-6 text-white" />
+              </div>
+              Upsells
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Increase average order value with smart product suggestions
+            </p>
+          </div>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        {selectedRestaurantId && (
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
@@ -500,10 +541,68 @@ export default function UpsellsPage() {
               </form>
             </Form>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        )}
       </div>
 
-      {/* Stats Cards */}
+      {/* Restaurant Selector */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Store className="h-5 w-5" />
+            Select Location
+          </CardTitle>
+          <CardDescription>
+            Choose a restaurant location to manage its upsell rules
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loadingRestaurants ? (
+            <Skeleton className="h-10 w-full max-w-md" />
+          ) : (
+            <Select value={selectedRestaurantId} onValueChange={handleRestaurantChange}>
+              <SelectTrigger className="w-full max-w-md">
+                <SelectValue placeholder="Select a restaurant location" />
+              </SelectTrigger>
+              <SelectContent>
+                {restaurants.map((restaurant: any) => (
+                  <SelectItem key={restaurant.id} value={restaurant.id.toString()}>
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4 text-muted-foreground" />
+                      {restaurant.name} - {restaurant.city}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </CardContent>
+      </Card>
+
+      {!selectedRestaurantId ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Store className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <p className="text-lg font-medium mb-2">No Location Selected</p>
+            <p className="text-muted-foreground">
+              Please select a restaurant location above to manage its upsell rules
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {/* Selected Restaurant Badge */}
+          {selectedRestaurant && (
+            <div className="flex items-center gap-2 p-3 bg-primary/5 border border-primary/20 rounded-lg">
+              <Building2 className="h-5 w-5 text-primary" />
+              <span className="font-medium">Managing:</span>
+              <Badge variant="secondary" className="text-sm">
+                {selectedRestaurant.name} - {selectedRestaurant.city}
+              </Badge>
+            </div>
+          )}
+
+          {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardContent className="p-6">
@@ -593,6 +692,8 @@ export default function UpsellsPage() {
           )}
         </div>
       </div>
+        </>
+      )}
     </div>
   )
 }
