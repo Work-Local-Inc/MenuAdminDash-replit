@@ -14,8 +14,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { useQuery } from "@tanstack/react-query"
 import { useRestaurants } from "@/lib/hooks/use-restaurants"
+import { usePromotionStats, useActivePromotions } from "@/lib/hooks/use-promotions"
 import { 
   Megaphone, 
   Tag, 
@@ -205,38 +205,16 @@ export default function MarketingHubPage() {
   // Get selected restaurant info
   const selectedRestaurant = restaurants.find((r: any) => r.id.toString() === selectedRestaurantId)
 
-  // Fetch marketing stats for selected restaurant
-  const { data: stats, isLoading: statsLoading } = useQuery({
-    queryKey: ['/api/admin/promotions/stats', selectedRestaurantId],
-    queryFn: async () => {
-      // For now, return mock data - will be replaced with real API
-      return {
-        activeCoupons: 12,
-        activeDeals: 5,
-        totalRedemptions: 847,
-        revenueImpact: 15420.50,
-        couponChange: '+23%',
-        dealChange: '+8%',
-        redemptionChange: '+12%',
-        revenueChange: '+18%',
-      }
-    },
-    enabled: !!selectedRestaurantId,
-  })
+  // Fetch marketing stats for selected restaurant (REAL DATA)
+  const { data: stats, isLoading: statsLoading } = usePromotionStats(
+    selectedRestaurantId ? parseInt(selectedRestaurantId) : undefined
+  )
 
-  // Fetch active promotions for selected restaurant
-  const { data: activePromos, isLoading: promosLoading } = useQuery({
-    queryKey: ['/api/admin/promotions/active', selectedRestaurantId],
-    queryFn: async () => {
-      // Mock data for now
-      return [
-        { id: 1, name: 'Summer Special', code: 'SUMMER25', type: 'coupon' as const, discount: '25% off', usageCount: 234, expiresAt: 'Dec 31', isActive: true },
-        { id: 2, name: 'Buy 2 Get 1 Free', code: 'B2G1', type: 'deal' as const, discount: 'BOGO', usageCount: 156, expiresAt: 'Dec 15', isActive: true },
-        { id: 3, name: 'Drink Upsell', code: 'ADDDRINK', type: 'upsell' as const, discount: '$2 off drinks', usageCount: 89, isActive: true },
-      ]
-    },
-    enabled: !!selectedRestaurantId,
-  })
+  // Fetch active promotions for selected restaurant (REAL DATA)
+  const { data: activePromosData, isLoading: promosLoading } = useActivePromotions(
+    selectedRestaurantId ? parseInt(selectedRestaurantId) : undefined
+  )
+  const activePromos = activePromosData?.promotions || []
 
   return (
     <div className="space-y-8">

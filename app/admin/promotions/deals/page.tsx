@@ -13,8 +13,8 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useRestaurants } from "@/lib/hooks/use-restaurants"
+import { useDeals, useCreateDeal, useToggleDeal, useDeleteDeal } from "@/lib/hooks/use-promotions"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -78,61 +78,25 @@ const dealTypes = [
   { value: 'limited_time', label: 'Limited Time Offer', icon: Calendar, color: 'bg-red-500' },
 ]
 
-// Mock data for now - will be replaced with real API
-const mockDeals = [
-  { 
-    id: 1, 
-    name: 'Buy 2 Pizzas, Get 1 Free', 
-    deal_type: 'bogo', 
-    discount_type: 'free_item',
-    discount_value: 0,
-    description: 'Buy any 2 large pizzas and get a medium pizza free',
-    usageCount: 156,
-    valid_until: '2024-12-31',
-    is_active: true,
-  },
-  { 
-    id: 2, 
-    name: 'Family Combo', 
-    deal_type: 'combo', 
-    discount_type: 'fixed',
-    discount_value: 15,
-    description: '2 entrees + 2 sides + 4 drinks for $45',
-    usageCount: 89,
-    valid_until: null,
-    is_active: true,
-  },
-  { 
-    id: 3, 
-    name: 'Happy Hour Special', 
-    deal_type: 'happy_hour', 
-    discount_type: 'percentage',
-    discount_value: 20,
-    description: '20% off appetizers from 3-6pm',
-    usageCount: 234,
-    valid_until: null,
-    is_active: true,
-    schedule: { days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'], start_time: '15:00', end_time: '18:00' },
-  },
-  { 
-    id: 4, 
-    name: 'Winter Warmup', 
-    deal_type: 'limited_time', 
-    discount_type: 'percentage',
-    discount_value: 25,
-    description: 'Limited time: 25% off all soups and stews',
-    usageCount: 67,
-    valid_until: '2024-02-28',
-    is_active: false,
-  },
-]
+// Deal type mapping for display
+const dealTypeMap: Record<string, { value: string; label: string }> = {
+  'percent': { value: 'percentage', label: 'Percentage Off' },
+  'percentTotal': { value: 'percentage', label: 'Percentage Off Total' },
+  'value': { value: 'fixed', label: 'Fixed Amount Off' },
+  'valueTotal': { value: 'fixed', label: 'Fixed Amount Off Total' },
+  'freeItem': { value: 'bogo', label: 'Free Item / BOGO' },
+  'priced': { value: 'combo', label: 'Special Price' },
+}
 
-function DealCard({ deal, onEdit, onDelete }: { deal: any; onEdit: () => void; onDelete: () => void }) {
-  const dealType = dealTypes.find(t => t.value === deal.deal_type)
+function DealCard({ deal, onEdit, onDelete, onToggle }: { deal: any; onEdit: () => void; onDelete: () => void; onToggle: () => void }) {
+  // Map database deal_type to UI deal type
+  const mappedType = dealTypeMap[deal.deal_type]?.value || deal.deal_type
+  const dealType = dealTypes.find(t => t.value === mappedType)
   const Icon = dealType?.icon || Gift
+  const isActive = deal.is_enabled
 
   return (
-    <Card className={`transition-all ${!deal.is_active ? 'opacity-60' : ''}`}>
+    <Card className={`transition-all ${!isActive ? 'opacity-60' : ''}`}>
       <CardContent className="p-6">
         <div className="flex items-start justify-between">
           <div className="flex items-start gap-4">
@@ -142,26 +106,28 @@ function DealCard({ deal, onEdit, onDelete }: { deal: any; onEdit: () => void; o
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-semibold">{deal.name}</h3>
-                <Badge variant={deal.is_active ? "default" : "secondary"}>
-                  {deal.is_active ? "Active" : "Paused"}
+                <Badge variant={isActive ? "default" : "secondary"}>
+                  {isActive ? "Active" : "Paused"}
                 </Badge>
               </div>
               <p className="text-sm text-muted-foreground mt-1">{deal.description}</p>
               <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  <Users className="h-4 w-4" />
-                  {deal.usageCount} uses
-                </span>
-                {deal.valid_until && (
+                {deal.discount_percent && (
+                  <span className="font-medium text-primary">{deal.discount_percent}% off</span>
+                )}
+                {deal.discount_amount && (
+                  <span className="font-medium text-primary">${deal.discount_amount} off</span>
+                )}
+                {deal.date_stop && (
                   <span className="flex items-center gap-1">
                     <Calendar className="h-4 w-4" />
-                    Until {deal.valid_until}
+                    Until {new Date(deal.date_stop).toLocaleDateString()}
                   </span>
                 )}
-                {deal.schedule && (
+                {deal.time_start && deal.time_stop && (
                   <span className="flex items-center gap-1">
                     <Clock className="h-4 w-4" />
-                    {deal.schedule.start_time} - {deal.schedule.end_time}
+                    {deal.time_start} - {deal.time_stop}
                   </span>
                 )}
               </div>
@@ -187,8 +153,8 @@ function DealCard({ deal, onEdit, onDelete }: { deal: any; onEdit: () => void; o
                 Preview
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                {deal.is_active ? (
+              <DropdownMenuItem onClick={onToggle}>
+                {isActive ? (
                   <>
                     <Pause className="h-4 w-4 mr-2" />
                     Pause Deal
@@ -241,6 +207,14 @@ export default function DealsPage() {
   const { data: restaurants = [], isLoading: loadingRestaurants } = useRestaurants({ status: 'active' })
   const selectedRestaurant = restaurants.find((r: any) => r.id.toString() === selectedRestaurantId)
   
+  // Fetch real deals data
+  const { data: deals = [], isLoading: loadingDeals } = useDeals(
+    selectedRestaurantId ? { restaurant_id: parseInt(selectedRestaurantId) } : undefined
+  )
+  const createDeal = useCreateDeal()
+  const toggleDeal = useToggleDeal()
+  const deleteDealMutation = useDeleteDeal()
+  
   const [search, setSearch] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [activeTab, setActiveTab] = useState("all")
@@ -257,24 +231,36 @@ export default function DealsPage() {
   })
 
   // Filter deals based on search and tab
-  const filteredDeals = mockDeals.filter((deal) => {
-    const matchesSearch = deal.name.toLowerCase().includes(search.toLowerCase()) ||
+  const filteredDeals = deals.filter((deal: any) => {
+    const matchesSearch = deal.name?.toLowerCase().includes(search.toLowerCase()) ||
       deal.description?.toLowerCase().includes(search.toLowerCase())
     
     if (activeTab === "all") return matchesSearch
-    if (activeTab === "active") return matchesSearch && deal.is_active
-    if (activeTab === "scheduled") return matchesSearch && deal.schedule
-    if (activeTab === "expired") return matchesSearch && !deal.is_active
-    return matchesSearch && deal.deal_type === activeTab
+    if (activeTab === "active") return matchesSearch && deal.is_enabled
+    if (activeTab === "scheduled") return matchesSearch && (deal.time_start || deal.date_start)
+    if (activeTab === "expired") return matchesSearch && !deal.is_enabled
+    // Map deal types
+    const mappedType = dealTypeMap[deal.deal_type]?.value
+    return matchesSearch && mappedType === activeTab
   })
 
   const onSubmit = async (data: DealFormValues) => {
+    if (!selectedRestaurantId) return
+    
     try {
-      // TODO: Replace with real API call
-      console.log("Creating deal:", data)
-      toast({
-        title: "Success",
-        description: "Deal created successfully",
+      await createDeal.mutateAsync({
+        restaurant_id: parseInt(selectedRestaurantId),
+        name: data.name,
+        description: data.description,
+        deal_type: data.deal_type === 'bogo' ? 'freeItem' 
+          : data.deal_type === 'percentage' ? 'percent'
+          : data.deal_type === 'fixed' ? 'value'
+          : data.deal_type,
+        discount_percent: data.discount_type === 'percentage' ? data.discount_value : null,
+        discount_amount: data.discount_type === 'fixed' ? data.discount_value : null,
+        date_start: data.valid_from ? new Date(data.valid_from).toISOString().split('T')[0] : null,
+        date_stop: data.valid_until ? new Date(data.valid_until).toISOString().split('T')[0] : null,
+        is_enabled: data.is_active,
       })
       setIsDialogOpen(false)
       form.reset()
@@ -620,12 +606,13 @@ export default function DealsPage() {
             </CardContent>
           </Card>
         ) : (
-          filteredDeals.map((deal) => (
+          filteredDeals.map((deal: any) => (
             <DealCard 
               key={deal.id} 
               deal={deal}
               onEdit={() => console.log("Edit", deal.id)}
-              onDelete={() => console.log("Delete", deal.id)}
+              onDelete={() => deleteDealMutation.mutate(deal.id)}
+              onToggle={() => toggleDeal.mutate({ id: deal.id, is_enabled: !deal.is_enabled })}
             />
           ))
         )}

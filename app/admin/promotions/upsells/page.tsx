@@ -13,6 +13,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { useRestaurants } from "@/lib/hooks/use-restaurants"
+import { useUpsells, useCreateUpsell, useToggleUpsell, useDeleteUpsell } from "@/lib/hooks/use-promotions"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -69,76 +70,23 @@ const triggerTypes = [
   { value: 'time_based', label: 'Time of day', icon: Coffee, desc: 'Suggest based on time (e.g., breakfast drinks)' },
 ]
 
-// Mock data
-const mockUpsells = [
-  { 
-    id: 1, 
-    name: 'Add a Drink', 
-    trigger_type: 'cart_item',
-    trigger_value: 'Any Pizza',
-    suggestion_type: 'category',
-    suggested_items: ['Beverages'],
-    discount_type: 'fixed',
-    discount_value: 2,
-    message: 'Add a drink for just $2 off!',
-    display_location: 'cart',
-    conversionRate: 34,
-    revenue: 4520,
-    is_active: true,
-    priority: 1,
-  },
-  { 
-    id: 2, 
-    name: 'Side Dish Suggestion', 
-    trigger_type: 'cart_item',
-    trigger_value: 'Entrees',
-    suggestion_type: 'category',
-    suggested_items: ['Sides'],
-    discount_type: 'percentage',
-    discount_value: 15,
-    message: 'Complete your meal with a side!',
-    display_location: 'cart',
-    conversionRate: 28,
-    revenue: 3240,
-    is_active: true,
-    priority: 2,
-  },
-  { 
-    id: 3, 
-    name: 'Dessert Upsell', 
-    trigger_type: 'cart_value',
-    trigger_value: '$30+',
-    suggestion_type: 'category',
-    suggested_items: ['Desserts'],
-    discount_type: 'none',
-    message: 'Save room for dessert?',
-    display_location: 'checkout',
-    conversionRate: 22,
-    revenue: 2180,
-    is_active: true,
-    priority: 3,
-  },
-  { 
-    id: 4, 
-    name: 'Morning Coffee', 
-    trigger_type: 'time_based',
-    trigger_value: '6am - 11am',
-    suggestion_type: 'specific_item',
-    suggested_items: ['Coffee', 'Latte'],
-    discount_type: 'fixed',
-    discount_value: 1,
-    message: 'Start your day with $1 off coffee!',
-    display_location: 'all',
-    conversionRate: 41,
-    revenue: 1890,
-    is_active: false,
-    priority: 4,
-  },
-]
+// Trigger type display mapping
+const triggerTypeLabels: Record<string, string> = {
+  'dish': 'When item added',
+  'course': 'Category based',
+  'cart_minimum': 'Cart value threshold',
+}
 
-function UpsellCard({ upsell, onEdit, onDelete }: { upsell: any; onEdit: () => void; onDelete: () => void }) {
-  const trigger = triggerTypes.find(t => t.value === upsell.trigger_type)
+function UpsellCard({ upsell, onEdit, onDelete, onToggle }: { upsell: any; onEdit: () => void; onDelete: () => void; onToggle: () => void }) {
+  // Map database trigger_type to UI
+  const triggerLabel = triggerTypeLabels[upsell.trigger_type] || upsell.trigger_type
+  const trigger = triggerTypes.find(t => t.value === upsell.trigger_type || t.label.toLowerCase().includes(upsell.trigger_type?.toLowerCase()))
   const Icon = trigger?.icon || TrendingUp
+
+  // Calculate conversion rate
+  const conversionRate = upsell.impressions_count > 0 
+    ? Math.round((upsell.acceptance_count / upsell.impressions_count) * 100) 
+    : 0
 
   return (
     <Card className={`group transition-all hover:shadow-md ${!upsell.is_active ? 'opacity-60' : ''}`}>
@@ -162,40 +110,46 @@ function UpsellCard({ upsell, onEdit, onDelete }: { upsell: any; onEdit: () => v
                 {upsell.is_active ? "Active" : "Paused"}
               </Badge>
               <Badge variant="outline" className="ml-auto">
-                Priority: {upsell.priority}
+                Priority: {upsell.display_priority || 0}
               </Badge>
             </div>
             
             {/* Trigger Description */}
             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
               <span className="font-medium">Trigger:</span>
-              <span>{trigger?.label}</span>
-              <ChevronRight className="h-3 w-3" />
-              <span>{upsell.trigger_value}</span>
+              <span>{triggerLabel}</span>
+              {upsell.trigger_cart_minimum && (
+                <>
+                  <ChevronRight className="h-3 w-3" />
+                  <span>${upsell.trigger_cart_minimum}+</span>
+                </>
+              )}
             </div>
             
             {/* Suggestion */}
-            <p className="text-sm text-muted-foreground mb-3">
-              "{upsell.message}"
-            </p>
+            {upsell.headline && (
+              <p className="text-sm text-muted-foreground mb-3">
+                "{upsell.headline}"
+              </p>
+            )}
             
             {/* Stats */}
             <div className="flex items-center gap-6 text-sm">
               <div className="flex items-center gap-2">
                 <div className="h-2 w-2 rounded-full bg-green-500" />
                 <span className="text-muted-foreground">Conversion:</span>
-                <span className="font-semibold">{upsell.conversionRate}%</span>
+                <span className="font-semibold">{conversionRate}%</span>
               </div>
               <div className="flex items-center gap-2">
                 <TrendingUp className="h-4 w-4 text-green-500" />
-                <span className="text-muted-foreground">Revenue:</span>
-                <span className="font-semibold">${upsell.revenue.toLocaleString()}</span>
+                <span className="text-muted-foreground">Accepted:</span>
+                <span className="font-semibold">{(upsell.acceptance_count || 0).toLocaleString()}</span>
               </div>
-              {upsell.discount_type !== 'none' && (
+              {(upsell.discount_percent || upsell.discount_amount) && (
                 <Badge variant="secondary" className="text-xs">
-                  {upsell.discount_type === 'percentage' 
-                    ? `${upsell.discount_value}% off` 
-                    : `$${upsell.discount_value} off`
+                  {upsell.discount_percent 
+                    ? `${upsell.discount_percent}% off` 
+                    : `$${upsell.discount_amount} off`
                   }
                 </Badge>
               )}
@@ -263,6 +217,14 @@ export default function UpsellsPage() {
   const { data: restaurants = [], isLoading: loadingRestaurants } = useRestaurants({ status: 'active' })
   const selectedRestaurant = restaurants.find((r: any) => r.id.toString() === selectedRestaurantId)
 
+  // Fetch real upsells data
+  const { data: upsells = [], isLoading: loadingUpsells } = useUpsells(
+    selectedRestaurantId ? { restaurant_id: parseInt(selectedRestaurantId) } : undefined
+  )
+  const createUpsellMutation = useCreateUpsell()
+  const toggleUpsell = useToggleUpsell()
+  const deleteUpsellMutation = useDeleteUpsell()
+
   const [search, setSearch] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
 
@@ -279,17 +241,29 @@ export default function UpsellsPage() {
     },
   })
 
-  const filteredUpsells = mockUpsells.filter((upsell) => 
-    upsell.name.toLowerCase().includes(search.toLowerCase()) ||
-    upsell.message?.toLowerCase().includes(search.toLowerCase())
+  const filteredUpsells = upsells.filter((upsell: any) => 
+    upsell.name?.toLowerCase().includes(search.toLowerCase()) ||
+    upsell.headline?.toLowerCase().includes(search.toLowerCase()) ||
+    upsell.description?.toLowerCase().includes(search.toLowerCase())
   )
 
   const onSubmit = async (data: UpsellFormValues) => {
+    if (!selectedRestaurantId) return
+    
     try {
-      console.log("Creating upsell:", data)
-      toast({
-        title: "Success",
-        description: "Upsell rule created successfully",
+      await createUpsellMutation.mutateAsync({
+        restaurant_id: parseInt(selectedRestaurantId),
+        name: data.name,
+        headline: data.message,
+        description: data.message,
+        trigger_type: data.trigger_type === 'cart_item' ? 'dish' 
+          : data.trigger_type === 'cart_value' ? 'cart_minimum'
+          : data.trigger_type === 'category' ? 'course'
+          : data.trigger_type,
+        discount_percent: data.discount_type === 'percentage' ? data.discount_value : null,
+        discount_amount: data.discount_type === 'fixed' ? data.discount_value : null,
+        display_priority: data.priority,
+        is_active: data.is_active,
       })
       setIsDialogOpen(false)
       form.reset()
@@ -302,12 +276,11 @@ export default function UpsellsPage() {
     }
   }
 
-  // Calculate totals
-  const totalRevenue = mockUpsells.filter(u => u.is_active).reduce((sum, u) => sum + u.revenue, 0)
-  const avgConversion = Math.round(
-    mockUpsells.filter(u => u.is_active).reduce((sum, u) => sum + u.conversionRate, 0) / 
-    mockUpsells.filter(u => u.is_active).length
-  )
+  // Calculate totals from real data
+  const activeUpsells = upsells.filter((u: any) => u.is_active)
+  const totalAcceptances = activeUpsells.reduce((sum: number, u: any) => sum + (u.acceptance_count || 0), 0)
+  const totalImpressions = activeUpsells.reduce((sum: number, u: any) => sum + (u.impressions_count || 0), 0)
+  const avgConversion = totalImpressions > 0 ? Math.round((totalAcceptances / totalImpressions) * 100) : 0
 
   return (
     <div className="space-y-6">
@@ -603,47 +576,47 @@ export default function UpsellsPage() {
           )}
 
           {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Active Upsell Rules</p>
-                <p className="text-2xl font-bold mt-1">{mockUpsells.filter(u => u.is_active).length}</p>
-              </div>
-              <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-full">
-                <Sparkles className="h-5 w-5 text-green-600 dark:text-green-400" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Avg. Conversion Rate</p>
-                <p className="text-2xl font-bold mt-1">{avgConversion}%</p>
-              </div>
-              <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-full">
-                <TrendingUp className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Total Revenue Generated</p>
-                <p className="text-2xl font-bold mt-1">${totalRevenue.toLocaleString()}</p>
-              </div>
-              <div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-full">
-                <ShoppingCart className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Active Upsell Rules</p>
+                    <p className="text-2xl font-bold mt-1">{activeUpsells.length}</p>
+                  </div>
+                  <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-full">
+                    <Sparkles className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Avg. Conversion Rate</p>
+                    <p className="text-2xl font-bold mt-1">{avgConversion}%</p>
+                  </div>
+                  <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-full">
+                    <TrendingUp className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Total Acceptances</p>
+                    <p className="text-2xl font-bold mt-1">{totalAcceptances.toLocaleString()}</p>
+                  </div>
+                  <div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-full">
+                    <ShoppingCart className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
       {/* Search */}
       <Card>
@@ -680,13 +653,14 @@ export default function UpsellsPage() {
             </Card>
           ) : (
             filteredUpsells
-              .sort((a, b) => a.priority - b.priority)
-              .map((upsell) => (
+              .sort((a: any, b: any) => (a.display_priority || 0) - (b.display_priority || 0))
+              .map((upsell: any) => (
                 <UpsellCard 
                   key={upsell.id} 
                   upsell={upsell}
                   onEdit={() => console.log("Edit", upsell.id)}
-                  onDelete={() => console.log("Delete", upsell.id)}
+                  onDelete={() => deleteUpsellMutation.mutate(upsell.id)}
+                  onToggle={() => toggleUpsell.mutate({ id: upsell.id, is_active: !upsell.is_active })}
                 />
               ))
           )}
