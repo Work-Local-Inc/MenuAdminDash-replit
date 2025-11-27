@@ -9,7 +9,7 @@ import { DishListRow } from './dish-list-row'
 import { CartDrawer } from './cart-drawer'
 import { useCartStore } from '@/lib/stores/cart-store'
 
-const DEFAULT_PRIMARY_COLOR = '#E65100'
+const DEFAULT_PRIMARY_COLOR = '#DC2626'
 
 interface RestaurantMenuPublicProps {
   restaurant: any
@@ -80,30 +80,34 @@ export default function RestaurantMenuPublic({
             alt={`${restaurant.name} banner`}
             className="w-full h-full object-cover"
           />
-          {restaurant.show_order_online_badge && (
-            <img
-              src="/images/order-online-badge.png"
-              alt="Order Online"
-              className="absolute right-3 sm:right-4 md:right-6 top-1/2 -translate-y-1/2 h-14 sm:h-16 md:h-24 w-auto drop-shadow-lg"
-              data-testid="img-order-online-badge"
-            />
-          )}
+          <img
+            src="/images/order-online-badge.png"
+            alt="Order Online"
+            className="absolute right-3 sm:right-4 md:right-6 top-1/2 -translate-y-1/2 h-14 sm:h-16 md:h-24 w-auto drop-shadow-lg"
+            data-testid="img-order-online-badge"
+          />
         </div>
       ) : (
         <div 
-          className="w-full h-16 sm:h-20 md:h-24 relative overflow-hidden"
+          className="w-full h-20 sm:h-24 md:h-32 relative overflow-hidden"
           style={{
             background: `linear-gradient(135deg, ${effectivePrimaryColor} 0%, ${effectivePrimaryColor}dd 50%, ${effectivePrimaryColor}bb 100%)`,
           }}
         >
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-2 left-[10%] w-8 h-8 sm:w-10 sm:h-10 border-2 border-white/30 rounded-full" />
-            <div className="absolute top-4 left-[30%] w-4 h-4 sm:w-6 sm:h-6 border border-white/20 rounded-full" />
-            <div className="absolute bottom-3 left-[20%] w-6 h-6 sm:w-8 sm:h-8 border-2 border-white/25 rounded-full" />
-            <div className="absolute top-3 right-[15%] w-5 h-5 sm:w-7 sm:h-7 border border-white/30 rounded-full" />
-            <div className="absolute bottom-2 right-[25%] w-3 h-3 sm:w-5 sm:h-5 border border-white/20 rounded-full" />
-            <div className="absolute top-1/2 right-[40%] w-4 h-4 border border-white/15 rounded-full" />
+          <div className="absolute inset-0 opacity-20">
+            <div className="absolute top-2 left-[10%] w-8 h-8 sm:w-10 sm:h-10 border-2 border-white/40 rounded-full" />
+            <div className="absolute top-4 left-[30%] w-4 h-4 sm:w-6 sm:h-6 border border-white/30 rounded-full" />
+            <div className="absolute bottom-3 left-[20%] w-6 h-6 sm:w-8 sm:h-8 border-2 border-white/35 rounded-full" />
+            <div className="absolute top-3 right-[15%] w-5 h-5 sm:w-7 sm:h-7 border border-white/40 rounded-full" />
+            <div className="absolute bottom-2 right-[25%] w-3 h-3 sm:w-5 sm:h-5 border border-white/30 rounded-full" />
+            <div className="absolute top-1/2 right-[40%] w-4 h-4 border border-white/25 rounded-full" />
           </div>
+          <img
+            src="/images/order-online-badge.png"
+            alt="Order Online"
+            className="absolute right-3 sm:right-4 md:right-6 top-1/2 -translate-y-1/2 h-14 sm:h-16 md:h-24 w-auto drop-shadow-lg"
+            data-testid="img-order-online-badge-default"
+          />
         </div>
       )}
 

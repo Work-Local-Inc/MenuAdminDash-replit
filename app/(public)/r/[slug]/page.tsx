@@ -7,7 +7,7 @@ import RestaurantMenu from '@/components/customer/restaurant-menu-public';
 import type { RestaurantMenuResponse } from '@/lib/types/menu';
 import { hexToHSL } from '@/lib/utils';
 
-const DEFAULT_PRIMARY_COLOR = '#E65100';
+const DEFAULT_PRIMARY_COLOR = '#DC2626';
 
 interface RestaurantPageProps {
   params: {

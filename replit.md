@@ -47,9 +47,10 @@ Preferred communication style: Simple, everyday language.
 -   **Account Pages**: Dashboard for orders, addresses, and profile management.
 -   **Security**: Server-side price, amount, and quantity validation; payment replay protection; restaurant ownership validation; user authentication; webhook signature verification; OAuth email verification.
 -   **Default Branding System**: Restaurants without custom configuration get polished defaults:
-    -   Default primary color: `#E65100` (warm orange) applied to banners, buttons, icons, and navigation throughout the entire ordering experience.
-    -   Default banner: Gradient header using the default color with decorative circular elements when no custom banner image is set.
+    -   Default primary color: `#DC2626` (Menu.ca red) applied to banners, buttons, icons, and navigation throughout the entire ordering experience.
+    -   Default banner: Red gradient header with decorative circular elements when no custom banner image is set.
     -   Default icon: Styled rounded square container with UtensilsCrossed icon when no custom logo is set.
+    -   Order Online badge: Always displayed on all restaurant pages (both custom and default banners).
     -   Consistent application: Default color flows through to cart button, checkout buttons, confirmation page, and all interactive elements.
 
 ## External Dependencies
