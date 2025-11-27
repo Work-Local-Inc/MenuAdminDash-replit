@@ -13,9 +13,10 @@ interface DishCardProps {
   restaurantId: number;
   buttonStyle?: 'rounded' | 'square' | null;
   priceColor?: string | null;
+  buttonColor?: string | null;
 }
 
-export function DishCard({ dish, restaurantId, buttonStyle, priceColor }: DishCardProps) {
+export function DishCard({ dish, restaurantId, buttonStyle, priceColor, buttonColor }: DishCardProps) {
   // Apply button style based on branding
   const buttonClassName = buttonStyle === 'square' 
     ? 'rounded-none' 
@@ -100,18 +101,19 @@ export function DishCard({ dish, restaurantId, buttonStyle, priceColor }: DishCa
                   </Badge>
                 )}
                 
-                <Button
-                  size="sm"
+                <button
+                  type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleQuickAdd();
                   }}
-                  className={`ml-auto text-xs sm:text-sm h-8 px-2 sm:px-3 flex-shrink-0 ${buttonClassName}`}
+                  className={`ml-auto text-xs sm:text-sm h-8 px-2 sm:px-3 flex-shrink-0 inline-flex items-center justify-center gap-1 font-medium text-white transition-colors hover:opacity-90 ${buttonClassName || 'rounded-md'}`}
+                  style={{ backgroundColor: buttonColor || '#DC2626' }}
                   data-testid={`button-add-dish-${dish.id}`}
                 >
-                  <Plus className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1" />
+                  <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
                   <span className="hidden xs:inline sm:inline">Add</span>
-                </Button>
+                </button>
               </div>
             </div>
           </div>

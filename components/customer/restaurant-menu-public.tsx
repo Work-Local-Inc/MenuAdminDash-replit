@@ -1,13 +1,14 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Store, MapPin, Clock, Phone, ShoppingCart } from 'lucide-react'
+import { UtensilsCrossed, MapPin, Clock, Phone, ShoppingCart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { DishCard } from './dish-card'
 import { DishListRow } from './dish-list-row'
 import { CartDrawer } from './cart-drawer'
 import { useCartStore } from '@/lib/stores/cart-store'
+import { resolveBrandingColors, MENUCA_RED } from '@/lib/utils'
 
 interface RestaurantMenuPublicProps {
   restaurant: any
@@ -28,6 +29,9 @@ export default function RestaurantMenuPublic({
   )
   const cartTotal = useCartStore((state) => state.getTotal())
   const setRestaurant = useCartStore((state) => state.setRestaurant)
+
+  // Resolve branding colors - treats legacy grays/blacks as "unset" and returns Menu.ca red
+  const brandColors = resolveBrandingColors(restaurant)
 
   useEffect(() => {
     setMounted(true)
@@ -56,9 +60,8 @@ export default function RestaurantMenuPublic({
       ? `${streetAddress}${postalCode ? `, ${postalCode}` : ''}`
       : undefined
 
-    const primaryColor = restaurant.primary_color || undefined
-    setRestaurant(restaurant.id, restaurant.name, slug, deliveryFee, minOrder, address, primaryColor)
-  }, [restaurant.id, restaurant.name, restaurant.restaurant_delivery_areas, serviceConfig, setRestaurant, streetAddress, postalCode, restaurant.primary_color])
+    setRestaurant(restaurant.id, restaurant.name, slug, deliveryFee, minOrder, address, brandColors.primary)
+  }, [restaurant.id, restaurant.name, restaurant.restaurant_delivery_areas, serviceConfig, setRestaurant, streetAddress, postalCode, brandColors.primary])
 
   const scrollToCategory = (courseId: string) => {
     const element = document.getElementById(`category-${courseId}`)
@@ -69,21 +72,41 @@ export default function RestaurantMenuPublic({
 
   const menuContent = (
     <div className="min-h-screen bg-background">
-      {restaurant.banner_image_url && (
+      {restaurant.banner_image_url ? (
         <div className="w-full h-20 sm:h-24 md:h-32 bg-muted relative overflow-hidden">
           <img
             src={restaurant.banner_image_url}
             alt={`${restaurant.name} banner`}
             className="w-full h-full object-cover"
           />
-          {restaurant.show_order_online_badge && (
-            <img
-              src="/images/order-online-badge.png"
-              alt="Order Online"
-              className="absolute right-3 sm:right-4 md:right-6 top-1/2 -translate-y-1/2 h-14 sm:h-16 md:h-24 w-auto drop-shadow-lg"
-              data-testid="img-order-online-badge"
-            />
-          )}
+          <img
+            src="/images/order-online-badge.png"
+            alt="Order Online"
+            className="absolute right-3 sm:right-4 md:right-6 top-1/2 -translate-y-1/2 h-14 sm:h-16 md:h-24 w-auto drop-shadow-lg"
+            data-testid="img-order-online-badge"
+          />
+        </div>
+      ) : (
+        <div 
+          className="w-full h-20 sm:h-24 md:h-32 relative overflow-hidden"
+          style={{
+            background: `linear-gradient(135deg, ${brandColors.primary} 0%, ${brandColors.primary}dd 50%, ${brandColors.primary}bb 100%)`,
+          }}
+        >
+          <div className="absolute inset-0 opacity-20">
+            <div className="absolute top-2 left-[10%] w-8 h-8 sm:w-10 sm:h-10 border-2 border-white/40 rounded-full" />
+            <div className="absolute top-4 left-[30%] w-4 h-4 sm:w-6 sm:h-6 border border-white/30 rounded-full" />
+            <div className="absolute bottom-3 left-[20%] w-6 h-6 sm:w-8 sm:h-8 border-2 border-white/35 rounded-full" />
+            <div className="absolute top-3 right-[15%] w-5 h-5 sm:w-7 sm:h-7 border border-white/40 rounded-full" />
+            <div className="absolute bottom-2 right-[25%] w-3 h-3 sm:w-5 sm:h-5 border border-white/30 rounded-full" />
+            <div className="absolute top-1/2 right-[40%] w-4 h-4 border border-white/25 rounded-full" />
+          </div>
+          <img
+            src="/images/order-online-badge.png"
+            alt="Order Online"
+            className="absolute right-3 sm:right-4 md:right-6 top-1/2 -translate-y-1/2 h-14 sm:h-16 md:h-24 w-auto drop-shadow-lg"
+            data-testid="img-order-online-badge-default"
+          />
         </div>
       )}
 
@@ -111,7 +134,13 @@ export default function RestaurantMenuPublic({
                       data-testid="img-restaurant-logo-icon"
                     />
                   ) : (
-                    <Store className="w-6 h-6 sm:w-8 sm:h-8 text-primary flex-shrink-0" />
+                    <div 
+                      className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm"
+                      style={{ backgroundColor: brandColors.primary }}
+                      data-testid="icon-restaurant-default"
+                    >
+                      <UtensilsCrossed className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                    </div>
                   )}
                   <h1 className="text-xl sm:text-2xl md:text-3xl font-bold truncate" data-testid="text-restaurant-name">
                     {restaurant.name}
@@ -238,7 +267,8 @@ export default function RestaurantMenuPublic({
                                 dish={dish}
                                 restaurantId={restaurant.id}
                                 buttonStyle={restaurant.button_style}
-                                priceColor={restaurant.price_color}
+                                priceColor={brandColors.price}
+                                buttonColor={brandColors.primary}
                                 isEven={index % 2 === 0}
                               />
                             ))}
@@ -255,7 +285,8 @@ export default function RestaurantMenuPublic({
                                   dish={dish}
                                   restaurantId={restaurant.id}
                                   buttonStyle={restaurant.button_style}
-                                  priceColor={restaurant.price_color}
+                                  priceColor={brandColors.price}
+                                  buttonColor={brandColors.primary}
                                   isEven={index % 2 === 0}
                                 />
                               ))}
@@ -269,7 +300,8 @@ export default function RestaurantMenuPublic({
                                   dish={dish}
                                   restaurantId={restaurant.id}
                                   buttonStyle={restaurant.button_style}
-                                  priceColor={restaurant.price_color}
+                                  priceColor={brandColors.price}
+                                  buttonColor={brandColors.primary}
                                   isEven={index % 2 === 0}
                                 />
                               ))}
@@ -284,7 +316,8 @@ export default function RestaurantMenuPublic({
                             dish={dish}
                             restaurantId={restaurant.id}
                             buttonStyle={restaurant.button_style}
-                            priceColor={restaurant.price_color}
+                            priceColor={brandColors.price}
+                            buttonColor={brandColors.primary}
                           />
                         ))}
                       </div>
@@ -306,15 +339,13 @@ export default function RestaurantMenuPublic({
       <div className="fixed bottom-0 left-0 right-0 z-20 bg-background border-t shadow-lg">
         <div className="container mx-auto px-4 py-3">
           <Button
-            size="lg"
             onClick={() => setIsCartOpen(true)}
-            className="w-full h-14"
+            className="w-full h-14 px-4 text-white font-medium"
             disabled={displayCartCount === 0 && !isCartOpen}
             data-testid="button-open-cart"
-            style={restaurant.checkout_button_color ? {
-              backgroundColor: restaurant.checkout_button_color,
-              borderColor: restaurant.checkout_button_color,
-            } : undefined}
+            style={{
+              backgroundColor: brandColors.checkout,
+            }}
           >
             <div className="flex items-center justify-between w-full">
               <div className="flex items-center gap-2">
