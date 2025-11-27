@@ -518,62 +518,64 @@ export default function UpsellsPage() {
         )}
       </div>
 
-      {/* Restaurant Selector */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Store className="h-5 w-5" />
-            Select Location
-          </CardTitle>
-          <CardDescription>
-            Choose a restaurant location to manage its upsell rules
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {loadingRestaurants ? (
-            <Skeleton className="h-10 w-full max-w-md" />
-          ) : (
-            <Select value={selectedRestaurantId} onValueChange={handleRestaurantChange}>
-              <SelectTrigger className="w-full max-w-md">
-                <SelectValue placeholder="Select a restaurant location" />
-              </SelectTrigger>
-              <SelectContent>
-                {restaurants.map((restaurant: any) => (
-                  <SelectItem key={restaurant.id} value={restaurant.id.toString()}>
-                    <div className="flex items-center gap-2">
-                      <Building2 className="h-4 w-4 text-muted-foreground" />
-                      {restaurant.name} - {restaurant.city}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        </CardContent>
-      </Card>
-
+      {/* Restaurant Selector - Only show full card if no restaurant selected */}
       {!selectedRestaurantId ? (
         <Card>
-          <CardContent className="py-12 text-center">
-            <Store className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <p className="text-lg font-medium mb-2">No Location Selected</p>
-            <p className="text-muted-foreground">
-              Please select a restaurant location above to manage its upsell rules
-            </p>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Store className="h-5 w-5" />
+              Select Location
+            </CardTitle>
+            <CardDescription>
+              Choose a restaurant location to manage its upsell rules
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loadingRestaurants ? (
+              <Skeleton className="h-10 w-full max-w-md" />
+            ) : (
+              <Select value={selectedRestaurantId} onValueChange={handleRestaurantChange}>
+                <SelectTrigger className="w-full max-w-md">
+                  <SelectValue placeholder="Select a restaurant location" />
+                </SelectTrigger>
+                <SelectContent>
+                  {restaurants.map((restaurant: any) => (
+                    <SelectItem key={restaurant.id} value={restaurant.id.toString()}>
+                      <div className="flex items-center gap-2">
+                        <Building2 className="h-4 w-4 text-muted-foreground" />
+                        {restaurant.name} - {restaurant.city}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </CardContent>
         </Card>
       ) : (
         <>
-          {/* Selected Restaurant Badge */}
-          {selectedRestaurant && (
-            <div className="flex items-center gap-2 p-3 bg-primary/5 border border-primary/20 rounded-lg">
+          {/* Compact Restaurant Badge with Change Option */}
+          <div className="flex items-center justify-between p-3 bg-primary/5 border border-primary/20 rounded-lg">
+            <div className="flex items-center gap-2">
               <Building2 className="h-5 w-5 text-primary" />
               <span className="font-medium">Managing:</span>
               <Badge variant="secondary" className="text-sm">
-                {selectedRestaurant.name} - {selectedRestaurant.city}
+                {selectedRestaurant?.name} - {selectedRestaurant?.city}
               </Badge>
             </div>
-          )}
+            <Select value={selectedRestaurantId} onValueChange={handleRestaurantChange}>
+              <SelectTrigger className="w-auto h-8 text-xs border-primary/30">
+                <span className="text-muted-foreground">Change</span>
+              </SelectTrigger>
+              <SelectContent>
+                {restaurants.map((restaurant: any) => (
+                  <SelectItem key={restaurant.id} value={restaurant.id.toString()}>
+                    {restaurant.name} - {restaurant.city}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
           {/* Stats Cards */}
           <div className="grid gap-4 md:grid-cols-3">
