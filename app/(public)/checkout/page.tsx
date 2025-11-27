@@ -15,6 +15,7 @@ import { CheckoutPaymentSelection } from '@/components/customer/checkout-payment
 import { CheckoutSignInModal } from '@/components/customer/checkout-signin-modal'
 import { OrderTypeSelector } from '@/components/customer/order-type-selector'
 import { Schedule } from '@/components/customer/pickup-time-selector'
+import { PromoCodeInput } from '@/components/customer/promo-code-input'
 import { useToast } from '@/hooks/use-toast'
 import { ShoppingCart, MapPin, CreditCard, ArrowLeft, LogIn, LogOut, User, ShoppingBag, Store, Wallet } from 'lucide-react'
 import Link from 'next/link'
@@ -55,13 +56,15 @@ export default function CheckoutPage() {
     restaurantAddress,
     restaurantPrimaryColor,
     getSubtotal, 
+    getDiscount,
     getEffectiveDeliveryFee, 
     getTax, 
     getTotal, 
     minOrder,
     orderType,
     pickupTime,
-    clearCart
+    clearCart,
+    appliedPromo
   } = useCartStore()
   
   // Create button style with restaurant's primary color
@@ -184,6 +187,7 @@ export default function CheckoutPage() {
   }, [items, loading, restaurantSlug, router, toast])
 
   const subtotal = getSubtotal()
+  const discount = getDiscount()
   const effectiveDeliveryFee = getEffectiveDeliveryFee()
   const tax = getTax()
   const total = getTotal()
@@ -649,16 +653,41 @@ export default function CheckoutPage() {
 
                 <Separator />
 
+                {/* Promo Code Input */}
+                {restaurantSlug && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Promo Code</p>
+                    <PromoCodeInput 
+                      restaurantSlug={restaurantSlug} 
+                      brandedButtonStyle={brandedButtonStyle}
+                    />
+                  </div>
+                )}
+
+                <Separator />
+
                 {/* Totals */}
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span>Subtotal</span>
                     <span data-testid="text-subtotal">${subtotal.toFixed(2)}</span>
                   </div>
+                  {discount > 0 && (
+                    <div className="flex justify-between text-green-600">
+                      <span>Discount {appliedPromo?.code && `(${appliedPromo.code})`}</span>
+                      <span data-testid="text-discount">-${discount.toFixed(2)}</span>
+                    </div>
+                  )}
                   {orderType === 'delivery' ? (
                     <div className="flex justify-between">
                       <span>Delivery Fee</span>
-                      <span data-testid="text-delivery-fee">${effectiveDeliveryFee.toFixed(2)}</span>
+                      <span data-testid="text-delivery-fee">
+                        {appliedPromo?.type === 'delivery' ? (
+                          <span className="text-green-600">Free</span>
+                        ) : (
+                          `$${effectiveDeliveryFee.toFixed(2)}`
+                        )}
+                      </span>
                     </div>
                   ) : (
                     <div className="flex justify-between text-green-600">

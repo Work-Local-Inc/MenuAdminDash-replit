@@ -27,6 +27,16 @@ export interface CartItem {
   subtotal: number; // (sizePrice + sum of modifier prices) * quantity
 }
 
+// Applied promo code details
+export interface AppliedPromo {
+  code: string;
+  type: 'percent' | 'currency' | 'item' | 'delivery';
+  value: number; // Percent or fixed amount
+  description: string;
+  promoId?: number; // ID from promotional_coupons or promotional_deals
+  promoType?: 'coupon' | 'deal';
+}
+
 interface CartStore {
   // Restaurant info
   restaurantId: number | null;
@@ -44,6 +54,9 @@ interface CartStore {
   // Cart items
   items: CartItem[];
   
+  // Promo code
+  appliedPromo: AppliedPromo | null;
+  
   // Actions
   setRestaurant: (id: number, name: string, slug: string, deliveryFee: number, minOrder: number, address?: string, primaryColor?: string) => void;
   setRestaurantAddress: (address: string) => void;
@@ -56,9 +69,14 @@ interface CartStore {
   updateQuantity: (itemId: string, quantity: number) => void;
   clearCart: () => void;
   
+  // Promo code actions
+  applyPromo: (promo: AppliedPromo) => void;
+  clearPromo: () => void;
+  
   // Computed values
   getItemCount: () => number;
   getSubtotal: () => number;
+  getDiscount: () => number; // Discount amount from promo
   getTax: () => number; // 13% HST (Ontario)
   getTotal: () => number;
   getEffectiveDeliveryFee: () => number; // Returns 0 for pickup
@@ -112,6 +130,7 @@ export const useCartStore = create<CartStore>()(
       orderType: 'delivery' as OrderType,
       pickupTime: { type: 'asap' } as PickupTime,
       items: [],
+      appliedPromo: null,
       
       // Set restaurant info
       setRestaurant: (id, name, slug, deliveryFee, minOrder, address, primaryColor) => {
@@ -274,7 +293,18 @@ export const useCartStore = create<CartStore>()(
           orderType: 'delivery',
           pickupTime: { type: 'asap' },
           items: [],
+          appliedPromo: null,
         });
+      },
+      
+      // Apply promo code
+      applyPromo: (promo) => {
+        set({ appliedPromo: promo });
+      },
+      
+      // Clear promo code
+      clearPromo: () => {
+        set({ appliedPromo: null });
       },
       
       // Get total item count
@@ -287,25 +317,70 @@ export const useCartStore = create<CartStore>()(
         return get().items.reduce((sum, item) => sum + item.subtotal, 0);
       },
       
+      // Get discount amount from applied promo
+      getDiscount: () => {
+        const promo = get().appliedPromo;
+        if (!promo) return 0;
+        
+        const subtotal = get().getSubtotal();
+        const deliveryFee = get().orderType === 'pickup' ? 0 : get().deliveryFee;
+        
+        switch (promo.type) {
+          case 'percent':
+            // Percentage off subtotal
+            return Math.min(subtotal * (promo.value / 100), subtotal);
+          case 'currency':
+            // Fixed amount off (can't exceed subtotal)
+            return Math.min(promo.value, subtotal);
+          case 'delivery':
+            // Free delivery
+            return deliveryFee;
+          case 'item':
+            // Free item - value represents item price
+            return promo.value;
+          default:
+            return 0;
+        }
+      },
+      
       // Get effective delivery fee (0 for pickup orders)
       getEffectiveDeliveryFee: () => {
         const orderType = get().orderType;
+        const promo = get().appliedPromo;
+        
+        // Free delivery promo
+        if (promo?.type === 'delivery') {
+          return 0;
+        }
+        
         return orderType === 'pickup' ? 0 : get().deliveryFee;
       },
       
-      // Get tax (13% HST Ontario)
+      // Get tax (13% HST Ontario) - calculated after discount
       getTax: () => {
         const subtotal = get().getSubtotal();
+        const discount = get().getDiscount();
         const effectiveDeliveryFee = get().getEffectiveDeliveryFee();
-        return (subtotal + effectiveDeliveryFee) * 0.13;
+        const promo = get().appliedPromo;
+        
+        // Don't include delivery discount in tax calc if it's a delivery promo
+        const taxableDiscount = promo?.type === 'delivery' ? 0 : discount;
+        
+        return Math.max(0, (subtotal - taxableDiscount + effectiveDeliveryFee) * 0.13);
       },
       
-      // Get total (subtotal + delivery fee + tax)
+      // Get total (subtotal + delivery fee - discount + tax)
       getTotal: () => {
         const subtotal = get().getSubtotal();
+        const discount = get().getDiscount();
         const effectiveDeliveryFee = get().getEffectiveDeliveryFee();
         const tax = get().getTax();
-        return subtotal + effectiveDeliveryFee + tax;
+        const promo = get().appliedPromo;
+        
+        // Don't double-count delivery discount
+        const nonDeliveryDiscount = promo?.type === 'delivery' ? 0 : discount;
+        
+        return Math.max(0, subtotal + effectiveDeliveryFee - nonDeliveryDiscount + tax);
       },
     }),
     {

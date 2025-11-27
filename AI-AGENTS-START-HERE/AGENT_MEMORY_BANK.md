@@ -945,27 +945,55 @@ promotion_templates      - Quick-start templates
 - Analytics placeholder (`/admin/promotions/analytics`) - Overview + tables
 - Campaign creation hub (`/admin/promotions/create`) - Type selection + templates
 - Sidebar updated: "Coupons" → "Marketing" with submenu
+- **Location-specific:** All pages require restaurant selection first
 
-#### 🚧 Phase 2: Connect to Real APIs (In Progress)
-- Wire UI to actual API endpoints
-- Edit/delete modals for existing campaigns
-- CRUD operations for deals/upsells
+#### ✅ Phase 2: Real Data Integration (COMPLETE - Nov 27, 2025)
+- Created `lib/hooks/use-promotions.ts` with all CRUD hooks
+- All mock data removed - 100% real database queries
+- Stats API fetches real counts from promotional tables
+- Deals page connected to `promotional_deals` table
+- Upsells page connected to `upsell_rules` table
+- Admin auth + restaurant permissions enforced on all endpoints
 
-#### ⏳ Remaining Phases
-- **Phase 3:** Checkout promo code validation UI
-- **Phase 4:** Customer-facing promotion display
-- **Phase 5:** Real analytics with charts
-- **Phase 6:** Polish
+#### 🚧 Phase 3: Customer Integration (In Progress)
+- Checkout promo code validation UI
+- Customer-facing promotion display
+- Real analytics with charts (Recharts)
 
-### API Endpoints (Planned)
+### API Endpoints (Implemented)
 ```
-/api/admin/promotions/campaigns     - CRUD operations
-/api/admin/promotions/codes         - Code management
-/api/admin/promotions/upsells       - Upsell rules
-/api/admin/promotions/analytics     - Performance data
-/api/promotions/validate            - Customer code validation
-/api/promotions/available           - Active deals for restaurant
-/api/promotions/apply               - Apply to cart
+/api/admin/promotions/campaigns     - ✅ CRUD operations
+/api/admin/promotions/deals         - ✅ List deals (GET)
+/api/admin/promotions/deals/create  - ✅ Create deal (POST)
+/api/admin/promotions/deals/[id]    - ✅ Update/delete (PATCH/DELETE)
+/api/admin/promotions/upsells       - ✅ List & create (GET/POST)
+/api/admin/promotions/stats         - ✅ Dashboard stats (GET)
+/api/admin/promotions/active        - ✅ Combined active promos (GET)
+/api/admin/promotions/analytics     - ✅ Performance data (GET)
+/api/admin/promotions/templates     - ✅ Quick-start templates (GET)
+/api/promotions/validate            - ✅ Customer code validation (POST)
+```
+
+### Hooks Available (`lib/hooks/use-promotions.ts`)
+```typescript
+// Deals
+useDeals(filters?)         // Fetch deals list
+useCreateDeal()            // Create new deal
+useUpdateDeal()            // Update existing deal
+useToggleDeal()            // Enable/disable deal
+useDeleteDeal()            // Delete deal
+
+// Upsells  
+useUpsells(filters?)       // Fetch upsells list
+useCreateUpsell()          // Create new upsell
+useUpdateUpsell()          // Update existing upsell
+useToggleUpsell()          // Enable/disable upsell
+useDeleteUpsell()          // Delete upsell
+
+// Dashboard
+usePromotionStats(restaurantId)    // Stats for dashboard
+useActivePromotions(restaurantId)  // Active promos list
+usePromotionAnalytics(filters?)    // Analytics data
 ```
 
 ### Legacy System Issues (from screenshots)
@@ -985,5 +1013,5 @@ promotion_templates      - Quick-start templates
 ---
 
 **Last Updated By:** Claude (Cursor Agent)
-**Last Update:** Nov 27, 2025 - Marketing & Promotions Frontend UI complete (Hub, Deals, Upsells, Analytics pages)
-**Next Update:** After connecting UI to real APIs or adding checkout integration
+**Last Update:** Nov 27, 2025 - Marketing Hub fully connected to real database (NO mock data)
+**Next Update:** After checkout promo code validation or customer-facing display

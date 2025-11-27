@@ -1,293 +1,235 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { ValidateCodeSchema } from '@/lib/validations/promotions';
 
 /**
  * POST /api/promotions/validate
- * Validate a promo code and calculate discount
+ * Validate a promo code against promotional_coupons or promotional_deals
  */
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
     const body = await request.json();
     
-    // Validate input
-    const input = ValidateCodeSchema.parse(body);
-    const { code, restaurant_id, cart, user_id, order_type } = input;
-
-    // Find the code
-    const { data: promoCode, error: codeError } = await supabase
-      .from('promotion_codes')
-      .select(`
-        *,
-        campaign:promotion_campaigns(
-          *,
-          promotion_targets(*),
-          promotion_tiers(*)
-        )
-      `)
-      .eq('code', code)
-      .eq('is_active', true)
-      .single();
-
-    if (codeError || !promoCode) {
-      return NextResponse.json({
-        valid: false,
-        error: {
-          code: 'INVALID_CODE',
-          message: 'This promo code is invalid or has expired',
-        },
-      });
-    }
-
-    const campaign = promoCode.campaign;
-
-    // Check if campaign is active
-    if (!campaign || campaign.status !== 'active' || campaign.deleted_at) {
-      return NextResponse.json({
-        valid: false,
-        error: {
-          code: 'CAMPAIGN_INACTIVE',
-          message: 'This promotion is no longer active',
-        },
-      });
-    }
-
-    // Check restaurant
-    if (campaign.restaurant_id !== restaurant_id) {
-      return NextResponse.json({
-        valid: false,
-        error: {
-          code: 'WRONG_RESTAURANT',
-          message: 'This code is not valid for this restaurant',
-        },
-      });
-    }
-
-    // Check order type
-    const orderTypeValid = 
-      (order_type === 'delivery' && campaign.applies_to_delivery) ||
-      (order_type === 'takeout' && campaign.applies_to_takeout) ||
-      (order_type === 'dine_in' && campaign.applies_to_dine_in);
-
-    if (!orderTypeValid) {
-      return NextResponse.json({
-        valid: false,
-        error: {
-          code: 'ORDER_TYPE_NOT_ALLOWED',
-          message: `This code is not valid for ${order_type.replace('_', '-')} orders`,
-        },
-      });
-    }
-
-    // Check schedule
-    const now = new Date();
-    if (campaign.starts_at && new Date(campaign.starts_at) > now) {
-      return NextResponse.json({
-        valid: false,
-        error: {
-          code: 'NOT_STARTED',
-          message: 'This promotion has not started yet',
-        },
-      });
-    }
-    if (campaign.ends_at && new Date(campaign.ends_at) < now) {
-      return NextResponse.json({
-        valid: false,
-        error: {
-          code: 'EXPIRED',
-          message: 'This promotion has expired',
-        },
-      });
-    }
-
-    // Check code expiration
-    if (promoCode.expires_at && new Date(promoCode.expires_at) < now) {
-      return NextResponse.json({
-        valid: false,
-        error: {
-          code: 'CODE_EXPIRED',
-          message: 'This code has expired',
-        },
-      });
-    }
-
-    // Check usage limits
-    if (promoCode.usage_limit && promoCode.usage_count >= promoCode.usage_limit) {
-      return NextResponse.json({
-        valid: false,
-        error: {
-          code: 'CODE_USED_UP',
-          message: 'This code has reached its usage limit',
-        },
-      });
-    }
-
-    if (campaign.total_usage_limit) {
-      const { count: totalRedemptions } = await supabase
-        .from('promotion_redemptions')
-        .select('*', { count: 'exact', head: true })
-        .eq('campaign_id', campaign.id);
-
-      if (totalRedemptions && totalRedemptions >= campaign.total_usage_limit) {
-        return NextResponse.json({
-          valid: false,
-          error: {
-            code: 'CAMPAIGN_LIMIT_REACHED',
-            message: 'This promotion has reached its limit',
-          },
-        });
-      }
-    }
-
-    // Check per-customer limit
-    if (user_id && campaign.per_customer_limit) {
-      const { count: userRedemptions } = await supabase
-        .from('promotion_redemptions')
-        .select('*', { count: 'exact', head: true })
-        .eq('campaign_id', campaign.id)
-        .eq('user_id', user_id);
-
-      if (userRedemptions && userRedemptions >= campaign.per_customer_limit) {
-        return NextResponse.json({
-          valid: false,
-          error: {
-            code: 'USER_LIMIT_REACHED',
-            message: 'You have already used this promotion',
-          },
-        });
-      }
-    }
-
-    // Check first order only
-    if (campaign.trigger_type === 'first_order' && user_id) {
-      const { count: previousOrders } = await supabase
-        .from('orders')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user_id)
-        .eq('restaurant_id', restaurant_id)
-        .eq('payment_status', 'succeeded');
-
-      if (previousOrders && previousOrders > 0) {
-        return NextResponse.json({
-          valid: false,
-          error: {
-            code: 'NOT_FIRST_ORDER',
-            message: 'This code is only valid for first-time customers',
-          },
-        });
-      }
-    }
-
-    // Check minimum order value
-    if (campaign.minimum_order_value && cart.subtotal < campaign.minimum_order_value) {
-      const amountNeeded = campaign.minimum_order_value - cart.subtotal;
-      return NextResponse.json({
-        valid: false,
-        error: {
-          code: 'MIN_ORDER_NOT_MET',
-          message: `Add $${amountNeeded.toFixed(2)} more to use this code`,
-          details: {
-            minimum_required: campaign.minimum_order_value,
-            current_total: cart.subtotal,
-          },
-        },
-      });
-    }
-
-    // Calculate discount based on type
-    let discountAmount = 0;
-    let discountDescription = '';
-
-    switch (campaign.discount_type) {
-      case 'percent_off':
-        discountAmount = cart.subtotal * (campaign.discount_value / 100);
-        if (campaign.discount_max_value && discountAmount > campaign.discount_max_value) {
-          discountAmount = campaign.discount_max_value;
-        }
-        discountDescription = `${campaign.discount_value}% off`;
-        break;
-
-      case 'amount_off':
-        discountAmount = Math.min(campaign.discount_value || 0, cart.subtotal);
-        discountDescription = `$${campaign.discount_value} off`;
-        break;
-
-      case 'free_delivery':
-        // This will be applied at checkout
-        discountAmount = 0; // Delivery fee handled separately
-        discountDescription = 'Free delivery';
-        break;
-
-      case 'tiered':
-        // Find applicable tier
-        const tiers = campaign.promotion_tiers || [];
-        const sortedTiers = tiers.sort((a: any, b: any) => b.threshold_amount - a.threshold_amount);
-        const applicableTier = sortedTiers.find((t: any) => cart.subtotal >= t.threshold_amount);
-        
-        if (applicableTier) {
-          if (applicableTier.discount_type === 'percent_off') {
-            discountAmount = cart.subtotal * (applicableTier.discount_value / 100);
-          } else if (applicableTier.discount_type === 'amount_off') {
-            discountAmount = applicableTier.discount_value;
-          }
-          discountDescription = applicableTier.description || `$${applicableTier.discount_value} off`;
-        }
-        break;
-
-      default:
-        discountAmount = 0;
-    }
-
-    // Apply maximum discount if set
-    if (campaign.maximum_discount_amount && discountAmount > campaign.maximum_discount_amount) {
-      discountAmount = campaign.maximum_discount_amount;
-    }
-
-    // Round to 2 decimal places
-    discountAmount = Math.round(discountAmount * 100) / 100;
-
-    return NextResponse.json({
-      valid: true,
-      discount: {
-        type: campaign.discount_type,
-        value: campaign.discount_value,
-        amount: discountAmount,
-        description: discountDescription,
-      },
-      campaign: {
-        id: campaign.id,
-        name: campaign.customer_display_name || campaign.name,
-        description: campaign.customer_description,
-        terms: campaign.terms_and_conditions,
-      },
-      code: {
-        id: promoCode.id,
-        code: promoCode.code,
-      },
-    });
-  } catch (error) {
-    console.error('Promo validation error:', error);
-    if (error instanceof Error && error.name === 'ZodError') {
+    const { code, restaurant_slug, subtotal, order_type, user_id } = body;
+    
+    if (!code || !restaurant_slug) {
       return NextResponse.json(
-        { 
-          valid: false,
-          error: {
-            code: 'INVALID_REQUEST',
-            message: 'Invalid request data',
-          },
-        },
+        { error: 'Code and restaurant are required' },
         { status: 400 }
       );
     }
+
+    // First, get restaurant_id from slug
+    const { data: restaurant, error: restaurantError } = await supabase
+      .from('restaurants')
+      .select('id')
+      .eq('slug', restaurant_slug)
+      .single();
+
+    if (restaurantError || !restaurant) {
+      return NextResponse.json(
+        { error: 'Restaurant not found' },
+        { status: 404 }
+      );
+    }
+
+    const restaurant_id = restaurant.id;
+
+    // =====================================================
+    // Check promotional_coupons (legacy/main coupons table)
+    // =====================================================
+    const { data: coupon, error: couponError } = await supabase
+      .from('promotional_coupons')
+      .select('*')
+      .eq('code', code.toUpperCase())
+      .eq('restaurant_id', restaurant_id)
+      .is('deleted_at', null)
+      .single();
+
+    if (coupon && !couponError) {
+      // Found a coupon! Validate it
+      const now = new Date();
+      
+      // Check valid_from_at
+      if (coupon.valid_from_at && new Date(coupon.valid_from_at) > now) {
+        return NextResponse.json(
+          { error: 'This promo code is not yet active' },
+          { status: 400 }
+        );
+      }
+      
+      // Check valid_until_at
+      if (coupon.valid_until_at && new Date(coupon.valid_until_at) < now) {
+        return NextResponse.json(
+          { error: 'This promo code has expired' },
+          { status: 400 }
+        );
+      }
+      
+      // Check usage limit
+      if (coupon.usage_limit !== null && coupon.usage_count >= coupon.usage_limit) {
+        return NextResponse.json(
+          { error: 'This promo code has reached its usage limit' },
+          { status: 400 }
+        );
+      }
+      
+      // Check minimum purchase
+      if (coupon.minimum_purchase && subtotal < coupon.minimum_purchase) {
+        const needed = (coupon.minimum_purchase - subtotal).toFixed(2);
+        return NextResponse.json(
+          { error: `Add $${needed} more to use this code (min. $${coupon.minimum_purchase})` },
+          { status: 400 }
+        );
+      }
+      
+      // Check order type
+      const availTypes = coupon.availability_types || [];
+      const orderTypeOk = availTypes.length === 0 || 
+        (order_type === 'delivery' && (availTypes.includes('delivery') || availTypes.includes('all'))) ||
+        (order_type === 'pickup' && (availTypes.includes('takeout') || availTypes.includes('pickup') || availTypes.includes('all')));
+      
+      if (availTypes.length > 0 && !orderTypeOk) {
+        return NextResponse.json(
+          { error: `This code is not valid for ${order_type} orders` },
+          { status: 400 }
+        );
+      }
+      
+      // Check first order only
+      if (coupon.is_first_order_only && user_id) {
+        const { count: previousOrders } = await supabase
+          .from('orders')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user_id)
+          .eq('restaurant_id', restaurant_id)
+          .eq('payment_status', 'succeeded');
+
+        if (previousOrders && previousOrders > 0) {
+          return NextResponse.json(
+            { error: 'This code is only valid for first-time customers' },
+            { status: 400 }
+          );
+        }
+      }
+      
+      // Calculate discount
+      let discountValue = 0;
+      let description = '';
+      
+      switch (coupon.discount_type) {
+        case 'percent':
+          discountValue = coupon.redeem_value_limit || 0;
+          description = `${discountValue}% off your order`;
+          break;
+        case 'currency':
+          discountValue = coupon.redeem_value_limit || 0;
+          description = `$${discountValue} off your order`;
+          break;
+        case 'item':
+          discountValue = 0; // Item value determined at checkout
+          description = coupon.name || 'Free item';
+          break;
+        case 'delivery':
+          discountValue = 0; // Delivery fee
+          description = 'Free delivery';
+          break;
+        default:
+          discountValue = coupon.redeem_value_limit || 0;
+          description = coupon.name || 'Discount applied';
+      }
+      
+      return NextResponse.json({
+        valid: true,
+        code: coupon.code,
+        discount_type: coupon.discount_type,
+        discount_value: discountValue,
+        description: description,
+        promo_id: coupon.id,
+        promo_type: 'coupon',
+        name: coupon.name,
+      });
+    }
+
+    // =====================================================
+    // Check promotional_deals for promo_code match
+    // =====================================================
+    const { data: deal, error: dealError } = await supabase
+      .from('promotional_deals')
+      .select('*')
+      .eq('promo_code', code.toUpperCase())
+      .eq('restaurant_id', restaurant_id)
+      .eq('is_enabled', true)
+      .single();
+
+    if (deal && !dealError) {
+      const now = new Date();
+      const today = now.toISOString().split('T')[0];
+      
+      // Check date range
+      if (deal.date_start && deal.date_start > today) {
+        return NextResponse.json(
+          { error: 'This promo code is not yet active' },
+          { status: 400 }
+        );
+      }
+      
+      if (deal.date_stop && deal.date_stop < today) {
+        return NextResponse.json(
+          { error: 'This promo code has expired' },
+          { status: 400 }
+        );
+      }
+      
+      // Check minimum purchase
+      if (deal.minimum_purchase && subtotal < deal.minimum_purchase) {
+        const needed = (deal.minimum_purchase - subtotal).toFixed(2);
+        return NextResponse.json(
+          { error: `Add $${needed} more to use this code (min. $${deal.minimum_purchase})` },
+          { status: 400 }
+        );
+      }
+      
+      // Calculate discount
+      let discountType: 'percent' | 'currency' | 'item' | 'delivery' = 'percent';
+      let discountValue = 0;
+      let description = deal.name || 'Special deal';
+      
+      if (deal.deal_type === 'percent' || deal.deal_type === 'percentTotal') {
+        discountType = 'percent';
+        discountValue = deal.discount_percent || 0;
+        description = `${discountValue}% off your order`;
+      } else if (deal.deal_type === 'value' || deal.deal_type === 'valueTotal') {
+        discountType = 'currency';
+        discountValue = deal.discount_amount || 0;
+        description = `$${discountValue} off your order`;
+      } else if (deal.deal_type === 'freeItem') {
+        discountType = 'item';
+        discountValue = 0;
+        description = deal.name || 'Free item included';
+      }
+      
+      return NextResponse.json({
+        valid: true,
+        code: deal.promo_code,
+        discount_type: discountType,
+        discount_value: discountValue,
+        description: description,
+        promo_id: deal.id,
+        promo_type: 'deal',
+        name: deal.name,
+      });
+    }
+
+    // No match found
     return NextResponse.json(
-      { 
-        valid: false,
-        error: {
-          code: 'SERVER_ERROR',
-          message: 'Unable to validate code at this time',
-        },
-      },
+      { error: 'Invalid promo code' },
+      { status: 400 }
+    );
+  } catch (error) {
+    console.error('[POST /api/promotions/validate] Error:', error);
+    return NextResponse.json(
+      { error: 'Unable to validate code at this time' },
       { status: 500 }
     );
   }
