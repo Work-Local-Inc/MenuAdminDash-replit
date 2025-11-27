@@ -508,11 +508,11 @@ export function RestaurantDeliveryAreas({ restaurantId }: RestaurantDeliveryArea
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4">
         <Card className="overflow-hidden">
           <CardContent className="p-0">
-            <div ref={mapContainerRef} className="w-full h-[380px]" data-testid="map-container" />
+            <div ref={mapContainerRef} className="w-full h-[600px]" data-testid="map-container" />
           </CardContent>
         </Card>
 
-        <Card className="h-fit max-h-[420px] overflow-hidden flex flex-col">
+        <Card className="h-fit max-h-[600px] overflow-hidden flex flex-col">
           <CardHeader className="py-3 px-4">
             <CardTitle className="text-sm">Delivery Zones</CardTitle>
             <CardDescription className="text-xs">{areas.length} area{areas.length !== 1 ? 's' : ''} configured</CardDescription>

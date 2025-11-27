@@ -48,13 +48,11 @@ export async function PUT(
       const updateData: any = {}
       if (validatedData.name !== undefined) {
         updateData.area_name = validatedData.name
-        updateData.display_name = validatedData.name
       }
       if (validatedData.delivery_fee !== undefined) updateData.delivery_fee = validatedData.delivery_fee
       if (validatedData.min_order !== undefined) updateData.min_order_value = validatedData.min_order
       if (validatedData.polygon !== undefined) updateData.geometry = validatedData.polygon
       if (validatedData.is_active !== undefined) updateData.is_active = validatedData.is_active
-      if (validatedData.description !== undefined) updateData.notes = validatedData.description
       
       const { data, error } = await supabase
         .schema('menuca_v3')
@@ -73,8 +71,8 @@ export async function PUT(
       transformed = {
         id: data.id,
         restaurant_id: data.restaurant_id,
-        name: data.display_name || data.area_name,
-        description: data.notes,
+        name: data.area_name,
+        description: null,
         delivery_fee: data.delivery_fee || 0,
         min_order: data.min_order_value,
         polygon: data.geometry,

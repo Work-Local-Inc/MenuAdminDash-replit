@@ -150,11 +150,9 @@ export async function POST(
           restaurant_id: restaurantId,
           area_number: nextAreaNumber,
           area_name: validatedData.name,
-          display_name: validatedData.name,
           geometry: validatedData.polygon,
           delivery_fee: validatedData.delivery_fee,
           min_order_value: validatedData.min_order || null,
-          notes: validatedData.description || null,
           is_active: validatedData.is_active ?? true,
         })
         .select()
@@ -168,8 +166,8 @@ export async function POST(
       transformed = {
         id: data.id,
         restaurant_id: data.restaurant_id,
-        name: data.display_name || data.area_name,
-        description: data.notes,
+        name: data.area_name,
+        description: null,
         delivery_fee: data.delivery_fee || 0,
         min_order: data.min_order_value,
         polygon: data.geometry,
