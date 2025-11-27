@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import { useRestaurants } from "@/lib/hooks/use-restaurants"
 import { useUpsells, useCreateUpsell, useToggleUpsell, useDeleteUpsell } from "@/lib/hooks/use-promotions"
+import { useQuery } from "@tanstack/react-query"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -50,9 +51,10 @@ import {
 const upsellSchema = z.object({
   name: z.string().min(1, "Name is required"),
   trigger_type: z.enum(["cart_item", "cart_value", "category", "time_based"]),
-  trigger_value: z.string().optional(),
-  suggestion_type: z.enum(["specific_item", "category", "modifier"]),
-  suggested_items: z.array(z.string()).optional(),
+  trigger_course_id: z.coerce.number().optional(), // For category-based triggers
+  trigger_dish_id: z.coerce.number().optional(), // For item-based triggers
+  trigger_cart_minimum: z.coerce.number().optional(), // For cart value triggers
+  upsell_dish_id: z.coerce.number().min(1, "Please select an item to offer"),
   discount_type: z.enum(["none", "percentage", "fixed"]).default("none"),
   discount_value: z.coerce.number().optional(),
   message: z.string().optional(),
@@ -217,6 +219,30 @@ export default function UpsellsPage() {
   const { data: restaurants = [], isLoading: loadingRestaurants } = useRestaurants({ status: 'active' })
   const selectedRestaurant = restaurants.find((r: any) => r.id.toString() === selectedRestaurantId)
 
+  // Fetch categories (courses) for the selected restaurant
+  const { data: courses = [] } = useQuery({
+    queryKey: ['menu-categories', selectedRestaurantId],
+    queryFn: async () => {
+      if (!selectedRestaurantId) return []
+      const response = await fetch(`/api/restaurants/${selectedRestaurantId}/menu-categories`)
+      if (!response.ok) return []
+      return await response.json()
+    },
+    enabled: !!selectedRestaurantId,
+  })
+
+  // Fetch dishes for the selected restaurant
+  const { data: dishes = [] } = useQuery({
+    queryKey: ['menu-dishes', selectedRestaurantId],
+    queryFn: async () => {
+      if (!selectedRestaurantId) return []
+      const response = await fetch(`/api/menu/dishes?restaurant_id=${selectedRestaurantId}`)
+      if (!response.ok) return []
+      return await response.json()
+    },
+    enabled: !!selectedRestaurantId,
+  })
+
   // Fetch real upsells data
   const { data: upsells = [], isLoading: loadingUpsells } = useUpsells(
     selectedRestaurantId ? { restaurant_id: parseInt(selectedRestaurantId) } : undefined
@@ -232,14 +258,20 @@ export default function UpsellsPage() {
     resolver: zodResolver(upsellSchema),
     defaultValues: {
       name: "",
-      trigger_type: "cart_item",
-      suggestion_type: "category",
+      trigger_type: "category",
+      trigger_course_id: undefined,
+      trigger_dish_id: undefined,
+      trigger_cart_minimum: undefined,
+      upsell_dish_id: undefined,
       discount_type: "none",
       display_location: "cart",
       priority: 0,
       is_active: true,
     },
   })
+
+  // Watch trigger type to show conditional fields
+  const watchTriggerType = form.watch("trigger_type")
 
   const filteredUpsells = upsells.filter((upsell: any) => 
     upsell.name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -251,15 +283,25 @@ export default function UpsellsPage() {
     if (!selectedRestaurantId) return
     
     try {
+      // Map UI trigger types to database values
+      const triggerTypeMap: Record<string, string> = {
+        'cart_item': 'dish',
+        'cart_value': 'cart_minimum',
+        'category': 'course',
+        'time_based': 'time',
+      }
+
       await createUpsellMutation.mutateAsync({
         restaurant_id: parseInt(selectedRestaurantId),
         name: data.name,
         headline: data.message,
         description: data.message,
-        trigger_type: data.trigger_type === 'cart_item' ? 'dish' 
-          : data.trigger_type === 'cart_value' ? 'cart_minimum'
-          : data.trigger_type === 'category' ? 'course'
-          : data.trigger_type,
+        trigger_type: triggerTypeMap[data.trigger_type] || data.trigger_type,
+        trigger_course_id: data.trigger_type === 'category' ? data.trigger_course_id : null,
+        trigger_dish_id: data.trigger_type === 'cart_item' ? data.trigger_dish_id : null,
+        trigger_cart_minimum: data.trigger_type === 'cart_value' ? data.trigger_cart_minimum : null,
+        upsell_type: 'dish',
+        upsell_dish_id: data.upsell_dish_id,
         discount_percent: data.discount_type === 'percentage' ? data.discount_value : null,
         discount_amount: data.discount_type === 'fixed' ? data.discount_value : null,
         display_priority: data.priority,
@@ -267,6 +309,10 @@ export default function UpsellsPage() {
       })
       setIsDialogOpen(false)
       form.reset()
+      toast({
+        title: "Success",
+        description: "Upsell rule created successfully",
+      })
     } catch (error: any) {
       toast({
         title: "Error",
@@ -350,6 +396,135 @@ export default function UpsellsPage() {
                     </FormItem>
                   )}
                 />
+
+                {/* Conditional: Category Selector */}
+                {watchTriggerType === 'category' && (
+                  <FormField
+                    control={form.control}
+                    name="trigger_course_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Which category triggers this upsell?</FormLabel>
+                        <Select onValueChange={(v) => field.onChange(parseInt(v))} value={field.value?.toString()}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a category (e.g., Pizza)" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {courses.map((course: any) => (
+                              <SelectItem key={course.id} value={course.id.toString()}>
+                                {course.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormDescription>
+                          When a customer adds any item from this category, show the upsell
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+
+                {/* Conditional: Item Selector for cart_item trigger */}
+                {watchTriggerType === 'cart_item' && (
+                  <FormField
+                    control={form.control}
+                    name="trigger_dish_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Which item triggers this upsell?</FormLabel>
+                        <Select onValueChange={(v) => field.onChange(parseInt(v))} value={field.value?.toString()}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select an item" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="max-h-60">
+                            {dishes.map((dish: any) => (
+                              <SelectItem key={dish.id} value={dish.id.toString()}>
+                                {dish.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormDescription>
+                          When this specific item is added to cart, show the upsell
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+
+                {/* Conditional: Cart Minimum for cart_value trigger */}
+                {watchTriggerType === 'cart_value' && (
+                  <FormField
+                    control={form.control}
+                    name="trigger_cart_minimum"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Minimum Cart Value ($)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            step="0.01"
+                            placeholder="e.g., 25.00" 
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Show upsell when cart total reaches this amount
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+
+                {/* WHAT TO OFFER - Upsell Item Selector */}
+                <div className="border-t pt-6">
+                  <FormField
+                    control={form.control}
+                    name="upsell_dish_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-base font-semibold">What to Offer</FormLabel>
+                        <Select onValueChange={(v) => field.onChange(parseInt(v))} value={field.value?.toString()}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select the item to suggest" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="max-h-60">
+                            {courses.map((course: any) => {
+                              const courseDishes = dishes.filter((d: any) => d.course_id === course.id)
+                              if (courseDishes.length === 0) return null
+                              return (
+                                <div key={course.id}>
+                                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted">
+                                    {course.name}
+                                  </div>
+                                  {courseDishes.map((dish: any) => (
+                                    <SelectItem key={dish.id} value={dish.id.toString()}>
+                                      {dish.name}
+                                    </SelectItem>
+                                  ))}
+                                </div>
+                              )
+                            })}
+                          </SelectContent>
+                        </Select>
+                        <FormDescription>
+                          This is the item customers will be offered to add to their order
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
                 {/* Name */}
                 <FormField
