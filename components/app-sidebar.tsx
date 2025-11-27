@@ -17,6 +17,11 @@ import {
   ShoppingCart,
   Tag,
   UtensilsCrossed,
+  Megaphone,
+  Percent,
+  Gift,
+  TrendingUp,
+  Sparkles,
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -80,9 +85,14 @@ const menuItems = [
     ],
   },
   {
-    title: "Coupons",
-    url: "/admin/coupons",
-    icon: Tag,
+    title: "Marketing",
+    icon: Megaphone,
+    items: [
+      { title: "Marketing Hub", url: "/admin/promotions" },
+      { title: "Coupons", url: "/admin/coupons" },
+      { title: "Deals & Promos", url: "/admin/promotions/deals" },
+      { title: "Upsells", url: "/admin/promotions/upsells" },
+    ],
   },
   {
     title: "Users",

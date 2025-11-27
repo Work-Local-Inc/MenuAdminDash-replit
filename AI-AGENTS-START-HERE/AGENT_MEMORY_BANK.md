@@ -1,6 +1,6 @@
 # AGENT MEMORY BANK
 **Purpose:** Critical knowledge for AI agents working on Menu.ca Admin Dashboard  
-**Last Updated:** November 26, 2025  
+**Last Updated:** November 27, 2025  
 **Read This FIRST Before Any Work**
 
 ---
@@ -624,10 +624,14 @@ git log origin/main..HEAD --oneline
 - Mobile card scanning with OCR
 - Tablet Bridge API endpoints (all routes implemented)
 - Tablet Bridge database schema (migration complete)
+- **Marketing Hub UI** (dashboard, deals, upsells, analytics pages)
+- **Marketing Database Schema** (campaigns, codes, targets, tiers, upsells)
+- **Marketing API Routes** (campaigns CRUD, templates, validation)
 
 ### 🚧 In Progress
 - Admin Devices UI (register/manage tablet devices)
 - Tablet app integration testing
+- **Marketing & Promotions** - Wiring UI to real APIs
 
 ### ⏳ Not Started
 - Order history UI
@@ -861,6 +865,125 @@ See: `TABLET_BRIDGE_IMPLEMENTATION_PLAN.md` in project root
 
 ---
 
+---
+
+## 🎯 Marketing & Promotions System (Nov 27, 2025)
+
+### Overview
+Comprehensive implementation specification for coupons, deals, upsells, and promotional analytics. Designed to rival DoorDash/Uber Eats merchant portals with significantly better UX than legacy system.
+
+### Documentation
+**Full Spec:** `AI-AGENTS-START-HERE/MARKETING_PROMOTIONS_SPEC.md`
+
+### Existing Database Tables
+```
+promotional_deals (53 rows)
+├── Deal types: percent, percentTotal, freeItem, priced, value, valueTotal
+├── Scheduling: active_days, date_start/stop, time_start/stop
+└── Targeting: availability_types, exempted_courses
+
+promotional_coupons (453 rows)
+├── Discount types: percent, currency, item, delivery
+├── Codes with usage limits
+└── Valid date ranges
+
+coupon_usage_log - Tracks redemptions
+flash_sale_claims - Limited quantity deals
+promotional_*_translations - i18n support
+```
+
+### Proposed New Tables (Phase 1)
+```
+promotion_campaigns      - Unified promotion management
+promotion_codes          - Coupon codes (enhanced)
+promotion_targets        - Category/item targeting
+promotion_tiers          - Spend threshold tiers
+promotion_redemptions    - Usage analytics
+upsell_rules             - Smart upselling
+promotion_templates      - Quick-start templates
+```
+
+### Key Features Planned
+1. **Visual Campaign Builder** - Step-by-step wizard with live preview
+2. **Promotion Types:**
+   - Coupons (code entry required)
+   - Deals (automatic application)
+   - Upsells (cart suggestions)
+   - Flash Sales (limited time/quantity)
+3. **Targeting Engine:**
+   - By category/item
+   - By order type (delivery/takeout)
+   - By time (Happy Hour)
+   - By customer (first order, loyalty)
+4. **Analytics Dashboard:**
+   - Redemption tracking
+   - Revenue attribution
+   - ROI calculations
+   - A/B testing
+
+### Implementation Progress
+
+#### ✅ Phase 1A: Database (COMPLETE - Nov 27, 2025)
+- `promotion_campaigns` - 42 columns, unified promotions
+- `promotion_codes` - Coupon codes with types
+- `promotion_targets` - Category/item targeting
+- `promotion_tiers` - Spend threshold tiers
+- `promotion_redemptions` - Usage analytics
+- `upsell_rules` - Smart upselling
+- `promotion_templates` - 8 pre-built templates seeded
+
+#### ✅ Phase 1B: API Routes (COMPLETE - Nov 27, 2025)
+- `GET/POST /api/admin/promotions/campaigns` - List & create
+- `GET/PATCH/DELETE /api/admin/promotions/campaigns/:id` - CRUD
+- `GET /api/admin/promotions/templates` - Quick-start templates
+- `POST /api/promotions/validate` - Customer code validation
+
+#### ✅ Phase 1C: Frontend UI (COMPLETE - Nov 27, 2025)
+- Marketing Hub dashboard (`/admin/promotions`) - Stats, quick actions, templates
+- Deals page (`/admin/promotions/deals`) - BOGO, combos, happy hour UI
+- Upsells page (`/admin/promotions/upsells`) - Trigger rules with conversion stats
+- Analytics placeholder (`/admin/promotions/analytics`) - Overview + tables
+- Campaign creation hub (`/admin/promotions/create`) - Type selection + templates
+- Sidebar updated: "Coupons" → "Marketing" with submenu
+
+#### 🚧 Phase 2: Connect to Real APIs (In Progress)
+- Wire UI to actual API endpoints
+- Edit/delete modals for existing campaigns
+- CRUD operations for deals/upsells
+
+#### ⏳ Remaining Phases
+- **Phase 3:** Checkout promo code validation UI
+- **Phase 4:** Customer-facing promotion display
+- **Phase 5:** Real analytics with charts
+- **Phase 6:** Polish
+
+### API Endpoints (Planned)
+```
+/api/admin/promotions/campaigns     - CRUD operations
+/api/admin/promotions/codes         - Code management
+/api/admin/promotions/upsells       - Upsell rules
+/api/admin/promotions/analytics     - Performance data
+/api/promotions/validate            - Customer code validation
+/api/promotions/available           - Active deals for restaurant
+/api/promotions/apply               - Apply to cart
+```
+
+### Legacy System Issues (from screenshots)
+❌ 15+ confusing "Deal type" dropdown options
+❌ Too many fields visible at once
+❌ No visual preview
+❌ No templates
+❌ No analytics
+❌ Poor mobile experience
+
+### Migration Strategy
+1. Keep existing tables during transition
+2. Copy data to new unified structure
+3. Both systems run in parallel
+4. Deprecate legacy after verification
+
+---
+
 **Last Updated By:** Claude (Cursor Agent)
-**Last Update:** Nov 26, 2025 - Database migration for tablet bridge completed
-**Next Update:** After admin devices UI or tablet app integration testing
+**Last Update:** Nov 27, 2025 - Marketing & Promotions Frontend UI complete (Hub, Deals, Upsells, Analytics pages)
+**Next Update:** After connecting UI to real APIs or adding checkout integration
