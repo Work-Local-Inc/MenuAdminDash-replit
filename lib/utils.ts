@@ -79,6 +79,14 @@ export function resolveBrandingColors(restaurant: {
   };
 }
 
+// Check if restaurant has custom branding set (not using defaults)
+export function hasCustomBranding(restaurant: {
+  primary_color?: string | null;
+  banner_image_url?: string | null;
+}): boolean {
+  return !isUnsetColor(restaurant.primary_color) || !!restaurant.banner_image_url;
+}
+
 export function hexToHSL(hex: string): string {
   // Remove # if present
   hex = hex.replace(/^#/, '');
