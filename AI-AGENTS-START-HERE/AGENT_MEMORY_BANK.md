@@ -955,10 +955,18 @@ promotion_templates      - Quick-start templates
 - Upsells page connected to `upsell_rules` table
 - Admin auth + restaurant permissions enforced on all endpoints
 
-#### 🚧 Phase 3: Customer Integration (In Progress)
-- Checkout promo code validation UI
-- Customer-facing promotion display
-- Real analytics with charts (Recharts)
+#### ✅ Phase 3: Customer Checkout Integration (COMPLETE - Nov 27, 2025)
+- Promo code input added to checkout page order summary
+- Cart store updated with `AppliedPromo` type and discount calculations
+- `getDiscount()` method calculates discount based on promo type
+- `getTax()` and `getTotal()` updated to account for discounts
+- `/api/promotions/validate` checks both `promotional_coupons` and `promotional_deals`
+- Supports: percent, currency, item, delivery discount types
+- Visual feedback: green badge shows applied promo, discount line in totals
+
+#### ⏳ Phase 4: Remaining
+- Customer-facing promotion display on menu pages
+- Real analytics charts (Recharts)
 
 ### API Endpoints (Implemented)
 ```
@@ -996,6 +1004,39 @@ useActivePromotions(restaurantId)  // Active promos list
 usePromotionAnalytics(filters?)    // Analytics data
 ```
 
+### Cart Store Promo Support (`lib/stores/cart-store.ts`)
+```typescript
+// Types
+AppliedPromo {
+  code: string;
+  type: 'percent' | 'currency' | 'item' | 'delivery';
+  value: number;
+  description: string;
+  promoId?: number;
+  promoType?: 'coupon' | 'deal';
+}
+
+// State
+appliedPromo: AppliedPromo | null;
+
+// Actions
+applyPromo(promo)    // Apply validated promo
+clearPromo()         // Remove applied promo
+
+// Computed
+getDiscount()        // Calculate discount amount
+getTotal()           // Includes discount subtraction
+```
+
+### Checkout Promo Flow
+1. User enters code in `PromoCodeInput` component
+2. Component calls `POST /api/promotions/validate`
+3. API checks `promotional_coupons` then `promotional_deals`
+4. On success, `applyPromo()` stores promo in cart
+5. `getDiscount()` calculates discount based on type
+6. `getTotal()` subtracts discount from final price
+7. Order summary shows discount line in green
+
 ### Legacy System Issues (from screenshots)
 ❌ 15+ confusing "Deal type" dropdown options
 ❌ Too many fields visible at once
@@ -1013,5 +1054,5 @@ usePromotionAnalytics(filters?)    // Analytics data
 ---
 
 **Last Updated By:** Claude (Cursor Agent)
-**Last Update:** Nov 27, 2025 - Marketing Hub fully connected to real database (NO mock data)
-**Next Update:** After checkout promo code validation or customer-facing display
+**Last Update:** Nov 27, 2025 - Promo code validation added to checkout (cart store + API + UI)
+**Next Update:** After customer-facing promo display or analytics charts
