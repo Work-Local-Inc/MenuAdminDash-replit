@@ -971,8 +971,14 @@ promotion_templates      - Quick-start templates
 - Cart drawer shows applied promo badge with Remove button
 - Discount line added to cart summary (green styling)
 
-#### ⏳ Phase 5: Remaining
-- Real analytics charts (Recharts)
+#### ✅ Phase 5: Analytics Charts (COMPLETE - Nov 27, 2025)
+- `GET /api/admin/promotions/analytics/chart-data` - Chart-ready data endpoint
+- Bar chart: Monthly promotions created (coupons vs deals)
+- Pie chart: Coupon types distribution (Fixed Amount, Percentage, etc.)
+- Horizontal bar chart: Deal types breakdown
+- Top coupons & deals tables with real data
+- Restaurant selector for filtering
+- All mock data replaced with real database queries
 
 ### API Endpoints (Implemented)
 ```
@@ -990,6 +996,9 @@ promotion_templates      - Quick-start templates
 # Customer APIs
 /api/promotions/validate                        - ✅ Code validation (POST)
 /api/customer/restaurants/[slug]/promotions     - ✅ Active promos (GET)
+
+# Analytics APIs
+/api/admin/promotions/analytics/chart-data      - ✅ Chart-ready data (GET)
 ```
 
 ### Hooks Available (`lib/hooks/use-promotions.ts`)
@@ -1064,5 +1073,5 @@ getTotal()           // Includes discount subtraction
 ---
 
 **Last Updated By:** Claude (Cursor Agent)
-**Last Update:** Nov 27, 2025 - Phase 4 complete: Customer-facing promo display (banner, cart drawer, menu page integration)
-**Next Update:** After Phase 5 analytics charts implementation
+**Last Update:** Nov 27, 2025 - Phase 5 complete: Analytics dashboard with Recharts (bar/pie/table visualizations)
+**Marketing Hub Status:** 🎉 COMPLETE - All 5 phases implemented with real data
