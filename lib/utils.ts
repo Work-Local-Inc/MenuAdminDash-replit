@@ -46,6 +46,39 @@ export function getStatusColor(status: string): string {
   return colors[status.toLowerCase()] || 'bg-gray-500'
 }
 
+// Menu.ca default brand color
+export const MENUCA_RED = '#DC2626';
+
+// Legacy gray/black colors that should be treated as "unset"
+const LEGACY_UNSET_COLORS = [
+  '#000000', '#000', 
+  '#111827', '#1f2937', '#374151', '#4b5563', '#6b7280', // Tailwind grays
+  '#111', '#222', '#333', '#444', '#555', '#666', '#777', '#888', '#999',
+  'black', 'gray', 'grey',
+];
+
+// Check if a color value should be treated as "unset" (legacy default or null)
+function isUnsetColor(color: string | null | undefined): boolean {
+  if (!color) return true;
+  const normalized = color.toLowerCase().trim();
+  return LEGACY_UNSET_COLORS.includes(normalized);
+}
+
+// Resolve branding colors - returns Menu.ca red for unset/legacy colors
+export function resolveBrandingColors(restaurant: {
+  primary_color?: string | null;
+  secondary_color?: string | null;
+  price_color?: string | null;
+  checkout_button_color?: string | null;
+}) {
+  return {
+    primary: isUnsetColor(restaurant.primary_color) ? MENUCA_RED : restaurant.primary_color!,
+    secondary: isUnsetColor(restaurant.secondary_color) ? MENUCA_RED : restaurant.secondary_color!,
+    price: isUnsetColor(restaurant.price_color) ? MENUCA_RED : restaurant.price_color!,
+    checkout: isUnsetColor(restaurant.checkout_button_color) ? MENUCA_RED : restaurant.checkout_button_color!,
+  };
+}
+
 export function hexToHSL(hex: string): string {
   // Remove # if present
   hex = hex.replace(/^#/, '');

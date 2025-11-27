@@ -8,8 +8,7 @@ import { DishCard } from './dish-card'
 import { DishListRow } from './dish-list-row'
 import { CartDrawer } from './cart-drawer'
 import { useCartStore } from '@/lib/stores/cart-store'
-
-const DEFAULT_PRIMARY_COLOR = '#DC2626'
+import { resolveBrandingColors, MENUCA_RED } from '@/lib/utils'
 
 interface RestaurantMenuPublicProps {
   restaurant: any
@@ -31,7 +30,8 @@ export default function RestaurantMenuPublic({
   const cartTotal = useCartStore((state) => state.getTotal())
   const setRestaurant = useCartStore((state) => state.setRestaurant)
 
-  const effectivePrimaryColor = restaurant.primary_color || DEFAULT_PRIMARY_COLOR
+  // Resolve branding colors - treats legacy grays/blacks as "unset" and returns Menu.ca red
+  const brandColors = resolveBrandingColors(restaurant)
 
   useEffect(() => {
     setMounted(true)
@@ -60,9 +60,8 @@ export default function RestaurantMenuPublic({
       ? `${streetAddress}${postalCode ? `, ${postalCode}` : ''}`
       : undefined
 
-    const primaryColor = restaurant.primary_color || DEFAULT_PRIMARY_COLOR
-    setRestaurant(restaurant.id, restaurant.name, slug, deliveryFee, minOrder, address, primaryColor)
-  }, [restaurant.id, restaurant.name, restaurant.restaurant_delivery_areas, serviceConfig, setRestaurant, streetAddress, postalCode, restaurant.primary_color])
+    setRestaurant(restaurant.id, restaurant.name, slug, deliveryFee, minOrder, address, brandColors.primary)
+  }, [restaurant.id, restaurant.name, restaurant.restaurant_delivery_areas, serviceConfig, setRestaurant, streetAddress, postalCode, brandColors.primary])
 
   const scrollToCategory = (courseId: string) => {
     const element = document.getElementById(`category-${courseId}`)
@@ -91,7 +90,7 @@ export default function RestaurantMenuPublic({
         <div 
           className="w-full h-20 sm:h-24 md:h-32 relative overflow-hidden"
           style={{
-            background: `linear-gradient(135deg, ${effectivePrimaryColor} 0%, ${effectivePrimaryColor}dd 50%, ${effectivePrimaryColor}bb 100%)`,
+            background: `linear-gradient(135deg, ${brandColors.primary} 0%, ${brandColors.primary}dd 50%, ${brandColors.primary}bb 100%)`,
           }}
         >
           <div className="absolute inset-0 opacity-20">
@@ -137,7 +136,7 @@ export default function RestaurantMenuPublic({
                   ) : (
                     <div 
                       className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm"
-                      style={{ backgroundColor: effectivePrimaryColor }}
+                      style={{ backgroundColor: brandColors.primary }}
                       data-testid="icon-restaurant-default"
                     >
                       <UtensilsCrossed className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
@@ -268,8 +267,8 @@ export default function RestaurantMenuPublic({
                                 dish={dish}
                                 restaurantId={restaurant.id}
                                 buttonStyle={restaurant.button_style}
-                                priceColor={restaurant.price_color || effectivePrimaryColor}
-                                buttonColor={effectivePrimaryColor}
+                                priceColor={brandColors.price}
+                                buttonColor={brandColors.primary}
                                 isEven={index % 2 === 0}
                               />
                             ))}
@@ -286,8 +285,8 @@ export default function RestaurantMenuPublic({
                                   dish={dish}
                                   restaurantId={restaurant.id}
                                   buttonStyle={restaurant.button_style}
-                                  priceColor={restaurant.price_color || effectivePrimaryColor}
-                                  buttonColor={effectivePrimaryColor}
+                                  priceColor={brandColors.price}
+                                  buttonColor={brandColors.primary}
                                   isEven={index % 2 === 0}
                                 />
                               ))}
@@ -301,8 +300,8 @@ export default function RestaurantMenuPublic({
                                   dish={dish}
                                   restaurantId={restaurant.id}
                                   buttonStyle={restaurant.button_style}
-                                  priceColor={restaurant.price_color || effectivePrimaryColor}
-                                  buttonColor={effectivePrimaryColor}
+                                  priceColor={brandColors.price}
+                                  buttonColor={brandColors.primary}
                                   isEven={index % 2 === 0}
                                 />
                               ))}
@@ -317,8 +316,8 @@ export default function RestaurantMenuPublic({
                             dish={dish}
                             restaurantId={restaurant.id}
                             buttonStyle={restaurant.button_style}
-                            priceColor={restaurant.price_color || effectivePrimaryColor}
-                            buttonColor={effectivePrimaryColor}
+                            priceColor={brandColors.price}
+                            buttonColor={brandColors.primary}
                           />
                         ))}
                       </div>
@@ -339,13 +338,13 @@ export default function RestaurantMenuPublic({
 
       <div className="fixed bottom-0 left-0 right-0 z-20 bg-background border-t shadow-lg">
         <div className="container mx-auto px-4 py-3">
-          <button
+          <Button
             onClick={() => setIsCartOpen(true)}
-            className="w-full h-14 rounded-md text-white font-medium flex items-center justify-center disabled:opacity-50 disabled:pointer-events-none"
+            className="w-full h-14 px-4 text-white font-medium"
             disabled={displayCartCount === 0 && !isCartOpen}
             data-testid="button-open-cart"
             style={{
-              backgroundColor: restaurant.checkout_button_color || effectivePrimaryColor,
+              backgroundColor: brandColors.checkout,
             }}
           >
             <div className="flex items-center justify-between w-full">
@@ -359,7 +358,7 @@ export default function RestaurantMenuPublic({
                 ${displayCartTotal.toFixed(2)}
               </span>
             </div>
-          </button>
+          </Button>
         </div>
       </div>
 
