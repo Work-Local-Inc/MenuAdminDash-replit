@@ -46,6 +46,11 @@ Preferred communication style: Simple, everyday language.
 -   **Order Management**: Order creation post-payment, order history, status tracking.
 -   **Account Pages**: Dashboard for orders, addresses, and profile management.
 -   **Security**: Server-side price, amount, and quantity validation; payment replay protection; restaurant ownership validation; user authentication; webhook signature verification; OAuth email verification.
+-   **Default Branding System**: Restaurants without custom configuration get polished defaults:
+    -   Default primary color: `#E65100` (warm orange) applied to banners, buttons, icons, and navigation throughout the entire ordering experience.
+    -   Default banner: Gradient header using the default color with decorative circular elements when no custom banner image is set.
+    -   Default icon: Styled rounded square container with UtensilsCrossed icon when no custom logo is set.
+    -   Consistent application: Default color flows through to cart button, checkout buttons, confirmation page, and all interactive elements.
 
 ## External Dependencies
 

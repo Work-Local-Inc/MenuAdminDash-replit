@@ -7,6 +7,8 @@ import RestaurantMenu from '@/components/customer/restaurant-menu-public';
 import type { RestaurantMenuResponse } from '@/lib/types/menu';
 import { hexToHSL } from '@/lib/utils';
 
+const DEFAULT_PRIMARY_COLOR = '#E65100';
+
 interface RestaurantPageProps {
   params: {
     slug: string;
@@ -167,15 +169,14 @@ export default async function RestaurantPage({ params }: RestaurantPageProps) {
   
   console.log('[Restaurant Page] About to render RestaurantMenu component with courses:', courses.length);
   
-  // Build dynamic branding styles
-  const primaryColorHSL = restaurant.primary_color ? hexToHSL(restaurant.primary_color) : null;
+  // Build dynamic branding styles - use default warm color if restaurant has no custom color
+  const effectivePrimaryColor = restaurant.primary_color || DEFAULT_PRIMARY_COLOR;
+  const primaryColorHSL = hexToHSL(effectivePrimaryColor);
   const secondaryColorHSL = restaurant.secondary_color ? hexToHSL(restaurant.secondary_color) : null;
   
   const dynamicStyle: React.CSSProperties = {
-    ...(primaryColorHSL && {
-      '--primary': primaryColorHSL,
-      '--ring': primaryColorHSL,
-    }),
+    '--primary': primaryColorHSL,
+    '--ring': primaryColorHSL,
     ...(secondaryColorHSL && {
       '--secondary': secondaryColorHSL,
     }),
@@ -185,7 +186,7 @@ export default async function RestaurantPage({ params }: RestaurantPageProps) {
   } as React.CSSProperties;
   
   return (
-    <div style={Object.keys(dynamicStyle).length > 0 ? dynamicStyle : undefined}>
+    <div style={dynamicStyle}>
       <RestaurantMenu restaurant={restaurant} courses={courses} />
     </div>
   );
