@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { UtensilsCrossed, MapPin, Clock, Phone, ShoppingCart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { DishCard } from './dish-card'
 import { DishListRow } from './dish-list-row'
 import { CartDrawer } from './cart-drawer'
+import { PromoBanner } from './promo-banner'
 import { useCartStore } from '@/lib/stores/cart-store'
 import { resolveBrandingColors, MENUCA_RED } from '@/lib/utils'
 
@@ -32,6 +33,11 @@ export default function RestaurantMenuPublic({
 
   // Resolve branding colors - treats legacy grays/blacks as "unset" and returns Menu.ca red
   const brandColors = resolveBrandingColors(restaurant)
+
+  // Generate restaurant slug for API calls
+  const restaurantSlug = useMemo(() => {
+    return `${restaurant.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${restaurant.id}`
+  }, [restaurant.name, restaurant.id])
 
   useEffect(() => {
     setMounted(true)
@@ -183,6 +189,12 @@ export default function RestaurantMenuPublic({
           />
         )}
       </div>
+
+      {/* Promotional Banners - show available deals and coupons */}
+      <PromoBanner 
+        restaurantSlug={restaurantSlug}
+        brandColor={brandColors.primary}
+      />
 
       {courses && courses.length > 1 && (
         <div className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">

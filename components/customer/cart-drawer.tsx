@@ -1,6 +1,6 @@
 'use client';
 
-import { X, Trash2, Plus, Minus, ShoppingBag } from 'lucide-react';
+import { X, Trash2, Plus, Minus, ShoppingBag, Tag, Sparkles } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -20,7 +20,7 @@ interface CartDrawerProps {
 }
 
 export function CartDrawer({ isOpen, onClose, restaurant, buttonStyle }: CartDrawerProps) {
-  const { items, updateQuantity, removeItem, clearCart, deliveryFee } = useCartStore();
+  const { items, updateQuantity, removeItem, clearCart, deliveryFee, promoCode, clearPromo, getDiscount } = useCartStore();
   
   // Helper function to get button branding class - only applies to non-icon buttons
   const getButtonClassName = (isIcon: boolean = false) => {
@@ -37,8 +37,10 @@ export function CartDrawer({ isOpen, onClose, restaurant, buttonStyle }: CartDra
   
   // Calculate totals - all prices are in dollars
   const subtotal = items.reduce((sum, item) => sum + item.subtotal, 0);
-  const tax = (subtotal + deliveryFee) * HST_RATE;
-  const total = subtotal + deliveryFee + tax;
+  const discount = getDiscount();
+  const discountedSubtotal = Math.max(0, subtotal - discount);
+  const tax = (discountedSubtotal + deliveryFee) * HST_RATE;
+  const total = discountedSubtotal + deliveryFee + tax;
   
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
@@ -150,11 +152,42 @@ export function CartDrawer({ isOpen, onClose, restaurant, buttonStyle }: CartDra
             
             {/* Cart Summary */}
             <div className="border-t px-6 py-4 bg-muted/30">
+              {/* Applied Promo Code */}
+              {promoCode && (
+                <div className="mb-3 p-2 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-green-600" />
+                    <span className="text-sm font-medium text-green-700 dark:text-green-400">
+                      {promoCode.code} applied
+                    </span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs text-green-600 hover:text-green-700"
+                    onClick={clearPromo}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              )}
+              
               <div className="space-y-2 mb-4">
                 <div className="flex justify-between text-sm">
                   <span>Subtotal</span>
                   <span data-testid="text-subtotal">${Number(subtotal).toFixed(2)}</span>
                 </div>
+                
+                {/* Discount line */}
+                {discount > 0 && (
+                  <div className="flex justify-between text-sm text-green-600">
+                    <span className="flex items-center gap-1">
+                      <Tag className="w-3 h-3" />
+                      Discount
+                    </span>
+                    <span data-testid="text-discount">-${Number(discount).toFixed(2)}</span>
+                  </div>
+                )}
                 
                 <div className="flex justify-between text-sm">
                   <span>Delivery Fee</span>

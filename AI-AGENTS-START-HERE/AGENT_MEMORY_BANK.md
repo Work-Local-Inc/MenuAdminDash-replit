@@ -964,12 +964,19 @@ promotion_templates      - Quick-start templates
 - Supports: percent, currency, item, delivery discount types
 - Visual feedback: green badge shows applied promo, discount line in totals
 
-#### ⏳ Phase 4: Remaining
-- Customer-facing promotion display on menu pages
+#### ✅ Phase 4: Customer-Facing Promo Display (COMPLETE - Nov 27, 2025)
+- `GET /api/customer/restaurants/[slug]/promotions` - Fetches active promos for restaurant
+- `PromoBanner` component - Featured promo with gradient, expandable list
+- Integrated into restaurant menu page (after header, before categories)
+- Cart drawer shows applied promo badge with Remove button
+- Discount line added to cart summary (green styling)
+
+#### ⏳ Phase 5: Remaining
 - Real analytics charts (Recharts)
 
 ### API Endpoints (Implemented)
 ```
+# Admin APIs
 /api/admin/promotions/campaigns     - ✅ CRUD operations
 /api/admin/promotions/deals         - ✅ List deals (GET)
 /api/admin/promotions/deals/create  - ✅ Create deal (POST)
@@ -979,7 +986,10 @@ promotion_templates      - Quick-start templates
 /api/admin/promotions/active        - ✅ Combined active promos (GET)
 /api/admin/promotions/analytics     - ✅ Performance data (GET)
 /api/admin/promotions/templates     - ✅ Quick-start templates (GET)
-/api/promotions/validate            - ✅ Customer code validation (POST)
+
+# Customer APIs
+/api/promotions/validate                        - ✅ Code validation (POST)
+/api/customer/restaurants/[slug]/promotions     - ✅ Active promos (GET)
 ```
 
 ### Hooks Available (`lib/hooks/use-promotions.ts`)
@@ -1054,5 +1064,5 @@ getTotal()           // Includes discount subtraction
 ---
 
 **Last Updated By:** Claude (Cursor Agent)
-**Last Update:** Nov 27, 2025 - Promo code validation added to checkout (cart store + API + UI)
-**Next Update:** After customer-facing promo display or analytics charts
+**Last Update:** Nov 27, 2025 - Phase 4 complete: Customer-facing promo display (banner, cart drawer, menu page integration)
+**Next Update:** After Phase 5 analytics charts implementation
