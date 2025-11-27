@@ -11,10 +11,11 @@ interface DishListRowProps {
   restaurantId: number;
   buttonStyle?: 'rounded' | 'square' | null;
   priceColor?: string | null;
+  buttonColor?: string | null;
   isEven?: boolean;
 }
 
-export function DishListRow({ dish, restaurantId, buttonStyle, priceColor, isEven }: DishListRowProps) {
+export function DishListRow({ dish, restaurantId, buttonStyle, priceColor, buttonColor, isEven }: DishListRowProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const addItem = useCartStore((state) => state.addItem);
   
@@ -79,18 +80,18 @@ export function DishListRow({ dish, restaurantId, buttonStyle, priceColor, isEve
         </span>
         
         {/* Add Button - Small circle */}
-        <Button
-          size="icon"
-          variant="default"
+        <button
+          type="button"
           onClick={(e) => {
             e.stopPropagation();
             setIsModalOpen(true);
           }}
-          className={`h-7 w-7 flex-shrink-0 ${buttonClassName}`}
+          className={`h-7 w-7 flex-shrink-0 inline-flex items-center justify-center text-white transition-colors hover:opacity-90 ${buttonClassName || 'rounded-md'}`}
+          style={{ backgroundColor: buttonColor || '#DC2626' }}
           data-testid={`button-add-dish-${dish.id}`}
         >
           <Plus className="w-4 h-4" />
-        </Button>
+        </button>
       </div>
       
       <DishModal

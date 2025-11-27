@@ -268,7 +268,8 @@ export default function RestaurantMenuPublic({
                                 dish={dish}
                                 restaurantId={restaurant.id}
                                 buttonStyle={restaurant.button_style}
-                                priceColor={restaurant.price_color}
+                                priceColor={restaurant.price_color || effectivePrimaryColor}
+                                buttonColor={effectivePrimaryColor}
                                 isEven={index % 2 === 0}
                               />
                             ))}
@@ -285,7 +286,8 @@ export default function RestaurantMenuPublic({
                                   dish={dish}
                                   restaurantId={restaurant.id}
                                   buttonStyle={restaurant.button_style}
-                                  priceColor={restaurant.price_color}
+                                  priceColor={restaurant.price_color || effectivePrimaryColor}
+                                  buttonColor={effectivePrimaryColor}
                                   isEven={index % 2 === 0}
                                 />
                               ))}
@@ -299,7 +301,8 @@ export default function RestaurantMenuPublic({
                                   dish={dish}
                                   restaurantId={restaurant.id}
                                   buttonStyle={restaurant.button_style}
-                                  priceColor={restaurant.price_color}
+                                  priceColor={restaurant.price_color || effectivePrimaryColor}
+                                  buttonColor={effectivePrimaryColor}
                                   isEven={index % 2 === 0}
                                 />
                               ))}
@@ -314,7 +317,8 @@ export default function RestaurantMenuPublic({
                             dish={dish}
                             restaurantId={restaurant.id}
                             buttonStyle={restaurant.button_style}
-                            priceColor={restaurant.price_color}
+                            priceColor={restaurant.price_color || effectivePrimaryColor}
+                            buttonColor={effectivePrimaryColor}
                           />
                         ))}
                       </div>
