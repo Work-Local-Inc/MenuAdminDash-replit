@@ -72,7 +72,8 @@ export default function RestaurantMenuPublic({
 
   const menuContent = (
     <div className="min-h-screen bg-background">
-      {restaurant.banner_image_url ? (
+      {/* Only show banner if restaurant has a custom banner image */}
+      {restaurant.banner_image_url && (
         <div className="w-full h-20 sm:h-24 md:h-32 bg-muted relative overflow-hidden">
           <img
             src={restaurant.banner_image_url}
@@ -86,31 +87,9 @@ export default function RestaurantMenuPublic({
             data-testid="img-order-online-badge"
           />
         </div>
-      ) : (
-        <div 
-          className="w-full h-20 sm:h-24 md:h-32 relative overflow-hidden"
-          style={{
-            background: `linear-gradient(135deg, ${brandColors.primary} 0%, ${brandColors.primary}dd 50%, ${brandColors.primary}bb 100%)`,
-          }}
-        >
-          <div className="absolute inset-0 opacity-20">
-            <div className="absolute top-2 left-[10%] w-8 h-8 sm:w-10 sm:h-10 border-2 border-white/40 rounded-full" />
-            <div className="absolute top-4 left-[30%] w-4 h-4 sm:w-6 sm:h-6 border border-white/30 rounded-full" />
-            <div className="absolute bottom-3 left-[20%] w-6 h-6 sm:w-8 sm:h-8 border-2 border-white/35 rounded-full" />
-            <div className="absolute top-3 right-[15%] w-5 h-5 sm:w-7 sm:h-7 border border-white/40 rounded-full" />
-            <div className="absolute bottom-2 right-[25%] w-3 h-3 sm:w-5 sm:h-5 border border-white/30 rounded-full" />
-            <div className="absolute top-1/2 right-[40%] w-4 h-4 border border-white/25 rounded-full" />
-          </div>
-          <img
-            src="/images/order-online-badge.png"
-            alt="Order Online"
-            className="absolute right-3 sm:right-4 md:right-6 top-1/2 -translate-y-1/2 h-14 sm:h-16 md:h-24 w-auto drop-shadow-lg"
-            data-testid="img-order-online-badge-default"
-          />
-        </div>
       )}
 
-      <div className="border-b bg-card">
+      <div className="border-b bg-card relative">
         <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
           <div className="flex items-start justify-between gap-3 sm:gap-4">
             <div className="flex-1 min-w-0">
@@ -194,6 +173,15 @@ export default function RestaurantMenuPublic({
             </div>
           </div>
         </div>
+        {/* Show Order Online badge in restaurant info section when no custom banner */}
+        {!restaurant.banner_image_url && (
+          <img
+            src="/images/order-online-badge.png"
+            alt="Order Online"
+            className="absolute right-3 sm:right-4 md:right-6 top-1/2 -translate-y-1/2 h-12 sm:h-14 md:h-16 w-auto drop-shadow-md"
+            data-testid="img-order-online-badge-info"
+          />
+        )}
       </div>
 
       {courses && courses.length > 1 && (

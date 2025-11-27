@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { extractIdFromSlug, createRestaurantSlug } from '@/lib/utils/slugify';
 import RestaurantMenu from '@/components/customer/restaurant-menu-public';
 import type { RestaurantMenuResponse } from '@/lib/types/menu';
-import { hexToHSL } from '@/lib/utils';
+import { hexToHSL, hasCustomBranding } from '@/lib/utils';
 
 const DEFAULT_PRIMARY_COLOR = '#DC2626';
 
@@ -174,13 +174,16 @@ export default async function RestaurantPage({ params }: RestaurantPageProps) {
   const primaryColorHSL = hexToHSL(effectivePrimaryColor);
   const secondaryColorHSL = restaurant.secondary_color ? hexToHSL(restaurant.secondary_color) : null;
   
+  // Only apply custom font if restaurant has custom branding (not using defaults)
+  const useCustomFont = hasCustomBranding(restaurant) && restaurant.font_family;
+  
   const dynamicStyle: React.CSSProperties = {
     '--primary': primaryColorHSL,
     '--ring': primaryColorHSL,
     ...(secondaryColorHSL && {
       '--secondary': secondaryColorHSL,
     }),
-    ...(restaurant.font_family && {
+    ...(useCustomFont && {
       fontFamily: restaurant.font_family,
     }),
   } as React.CSSProperties;
