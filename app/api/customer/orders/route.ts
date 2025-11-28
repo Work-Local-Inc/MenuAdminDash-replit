@@ -5,8 +5,9 @@ import { extractIdFromSlug } from '@/lib/utils/slugify'
 import Stripe from 'stripe'
 import { sendOrderConfirmationEmail } from '@/lib/emails/service'
 
-// Use production Stripe keys if available, fall back to test keys
-const stripeSecretKey = process.env.STRIPE_SECRET_KEY || process.env.TESTING_STRIPE_SECRET_KEY
+// Use TEST Stripe keys to match the create-payment-intent endpoint
+// Both endpoints must use the same Stripe account/keys
+const stripeSecretKey = process.env.TESTING_STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY
 
 if (!stripeSecretKey) {
   throw new Error('Missing required Stripe secret key')

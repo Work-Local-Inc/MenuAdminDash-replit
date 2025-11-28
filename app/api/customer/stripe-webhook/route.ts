@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createAdminClient } from '@/lib/supabase/admin'
 
-// Use production Stripe key if available, fall back to test key
-const stripeSecretKey = process.env.STRIPE_SECRET_KEY || process.env.TESTING_STRIPE_SECRET_KEY
+// Use TEST Stripe key to match payment intent creation
+const stripeSecretKey = process.env.TESTING_STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY
 
 if (!stripeSecretKey) {
   throw new Error('Missing required Stripe secret key. Set STRIPE_SECRET_KEY or TESTING_STRIPE_SECRET_KEY')

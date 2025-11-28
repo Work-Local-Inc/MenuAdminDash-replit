@@ -4,8 +4,8 @@ import { z } from 'zod'
 import Stripe from 'stripe'
 import { sendWelcomeEmail } from '@/lib/emails/service'
 
-// Use production Stripe keys if available, fall back to test keys
-const stripeSecretKey = process.env.STRIPE_SECRET_KEY || process.env.TESTING_STRIPE_SECRET_KEY
+// Use TEST Stripe keys to match payment intent creation
+const stripeSecretKey = process.env.TESTING_STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY
 
 if (!stripeSecretKey) {
   throw new Error('Missing required Stripe secret key')
