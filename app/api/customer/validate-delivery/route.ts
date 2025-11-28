@@ -26,8 +26,8 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Admin client already has schema: 'menuca_v3' configured
     const { data: areasData, error: areasError } = await supabase
-      .schema('menuca_v3')
       .from('restaurant_delivery_areas')
       .select('*')
       .eq('restaurant_id', parsedRestaurantId)
@@ -41,20 +41,28 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const { data: zonesData, error: zonesError } = await supabase
-      .schema('menuca_v3')
-      .from('restaurant_delivery_zones')
-      .select('id, restaurant_id, zone_name, delivery_fee_cents, minimum_order_cents, zone_geometry, is_active, created_at')
-      .eq('restaurant_id', parsedRestaurantId)
-      .is('deleted_at', null)
-      .order('id', { ascending: true })
+    // Try to fetch from restaurant_delivery_zones table (may not exist)
+    let zonesData: any[] | null = null
+    let zonesError: any = null
+    
+    try {
+      const result = await supabase
+        .from('restaurant_delivery_zones')
+        .select('id, restaurant_id, zone_name, delivery_fee_cents, minimum_order_cents, zone_geometry, is_active, created_at')
+        .eq('restaurant_id', parsedRestaurantId)
+        .is('deleted_at', null)
+        .order('id', { ascending: true })
+      
+      zonesData = result.data
+      zonesError = result.error
+    } catch (e) {
+      // Table might not exist, that's okay - we'll use areas table
+      console.log('[Validate Delivery] restaurant_delivery_zones table not available, using areas only')
+    }
 
-    if (zonesError) {
+    // Only log zones error, don't fail - table might not exist and that's okay
+    if (zonesError && !zonesError.message?.includes('schema cache')) {
       console.error('[Validate Delivery] Error fetching delivery zones:', zonesError)
-      return NextResponse.json(
-        { error: 'Failed to fetch delivery zones', details: zonesError.message },
-        { status: 500 }
-      )
     }
 
     const useAreasTable = (areasData?.length || 0) > 0

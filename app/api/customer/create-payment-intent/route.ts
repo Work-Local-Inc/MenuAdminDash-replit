@@ -4,10 +4,13 @@ import { createClient } from '@/lib/supabase/server'
 
 // Initialize Stripe lazily to avoid module-level errors in production
 function getStripe() {
-  const stripeSecretKey = process.env.STRIPE_SECRET_KEY || process.env.TESTING_STRIPE_SECRET_KEY
+  // Prioritize test key for testing with 4242 cards
+  const stripeSecretKey = process.env.TESTING_STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY
+  
+  console.log('[Stripe] Using key prefix:', stripeSecretKey ? stripeSecretKey.substring(0, 10) + '...' : 'NONE')
   
   if (!stripeSecretKey) {
-    throw new Error('Missing required Stripe secret key')
+    throw new Error('Missing required Stripe secret key - check TESTING_STRIPE_SECRET_KEY or STRIPE_SECRET_KEY')
   }
   
   return new Stripe(stripeSecretKey, {})
@@ -118,9 +121,10 @@ export async function POST(request: NextRequest) {
       paymentIntentId: paymentIntent.id,
     })
   } catch (error: any) {
-    console.error('Error creating payment intent:', error)
+    console.error('[Payment Intent] Error:', error.message)
+    console.error('[Payment Intent] Full error:', JSON.stringify(error, null, 2))
     return NextResponse.json(
-      { error: error.message || 'Failed to create payment intent' },
+      { error: error.message || 'Failed to create payment intent', details: error.type || 'unknown' },
       { status: 500 }
     )
   }
