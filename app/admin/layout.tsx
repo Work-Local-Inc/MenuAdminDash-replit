@@ -6,6 +6,7 @@ import { UserDropdown } from "@/components/user-dropdown"
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
 import { usePathname } from "next/navigation"
+export const dynamic = 'force-dynamic';
 
 export default function AdminLayout({
   children,
