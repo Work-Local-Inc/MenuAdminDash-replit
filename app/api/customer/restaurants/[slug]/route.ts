@@ -48,11 +48,8 @@ export async function GET(
         restaurant_service_configs (
           id,
           has_delivery_enabled,
-          delivery_time_minutes,
           delivery_min_order,
           delivery_max_distance_km,
-          takeout_enabled,
-          takeout_time_minutes,
           accepts_tips
         )
       `)
