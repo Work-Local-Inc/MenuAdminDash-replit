@@ -11,9 +11,7 @@ if (!stripeSecretKey) {
 
 console.log('[Stripe Webhook] Using Stripe key:', stripeSecretKey.substring(0, 10) + '...')
 
-const stripe = new Stripe(stripeSecretKey, {
-  apiVersion: '2025-11-17.clover',
-})
+const stripe = new Stripe(stripeSecretKey, {})
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
 

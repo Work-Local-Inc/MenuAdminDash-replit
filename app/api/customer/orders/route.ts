@@ -12,9 +12,7 @@ if (!stripeSecretKey) {
   throw new Error('Missing required Stripe secret key')
 }
 
-const stripe = new Stripe(stripeSecretKey, {
-  apiVersion: '2025-11-17.clover',
-})
+const stripe = new Stripe(stripeSecretKey, {})
 
 export async function POST(request: NextRequest) {
   try {
