@@ -2,22 +2,23 @@ import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@/lib/supabase/server'
 
-// Use production Stripe keys if available, fall back to test keys
-const stripeSecretKey = process.env.STRIPE_SECRET_KEY || process.env.TESTING_STRIPE_SECRET_KEY
-
-if (!stripeSecretKey) {
-  throw new Error('Missing required Stripe secret key')
+// Initialize Stripe lazily to avoid module-level errors in production
+function getStripe() {
+  const stripeSecretKey = process.env.STRIPE_SECRET_KEY || process.env.TESTING_STRIPE_SECRET_KEY
+  
+  if (!stripeSecretKey) {
+    throw new Error('Missing required Stripe secret key')
+  }
+  
+  return new Stripe(stripeSecretKey, {
+    apiVersion: '2025-11-17.clover',
+  })
 }
-
-// Debug: Check which key we're using
-console.log('[Payment Intent API] Using Stripe key:', stripeSecretKey.substring(0, 10) + '...')
-
-const stripe = new Stripe(stripeSecretKey, {
-  apiVersion: '2025-11-17.clover',
-})
 
 export async function POST(request: NextRequest) {
   try {
+    // Initialize Stripe inside the request handler
+    const stripe = getStripe()
     const supabase = await createClient() as any
     
     // Check authentication (optional - support guest checkout)
