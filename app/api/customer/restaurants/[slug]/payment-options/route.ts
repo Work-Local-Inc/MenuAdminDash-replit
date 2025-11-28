@@ -50,14 +50,14 @@ export async function GET(
       throw error
     }
 
-    let options = data || []
+    let options: any[] = data || []
     
     if (options.length === 0) {
       return NextResponse.json(DEFAULT_PAYMENT_OPTIONS)
     }
 
     if (orderType !== 'both') {
-      options = options.filter(opt => 
+      options = options.filter((opt: any) => 
         opt.applies_to === 'both' || opt.applies_to === orderType
       )
     }

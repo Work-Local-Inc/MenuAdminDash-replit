@@ -8,7 +8,7 @@ import { getDealsForAdmin } from '@/lib/api/promotions'
  */
 export async function GET(request: NextRequest) {
   try {
-    const { adminUser } = await verifyAdminAuth(request)
+    const { adminUser } = await verifyAdminAuth(request) as { adminUser: any }
     const deals = await getDealsForAdmin(adminUser.id)
 
     return NextResponse.json({ deals })

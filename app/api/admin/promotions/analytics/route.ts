@@ -9,13 +9,13 @@ import { createAdminClient } from '@/lib/supabase/admin'
  */
 export async function GET(request: NextRequest) {
   try {
-    const { adminUser } = await verifyAdminAuth(request)
+    const { adminUser } = await verifyAdminAuth(request) as { adminUser: any }
     const { searchParams } = new URL(request.url)
     const restaurantId = searchParams.get('restaurant_id')
     const startDate = searchParams.get('start_date')
     const endDate = searchParams.get('end_date')
 
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
 
     // If specific restaurant requested, verify permission
     if (restaurantId) {

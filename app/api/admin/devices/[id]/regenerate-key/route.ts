@@ -27,7 +27,7 @@ export async function POST(
       )
     }
 
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
 
     // Get device first to verify it exists and get UUID
     const { data: device, error: fetchError } = await supabase

@@ -14,14 +14,14 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { adminUser } = await verifyAdminAuth(request)
+    const { adminUser } = await verifyAdminAuth(request) as { adminUser: any }
     const dealId = parseInt(params.id)
     const body = await request.json()
 
     // Validate request body with Zod
     const validated = toggleDealStatusSchema.parse(body)
 
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
 
     // Verify admin has permission for this deal's restaurant
     const { data: existingDeal } = await supabase

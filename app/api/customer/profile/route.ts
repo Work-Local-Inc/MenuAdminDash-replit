@@ -49,7 +49,7 @@ export async function GET() {
       return NextResponse.json({ user: null }, { status: 200 })
     }
 
-    console.log('[Profile API] Found user:', userData.id, userData.email)
+    console.log('[Profile API] Found user:', (userData as any).id, (userData as any).email)
     return NextResponse.json({ user: userData }, { status: 200 })
     
   } catch (error: any) {

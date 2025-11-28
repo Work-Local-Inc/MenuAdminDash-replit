@@ -48,7 +48,7 @@ export async function GET(
       .limit(10)
 
     // Transform coupons into customer-friendly format
-    const customerCoupons = (coupons || []).map(coupon => {
+    const customerCoupons = (coupons || []).map((coupon: any) => {
       let discountText = ''
       if (coupon.discount_type === 'percent') {
         discountText = `${coupon.redeem_value_limit}% off`
@@ -74,7 +74,7 @@ export async function GET(
     })
 
     // Transform deals into customer-friendly format
-    const customerDeals = (deals || []).filter(deal => {
+    const customerDeals = (deals || []).filter((deal: any) => {
       // Check time-based availability
       if (deal.time_start && deal.time_stop) {
         if (currentTime < deal.time_start || currentTime > deal.time_stop) {
@@ -82,7 +82,7 @@ export async function GET(
         }
       }
       return true
-    }).map(deal => {
+    }).map((deal: any) => {
       let discountText = deal.name
       if (deal.deal_type === 'percent' || deal.deal_type === 'percentTotal') {
         discountText = `${deal.discount_percent}% off`

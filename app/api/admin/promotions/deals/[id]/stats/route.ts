@@ -12,9 +12,9 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { adminUser } = await verifyAdminAuth(request)
+    const { adminUser } = await verifyAdminAuth(request) as { adminUser: any }
     const dealId = parseInt(params.id)
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
 
     // Verify admin has permission for this deal's restaurant
     const { data: deal } = await supabase

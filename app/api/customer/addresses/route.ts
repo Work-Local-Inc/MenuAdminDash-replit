@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const adminSupabase = createAdminClient()
+    const adminSupabase = createAdminClient() as any
     
     // Try to find user by auth_user_id
     let { data: userData, error: userError } = await adminSupabase
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
       const { data: emailData, error: emailError } = await adminSupabase
         .from('users')
         .select('id, email, auth_user_id')
-        .eq('email', user.email)
+        .eq('email', user.email || '')
         .single()
 
       if (emailError || !emailData) {
@@ -114,7 +114,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const adminSupabase = createAdminClient()
+    const adminSupabase = createAdminClient() as any
     
     // Try to find user by auth_user_id
     let { data: userData, error: userError } = await adminSupabase
@@ -129,7 +129,7 @@ export async function GET(request: NextRequest) {
       const { data: emailData, error: emailError } = await adminSupabase
         .from('users')
         .select('id, email, auth_user_id')
-        .eq('email', user.email)
+        .eq('email', user.email || '')
         .single()
 
       if (emailError || !emailData) {

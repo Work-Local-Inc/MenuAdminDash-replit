@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/server';
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const supabase = await createClient() as any;
 
     const { data: templates, error } = await supabase
       .from('promotion_templates')

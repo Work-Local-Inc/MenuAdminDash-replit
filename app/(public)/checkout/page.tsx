@@ -482,7 +482,7 @@ export default function CheckoutPage() {
               <CardContent className="p-6">
                 <div className="flex items-center gap-4">
                   <div className={`flex items-center gap-2 ${step === 'address' ? 'text-primary' : 'text-muted-foreground'}`}>
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'address' ? 'bg-primary text-primary-foreground' : step !== 'address' ? 'bg-green-500 text-white' : 'bg-muted'}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'address' ? 'bg-primary text-primary-foreground' : 'bg-green-500 text-white'}`}>
                       {orderType === 'pickup' ? <ShoppingBag className="w-4 h-4" /> : <MapPin className="w-4 h-4" />}
                     </div>
                     <span className="font-medium hidden sm:inline">

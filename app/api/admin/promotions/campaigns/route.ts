@@ -12,7 +12,7 @@ import {
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const supabase = await createClient() as any;
     
     // Parse query params
     const searchParams = request.nextUrl.searchParams;
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch redemption stats for each campaign
-    const campaignIds = campaigns?.map(c => c.id) || [];
+    const campaignIds = campaigns?.map((c: any) => c.id) || [];
     
     let stats: Record<number, { redemptions: number; revenue: number }> = {};
     
@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
         .in('campaign_id', campaignIds);
 
       if (redemptionStats) {
-        stats = redemptionStats.reduce((acc, r) => {
+        stats = redemptionStats.reduce((acc: any, r: any) => {
           if (!acc[r.campaign_id]) {
             acc[r.campaign_id] = { redemptions: 0, revenue: 0 };
           }
@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Enrich campaigns with stats
-    const enrichedCampaigns = campaigns?.map(campaign => ({
+    const enrichedCampaigns = campaigns?.map((campaign: any) => ({
       ...campaign,
       stats: stats[campaign.id] || { redemptions: 0, revenue: 0 },
     }));
@@ -116,7 +116,7 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const supabase = await createClient() as any;
     const body = await request.json();
     
     // Validate input
@@ -161,7 +161,7 @@ export async function POST(request: NextRequest) {
 
     // Create targets if provided
     if (targets && targets.length > 0) {
-      const targetRecords = targets.map(t => ({
+      const targetRecords = targets.map((t: any) => ({
         campaign_id: campaign.id,
         target_type: t.target_type,
         course_id: t.course_id || null,
@@ -181,7 +181,7 @@ export async function POST(request: NextRequest) {
 
     // Create tiers if provided
     if (tiers && tiers.length > 0) {
-      const tierRecords = tiers.map(t => ({
+      const tierRecords = tiers.map((t: any) => ({
         campaign_id: campaign.id,
         tier_order: t.tier_order,
         threshold_amount: t.threshold_amount,

@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   try {
     await verifyAdminAuth(request)
     
-    const supabase = await createClient()
+    const supabase = await createClient() as any
     
     // Get all BASE TABLES ONLY in menuca_v3 schema (excludes views and partitions)
     const { data: tablesData, error: tablesError } = await supabase
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
       sampleRows: tablesData?.slice(0, 5)
     })
 
-    const tables = (tablesData || []).map(row => row.table_name)
+    const tables = (tablesData || []).map((row: any) => row.table_name)
     console.log('DB Inspector - Total tables found:', tables.length)
 
     // Get columns for each table

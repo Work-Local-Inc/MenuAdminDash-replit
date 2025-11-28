@@ -58,7 +58,7 @@ interface ChartData {
 const CHART_COLORS = ['#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#EF4444', '#EC4899']
 
 export default function AnalyticsPage() {
-  const { restaurants } = useAdminRestaurants()
+  const { data: restaurants } = useAdminRestaurants()
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string>("all")
   const [chartData, setChartData] = useState<ChartData | null>(null)
   const [loading, setLoading] = useState(true)

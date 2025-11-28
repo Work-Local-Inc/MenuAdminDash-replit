@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
 
     const { device_name, restaurant_id, has_printing_support } = validation.data
 
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
 
     // Verify restaurant exists
     const { data: restaurant, error: restaurantError } = await supabase

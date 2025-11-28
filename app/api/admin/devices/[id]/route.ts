@@ -25,7 +25,7 @@ export async function GET(
       )
     }
 
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
 
     const { data: device, error } = await supabase
       .from('devices')
@@ -54,12 +54,13 @@ export async function GET(
       )
     }
 
+    const deviceObj = device as any
     return NextResponse.json({
-      ...device,
-      restaurant_name: device.restaurants?.name || null,
-      config: device.device_configs || null,
-      is_online: device.last_check_at
-        ? new Date(device.last_check_at) > new Date(Date.now() - 2 * 60 * 1000)
+      ...deviceObj,
+      restaurant_name: deviceObj.restaurants?.name || null,
+      config: deviceObj.device_configs || null,
+      is_online: deviceObj.last_check_at
+        ? new Date(deviceObj.last_check_at) > new Date(Date.now() - 2 * 60 * 1000)
         : false,
     })
   } catch (error: any) {
@@ -104,7 +105,7 @@ export async function PATCH(
     const body = await request.json()
     const { is_active, device_name, restaurant_id, has_printing_support } = body
 
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
 
     // Build update object
     const updateData: Record<string, any> = {}
@@ -178,7 +179,7 @@ export async function DELETE(
       )
     }
 
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
 
     // Delete associated sessions first
     await supabase

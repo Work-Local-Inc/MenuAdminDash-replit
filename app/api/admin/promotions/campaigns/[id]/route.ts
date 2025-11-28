@@ -22,7 +22,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const supabase = await createClient();
+    const supabase = await createClient() as any;
 
     const { data: campaign, error } = await supabase
       .from('promotion_campaigns')
@@ -58,8 +58,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     const stats = {
       redemptions: redemptions?.length || 0,
-      revenue: redemptions?.reduce((sum, r) => sum + parseFloat(r.order_total || '0'), 0) || 0,
-      total_discount: redemptions?.reduce((sum, r) => sum + parseFloat(r.discount_amount || '0'), 0) || 0,
+      revenue: redemptions?.reduce((sum: number, r: any) => sum + parseFloat(r.order_total || '0'), 0) || 0,
+      total_discount: redemptions?.reduce((sum: number, r: any) => sum + parseFloat(r.discount_amount || '0'), 0) || 0,
     };
 
     return NextResponse.json({
@@ -93,7 +93,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const supabase = await createClient();
+    const supabase = await createClient() as any;
     const body = await request.json();
     
     // Validate input
@@ -138,7 +138,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
       // Insert new targets
       if (targets.length > 0) {
-        const targetRecords = targets.map(t => ({
+        const targetRecords = targets.map((t: any) => ({
           campaign_id: campaignId,
           target_type: t.target_type,
           course_id: t.course_id || null,
@@ -163,7 +163,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
       // Insert new tiers
       if (tiers.length > 0) {
-        const tierRecords = tiers.map(t => ({
+        const tierRecords = tiers.map((t: any) => ({
           campaign_id: campaignId,
           tier_order: t.tier_order,
           threshold_amount: t.threshold_amount,
@@ -249,7 +249,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const supabase = await createClient();
+    const supabase = await createClient() as any;
 
     // Soft delete
     const { error } = await supabase

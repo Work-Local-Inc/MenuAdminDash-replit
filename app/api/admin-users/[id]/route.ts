@@ -21,7 +21,7 @@ export async function GET(
     )
   }
 
-  const supabase = createAdminClient()
+  const supabase = createAdminClient() as any
   const { id } = await params
 
   const { data, error } = await supabase
@@ -55,17 +55,17 @@ export async function PATCH(
     )
   }
 
-  const supabase = createAdminClient()
+  const supabase = createAdminClient() as any
   const { id } = await params
   const body = await request.json()
 
-  const updateData: any = {
+  const updateData = {
     email: body.email,
     first_name: body.first_name,
     last_name: body.last_name,
     mfa_enabled: body.mfa_enabled,
     updated_at: new Date().toISOString(),
-  }
+  } as Record<string, any>
 
   // Only update password if provided - hash server-side for security
   if (body.password) {
@@ -104,7 +104,7 @@ export async function DELETE(
     )
   }
 
-  const supabase = createAdminClient()
+  const supabase = createAdminClient() as any
   const { id } = await params
 
   try {

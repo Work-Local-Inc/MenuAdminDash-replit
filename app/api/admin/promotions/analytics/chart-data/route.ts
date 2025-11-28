@@ -9,11 +9,11 @@ import { createAdminClient } from '@/lib/supabase/admin'
  */
 export async function GET(request: NextRequest) {
   try {
-    const { adminUser } = await verifyAdminAuth(request)
+    const { adminUser } = await verifyAdminAuth(request) as { adminUser: any }
     const { searchParams } = new URL(request.url)
     const restaurantId = searchParams.get('restaurant_id')
 
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
 
     // Get authorized restaurant IDs
     let targetRestaurantIds: number[] = []
@@ -61,11 +61,11 @@ export async function GET(request: NextRequest) {
 
     const overview = {
       coupons: coupons.length,
-      activeCoupons: coupons.filter(c => !c.deleted_at).length,
+      activeCoupons: coupons.filter((c: any) => !c.deleted_at).length,
       deals: deals.length,
-      activeDeals: deals.filter(d => d.is_enabled).length,
+      activeDeals: deals.filter((d: any) => d.is_enabled).length,
       upsells: upsells.length,
-      activeUpsells: upsells.filter(u => u.is_active).length,
+      activeUpsells: upsells.filter((u: any) => u.is_active).length,
     }
 
     // 2. Coupon type breakdown for pie chart
@@ -75,9 +75,9 @@ export async function GET(request: NextRequest) {
       .in('restaurant_id', targetRestaurantIds)
       .is('deleted_at', null)
 
-    const couponTypeBreakdown = (couponTypes || []).reduce((acc: any[], coupon) => {
+    const couponTypeBreakdown = (couponTypes || []).reduce((acc: any[], coupon: any) => {
       const type = coupon.discount_type || 'unknown'
-      const existing = acc.find(a => a.name === type)
+      const existing = acc.find((a: any) => a.name === type)
       if (existing) {
         existing.value++
       } else {
@@ -100,9 +100,9 @@ export async function GET(request: NextRequest) {
       .in('restaurant_id', targetRestaurantIds)
       .eq('is_enabled', true)
 
-    const dealTypeBreakdown = (dealTypes || []).reduce((acc: any[], deal) => {
+    const dealTypeBreakdown = (dealTypes || []).reduce((acc: any[], deal: any) => {
       const type = deal.deal_type || 'unknown'
-      const existing = acc.find(a => a.type === type)
+      const existing = acc.find((a: any) => a.type === type)
       if (existing) {
         existing.value++
       } else {
@@ -165,7 +165,7 @@ export async function GET(request: NextRequest) {
       overview,
       couponTypeBreakdown,
       dealTypeBreakdown,
-      topCoupons: (topCoupons || []).map(c => ({
+      topCoupons: (topCoupons || []).map((c: any) => ({
         id: c.id,
         name: c.name,
         code: c.code,
@@ -173,7 +173,7 @@ export async function GET(request: NextRequest) {
         value: c.redeem_value_limit,
         minPurchase: c.minimum_purchase,
       })),
-      topDeals: (topDeals || []).map(d => ({
+      topDeals: (topDeals || []).map((d: any) => ({
         id: d.id,
         name: d.name,
         type: d.deal_type,

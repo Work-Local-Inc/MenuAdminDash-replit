@@ -12,9 +12,9 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { adminUser } = await verifyAdminAuth(request)
+    const { adminUser } = await verifyAdminAuth(request) as { adminUser: any }
     const dealId = parseInt(params.id)
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
 
     // Get the original deal
     const { data: originalDeal, error: fetchError } = await supabase

@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     const restaurantId = searchParams.get('restaurant_id')
     const isActive = searchParams.get('is_active')
 
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
 
     let query = supabase
       .from('devices')

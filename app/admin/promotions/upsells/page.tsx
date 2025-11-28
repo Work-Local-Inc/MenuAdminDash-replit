@@ -55,12 +55,12 @@ const upsellSchema = z.object({
   trigger_dish_id: z.coerce.number().optional(), // For item-based triggers
   trigger_cart_minimum: z.coerce.number().optional(), // For cart value triggers
   upsell_dish_id: z.coerce.number().min(1, "Please select an item to offer"),
-  discount_type: z.enum(["none", "percentage", "fixed"]).default("none"),
+  discount_type: z.enum(["none", "percentage", "fixed"]),
   discount_value: z.coerce.number().optional(),
   message: z.string().optional(),
-  display_location: z.enum(["cart", "checkout", "item_page", "all"]).default("cart"),
-  priority: z.coerce.number().default(0),
-  is_active: z.boolean().default(true),
+  display_location: z.enum(["cart", "checkout", "item_page", "all"]),
+  priority: z.coerce.number(),
+  is_active: z.boolean(),
 })
 
 type UpsellFormValues = z.infer<typeof upsellSchema>

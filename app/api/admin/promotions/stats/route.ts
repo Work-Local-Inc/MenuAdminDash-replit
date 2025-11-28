@@ -9,11 +9,11 @@ import { createAdminClient } from '@/lib/supabase/admin'
  */
 export async function GET(request: NextRequest) {
   try {
-    const { adminUser } = await verifyAdminAuth(request)
+    const { adminUser } = await verifyAdminAuth(request) as { adminUser: any }
     const { searchParams } = new URL(request.url)
     const restaurantId = searchParams.get('restaurant_id')
 
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
     const authorizedIds = await getAdminAuthorizedRestaurants(adminUser.id)
 
     if (authorizedIds.length === 0) {
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
       .in('restaurant_id', targetRestaurants)
 
     const totalRedemptions = redemptionData?.length || 0
-    const revenueImpact = redemptionData?.reduce((sum, r) => sum + (parseFloat(r.discount_amount) || 0), 0) || 0
+    const revenueImpact = redemptionData?.reduce((sum: number, r: any) => sum + (parseFloat(r.discount_amount) || 0), 0) || 0
 
     // Get upsell acceptance stats
     const { data: upsellStats } = await supabase
@@ -74,8 +74,8 @@ export async function GET(request: NextRequest) {
       .in('restaurant_id', targetRestaurants)
       .eq('is_active', true)
 
-    const totalUpsellAcceptances = upsellStats?.reduce((sum, u) => sum + (u.acceptance_count || 0), 0) || 0
-    const totalUpsellImpressions = upsellStats?.reduce((sum, u) => sum + (u.impressions_count || 0), 0) || 0
+    const totalUpsellAcceptances = upsellStats?.reduce((sum: number, u: any) => sum + (u.acceptance_count || 0), 0) || 0
+    const totalUpsellImpressions = upsellStats?.reduce((sum: number, u: any) => sum + (u.impressions_count || 0), 0) || 0
 
     return NextResponse.json({
       activeCoupons: activeCoupons || 0,

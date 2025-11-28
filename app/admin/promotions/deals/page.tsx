@@ -65,7 +65,7 @@ const dealSchema = z.object({
   }).optional(),
   valid_from: z.string().optional(),
   valid_until: z.string().optional(),
-  is_active: z.boolean().default(true),
+  is_active: z.boolean(),
 })
 
 type DealFormValues = z.infer<typeof dealSchema>
@@ -248,14 +248,17 @@ export default function DealsPage() {
     if (!selectedRestaurantId) return
     
     try {
+      // Map form deal_type to database deal_type based on discount_type
+      const dbDealType = data.deal_type === 'bogo' ? 'freeItem' 
+        : data.discount_type === 'percentage' ? 'percent'
+        : data.discount_type === 'fixed' ? 'value'
+        : data.deal_type
+        
       await createDeal.mutateAsync({
         restaurant_id: parseInt(selectedRestaurantId),
         name: data.name,
         description: data.description,
-        deal_type: data.deal_type === 'bogo' ? 'freeItem' 
-          : data.deal_type === 'percentage' ? 'percent'
-          : data.deal_type === 'fixed' ? 'value'
-          : data.deal_type,
+        deal_type: dbDealType,
         discount_percent: data.discount_type === 'percentage' ? data.discount_value : null,
         discount_amount: data.discount_type === 'fixed' ? data.discount_value : null,
         date_start: data.valid_from ? new Date(data.valid_from).toISOString().split('T')[0] : null,

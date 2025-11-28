@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
 
     const { device_uuid, device_key } = validation.data
 
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
 
     // Find device by UUID (without inner join to avoid silent failures)
     const { data: device, error: deviceError } = await supabase

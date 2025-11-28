@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
   try {
     const { device_uuid, device_key } = await request.json()
 
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
 
     // Fetch device from database
     const { data: device, error } = await supabase

@@ -9,12 +9,12 @@ import { createAdminClient } from '@/lib/supabase/admin'
  */
 export async function GET(request: NextRequest) {
   try {
-    const { adminUser } = await verifyAdminAuth(request)
+    const { adminUser } = await verifyAdminAuth(request) as { adminUser: any }
     const { searchParams } = new URL(request.url)
     const restaurantId = searchParams.get('restaurant_id')
     const isActive = searchParams.get('is_active')
 
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
     const authorizedIds = await getAdminAuthorizedRestaurants(adminUser.id)
 
     if (authorizedIds.length === 0) {
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const { adminUser } = await verifyAdminAuth(request)
+    const { adminUser } = await verifyAdminAuth(request) as { adminUser: any }
     const body = await request.json()
     const { restaurant_id, ...upsellData } = body
 
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
 
     const { data, error } = await supabase
       .from('upsell_rules')

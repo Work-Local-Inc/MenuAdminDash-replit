@@ -14,7 +14,7 @@ type PromotionalDealInsert = Database['menuca_v3']['Tables']['promotional_deals'
  */
 export async function POST(request: NextRequest) {
   try {
-    const { adminUser } = await verifyAdminAuth(request)
+    const { adminUser } = await verifyAdminAuth(request) as { adminUser: any }
     const body = await request.json()
 
     // Validate request body with Zod
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
 
     // Create the deal with validated data
     // Note: created_at and updated_at are handled by database defaults

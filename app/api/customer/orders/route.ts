@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
   try {
     // Use regular client for auth, admin client for data queries
     const supabase = await createClient()
-    const adminSupabase = createAdminClient()
+    const adminSupabase = createAdminClient() as any
     
     // Check authentication (optional - support guest checkout)
     const { data: { user } } = await supabase.auth.getUser()

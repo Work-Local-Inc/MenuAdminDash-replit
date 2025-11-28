@@ -9,11 +9,11 @@ import { createAdminClient } from '@/lib/supabase/admin'
  */
 export async function GET(request: NextRequest) {
   try {
-    const { adminUser } = await verifyAdminAuth(request)
+    const { adminUser } = await verifyAdminAuth(request) as { adminUser: any }
     const { searchParams } = new URL(request.url)
     const restaurantId = searchParams.get('restaurant_id')
 
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
     const authorizedIds = await getAdminAuthorizedRestaurants(adminUser.id)
 
     if (authorizedIds.length === 0) {
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
       .limit(10)
       .order('created_at', { ascending: false })
 
-    coupons?.forEach(coupon => {
+    coupons?.forEach((coupon: any) => {
       const discountText = coupon.discount_type === 'percent' 
         ? `${coupon.redeem_value_limit || coupon.discount_amount}% off`
         : coupon.discount_type === 'currency'
@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
       .limit(10)
       .order('created_at', { ascending: false })
 
-    deals?.forEach(deal => {
+    deals?.forEach((deal: any) => {
       let discountText = 'Special offer'
       if (deal.deal_type === 'percent' || deal.deal_type === 'percentTotal') {
         discountText = `${deal.discount_percent}% off`
@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
       .limit(10)
       .order('display_priority', { ascending: true })
 
-    upsells?.forEach(upsell => {
+    upsells?.forEach((upsell: any) => {
       let discountText = 'Add-on suggestion'
       if (upsell.discount_percent) {
         discountText = `${upsell.discount_percent}% off`

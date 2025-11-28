@@ -19,7 +19,7 @@ export async function GET(
     const { data: { user } } = await authClient.auth.getUser()
 
     // Use admin client to fetch order (bypasses RLS, but we validate access below)
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
 
     // Fetch order with restaurant details (include address info for pickup and brand color)
     // Note: restaurant_locations uses city_id/province_id foreign keys, so we just get basic info
@@ -178,11 +178,12 @@ export async function GET(
 
     // SECURITY: Don't expose user email or sensitive info for public access
     // Order ID itself is the secret for accessing this public endpoint
-    if (parsedOrder.user_id) {
-      delete parsedOrder.guest_email // Remove if exists
+    const responseOrder = { ...parsedOrder } as any
+    if (responseOrder.user_id) {
+      delete responseOrder.guest_email // Remove if exists
     }
 
-    return NextResponse.json(parsedOrder)
+    return NextResponse.json(responseOrder)
   } catch (error: any) {
     console.error('[Order API] Error fetching order:', error)
     return NextResponse.json(

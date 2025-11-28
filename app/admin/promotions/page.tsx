@@ -403,7 +403,7 @@ export default function MarketingHubPage() {
                 </div>
               ) : activePromos && activePromos.length > 0 ? (
                 <div className="space-y-3">
-                  {activePromos.map((promo) => (
+                  {activePromos.map((promo: any) => (
                     <ActivePromoCard key={promo.id} promo={promo} />
                   ))}
                 </div>
