@@ -22,7 +22,7 @@ export async function PUT(
 ) {
   try {
     const { user } = await verifyAdminAuth(request)
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
     const restaurantId = parseInt(params.id)
     const areaId = parseInt(params.areaId)
     
@@ -151,7 +151,7 @@ export async function DELETE(
 ) {
   try {
     const { user } = await verifyAdminAuth(request)
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
     const restaurantId = parseInt(params.id)
     const areaId = parseInt(params.areaId)
     

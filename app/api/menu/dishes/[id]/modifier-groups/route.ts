@@ -14,7 +14,7 @@ export async function GET(
       );
     }
 
-    const supabase = await createClient();
+    const supabase = await createClient() as any;
     const { data, error } = await supabase
       .from('modifier_groups')
       .select('id, dish_id, name, display_order, is_required, min_selections, max_selections, created_at, updated_at')
@@ -63,7 +63,7 @@ export async function POST(
       );
     }
 
-    const supabase = await createClient();
+    const supabase = await createClient() as any;
     
     const { data: maxOrderData } = await supabase
       .from('modifier_groups')

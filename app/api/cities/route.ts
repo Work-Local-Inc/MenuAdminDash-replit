@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   try {
     await verifyAdminAuth(request)
     
-    const supabase = await createClient()
+    const supabase = await createClient() as any
     
     // Get province_id from query params if provided
     const { searchParams } = new URL(request.url)

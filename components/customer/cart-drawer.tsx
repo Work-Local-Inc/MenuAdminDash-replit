@@ -20,7 +20,7 @@ interface CartDrawerProps {
 }
 
 export function CartDrawer({ isOpen, onClose, restaurant, buttonStyle }: CartDrawerProps) {
-  const { items, updateQuantity, removeItem, clearCart, deliveryFee, promoCode, clearPromo, getDiscount } = useCartStore();
+  const { items, updateQuantity, removeItem, clearCart, deliveryFee, appliedPromo, clearPromo, getDiscount } = useCartStore();
   
   // Helper function to get button branding class - only applies to non-icon buttons
   const getButtonClassName = (isIcon: boolean = false) => {
@@ -153,12 +153,12 @@ export function CartDrawer({ isOpen, onClose, restaurant, buttonStyle }: CartDra
             {/* Cart Summary */}
             <div className="border-t px-6 py-4 bg-muted/30">
               {/* Applied Promo Code */}
-              {promoCode && (
+              {appliedPromo && (
                 <div className="mb-3 p-2 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Sparkles className="w-4 h-4 text-green-600" />
                     <span className="text-sm font-medium text-green-700 dark:text-green-400">
-                      {promoCode.code} applied
+                      {appliedPromo.code} applied
                     </span>
                   </div>
                   <Button

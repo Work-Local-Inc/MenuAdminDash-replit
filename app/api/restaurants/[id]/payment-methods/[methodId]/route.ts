@@ -15,7 +15,7 @@ export async function PATCH(
   { params }: { params: { id: string; methodId: string } }
 ) {
   try {
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
     const body = await request.json()
     
     // Validate request body
@@ -51,7 +51,7 @@ export async function DELETE(
   { params }: { params: { id: string; methodId: string } }
 ) {
   try {
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
     
     const { error } = await supabase
       .from('restaurant_payment_methods')

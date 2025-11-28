@@ -14,8 +14,8 @@ import { Loader2 } from "lucide-react"
 
 const formSchema = z.object({
   name: z.string().min(1, "Restaurant name is required"),
-  timezone: z.string().default("America/Toronto"),
-  is_franchise_parent: z.boolean().default(false),
+  timezone: z.string().optional().default("America/Toronto"),
+  is_franchise_parent: z.boolean().optional().default(false),
   franchise_brand_name: z.string().optional(),
   parent_restaurant_id: z.number().optional(),
 })
@@ -29,7 +29,7 @@ export function Step1BasicInfo({ onComplete }: Step1Props) {
   const { toast } = useToast()
 
   const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(formSchema) as any,
     defaultValues: {
       name: "",
       timezone: "America/Toronto",

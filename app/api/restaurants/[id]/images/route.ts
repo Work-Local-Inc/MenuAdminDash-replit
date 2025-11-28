@@ -22,7 +22,7 @@ export async function GET(
   try {
     await verifyAdminAuth(request)
 
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
     
     const { data, error } = await supabase
       .from('restaurant_images')
@@ -48,7 +48,7 @@ export async function POST(
 ) {
   try {
     await verifyAdminAuth(request)
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
     
     let body
     try {
@@ -95,7 +95,7 @@ export async function PATCH(
 ) {
   try {
     await verifyAdminAuth(request)
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
     
     let body
     try {
@@ -157,7 +157,7 @@ export async function DELETE(
 ) {
   try {
     await verifyAdminAuth(request)
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
     
     const { searchParams } = new URL(request.url)
     const imageId = searchParams.get('image_id')

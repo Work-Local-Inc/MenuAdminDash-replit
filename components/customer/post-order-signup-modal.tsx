@@ -56,7 +56,7 @@ export function PostOrderSignupModal({
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const form = useForm<SignupFormData>({
-    resolver: zodResolver(signupFormSchema),
+    resolver: zodResolver(signupFormSchema) as any,
     defaultValues: {
       email: guestEmail,
       password: '',

@@ -51,7 +51,7 @@ export function RestaurantSEO({ restaurantId }: RestaurantSEOProps) {
   })
 
   const form = useForm<SEOFormData>({
-    resolver: zodResolver(seoSchema),
+    resolver: zodResolver(seoSchema) as any,
     values: {
       meta_title: seoData?.meta_title || '',
       meta_description: seoData?.meta_description || '',

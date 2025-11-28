@@ -6,7 +6,7 @@ import { AuthError } from '@/lib/errors'
 export async function GET(request: NextRequest) {
   try {
     await verifyAdminAuth(request)
-    const supabase = await createClient()
+    const supabase = await createClient() as any
     const searchParams = request.nextUrl.searchParams
     const userId = searchParams.get('user_id')
 

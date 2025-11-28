@@ -6,7 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 export async function GET(request: NextRequest) {
   try {
     await verifyAdminAuth(request)
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
 
     const { searchParams } = new URL(request.url)
     const restaurantId = searchParams.get('restaurant_id')

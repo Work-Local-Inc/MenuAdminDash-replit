@@ -26,7 +26,7 @@ const TABLE_MAP = {
 export async function PATCH(request: NextRequest) {
   try {
     await verifyAdminAuth(request)
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
 
     const body = await request.json()
     const validatedData = reorderSchema.parse(body)
@@ -36,8 +36,7 @@ export async function PATCH(request: NextRequest) {
     const items: any = validatedData.items
     const updatePromises: Promise<any>[] = []
     for (let i = 0; i < items.length; i++) {
-      // @ts-expect-error - TypeScript doesn't recognize the new table types yet
-      const item: any = (items as any)[i]
+      const item: any = items[i]
       const promise = (supabase
         .from(tableName as any)
         .update({ display_order: item.display_order } as any)

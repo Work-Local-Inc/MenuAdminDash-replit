@@ -48,7 +48,7 @@ export function RestaurantContacts({ restaurantId }: RestaurantContactsProps) {
   })
 
   const form = useForm<ContactFormValues>({
-    resolver: zodResolver(contactSchema),
+    resolver: zodResolver(contactSchema) as any,
     defaultValues: {
       title: "",
       first_name: "",

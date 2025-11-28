@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
 
     const { status, since, limit } = queryValidation.data
 
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
 
     // Build query - orders for this restaurant only
     // Skip user join - guest info is already on the order, registered users are rare

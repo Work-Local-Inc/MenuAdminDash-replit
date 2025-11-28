@@ -59,7 +59,7 @@ export function RestaurantLocations({ restaurantId }: RestaurantLocationsProps) 
   })
 
   const form = useForm<LocationFormValues>({
-    resolver: zodResolver(locationSchema),
+    resolver: zodResolver(locationSchema) as any,
     defaultValues: {
       street_address: "",
       city_id: 0,

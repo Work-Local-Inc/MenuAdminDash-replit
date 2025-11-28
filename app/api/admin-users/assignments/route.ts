@@ -6,7 +6,7 @@ import { AuthError } from '@/lib/errors'
 export async function POST(request: NextRequest) {
   try {
     await verifyAdminAuth(request)
-    const supabase = await createClient()
+    const supabase = await createClient() as any
     const body = await request.json()
 
     const { admin_user_id, restaurant_ids, action } = body

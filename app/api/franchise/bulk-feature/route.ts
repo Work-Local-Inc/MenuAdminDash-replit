@@ -22,7 +22,7 @@ const bulkFeatureSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     const { user } = await verifyAdminAuth(request)
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
     
     const body = await request.json()
     const validatedData = bulkFeatureSchema.parse(body)

@@ -29,8 +29,8 @@ const updateGlobalGroupSchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
-    const { adminUser } = await verifyAdminAuth(request)
-    const supabase = createAdminClient()
+    const { adminUser } = await verifyAdminAuth(request) as { adminUser: any }
+    const supabase = createAdminClient() as any
     
     // Get restaurant_id from query params - REQUIRED for multi-tenancy
     const { searchParams } = new URL(request.url)
@@ -128,7 +128,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     await verifyAdminAuth(request)
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
 
     const body = await request.json()
     const validatedData = createGlobalGroupSchema.parse(body)
@@ -212,7 +212,7 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     await verifyAdminAuth(request)
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
 
     const body = await request.json()
     const validatedData = updateGlobalGroupSchema.parse(body)
@@ -320,7 +320,7 @@ export async function PATCH(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     await verifyAdminAuth(request)
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
 
     const { searchParams } = new URL(request.url)
     const groupId = searchParams.get('id')

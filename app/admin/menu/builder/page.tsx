@@ -1,4 +1,6 @@
+
 "use client"
+export const dynamic = 'force-dynamic';
 
 import { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -504,8 +506,6 @@ export default function MenuBuilderPage() {
       data: { is_active: !dish.is_active },
     })
   }
-
-
   const handleEditDishPrice = (dish: MenuBuilderDish) => {
     setEditingPriceDish(dish)
     setPriceEditorOpen(true)
@@ -614,8 +614,6 @@ export default function MenuBuilderPage() {
     })
     clearSelection()
   }
-
-
   const handleBulkDelete = async () => {
     if (!selectedRestaurantId) return
     const promises = Array.from(selectedDishIds).map(dishId =>

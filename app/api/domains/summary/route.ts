@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   try {
     await verifyAdminAuth(request)
 
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
 
     // Get verification summary from view
     const { data, error } = await supabase

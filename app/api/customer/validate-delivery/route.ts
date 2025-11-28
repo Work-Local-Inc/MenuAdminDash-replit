@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
     const parsedRestaurantId = parseInt(restaurantId)
 
     if (isNaN(parsedRestaurantId)) {
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
     let zones: any[] = []
 
     if (useZonesTable && zonesData) {
-      zones = zonesData.map(zone => ({
+      zones = zonesData.map((zone: any) => ({
         id: zone.id,
         restaurant_id: zone.restaurant_id,
         name: zone.zone_name,

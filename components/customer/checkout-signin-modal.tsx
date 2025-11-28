@@ -77,7 +77,7 @@ export function CheckoutSignInModal({
 
   // Sign In Form
   const signInForm = useForm<SignInFormData>({
-    resolver: zodResolver(signInSchema),
+    resolver: zodResolver(signInSchema) as any,
     defaultValues: {
       email: '',
       password: '',
@@ -87,7 +87,7 @@ export function CheckoutSignInModal({
 
   // Sign Up Form
   const signUpForm = useForm<SignUpFormData>({
-    resolver: zodResolver(signUpSchema),
+    resolver: zodResolver(signUpSchema) as any,
     defaultValues: {
       email: '',
       password: '',

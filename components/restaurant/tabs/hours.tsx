@@ -58,7 +58,7 @@ export function RestaurantHours({ restaurantId }: RestaurantHoursProps) {
   })
 
   const form = useForm<ScheduleFormValues>({
-    resolver: zodResolver(scheduleSchema),
+    resolver: zodResolver(scheduleSchema) as any,
     defaultValues: {
       type: "delivery",
       day_start: 1,

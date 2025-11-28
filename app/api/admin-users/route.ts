@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   try {
     await verifyAdminAuth(request)
     
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
     const searchParams = request.nextUrl.searchParams
     const search = searchParams.get('search') || ''
     const role_id = searchParams.get('role_id') || ''

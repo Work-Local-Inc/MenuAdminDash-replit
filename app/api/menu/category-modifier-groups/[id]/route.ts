@@ -23,7 +23,7 @@ export async function PATCH(
 ) {
   try {
     await verifyAdminAuth(request)
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
 
     const modifierGroupId = parseInt(params.id)
     if (isNaN(modifierGroupId)) {
@@ -147,7 +147,7 @@ export async function DELETE(
 ) {
   try {
     await verifyAdminAuth(request)
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
 
     const templateId = parseInt(params.id)
     if (isNaN(templateId)) {

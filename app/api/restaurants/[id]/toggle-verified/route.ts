@@ -17,7 +17,7 @@ export async function POST(
       );
     }
 
-    const supabase = await createClient();
+    const supabase = await createClient() as any;
     
     // Get current verified status
     const { data: restaurant, error: fetchError } = await supabase

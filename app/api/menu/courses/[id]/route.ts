@@ -17,7 +17,7 @@ export async function PATCH(
 ) {
   try {
     await verifyAdminAuth(request)
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
 
     const body = await request.json()
     const validatedData = updateCourseSchema.parse(body)
@@ -72,7 +72,7 @@ export async function DELETE(
 ) {
   try {
     await verifyAdminAuth(request)
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
 
     // Check if course has any dishes
     const { data: dishes, error: dishCheckError } = await supabase

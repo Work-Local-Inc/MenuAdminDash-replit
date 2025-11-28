@@ -21,7 +21,7 @@ export async function GET(
     )
   }
 
-  const supabase = createAdminClient()
+  const supabase = createAdminClient() as any
   const roleId = parseInt(params.id)
 
   if (isNaN(roleId)) {
@@ -62,7 +62,7 @@ export async function PATCH(
     )
   }
 
-  const supabase = createAdminClient()
+  const supabase = createAdminClient() as any
   const roleId = parseInt(params.id)
 
   if (isNaN(roleId)) {
@@ -170,7 +170,7 @@ export async function DELETE(
     )
   }
 
-  const supabase = createAdminClient()
+  const supabase = createAdminClient() as any
   const roleId = parseInt(params.id)
 
   if (isNaN(roleId)) {

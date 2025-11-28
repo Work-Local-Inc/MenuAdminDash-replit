@@ -18,7 +18,7 @@ const stripe = new Stripe(stripeSecretKey, {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
+    const supabase = await createClient() as any
     
     // Check authentication (optional - support guest checkout)
     const { data: { user } } = await supabase.auth.getUser()

@@ -15,7 +15,7 @@ export async function PATCH(
   try {
     await verifyAdminAuth(request)
     
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
     
     // TODO: Add role-based access control check once RBAC is implemented (Phase 3)
     // Only admin users should be able to submit admin responses

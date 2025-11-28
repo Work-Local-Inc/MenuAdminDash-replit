@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   try {
     await verifyAdminAuth(request)
 
-    const supabase = createAdminClient();
+    const supabase = createAdminClient() as any;
 
     // Call get_onboarding_summary SQL function
     const { data, error } = await supabase.rpc('get_onboarding_summary');

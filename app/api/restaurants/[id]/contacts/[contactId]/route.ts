@@ -10,7 +10,7 @@ export async function PATCH(
   try {
     await verifyAdminAuth(request)
     
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
 
     const body = await request.json()
     
@@ -46,7 +46,7 @@ export async function DELETE(
   try {
     await verifyAdminAuth(request)
     
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
 
     let reason = 'Deleted by admin'
     try {

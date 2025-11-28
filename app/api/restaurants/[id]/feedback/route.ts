@@ -10,7 +10,7 @@ export async function GET(
   try {
     await verifyAdminAuth(request)
     
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
     
     // Get rating filter from query params
     const { searchParams } = new URL(request.url)

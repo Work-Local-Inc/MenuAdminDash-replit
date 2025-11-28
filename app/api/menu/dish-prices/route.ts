@@ -29,7 +29,7 @@ const deletePriceSchema = z.object({
 export async function GET(request: NextRequest) {
   try {
     await verifyAdminAuth(request)
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
 
     const { searchParams } = new URL(request.url)
     const dishId = searchParams.get('dish_id')
@@ -66,8 +66,8 @@ export async function GET(request: NextRequest) {
 // POST /api/menu/dish-prices - Create new price variant
 export async function POST(request: NextRequest) {
   try {
-    const { adminUser } = await verifyAdminAuth(request)
-    const supabase = createAdminClient()
+    const { adminUser } = await verifyAdminAuth(request) as { adminUser: any }
+    const supabase = createAdminClient() as any
 
     const body = await request.json()
     const validatedData = createPriceSchema.parse(body)
@@ -146,8 +146,8 @@ export async function POST(request: NextRequest) {
 // PATCH /api/menu/dish-prices - Update price variant
 export async function PATCH(request: NextRequest) {
   try {
-    const { adminUser } = await verifyAdminAuth(request)
-    const supabase = createAdminClient()
+    const { adminUser } = await verifyAdminAuth(request) as { adminUser: any }
+    const supabase = createAdminClient() as any
 
     const body = await request.json()
     const validatedData = updatePriceSchema.parse(body)
@@ -244,8 +244,8 @@ export async function PATCH(request: NextRequest) {
 // DELETE /api/menu/dish-prices - Soft delete price variant
 export async function DELETE(request: NextRequest) {
   try {
-    const { adminUser } = await verifyAdminAuth(request)
-    const supabase = createAdminClient()
+    const { adminUser } = await verifyAdminAuth(request) as { adminUser: any }
+    const supabase = createAdminClient() as any
 
     const body = await request.json()
     const validatedData = deletePriceSchema.parse(body)

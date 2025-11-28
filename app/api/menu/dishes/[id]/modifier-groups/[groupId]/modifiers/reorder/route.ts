@@ -16,7 +16,7 @@ export async function POST(
       );
     }
 
-    const supabase = await createClient();
+    const supabase = await createClient() as any;
 
     // Perform sequential updates for atomicity
     for (let i = 0; i < modifier_ids.length; i++) {

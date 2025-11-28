@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = addContactSchema.parse(body);
 
-    const supabase = createAdminClient();
+    const supabase = createAdminClient() as any;
 
     // Call Santiago's SQL function directly
     const { data, error } = await supabase.rpc('add_primary_contact_onboarding', {

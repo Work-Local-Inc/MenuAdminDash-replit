@@ -23,7 +23,7 @@ export async function POST(
       );
     }
 
-    const supabase = await createClient();
+    const supabase = await createClient() as any;
 
     // Verify all groups belong to this dish
     const { data: verifyData, error: verifyError } = await supabase

@@ -8,7 +8,7 @@ export async function GET(
   try {
     const dishId = parseInt(params.id);
 
-    const supabase = await createClient();
+    const supabase = await createClient() as any;
     const { data, error } = await supabase
       .from('dish_inventory')
       .select('dish_id, is_available, unavailable_until, reason, notes, updated_by_admin_id, updated_at')
@@ -54,7 +54,7 @@ export async function PATCH(
 
     const { is_available, unavailable_until, reason, notes } = body;
 
-    const supabase = await createClient();
+    const supabase = await createClient() as any;
     
     const upsertData = {
       dish_id: dishId,

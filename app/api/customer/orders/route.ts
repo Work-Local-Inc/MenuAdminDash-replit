@@ -19,7 +19,7 @@ const stripe = new Stripe(stripeSecretKey, {
 export async function POST(request: NextRequest) {
   try {
     // Use regular client for auth, admin client for data queries
-    const supabase = await createClient()
+    const supabase = await createClient() as any
     const adminSupabase = createAdminClient() as any
     
     // Check authentication (optional - support guest checkout)
@@ -515,7 +515,7 @@ export async function POST(request: NextRequest) {
 // GET endpoint for fetching user's orders
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
+    const supabase = await createClient() as any
     
     // Check authentication
     const { data: { user } } = await supabase.auth.getUser()

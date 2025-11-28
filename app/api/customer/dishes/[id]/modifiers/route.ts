@@ -6,7 +6,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = await createClient();
+    const supabase = await createClient() as any;
     const dishId = parseInt(params.id, 10);
     
     if (isNaN(dishId)) {
@@ -46,7 +46,7 @@ export async function GET(
     }
     
     // Sort modifiers
-    const processedGroups = (modifierGroups || []).map(group => ({
+    const processedGroups = (modifierGroups || []).map((group: any) => ({
       ...group,
       modifiers: (group.modifiers || [])
         .map((modifier: any) => ({

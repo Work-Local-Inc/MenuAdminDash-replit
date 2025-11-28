@@ -15,7 +15,7 @@ const createCourseSchema = z.object({
 export async function GET(request: NextRequest) {
   try {
     await verifyAdminAuth(request)
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
 
     const { searchParams } = new URL(request.url)
     const restaurantId = searchParams.get('restaurant_id')
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     await verifyAdminAuth(request)
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
 
     const body = await request.json()
     

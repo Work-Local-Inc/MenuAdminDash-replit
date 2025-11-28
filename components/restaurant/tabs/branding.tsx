@@ -95,7 +95,7 @@ export function RestaurantBranding({ restaurantId }: RestaurantBrandingProps) {
   })
 
   const form = useForm<BrandingFormData>({
-    resolver: zodResolver(brandingSchema),
+    resolver: zodResolver(brandingSchema) as any,
     values: {
       logo_url: restaurant?.logo_url || '',
       banner_image_url: restaurant?.banner_image_url || '',

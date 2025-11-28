@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = scheduleTemplateSchema.parse(body);
 
-    const supabase = createAdminClient();
+    const supabase = createAdminClient() as any;
 
     // Call Santiago's apply-schedule-template Edge Function
     const { data, error } = await supabase.functions.invoke('apply-schedule-template', {

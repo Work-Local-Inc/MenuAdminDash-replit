@@ -20,7 +20,7 @@ export async function GET(
   try {
     await verifyAdminAuth(request)
 
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
     
     const { data, error } = await supabase
       .from('restaurant_seo')
@@ -46,7 +46,7 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
     
     let body
     try {

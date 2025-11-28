@@ -21,7 +21,7 @@ export async function GET(
 ) {
   try {
     await verifyAdminAuth(request)
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
 
     const { data, error} = await supabase
       .schema('menuca_v3')
@@ -75,7 +75,7 @@ export async function PATCH(
 ) {
   try {
     await verifyAdminAuth(request)
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
 
     const body = await request.json()
     const validatedData = updateDishSchema.parse(body)
@@ -165,7 +165,7 @@ export async function DELETE(
 ) {
   try {
     await verifyAdminAuth(request)
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
 
     // Delete the dish
     const { error } = await supabase

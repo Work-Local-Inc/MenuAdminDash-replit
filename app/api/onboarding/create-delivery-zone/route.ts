@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = createDeliveryZoneSchema.parse(body);
 
-    const supabase = createAdminClient();
+    const supabase = createAdminClient() as any;
 
     // Call Santiago's SQL function directly
     const { data, error } = await supabase.rpc('create_delivery_zone_onboarding', {

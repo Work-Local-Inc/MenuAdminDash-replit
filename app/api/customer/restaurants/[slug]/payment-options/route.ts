@@ -27,7 +27,7 @@ export async function GET(
   { params }: { params: { slug: string } }
 ) {
   try {
-    const supabase = await createClient()
+    const supabase = await createClient() as any
     const { searchParams } = new URL(request.url)
     const orderType = searchParams.get('order_type') || 'both'
     

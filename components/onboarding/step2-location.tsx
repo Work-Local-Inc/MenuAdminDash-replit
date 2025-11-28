@@ -32,11 +32,11 @@ export function Step2Location({ restaurantId, onComplete }: Step2Props) {
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
 
-  const { data: provinces, isLoading: provincesLoading } = useQuery({ queryKey: ['/api/provinces'] })
-  const { data: cities, isLoading: citiesLoading } = useQuery({ queryKey: ['/api/cities'] })
+  const { data: provinces, isLoading: provincesLoading } = useQuery<any[]>({ queryKey: ['/api/provinces'] })
+  const { data: cities, isLoading: citiesLoading } = useQuery<any[]>({ queryKey: ['/api/cities'] })
 
   const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(formSchema) as any,
     defaultValues: {
       street_address: "",
       city_id: undefined,

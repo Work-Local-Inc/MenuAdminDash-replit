@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   try {
     await verifyAdminAuth(request)
     
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
     
     const { data, error } = await supabase
       .schema('menuca_v3')

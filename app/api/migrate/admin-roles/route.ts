@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function POST(request: NextRequest) {
-  const supabase = createAdminClient()
+  const supabase = createAdminClient() as any
   
   try {
     // Try to insert roles directly - if table doesn't exist, it will fail

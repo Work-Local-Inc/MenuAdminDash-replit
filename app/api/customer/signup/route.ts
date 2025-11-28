@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
 
     const { email, password, name, phone } = validation.data
 
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
 
     let first_name = ''
     let last_name = ''

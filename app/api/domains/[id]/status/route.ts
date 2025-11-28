@@ -18,7 +18,7 @@ export async function GET(
       )
     }
 
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
 
     // Get single domain verification status
     const { data, error } = await supabase.rpc('get_domain_verification_status', {

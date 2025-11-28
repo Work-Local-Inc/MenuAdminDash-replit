@@ -73,7 +73,7 @@ export function RestaurantServiceConfig({ restaurantId }: RestaurantServiceConfi
   })
 
   const form = useForm<ConfigFormValues>({
-    resolver: zodResolver(configSchema),
+    resolver: zodResolver(configSchema) as any,
     defaultValues: {
       has_delivery_enabled: false,
       delivery_time_minutes: null,

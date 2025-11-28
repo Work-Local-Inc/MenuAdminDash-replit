@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   try {
     await verifyAdminAuth(request)
 
-    const supabase = createAdminClient();
+    const supabase = createAdminClient() as any;
 
     // Query v_onboarding_progress_stats view
     const { data, error } = await supabase

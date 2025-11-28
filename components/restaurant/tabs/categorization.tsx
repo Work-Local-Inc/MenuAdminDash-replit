@@ -57,14 +57,14 @@ export function Categorization({ restaurantId }: CategorizationProps) {
   })
 
   const cuisineForm = useForm<AddCuisineFormValues>({
-    resolver: zodResolver(addCuisineSchema),
+    resolver: zodResolver(addCuisineSchema) as any,
     defaultValues: {
       cuisine_name: "",
     },
   })
 
   const tagForm = useForm<AddTagFormValues>({
-    resolver: zodResolver(addTagSchema),
+    resolver: zodResolver(addTagSchema) as any,
     defaultValues: {
       tag_name: "",
     },

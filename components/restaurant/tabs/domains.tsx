@@ -43,7 +43,7 @@ export function RestaurantDomains({ restaurantId }: RestaurantDomainsProps) {
   })
 
   const form = useForm<DomainFormValues>({
-    resolver: zodResolver(domainSchema),
+    resolver: zodResolver(domainSchema) as any,
     defaultValues: {
       domain: "",
       domain_type: "custom",

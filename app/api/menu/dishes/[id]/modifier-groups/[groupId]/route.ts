@@ -65,7 +65,7 @@ export async function PATCH(
 
     updateData.updated_at = new Date().toISOString();
 
-    const supabase = await createClient();
+    const supabase = await createClient() as any;
     const { data, error } = await supabase
       .from('modifier_groups')
       .update(updateData)
@@ -113,7 +113,7 @@ export async function DELETE(
       );
     }
 
-    const supabase = await createClient();
+    const supabase = await createClient() as any;
     const { data, error } = await supabase
       .from('modifier_groups')
       .delete()

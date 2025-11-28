@@ -5,7 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 export async function GET(request: NextRequest) {
   try {
     // Use ADMIN client to bypass RLS
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
     const restaurantId = request.nextUrl.searchParams.get('id') || '73'
 
     // Check what table is being requested

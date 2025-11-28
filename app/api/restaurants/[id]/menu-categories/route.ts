@@ -10,7 +10,7 @@ export async function GET(
   try {
     await verifyAdminAuth(request)
 
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
     const restaurantId = parseInt(params.id)
     
     // Get courses
@@ -32,14 +32,14 @@ export async function GET(
     
     // Build count map
     const countMap = new Map<number, number>()
-    dishCounts?.forEach((dish) => {
+    dishCounts?.forEach((dish: any) => {
       if (dish.course_id) {
         countMap.set(dish.course_id, (countMap.get(dish.course_id) || 0) + 1)
       }
     })
     
     // Merge counts with courses
-    const coursesWithCounts = (courses || []).map((course) => ({
+    const coursesWithCounts = (courses || []).map((course: any) => ({
       ...course,
       dish_count: countMap.get(course.id) || 0
     }))

@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  const supabase = createAdminClient()
+  const supabase = createAdminClient() as any
   const searchParams = request.nextUrl.searchParams
   const search = searchParams.get('search') || ''
   const includeSystem = searchParams.get('includeSystem') !== 'false' // default true
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const supabase = createAdminClient()
+  const supabase = createAdminClient() as any
 
   try {
     const body = await request.json()

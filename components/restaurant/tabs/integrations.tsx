@@ -86,7 +86,7 @@ export function RestaurantIntegrations({ restaurantId }: RestaurantIntegrationsP
   })
 
   const form = useForm<IntegrationFormData>({
-    resolver: zodResolver(integrationSchema),
+    resolver: zodResolver(integrationSchema) as any,
     defaultValues: {
       integration_type: 'POS',
       provider_name: '',

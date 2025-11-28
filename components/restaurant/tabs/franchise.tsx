@@ -57,7 +57,7 @@ export function FranchiseManagement() {
   })
 
   const createForm = useForm<CreateParentFormValues>({
-    resolver: zodResolver(createParentSchema),
+    resolver: zodResolver(createParentSchema) as any,
     defaultValues: {
       name: "",
       franchise_brand_name: "",
@@ -66,7 +66,7 @@ export function FranchiseManagement() {
   })
 
   const linkForm = useForm<LinkChildFormValues>({
-    resolver: zodResolver(linkChildSchema),
+    resolver: zodResolver(linkChildSchema) as any,
     defaultValues: {
       parent_restaurant_id: 0,
       restaurant_id: 0,

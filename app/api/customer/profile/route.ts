@@ -11,7 +11,7 @@ export async function GET() {
   
   try {
     console.log('[Profile API] Creating Supabase client...')
-    const supabase = await createClient()
+    const supabase = await createClient() as any
     console.log('[Profile API] Supabase client created')
     
     // Get current auth user with timeout

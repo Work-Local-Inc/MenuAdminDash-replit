@@ -3,7 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
     
     // Test 1: Check if service role key exists
     const hasServiceKey = !!process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
       .limit(1000)
     
     // Get unique restaurant IDs
-    const restaurantIds = [...new Set(allLocations?.map(l => l.restaurant_id) || [])]
+    const restaurantIds = Array.from(new Set(allLocations?.map((l: any) => l.restaurant_id) || []))
     const sampleId = restaurantIds[0]
     
     // Test 3: Query a restaurant that HAS data

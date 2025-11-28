@@ -30,7 +30,7 @@ export function Step3Contact({ restaurantId, onComplete }: Step3Props) {
   const { toast } = useToast()
 
   const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(formSchema) as any,
     defaultValues: {
       first_name: "",
       last_name: "",

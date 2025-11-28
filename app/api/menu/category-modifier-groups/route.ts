@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
       // Continue but log warning - in development, database might be temporarily unavailable
     }
     
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
 
     const body = await request.json()
     const validatedData = associateLibraryGroupSchema.parse(body)

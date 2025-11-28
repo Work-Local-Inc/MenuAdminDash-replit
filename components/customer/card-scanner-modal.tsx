@@ -102,8 +102,11 @@ export function CardScannerModal({ isOpen, onClose, onCardScanned }: CardScanner
         }, 'image/jpeg', 0.95);
       });
       
+      // Convert blob to File for the scanner
+      const file = new File([blob], 'capture.jpg', { type: 'image/jpeg' });
+      
       // Scan the image
-      const cardData = await scanCardImage(blob);
+      const cardData = await scanCardImage(file);
       
       if (cardData) {
         toast({

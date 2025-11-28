@@ -33,7 +33,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
     
     const { data, error } = await supabase
       .from('restaurant_payment_options')
@@ -64,7 +64,7 @@ export async function POST(
 ) {
   try {
     await verifyAdminAuth(request)
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
     const body = await request.json()
     
     const validatedData = paymentOptionSchema.parse(body)
@@ -102,7 +102,7 @@ export async function PUT(
 ) {
   try {
     await verifyAdminAuth(request)
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
     const body = await request.json()
     
     const validatedData = bulkUpdateSchema.parse(body)

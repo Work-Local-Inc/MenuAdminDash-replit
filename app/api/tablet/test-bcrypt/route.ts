@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
         hashLength: deviceHash.length,
         verified: deviceVerified,
       },
-      bcryptVersion: bcrypt.getRounds ? 'has getRounds' : 'no getRounds',
+      bcryptVersion: typeof bcrypt.getRounds === 'function' ? 'has getRounds' : 'no getRounds',
     })
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 })

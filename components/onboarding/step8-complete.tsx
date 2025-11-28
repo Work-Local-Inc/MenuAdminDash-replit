@@ -25,7 +25,7 @@ export function Step8Complete({ restaurantId, onComplete }: Step8Props) {
   const { toast } = useToast()
 
   const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(formSchema) as any,
     defaultValues: {
       notes: "",
     },

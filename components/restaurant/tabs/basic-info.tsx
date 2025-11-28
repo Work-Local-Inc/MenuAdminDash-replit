@@ -29,7 +29,7 @@ export function RestaurantBasicInfo({ restaurant }: RestaurantBasicInfoProps) {
   const updateRestaurant = useUpdateRestaurant()
 
   const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(formSchema) as any,
     defaultValues: {
       name: restaurant.name || "",
       status: restaurant.status || "pending",

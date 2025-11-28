@@ -16,7 +16,7 @@ export async function GET(
 ) {
   try {
     await verifyAdminAuth(request)
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
     
     const { data, error } = await supabase
       .from('restaurant_payment_methods')
@@ -41,7 +41,7 @@ export async function POST(
 ) {
   try {
     await verifyAdminAuth(request)
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
     const body = await request.json()
     
     // Validate request body

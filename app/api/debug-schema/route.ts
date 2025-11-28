@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 
 export async function GET() {
   try {
-    const supabase = await createClient()
+    const supabase = await createClient() as any
     
     // Try to get list of tables from information_schema
     const { data: tables, error: tablesError } = await supabase

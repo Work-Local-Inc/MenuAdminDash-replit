@@ -157,7 +157,7 @@ async function createRestaurantOwnerAutomated({
 export async function POST(request: NextRequest) {
   try {
     await verifyAdminAuth(request)
-    const supabase = await createClient()
+    const supabase = await createClient() as any
     const body = await request.json()
 
     const { email, first_name, last_name, phone, role_id, restaurant_ids } = body

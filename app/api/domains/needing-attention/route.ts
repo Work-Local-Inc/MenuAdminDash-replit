@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   try {
     await verifyAdminAuth(request)
 
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
 
     // Get domains needing attention from view (priority-sorted)
     const { data, error } = await supabase

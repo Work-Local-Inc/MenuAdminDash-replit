@@ -13,7 +13,7 @@ export async function PATCH(
 
     const { name, price, is_default } = body;
 
-    const supabase = await createClient();
+    const supabase = await createClient() as any;
     
     // Verify the modifier belongs to the group and the group belongs to the dish
     const { data: verifyData, error: verifyError } = await supabase
@@ -100,7 +100,7 @@ export async function DELETE(
     const groupId = parseInt(params.groupId);
     const modifierId = parseInt(params.modifierId);
 
-    const supabase = await createClient();
+    const supabase = await createClient() as any;
     
     // Verify the modifier belongs to the group and the group belongs to the dish
     const { data: verifyData, error: verifyError } = await supabase

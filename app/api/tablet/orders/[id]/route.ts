@@ -38,7 +38,7 @@ export async function GET(
       )
     }
 
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
 
     // Fetch order - must belong to device's restaurant
     const { data: order, error: orderError } = await supabase
@@ -208,7 +208,7 @@ export async function POST(
       )
     }
 
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
 
     // Verify order belongs to device's restaurant
     const { data: order, error: orderError } = await supabase

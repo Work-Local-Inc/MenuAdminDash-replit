@@ -17,7 +17,7 @@ interface AddressesTabProps {
 
 export function AddressesTab({ userId }: AddressesTabProps) {
   const { toast } = useToast()
-  const supabase = createClient()
+  const supabase = createClient() as any
   
   const [addresses, setAddresses] = useState<any[]>([])
   const [loading, setLoading] = useState(true)

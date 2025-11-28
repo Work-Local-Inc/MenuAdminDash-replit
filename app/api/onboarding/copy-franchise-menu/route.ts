@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = copyMenuSchema.parse(body);
 
-    const supabase = createAdminClient();
+    const supabase = createAdminClient() as any;
 
     // Call Santiago's copy-franchise-menu Edge Function
     const { data, error } = await supabase.functions.invoke('copy-franchise-menu', {

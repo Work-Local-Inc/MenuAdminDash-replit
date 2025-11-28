@@ -13,14 +13,8 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Verify admin authentication
-    const auth = await verifyAdminAuth(request)
-    if (!auth.authenticated) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
+    // Verify admin authentication (throws if unauthorized)
+    await verifyAdminAuth(request)
 
     const domainId = parseInt(params.id)
     if (isNaN(domainId)) {
@@ -33,7 +27,7 @@ export async function POST(
     // Validate request body
     const validated = verifySchema.parse({ domain_id: domainId })
 
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
 
     // Call Santiago's verify-single-domain Edge Function
     const { data, error } = await supabase.functions.invoke('verify-single-domain', {

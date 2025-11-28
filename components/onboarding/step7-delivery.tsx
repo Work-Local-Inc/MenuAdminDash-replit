@@ -32,7 +32,7 @@ export function Step7Delivery({ restaurantId, onComplete }: Step7Props) {
   const { toast } = useToast()
 
   const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(formSchema) as any,
     defaultValues: {
       zone_name: "",
       center_latitude: undefined,

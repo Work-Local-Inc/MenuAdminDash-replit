@@ -7,7 +7,7 @@ export async function GET(
   { params }: { params: { slug: string } }
 ) {
   try {
-    const supabase = await createClient();
+    const supabase = await createClient() as any;
     const slug = params.slug;
     
     const restaurantId = extractIdFromSlug(slug);

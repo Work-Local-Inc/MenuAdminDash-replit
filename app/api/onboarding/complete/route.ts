@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = completeOnboardingSchema.parse(body);
 
-    const supabase = createAdminClient();
+    const supabase = createAdminClient() as any;
 
     // Call Santiago's complete-restaurant-onboarding Edge Function
     const { data, error } = await supabase.functions.invoke('complete-restaurant-onboarding', {

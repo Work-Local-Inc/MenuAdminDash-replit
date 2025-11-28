@@ -8,7 +8,7 @@ export async function PATCH(
   { params }: { params: { id: string; configId: string } }
 ) {
   try {
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
     const body = await request.json()
     
     const { data, error } = await supabase
@@ -35,7 +35,7 @@ export async function DELETE(
   { params }: { params: { id: string; configId: string } }
 ) {
   try {
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
     
     const { error } = await supabase
       .from('restaurant_service_configs')

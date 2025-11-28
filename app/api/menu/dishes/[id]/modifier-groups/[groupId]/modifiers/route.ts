@@ -8,7 +8,7 @@ export async function GET(
   try {
     const groupId = parseInt(params.groupId);
 
-    const supabase = await createClient();
+    const supabase = await createClient() as any;
     const { data, error } = await supabase
       .from('dish_modifier_items')
       .select('id, modifier_group_id, name, price, is_default, display_order, created_at, updated_at')
@@ -58,7 +58,7 @@ export async function POST(
       );
     }
 
-    const supabase = await createClient();
+    const supabase = await createClient() as any;
     
     const { data: maxOrderData } = await supabase
       .from('dish_modifier_items')

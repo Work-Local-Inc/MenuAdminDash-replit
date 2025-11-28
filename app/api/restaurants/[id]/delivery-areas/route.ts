@@ -22,7 +22,7 @@ export async function GET(
 ) {
   try {
     await verifyAdminAuth(request)
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
     
     // Try restaurant_delivery_zones first
     const { data: zonesData, error: zonesError } = await supabase
@@ -63,7 +63,7 @@ export async function GET(
     
     if (useZonesTable && zonesData) {
       // Transform from restaurant_delivery_zones schema
-      transformed = zonesData.map(zone => ({
+      transformed = zonesData.map((zone: any) => ({
         id: zone.id,
         restaurant_id: zone.restaurant_id,
         name: zone.zone_name,
@@ -111,7 +111,7 @@ export async function POST(
 ) {
   try {
     await verifyAdminAuth(request)
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
     const restaurantId = parseInt(params.id)
     
     const body = await request.json()

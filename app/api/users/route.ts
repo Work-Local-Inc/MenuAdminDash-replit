@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 export async function GET(request: NextRequest) {
   try {
     await verifyAdminAuth(request)
-    const supabase = await createClient()
+    const supabase = await createClient() as any
 
     const searchParams = request.nextUrl.searchParams
     const search = searchParams.get('search') || ''

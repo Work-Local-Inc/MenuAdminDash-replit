@@ -37,7 +37,7 @@ export function Step5Menu({ restaurantId, onComplete }: Step5Props) {
   const { toast } = useToast()
 
   const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(formSchema) as any,
     defaultValues: {
       name: "",
       description: "",

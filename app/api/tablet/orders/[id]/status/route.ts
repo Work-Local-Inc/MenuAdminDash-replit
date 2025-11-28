@@ -50,7 +50,7 @@ export async function PATCH(
 
     const { status, notes, estimated_ready_minutes } = validation.data
 
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
 
     // Verify order belongs to device's restaurant
     const { data: order, error: orderError } = await supabase

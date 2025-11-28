@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = createRestaurantSchema.parse(body);
 
-    const supabase = createAdminClient();
+    const supabase = createAdminClient() as any;
 
     // Call Santiago's create-restaurant-onboarding Edge Function
     const { data, error } = await supabase.functions.invoke('create-restaurant-onboarding', {

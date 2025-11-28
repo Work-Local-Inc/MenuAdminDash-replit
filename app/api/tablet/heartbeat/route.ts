@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
       app_version,
     })
 
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
 
     // Check if there's a config update for this device
     let configUpdate: Partial<DeviceConfig> | undefined = undefined

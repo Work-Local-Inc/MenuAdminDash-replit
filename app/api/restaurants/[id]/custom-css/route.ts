@@ -16,7 +16,7 @@ export async function GET(
   try {
     await verifyAdminAuth(request)
     
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
     
     const { data, error } = await supabase
       .from('restaurant_custom_css')
@@ -52,7 +52,7 @@ export async function PUT(
   try {
     await verifyAdminAuth(request)
     
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
     
     const body = await request.json()
     const validatedData = customCssSchema.parse(body)

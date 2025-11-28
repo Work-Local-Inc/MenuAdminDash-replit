@@ -7,7 +7,7 @@ import { getAdminUserByAuthId, getAdminUserByEmail } from '@/lib/db/admin-users'
 export async function GET(request: NextRequest) {
   try {
     await verifyAdminAuth(request)
-    const supabase = await createClient()
+    const supabase = await createClient() as any
 
     // Get current user
     const { data: { user }, error: userError } = await supabase.auth.getUser()

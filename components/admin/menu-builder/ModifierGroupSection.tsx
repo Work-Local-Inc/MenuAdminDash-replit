@@ -68,7 +68,7 @@ export function ModifierGroupSection({
 
     try {
       await applyModifierGroup.mutateAsync({
-        template_id: modifierGroupId,
+        modifier_group_id: modifierGroupId,
         dish_ids: Array.from(selectedDishIds),
       })
       setApplyingModifierGroupId(null)
@@ -80,7 +80,7 @@ export function ModifierGroupSection({
   const handleApplyToAll = async (modifierGroupId: number) => {
     try {
       await applyModifierGroup.mutateAsync({
-        template_id: modifierGroupId,
+        modifier_group_id: modifierGroupId,
         course_id: courseId,
       })
       setApplyingModifierGroupId(null)

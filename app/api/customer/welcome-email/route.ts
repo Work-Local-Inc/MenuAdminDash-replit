@@ -4,7 +4,7 @@ import { sendWelcomeEmail } from '@/lib/emails/service'
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
+    const supabase = await createClient() as any
     
     // Check authentication
     const { data: { user } } = await supabase.auth.getUser()

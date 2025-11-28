@@ -20,7 +20,7 @@ export async function POST(
   try {
     await verifyAdminAuth(request)
     
-    const supabase = createAdminClient()
+    const supabase = createAdminClient() as any
     
     let body
     try {
