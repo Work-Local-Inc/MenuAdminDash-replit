@@ -45,6 +45,13 @@ export async function GET(
           time_stop,
           is_enabled
         ),
+        restaurant_delivery_areas (
+          id,
+          delivery_fee,
+          min_order_value,
+          is_active,
+          estimated_delivery_minutes
+        ),
         restaurant_service_configs (
           id,
           has_delivery_enabled,
