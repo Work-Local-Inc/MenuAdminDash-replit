@@ -20,11 +20,12 @@ import { useToast } from '@/hooks/use-toast'
 import { ShoppingCart, MapPin, CreditCard, ArrowLeft, LogIn, LogOut, User, ShoppingBag, Store, Wallet } from 'lucide-react'
 import Link from 'next/link'
 
-// Use TEST publishable key to match backend test secret key
-const stripeKey = process.env.NEXT_PUBLIC_TESTING_VITE_STRIPE_PUBLIC_KEY
+// Use production Stripe key if available, fall back to test key
+const stripeKey = process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY || 
+                  process.env.NEXT_PUBLIC_TESTING_VITE_STRIPE_PUBLIC_KEY
 
 if (!stripeKey) {
-  throw new Error('Missing test Stripe publishable key. Set NEXT_PUBLIC_TESTING_VITE_STRIPE_PUBLIC_KEY in environment variables.')
+  throw new Error('Missing Stripe publishable key. Set NEXT_PUBLIC_STRIPE_PUBLIC_KEY or NEXT_PUBLIC_TESTING_VITE_STRIPE_PUBLIC_KEY in environment variables.')
 }
 
 console.log('[Checkout] Using Stripe publishable key:', stripeKey.substring(0, 10) + '...')

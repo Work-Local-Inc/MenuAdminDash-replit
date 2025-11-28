@@ -5,8 +5,8 @@ import { extractIdFromSlug } from '@/lib/utils/slugify'
 import Stripe from 'stripe'
 import { sendOrderConfirmationEmail } from '@/lib/emails/service'
 
-// Use TEST keys in development, LIVE keys in production
-const stripeSecretKey = process.env.TESTING_STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY
+// Use production Stripe keys if available, fall back to test keys
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY || process.env.TESTING_STRIPE_SECRET_KEY
 
 if (!stripeSecretKey) {
   throw new Error('Missing required Stripe secret key')

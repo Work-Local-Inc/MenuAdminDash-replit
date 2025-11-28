@@ -2,11 +2,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createAdminClient } from '@/lib/supabase/admin'
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY')
+// Use production Stripe key if available, fall back to test key
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY || process.env.TESTING_STRIPE_SECRET_KEY
+
+if (!stripeSecretKey) {
+  throw new Error('Missing required Stripe secret key. Set STRIPE_SECRET_KEY or TESTING_STRIPE_SECRET_KEY')
 }
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+console.log('[Stripe Webhook] Using Stripe key:', stripeSecretKey.substring(0, 10) + '...')
+
+const stripe = new Stripe(stripeSecretKey, {
   apiVersion: '2025-11-17.clover',
 })
 

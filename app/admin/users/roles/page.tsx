@@ -1,10 +1,13 @@
-import { cookies } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 import { RolesClient } from './roles-client'
 
 export default async function RolesPage() {
-  // Fetch roles from API route
+  // Fetch roles from API route using the request origin
   const cookieStore = await cookies()
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:5000'
+  const headersList = await headers()
+  const host = headersList.get('host') || 'localhost:5000'
+  const protocol = headersList.get('x-forwarded-proto') || 'http'
+  const baseUrl = `${protocol}://${host}`
   
   const response = await fetch(`${baseUrl}/api/roles`, {
     cache: 'no-store',
