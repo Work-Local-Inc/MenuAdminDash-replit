@@ -17,41 +17,19 @@ import { queryClient } from "@/lib/queryClient"
 import { Loader2, Truck, ShoppingBag, Clock } from "lucide-react"
 import React from "react"
 
+// Schema matches actual database columns in restaurant_service_configs
 const configSchema = z.object({
   has_delivery_enabled: z.boolean(),
   delivery_time_minutes: z.coerce.number().min(0).nullable(),
   delivery_min_order: z.coerce.number().min(0).nullable(),
-  delivery_max_distance_km: z.coerce.number().min(0).nullable(),
   takeout_enabled: z.boolean(),
   takeout_time_minutes: z.coerce.number().min(0).nullable(),
-  takeout_discount_enabled: z.boolean().nullable(),
-  takeout_discount_type: z.enum(['percentage', 'fixed']).nullable(),
-  takeout_discount_value: z.coerce.number().min(0).nullable(),
   allows_preorders: z.boolean().nullable(),
-  preorder_time_frame_hours: z.coerce.number().min(0).nullable(),
   is_bilingual: z.boolean().nullable(),
   default_language: z.enum(['en', 'fr', 'es']).nullable(),
   accepts_tips: z.boolean().nullable(),
   requires_phone: z.boolean().nullable(),
   notes: z.string().nullable(),
-}).superRefine((data, ctx) => {
-  // If takeout discount is enabled, require type and value
-  if (data.takeout_discount_enabled) {
-    if (!data.takeout_discount_type) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Discount type is required when discount is enabled",
-        path: ["takeout_discount_type"],
-      })
-    }
-    if (data.takeout_discount_value === null || data.takeout_discount_value === undefined) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Discount value is required when discount is enabled",
-        path: ["takeout_discount_value"],
-      })
-    }
-  }
 })
 
 type ConfigFormValues = z.infer<typeof configSchema>
@@ -63,14 +41,9 @@ interface ServiceConfig {
   has_delivery_enabled: boolean
   delivery_time_minutes: number | null
   delivery_min_order: number | null
-  delivery_max_distance_km: number | null
   takeout_enabled: boolean
   takeout_time_minutes: number | null
-  takeout_discount_enabled: boolean | null
-  takeout_discount_type: 'percentage' | 'fixed' | null
-  takeout_discount_value: number | null
   allows_preorders: boolean | null
-  preorder_time_frame_hours: number | null
   is_bilingual: boolean | null
   default_language: 'en' | 'fr' | 'es' | null
   accepts_tips: boolean | null
@@ -105,14 +78,9 @@ export function RestaurantServiceConfig({ restaurantId }: RestaurantServiceConfi
       has_delivery_enabled: false,
       delivery_time_minutes: null,
       delivery_min_order: null,
-      delivery_max_distance_km: null,
       takeout_enabled: false,
       takeout_time_minutes: null,
-      takeout_discount_enabled: null,
-      takeout_discount_type: null,
-      takeout_discount_value: null,
       allows_preorders: null,
-      preorder_time_frame_hours: null,
       is_bilingual: null,
       default_language: null,
       accepts_tips: null,
@@ -127,14 +95,9 @@ export function RestaurantServiceConfig({ restaurantId }: RestaurantServiceConfi
         has_delivery_enabled: config.has_delivery_enabled ?? false,
         delivery_time_minutes: config.delivery_time_minutes,
         delivery_min_order: config.delivery_min_order,
-        delivery_max_distance_km: config.delivery_max_distance_km,
         takeout_enabled: config.takeout_enabled ?? false,
         takeout_time_minutes: config.takeout_time_minutes,
-        takeout_discount_enabled: config.takeout_discount_enabled,
-        takeout_discount_type: config.takeout_discount_type,
-        takeout_discount_value: config.takeout_discount_value,
         allows_preorders: config.allows_preorders,
-        preorder_time_frame_hours: config.preorder_time_frame_hours,
         is_bilingual: config.is_bilingual,
         default_language: config.default_language,
         accepts_tips: config.accepts_tips,
@@ -182,8 +145,6 @@ export function RestaurantServiceConfig({ restaurantId }: RestaurantServiceConfi
 
   const deliveryEnabled = form.watch('has_delivery_enabled')
   const takeoutEnabled = form.watch('takeout_enabled')
-  const takeoutDiscountEnabled = form.watch('takeout_discount_enabled')
-  const allowsPreorders = form.watch('allows_preorders')
   const isBilingual = form.watch('is_bilingual')
 
   return (
@@ -219,7 +180,7 @@ export function RestaurantServiceConfig({ restaurantId }: RestaurantServiceConfi
             />
 
             {deliveryEnabled && (
-              <div className="grid gap-4 sm:grid-cols-3">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="delivery_time_minutes"
@@ -254,27 +215,6 @@ export function RestaurantServiceConfig({ restaurantId }: RestaurantServiceConfi
                           {...field}
                           value={field.value ?? ''}
                           data-testid="input-delivery-min-order"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="delivery_max_distance_km"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Max Distance (km)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          step="0.1"
-                          placeholder="5.0"
-                          {...field}
-                          value={field.value ?? ''}
-                          data-testid="input-delivery-max-distance"
                         />
                       </FormControl>
                       <FormMessage />
@@ -316,99 +256,25 @@ export function RestaurantServiceConfig({ restaurantId }: RestaurantServiceConfi
             />
 
             {takeoutEnabled && (
-              <>
-                <FormField
-                  control={form.control}
-                  name="takeout_time_minutes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Preparation Time (minutes)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          placeholder="15"
-                          {...field}
-                          value={field.value ?? ''}
-                          data-testid="input-takeout-time"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <Separator />
-
-                <FormField
-                  control={form.control}
-                  name="takeout_discount_enabled"
-                  render={({ field }) => (
-                    <FormItem className="flex items-center justify-between rounded-lg border p-4">
-                      <div className="space-y-0.5">
-                        <FormLabel>Takeout Discount</FormLabel>
-                        <FormDescription>Offer discount for pickup orders</FormDescription>
-                      </div>
-                      <FormControl>
-                        <Switch
-                          checked={field.value ?? false}
-                          onCheckedChange={field.onChange}
-                          data-testid="switch-takeout-discount"
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-
-                {takeoutDiscountEnabled && (
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <FormField
-                      control={form.control}
-                      name="takeout_discount_type"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Discount Type</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            value={field.value ?? undefined}
-                          >
-                            <FormControl>
-                              <SelectTrigger data-testid="select-discount-type">
-                                <SelectValue placeholder="Select type" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="percentage">Percentage (%)</SelectItem>
-                              <SelectItem value="fixed">Fixed Amount ($)</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="takeout_discount_value"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Discount Value</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              placeholder="10"
-                              {...field}
-                              value={field.value ?? ''}
-                              data-testid="input-discount-value"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+              <FormField
+                control={form.control}
+                name="takeout_time_minutes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Preparation Time (minutes)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder="15"
+                        {...field}
+                        value={field.value ?? ''}
+                        data-testid="input-takeout-time"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )}
-              </>
+              />
             )}
           </CardContent>
         </Card>
@@ -441,29 +307,6 @@ export function RestaurantServiceConfig({ restaurantId }: RestaurantServiceConfi
                 </FormItem>
               )}
             />
-
-            {allowsPreorders && (
-              <FormField
-                control={form.control}
-                name="preorder_time_frame_hours"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Pre-order Time Frame (hours)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        placeholder="24"
-                        {...field}
-                        value={field.value ?? ''}
-                        data-testid="input-preorder-timeframe"
-                      />
-                    </FormControl>
-                    <FormDescription>Maximum hours in advance customers can order</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
 
             <Separator />
 

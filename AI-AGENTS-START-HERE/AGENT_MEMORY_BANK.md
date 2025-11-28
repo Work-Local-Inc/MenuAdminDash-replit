@@ -859,6 +859,33 @@ Added "Devices" section to admin sidebar:
 ### Full Implementation Plan
 See: `TABLET_BRIDGE_IMPLEMENTATION_PLAN.md` in project root
 
+### Tablet App Integration Guide  
+See: `AI-AGENTS-START-HERE/TABLET_APP_INTEGRATION_GUIDE.md` for:
+- Complete API documentation with examples
+- Authentication flow (login → poll → status → heartbeat)
+- Test credentials and test script
+- Security best practices
+
+### Test Script
+```bash
+# Test all tablet API endpoints
+node scripts/test-tablet-api.mjs http://localhost:5000
+# Or with production URL:
+node scripts/test-tablet-api.mjs https://your-app.replit.app
+```
+
+### Current Issue: TabletOrderApp (External Repo)
+**Problem:** The external tablet app was built incorrectly:
+1. ❌ Uses Supabase service-role key directly (SECURITY RISK!)
+2. ❌ Queries Supabase directly instead of using our secure API
+3. ❌ Orders don't display because of wrong query filters
+
+**Solution:** Rebuild app to use our API:
+1. ✅ Remove all Supabase client code
+2. ✅ Use `/api/tablet/auth/login` for authentication
+3. ✅ Use `/api/tablet/orders` with Bearer token for orders
+4. ✅ The API handles restaurant filtering, data masking, rate limiting
+
 ---
 
 **Remember:** This is a REAL production app with LIVE data. Take time to understand before changing. When in doubt, ASK or CHECK the schema first!
