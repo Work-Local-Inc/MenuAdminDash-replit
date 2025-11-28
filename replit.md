@@ -79,3 +79,31 @@ Preferred communication style: Simple, everyday language.
 -   **@hello-pangea/dnd**: Drag-and-drop reordering.
 -   **Stripe**: Payment processing.
 -   **Google Places API**: Address autocomplete and verification.
+
+## Troubleshooting & Debugging Notes
+
+### Stripe Key Mismatch (CRITICAL - Nov 2025)
+**Problem:** Payment intents created with TEST key but retrieved with LIVE key = "No such payment_intent" error.
+
+**Lesson Learned:** When debugging Stripe issues, ALWAYS do a full codebase audit FIRST:
+```bash
+grep -r "new Stripe\|STRIPE_SECRET_KEY" app/api --include="*.ts"
+```
+
+**All Stripe endpoints must use the same key priority:**
+- `app/api/customer/create-payment-intent/route.ts`
+- `app/api/customer/orders/route.ts`
+- `app/api/customer/signup/route.ts`
+- `app/api/customer/stripe-webhook/route.ts`
+
+**Current configuration (TEST mode):**
+```typescript
+const stripeSecretKey = process.env.TESTING_STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY
+```
+
+**Frontend key (next.config.mjs):**
+```javascript
+NEXT_PUBLIC_STRIPE_PUBLIC_KEY: process.env.TESTING_VITE_STRIPE_PUBLIC_KEY || process.env.VITE_STRIPE_PUBLIC_KEY
+```
+
+**Never fix one endpoint at a time - audit ALL Stripe files before deploying.**
