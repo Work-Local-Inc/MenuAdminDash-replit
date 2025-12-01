@@ -67,6 +67,7 @@ export async function PATCH(
     }
 
     // Validate status transition
+    // NOTE: Allow pending → preparing directly for auto-print flow (skips confirmed)
     const validTransitions: Record<string, string[]> = {
       pending: ["confirmed", "preparing", "cancelled"],
       confirmed: ["preparing", "cancelled"],
