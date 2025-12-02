@@ -59,14 +59,14 @@ export async function POST(request: NextRequest) {
       .select(`
         id, 
         name,
-        restaurant_delivery_areas(id, delivery_fee, is_active)
+        restaurant_delivery_areas(id, delivery_fee, delivery_min_order, is_active)
       `)
       .eq('id', restaurantId)
       .single() as { 
         data: { 
           id: number; 
           name: string;
-          restaurant_delivery_areas: { id: number; delivery_fee: number | null; is_active: boolean }[]
+          restaurant_delivery_areas: { id: number; delivery_fee: number | null; delivery_min_order: number | null; is_active: boolean }[]
         } | null; 
         error: any 
       }
