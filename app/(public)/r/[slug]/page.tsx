@@ -29,7 +29,7 @@ interface RestaurantRecord {
   button_style: string | null;
   price_color: string | null;
   checkout_button_color: string | null;
-  restaurant_delivery_areas?: { id: number; delivery_fee: number | null; min_order_value: number | null; is_active: boolean; estimated_delivery_minutes: number | null }[] | null;
+  restaurant_delivery_areas?: { id: number; delivery_fee: number | null; is_active: boolean; estimated_delivery_minutes: number | null }[] | null;
   restaurant_locations?: { id: number; street_address: string | null; postal_code: string | null; phone: string | null }[] | null;
 }
 
@@ -53,7 +53,7 @@ const getRestaurant = cache(async (restaurantId: number) => {
       button_style,
       price_color,
       checkout_button_color,
-      restaurant_delivery_areas(id, delivery_fee, min_order_value, is_active, estimated_delivery_minutes),
+      restaurant_delivery_areas(id, delivery_fee, is_active, estimated_delivery_minutes),
       restaurant_locations(id, street_address, postal_code, phone)
     `)
     .eq('id', restaurantId)
@@ -77,7 +77,7 @@ const getRestaurant = cache(async (restaurantId: number) => {
         button_style,
         price_color,
         checkout_button_color,
-        restaurant_delivery_areas(id, delivery_fee, min_order_value, is_active, estimated_delivery_minutes),
+        restaurant_delivery_areas(id, delivery_fee, is_active, estimated_delivery_minutes),
         restaurant_locations(id, street_address, postal_code, phone)
       `)
       .eq('id', restaurantId)
