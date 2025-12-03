@@ -51,7 +51,11 @@ export function useUpdateRestaurant() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       })
-      if (!res.ok) throw new Error('Failed to update restaurant')
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        console.error('[useUpdateRestaurant] Error:', errorData)
+        throw new Error(errorData.error || errorData.message || 'Failed to update restaurant')
+      }
       return res.json()
     },
     onSuccess: () => {

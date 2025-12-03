@@ -33,15 +33,18 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  console.log(`[Restaurant API] PATCH request for restaurant ${params.id}`)
   try {
     await verifyAdminAuth(request)
     
     const supabase = createAdminClient() as any
 
     const body = await request.json()
+    console.log('[Restaurant API] Request body:', JSON.stringify(body))
     
     // Validate request body
     const validatedData = restaurantUpdateSchema.parse(body)
+    console.log('[Restaurant API] Validated data:', JSON.stringify(validatedData))
 
     // If status is being updated, update directly (Edge Function approach was unreliable)
     if (validatedData.status) {
