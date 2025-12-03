@@ -27,7 +27,21 @@ export async function POST(request: NextRequest) {
       body: validatedData,
     });
 
-    if (error) throw error;
+    if (error) {
+      // Try to get more details from the error context
+      let errorDetails = error.message;
+      if (error.context && typeof error.context.text === 'function') {
+        try {
+          const responseText = await error.context.text();
+          console.error('Edge Function error response:', responseText);
+          errorDetails = responseText;
+        } catch (e) {
+          console.error('Could not read error response body');
+        }
+      }
+      console.error('Edge Function error:', error);
+      throw new Error(errorDetails || error.message);
+    }
 
     return NextResponse.json(data);
   } catch (error: any) {
