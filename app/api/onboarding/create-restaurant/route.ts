@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdminAuth } from '@/lib/auth/admin-check';
 import { AuthError } from '@/lib/errors';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
 
 const createRestaurantSchema = z.object({
@@ -19,7 +19,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = createRestaurantSchema.parse(body);
 
-    const supabase = createAdminClient() as any;
+    // Use the user's session to call the Edge Function (it requires user auth)
+    const supabase = await createClient() as any;
 
     // Call Santiago's create-restaurant-onboarding Edge Function
     const { data, error } = await supabase.functions.invoke('create-restaurant-onboarding', {
