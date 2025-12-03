@@ -108,13 +108,22 @@ NEXT_PUBLIC_STRIPE_PUBLIC_KEY: process.env.TESTING_VITE_STRIPE_PUBLIC_KEY || pro
 
 **Never fix one endpoint at a time - audit ALL Stripe files before deploying.**
 
-### Table Rename (Dec 2025)
-**`restaurant_service_configs` → `delivery_and_pickup_configs`**
+### Table & Column Renames (Dec 2025)
 
-All code files have been updated to use the new table name. Key files affected:
+**Tables Renamed:**
+- `restaurant_service_configs` → `delivery_and_pickup_configs`
+- `restaurant_delivery_fees` → `restaurant_distance_based_delivery_fees`
+
+**Columns Renamed:**
+- `min_order_value` → `delivery_min_order` (in `restaurant_delivery_areas`)
+- `tier_value` → `distance_in_km` (in `restaurant_distance_based_delivery_fees`)
+
+**Files Updated:**
 - `types/supabase-database.ts` - Type definitions
 - `app/api/restaurants/[id]/service-config/route.ts` - API routes
+- `app/api/restaurants/[id]/delivery-areas/route.ts` - Delivery areas API
 - `app/api/customer/restaurants/[slug]/route.ts` - Customer API
+- `app/api/customer/validate-delivery/route.ts` - Delivery validation
 - `components/customer/restaurant-menu.tsx` - Menu component
 - `components/customer/restaurant-menu-public.tsx` - Public menu component
 

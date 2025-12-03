@@ -48,16 +48,13 @@ export async function GET(
         restaurant_delivery_areas (
           id,
           delivery_fee,
-          min_order_value,
+          delivery_min_order,
           is_active,
           estimated_delivery_minutes
         ),
         delivery_and_pickup_configs (
           id,
-          has_delivery_enabled,
-          delivery_min_order,
-          delivery_max_distance_km,
-          accepts_tips
+          has_delivery_enabled
         )
       `)
       .eq('id', restaurantId)

@@ -77,7 +77,7 @@ export async function GET(
     } else if (useAreasTable && areasData) {
       // Transform from restaurant_delivery_areas schema
       // Actual columns: id, uuid, restaurant_id, area_number, area_name, display_name, 
-      // fee_type, delivery_fee, conditional_fee, conditional_threshold, min_order_value,
+      // fee_type, delivery_fee, conditional_fee, conditional_threshold, delivery_min_order,
       // is_complex, coordinates, geometry, notes, is_active, created_at, etc.
       transformed = areasData.map((area: any) => ({
         id: area.id,
@@ -86,7 +86,7 @@ export async function GET(
         description: area.notes || null,
         // delivery_fee is already in dollars (not cents)
         delivery_fee: area.delivery_fee || 0,
-        min_order: area.min_order_value || null,
+        min_order: area.delivery_min_order || null,
         // geometry column contains the polygon data
         polygon: area.geometry || null,
         is_active: area.is_active ?? true,
@@ -152,7 +152,7 @@ export async function POST(
           area_name: validatedData.name,
           geometry: validatedData.polygon,
           delivery_fee: validatedData.delivery_fee,
-          min_order_value: validatedData.min_order || null,
+          delivery_min_order: validatedData.min_order || null,
           is_active: validatedData.is_active ?? true,
         })
         .select()
@@ -169,7 +169,7 @@ export async function POST(
         name: data.area_name,
         description: null,
         delivery_fee: data.delivery_fee || 0,
-        min_order: data.min_order_value,
+        min_order: data.delivery_min_order,
         polygon: data.geometry,
         is_active: data.is_active,
         created_at: data.created_at

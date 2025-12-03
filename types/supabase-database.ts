@@ -184,25 +184,13 @@ export interface Database {
           uuid: string
           restaurant_id: number
           has_delivery_enabled: boolean
-          delivery_time_minutes: number | null
-          delivery_min_order: number | null
-          delivery_max_distance_km: number | null
-          takeout_enabled: boolean
+          pickup_enabled: boolean
           takeout_time_minutes: number | null
-          takeout_discount_enabled: boolean | null
-          takeout_discount_type: 'percentage' | 'fixed' | null
-          takeout_discount_value: number | null
-          allows_preorders: boolean | null
-          preorder_time_frame_hours: number | null
-          is_bilingual: boolean | null
-          default_language: 'en' | 'fr' | 'es' | null
+          twilio_call: boolean | null
+          closing_warning_min: number | null
           accepts_tips: boolean | null
-          requires_phone: boolean | null
-          notes: string | null
           created_at: string
-          created_by: number | null
           updated_at: string | null
-          updated_by: number | null
         }
         Insert: Omit<Database['menuca_v3']['Tables']['delivery_and_pickup_configs']['Row'], 'id' | 'uuid' | 'created_at'> & {
           id?: number

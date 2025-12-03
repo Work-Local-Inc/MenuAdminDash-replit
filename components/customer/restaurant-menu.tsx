@@ -120,7 +120,7 @@ export default function RestaurantMenu({
         (area: any) => area.is_active
       );
       const deliveryFee = activeArea?.delivery_fee ?? 0;
-      const minOrder = activeArea?.min_order_value || serviceConfig?.delivery_min_order || 0;
+      const minOrder = activeArea?.delivery_min_order || serviceConfig?.delivery_min_order || 0;
       const slug = `${restaurant.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${restaurant.id}`;
       
       // Build restaurant address for pickup display

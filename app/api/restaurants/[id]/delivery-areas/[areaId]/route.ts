@@ -50,7 +50,7 @@ export async function PUT(
         updateData.area_name = validatedData.name
       }
       if (validatedData.delivery_fee !== undefined) updateData.delivery_fee = validatedData.delivery_fee
-      if (validatedData.min_order !== undefined) updateData.min_order_value = validatedData.min_order
+      if (validatedData.min_order !== undefined) updateData.delivery_min_order = validatedData.min_order
       if (validatedData.polygon !== undefined) updateData.geometry = validatedData.polygon
       if (validatedData.is_active !== undefined) updateData.is_active = validatedData.is_active
       
@@ -74,7 +74,7 @@ export async function PUT(
         name: data.area_name,
         description: null,
         delivery_fee: data.delivery_fee || 0,
-        min_order: data.min_order_value,
+        min_order: data.delivery_min_order,
         polygon: data.geometry,
         is_active: data.is_active,
         created_at: data.created_at

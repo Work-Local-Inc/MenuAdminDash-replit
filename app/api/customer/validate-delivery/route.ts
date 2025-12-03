@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
         restaurant_id: area.restaurant_id,
         name: area.display_name || area.area_name || `Delivery Zone ${area.area_number || area.id}`,
         delivery_fee: area.delivery_fee || 0,
-        min_order: area.min_order_value || null,
+        min_order: area.delivery_min_order || null,
         polygon: area.geometry || null,
         is_active: area.is_active ?? true,
       }))
