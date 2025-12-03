@@ -2,7 +2,8 @@ import { z } from "zod"
 
 export const restaurantUpdateSchema = z.object({
   name: z.string().min(1).optional(),
-  status: z.enum(["active", "inactive", "suspended"]).optional(),
+  status: z.enum(["pending", "active", "inactive", "suspended", "closed"]).optional(),
+  timezone: z.string().optional(),
   city: z.string().optional(),
   province: z.string().optional(),
   address: z.string().optional(),
