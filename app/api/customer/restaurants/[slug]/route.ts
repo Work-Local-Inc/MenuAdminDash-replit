@@ -52,7 +52,7 @@ export async function GET(
           is_active,
           estimated_delivery_minutes
         ),
-        restaurant_service_configs (
+        delivery_and_pickup_configs (
           id,
           has_delivery_enabled,
           delivery_min_order,

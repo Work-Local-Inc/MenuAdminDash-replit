@@ -47,7 +47,7 @@ export default function RestaurantMenuPublic({
   const displayCartTotal = mounted ? cartTotal : 0
 
   const location = restaurant.restaurant_locations?.[0]
-  const serviceConfig = restaurant.restaurant_service_configs?.[0]
+  const serviceConfig = restaurant.delivery_and_pickup_configs?.[0]
 
   const streetAddress = location?.street_address
   const postalCode = location?.postal_code

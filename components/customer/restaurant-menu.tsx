@@ -106,7 +106,7 @@ export default function RestaurantMenu({
   const displayCartTotal = mounted ? cartTotal : 0;
   
   const location = restaurant.restaurant_locations?.[0];
-  const serviceConfig = restaurant.restaurant_service_configs?.[0];
+  const serviceConfig = restaurant.delivery_and_pickup_configs?.[0];
   
   // Initialize cart with restaurant details (only in customer mode)
   const streetAddress = location?.street_address;

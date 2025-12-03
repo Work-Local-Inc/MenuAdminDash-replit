@@ -12,7 +12,7 @@ export async function GET(
     const supabase = createAdminClient() as any
     
     const { data, error } = await supabase
-      .from('restaurant_service_configs')
+      .from('delivery_and_pickup_configs')
       .select('*')
       .eq('restaurant_id', params.id)
       .maybeSingle()
@@ -38,7 +38,7 @@ export async function POST(
     const body = await request.json()
     
     const { data, error } = await supabase
-      .from('restaurant_service_configs')
+      .from('delivery_and_pickup_configs')
       .insert({
         ...body,
         restaurant_id: parseInt(params.id),

@@ -178,7 +178,7 @@ export interface Database {
         Update: Partial<Database['menuca_v3']['Tables']['restaurant_schedules']['Insert']>
       }
 
-      restaurant_service_configs: {
+      delivery_and_pickup_configs: {
         Row: {
           id: number
           uuid: string
@@ -204,12 +204,12 @@ export interface Database {
           updated_at: string | null
           updated_by: number | null
         }
-        Insert: Omit<Database['menuca_v3']['Tables']['restaurant_service_configs']['Row'], 'id' | 'uuid' | 'created_at'> & {
+        Insert: Omit<Database['menuca_v3']['Tables']['delivery_and_pickup_configs']['Row'], 'id' | 'uuid' | 'created_at'> & {
           id?: number
           uuid?: string
           created_at?: string
         }
-        Update: Partial<Database['menuca_v3']['Tables']['restaurant_service_configs']['Insert']>
+        Update: Partial<Database['menuca_v3']['Tables']['delivery_and_pickup_configs']['Insert']>
       }
 
       // ==================== LOCATION & GEOGRAPHY ====================

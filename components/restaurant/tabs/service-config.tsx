@@ -17,7 +17,7 @@ import { queryClient } from "@/lib/queryClient"
 import { Loader2, Truck, ShoppingBag, Clock } from "lucide-react"
 import React from "react"
 
-// Schema matches actual database columns in restaurant_service_configs
+// Schema matches actual database columns in delivery_and_pickup_configs
 const configSchema = z.object({
   has_delivery_enabled: z.boolean(),
   delivery_time_minutes: z.coerce.number().min(0).nullable(),

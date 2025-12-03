@@ -107,3 +107,15 @@ NEXT_PUBLIC_STRIPE_PUBLIC_KEY: process.env.TESTING_VITE_STRIPE_PUBLIC_KEY || pro
 ```
 
 **Never fix one endpoint at a time - audit ALL Stripe files before deploying.**
+
+### Table Rename (Dec 2025)
+**`restaurant_service_configs` → `delivery_and_pickup_configs`**
+
+All code files have been updated to use the new table name. Key files affected:
+- `types/supabase-database.ts` - Type definitions
+- `app/api/restaurants/[id]/service-config/route.ts` - API routes
+- `app/api/customer/restaurants/[slug]/route.ts` - Customer API
+- `components/customer/restaurant-menu.tsx` - Menu component
+- `components/customer/restaurant-menu-public.tsx` - Public menu component
+
+Reference: `AI-AGENTS-START-HERE/DELIVERY_ZONES_HANDOFF.md` for complete delivery zones documentation.
