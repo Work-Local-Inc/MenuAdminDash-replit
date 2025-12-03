@@ -9,27 +9,19 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
-import { Separator } from "@/components/ui/separator"
 import { useToast } from "@/hooks/use-toast"
 import { queryClient } from "@/lib/queryClient"
-import { Loader2, Truck, ShoppingBag, Clock } from "lucide-react"
+import { Loader2, Truck, ShoppingBag, Clock, DollarSign, Phone } from "lucide-react"
 import React from "react"
 
-// Schema matches actual database columns in delivery_and_pickup_configs
 const configSchema = z.object({
   has_delivery_enabled: z.boolean(),
-  delivery_time_minutes: z.coerce.number().min(0).nullable(),
-  delivery_min_order: z.coerce.number().min(0).nullable(),
-  takeout_enabled: z.boolean(),
+  pickup_enabled: z.boolean(),
+  distance_based_delivery_fee: z.boolean(),
   takeout_time_minutes: z.coerce.number().min(0).nullable(),
-  allows_preorders: z.boolean().nullable(),
-  is_bilingual: z.boolean().nullable(),
-  default_language: z.enum(['en', 'fr', 'es']).nullable(),
+  closing_warning_min: z.coerce.number().min(0).nullable(),
+  twilio_call: z.boolean().nullable(),
   accepts_tips: z.boolean().nullable(),
-  requires_phone: z.boolean().nullable(),
-  notes: z.string().nullable(),
 })
 
 type ConfigFormValues = z.infer<typeof configSchema>
@@ -39,20 +31,14 @@ interface ServiceConfig {
   uuid: string
   restaurant_id: number
   has_delivery_enabled: boolean
-  delivery_time_minutes: number | null
-  delivery_min_order: number | null
-  takeout_enabled: boolean
+  pickup_enabled: boolean
+  distance_based_delivery_fee: boolean
   takeout_time_minutes: number | null
-  allows_preorders: boolean | null
-  is_bilingual: boolean | null
-  default_language: 'en' | 'fr' | 'es' | null
+  twilio_call: boolean | null
+  closing_warning_min: number | null
   accepts_tips: boolean | null
-  requires_phone: boolean | null
-  notes: string | null
   created_at: string
-  created_by: number | null
   updated_at: string | null
-  updated_by: number | null
 }
 
 interface RestaurantServiceConfigProps {
@@ -76,16 +62,12 @@ export function RestaurantServiceConfig({ restaurantId }: RestaurantServiceConfi
     resolver: zodResolver(configSchema) as any,
     defaultValues: {
       has_delivery_enabled: false,
-      delivery_time_minutes: null,
-      delivery_min_order: null,
-      takeout_enabled: false,
+      pickup_enabled: false,
+      distance_based_delivery_fee: false,
       takeout_time_minutes: null,
-      allows_preorders: null,
-      is_bilingual: null,
-      default_language: null,
+      closing_warning_min: null,
+      twilio_call: null,
       accepts_tips: null,
-      requires_phone: null,
-      notes: null,
     },
   })
 
@@ -93,16 +75,12 @@ export function RestaurantServiceConfig({ restaurantId }: RestaurantServiceConfi
     if (config) {
       form.reset({
         has_delivery_enabled: config.has_delivery_enabled ?? false,
-        delivery_time_minutes: config.delivery_time_minutes,
-        delivery_min_order: config.delivery_min_order,
-        takeout_enabled: config.takeout_enabled ?? false,
+        pickup_enabled: config.pickup_enabled ?? false,
+        distance_based_delivery_fee: config.distance_based_delivery_fee ?? false,
         takeout_time_minutes: config.takeout_time_minutes,
-        allows_preorders: config.allows_preorders,
-        is_bilingual: config.is_bilingual,
-        default_language: config.default_language,
+        closing_warning_min: config.closing_warning_min,
+        twilio_call: config.twilio_call,
         accepts_tips: config.accepts_tips,
-        requires_phone: config.requires_phone,
-        notes: config.notes,
       })
     }
   }, [config, form])
@@ -144,8 +122,7 @@ export function RestaurantServiceConfig({ restaurantId }: RestaurantServiceConfi
   }
 
   const deliveryEnabled = form.watch('has_delivery_enabled')
-  const takeoutEnabled = form.watch('takeout_enabled')
-  const isBilingual = form.watch('is_bilingual')
+  const pickupEnabled = form.watch('pickup_enabled')
 
   return (
     <Form {...form}>
@@ -156,7 +133,7 @@ export function RestaurantServiceConfig({ restaurantId }: RestaurantServiceConfi
               <Truck className="h-5 w-5" />
               <CardTitle>Delivery Service</CardTitle>
             </div>
-            <CardDescription>Configure delivery options and requirements</CardDescription>
+            <CardDescription>Configure delivery options for this restaurant</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <FormField
@@ -180,48 +157,27 @@ export function RestaurantServiceConfig({ restaurantId }: RestaurantServiceConfi
             />
 
             {deliveryEnabled && (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="delivery_time_minutes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Delivery Time (minutes)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          placeholder="30"
-                          {...field}
-                          value={field.value ?? ''}
-                          data-testid="input-delivery-time"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="delivery_min_order"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Minimum Order ($)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          placeholder="15.00"
-                          {...field}
-                          value={field.value ?? ''}
-                          data-testid="input-delivery-min-order"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+              <FormField
+                control={form.control}
+                name="distance_based_delivery_fee"
+                render={({ field }) => (
+                  <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel>Distance-Based Delivery Fee</FormLabel>
+                      <FormDescription>
+                        Calculate delivery fee based on distance tiers instead of flat delivery area fees
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        data-testid="switch-distance-based-fee"
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
             )}
           </CardContent>
         </Card>
@@ -230,32 +186,32 @@ export function RestaurantServiceConfig({ restaurantId }: RestaurantServiceConfi
           <CardHeader>
             <div className="flex items-center gap-2">
               <ShoppingBag className="h-5 w-5" />
-              <CardTitle>Takeout Service</CardTitle>
+              <CardTitle>Pickup Service</CardTitle>
             </div>
-            <CardDescription>Configure pickup options and discounts</CardDescription>
+            <CardDescription>Configure pickup options and preparation time</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <FormField
               control={form.control}
-              name="takeout_enabled"
+              name="pickup_enabled"
               render={({ field }) => (
                 <FormItem className="flex items-center justify-between rounded-lg border p-4">
                   <div className="space-y-0.5">
-                    <FormLabel>Enable Takeout</FormLabel>
+                    <FormLabel>Enable Pickup</FormLabel>
                     <FormDescription>Allow customers to order for pickup</FormDescription>
                   </div>
                   <FormControl>
                     <Switch
                       checked={field.value}
                       onCheckedChange={field.onChange}
-                      data-testid="switch-takeout-enabled"
+                      data-testid="switch-pickup-enabled"
                     />
                   </FormControl>
                 </FormItem>
               )}
             />
 
-            {takeoutEnabled && (
+            {pickupEnabled && (
               <FormField
                 control={form.control}
                 name="takeout_time_minutes"
@@ -271,6 +227,9 @@ export function RestaurantServiceConfig({ restaurantId }: RestaurantServiceConfi
                         data-testid="input-takeout-time"
                       />
                     </FormControl>
+                    <FormDescription>
+                      Average time to prepare orders for pickup
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -283,91 +242,22 @@ export function RestaurantServiceConfig({ restaurantId }: RestaurantServiceConfi
           <CardHeader>
             <div className="flex items-center gap-2">
               <Clock className="h-5 w-5" />
-              <CardTitle>Advanced Options</CardTitle>
+              <CardTitle>Additional Options</CardTitle>
             </div>
-            <CardDescription>Pre-orders, language, and customer requirements</CardDescription>
+            <CardDescription>Tips, notifications, and order settings</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <FormField
-              control={form.control}
-              name="allows_preorders"
-              render={({ field }) => (
-                <FormItem className="flex items-center justify-between rounded-lg border p-4">
-                  <div className="space-y-0.5">
-                    <FormLabel>Allow Pre-orders</FormLabel>
-                    <FormDescription>Enable customers to schedule future orders</FormDescription>
-                  </div>
-                  <FormControl>
-                    <Switch
-                      checked={field.value ?? false}
-                      onCheckedChange={field.onChange}
-                      data-testid="switch-preorders"
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-
-            <Separator />
-
-            <FormField
-              control={form.control}
-              name="is_bilingual"
-              render={({ field }) => (
-                <FormItem className="flex items-center justify-between rounded-lg border p-4">
-                  <div className="space-y-0.5">
-                    <FormLabel>Bilingual Support</FormLabel>
-                    <FormDescription>Offer multiple language options</FormDescription>
-                  </div>
-                  <FormControl>
-                    <Switch
-                      checked={field.value ?? false}
-                      onCheckedChange={field.onChange}
-                      data-testid="switch-bilingual"
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-
-            {isBilingual && (
-              <FormField
-                control={form.control}
-                name="default_language"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Default Language</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value ?? undefined}
-                    >
-                      <FormControl>
-                        <SelectTrigger data-testid="select-default-language">
-                          <SelectValue placeholder="Select language" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="en">English</SelectItem>
-                        <SelectItem value="fr">Français</SelectItem>
-                        <SelectItem value="es">Español</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-
-            <Separator />
-
             <FormField
               control={form.control}
               name="accepts_tips"
               render={({ field }) => (
                 <FormItem className="flex items-center justify-between rounded-lg border p-4">
-                  <div className="space-y-0.5">
-                    <FormLabel>Accept Tips</FormLabel>
-                    <FormDescription>Allow customers to add tips to orders</FormDescription>
+                  <div className="space-y-0.5 flex items-center gap-3">
+                    <DollarSign className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <FormLabel>Accept Tips</FormLabel>
+                      <FormDescription>Allow customers to add tips to orders</FormDescription>
+                    </div>
                   </div>
                   <FormControl>
                     <Switch
@@ -382,18 +272,21 @@ export function RestaurantServiceConfig({ restaurantId }: RestaurantServiceConfi
 
             <FormField
               control={form.control}
-              name="requires_phone"
+              name="twilio_call"
               render={({ field }) => (
                 <FormItem className="flex items-center justify-between rounded-lg border p-4">
-                  <div className="space-y-0.5">
-                    <FormLabel>Require Phone Number</FormLabel>
-                    <FormDescription>Make phone number mandatory for orders</FormDescription>
+                  <div className="space-y-0.5 flex items-center gap-3">
+                    <Phone className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <FormLabel>Twilio Phone Calls</FormLabel>
+                      <FormDescription>Enable automated phone call notifications for new orders</FormDescription>
+                    </div>
                   </div>
                   <FormControl>
                     <Switch
                       checked={field.value ?? false}
                       onCheckedChange={field.onChange}
-                      data-testid="switch-require-phone"
+                      data-testid="switch-twilio-call"
                     />
                   </FormControl>
                 </FormItem>
@@ -402,19 +295,22 @@ export function RestaurantServiceConfig({ restaurantId }: RestaurantServiceConfi
 
             <FormField
               control={form.control}
-              name="notes"
+              name="closing_warning_min"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Internal Notes</FormLabel>
+                  <FormLabel>Closing Warning (minutes)</FormLabel>
                   <FormControl>
-                    <Textarea
-                      placeholder="Add any internal notes about service configuration..."
+                    <Input
+                      type="number"
+                      placeholder="30"
                       {...field}
                       value={field.value ?? ''}
-                      data-testid="textarea-notes"
+                      data-testid="input-closing-warning"
                     />
                   </FormControl>
-                  <FormDescription>These notes are for internal use only</FormDescription>
+                  <FormDescription>
+                    How many minutes before closing to warn customers that online ordering will close soon
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
