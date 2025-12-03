@@ -10,11 +10,17 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { format, getDay, setHours, setMinutes } from 'date-fns'
 import { PickupTimeSelector, Schedule } from './pickup-time-selector'
 
+interface ServiceConfig {
+  has_delivery_enabled?: boolean
+  pickup_enabled?: boolean
+}
+
 interface OrderTypeSelectorProps {
   className?: string
   schedules?: Schedule[]
   onDeliveryBlocked?: (isBlocked: boolean) => void
   brandedColor?: string
+  serviceConfig?: ServiceConfig
 }
 
 // Check if restaurant is currently open for a service type
@@ -112,9 +118,13 @@ function formatTimeForDisplay(time: string): string {
   return format(date, 'h:mm a');
 }
 
-export function OrderTypeSelector({ className, schedules = [], onDeliveryBlocked, brandedColor }: OrderTypeSelectorProps) {
+export function OrderTypeSelector({ className, schedules = [], onDeliveryBlocked, brandedColor, serviceConfig }: OrderTypeSelectorProps) {
   const { orderType, setOrderType, getEffectiveDeliveryFee, pickupTime } = useCartStore()
   const effectiveDeliveryFee = getEffectiveDeliveryFee()
+  
+  // Check if services are enabled in config (default to true if not configured)
+  const isDeliveryEnabledInConfig = serviceConfig?.has_delivery_enabled ?? true;
+  const isPickupEnabledInConfig = serviceConfig?.pickup_enabled ?? true;
   
   // Memoize service open status to prevent inconsistent results across component
   const deliveryStatus = useMemo(() => isServiceOpen(schedules, 'delivery'), [schedules]);
@@ -123,6 +133,10 @@ export function OrderTypeSelector({ className, schedules = [], onDeliveryBlocked
   // Derive closed states from memoized status
   const isDeliveryClosed = deliveryStatus.hasAnySchedules && !deliveryStatus.isOpen;
   const isPickupClosed = pickupStatus.hasAnySchedules && !pickupStatus.isOpen;
+  
+  // Service is unavailable if disabled in config OR closed by schedule
+  const isDeliveryUnavailable = !isDeliveryEnabledInConfig || isDeliveryClosed;
+  const isPickupUnavailable = !isPickupEnabledInConfig || isPickupClosed;
   
   // Determine if current service type is closed
   const isCurrentServiceClosed = orderType === 'delivery' ? isDeliveryClosed : isPickupClosed;
@@ -136,14 +150,23 @@ export function OrderTypeSelector({ className, schedules = [], onDeliveryBlocked
   // Check if user has scheduled a future time - if so, they can proceed even when closed
   const hasScheduledFutureTime = pickupTime?.type === 'scheduled' && !!pickupTime.scheduledTime;
   
+  // Auto-switch to available service if current one is disabled in config
+  useEffect(() => {
+    if (orderType === 'delivery' && !isDeliveryEnabledInConfig && isPickupEnabledInConfig) {
+      setOrderType('pickup');
+    } else if (orderType === 'pickup' && !isPickupEnabledInConfig && isDeliveryEnabledInConfig) {
+      setOrderType('delivery');
+    }
+  }, [orderType, isDeliveryEnabledInConfig, isPickupEnabledInConfig, setOrderType]);
+  
   // Notify parent about delivery blocked status - use effect to avoid render-time state updates
-  // Only block if closed AND user hasn't scheduled a future time
+  // Block if disabled in config OR (closed AND user hasn't scheduled a future time)
   useEffect(() => {
     if (onDeliveryBlocked) {
-      const isBlocked = orderType === 'delivery' && isDeliveryClosed && !hasScheduledFutureTime;
+      const isBlocked = orderType === 'delivery' && (!isDeliveryEnabledInConfig || (isDeliveryClosed && !hasScheduledFutureTime));
       onDeliveryBlocked(isBlocked);
     }
-  }, [orderType, isDeliveryClosed, hasScheduledFutureTime, onDeliveryBlocked]);
+  }, [orderType, isDeliveryEnabledInConfig, isDeliveryClosed, hasScheduledFutureTime, onDeliveryBlocked]);
 
   // Create branded style for active tabs
   const getActiveStyle = (isActive: boolean) => {
@@ -160,33 +183,37 @@ export function OrderTypeSelector({ className, schedules = [], onDeliveryBlocked
         onValueChange={(value) => setOrderType(value as OrderType)}
         className="w-full"
       >
-        <TabsList className="grid w-full grid-cols-2 h-14">
-          <TabsTrigger 
-            value="delivery" 
-            className={`flex flex-col items-center gap-0.5 h-full py-2 ${!brandedColor ? 'data-[state=active]:bg-primary data-[state=active]:text-primary-foreground' : ''}`}
-            style={getActiveStyle(orderType === 'delivery')}
-            data-testid="button-order-type-delivery"
-          >
-            <div className="flex items-center gap-2">
-              <Truck className="w-4 h-4" />
-              <span className="font-medium">Delivery</span>
-            </div>
-            {orderType === 'delivery' && effectiveDeliveryFee > 0 && (
-              <span className="text-xs opacity-80">${effectiveDeliveryFee.toFixed(2)} fee</span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger 
-            value="pickup" 
-            className={`flex flex-col items-center gap-0.5 h-full py-2 ${!brandedColor ? 'data-[state=active]:bg-primary data-[state=active]:text-primary-foreground' : ''}`}
-            style={getActiveStyle(orderType === 'pickup')}
-            data-testid="button-order-type-pickup"
-          >
-            <div className="flex items-center gap-2">
-              <ShoppingBag className="w-4 h-4" />
-              <span className="font-medium">Pickup</span>
-            </div>
-            <span className="text-xs opacity-80">No fee</span>
-          </TabsTrigger>
+        <TabsList className={`grid w-full h-14 ${isDeliveryEnabledInConfig && isPickupEnabledInConfig ? 'grid-cols-2' : 'grid-cols-1'}`}>
+          {isDeliveryEnabledInConfig && (
+            <TabsTrigger 
+              value="delivery" 
+              className={`flex flex-col items-center gap-0.5 h-full py-2 ${!brandedColor ? 'data-[state=active]:bg-primary data-[state=active]:text-primary-foreground' : ''}`}
+              style={getActiveStyle(orderType === 'delivery')}
+              data-testid="button-order-type-delivery"
+            >
+              <div className="flex items-center gap-2">
+                <Truck className="w-4 h-4" />
+                <span className="font-medium">Delivery</span>
+              </div>
+              {orderType === 'delivery' && effectiveDeliveryFee > 0 && (
+                <span className="text-xs opacity-80">${effectiveDeliveryFee.toFixed(2)} fee</span>
+              )}
+            </TabsTrigger>
+          )}
+          {isPickupEnabledInConfig && (
+            <TabsTrigger 
+              value="pickup" 
+              className={`flex flex-col items-center gap-0.5 h-full py-2 ${!brandedColor ? 'data-[state=active]:bg-primary data-[state=active]:text-primary-foreground' : ''}`}
+              style={getActiveStyle(orderType === 'pickup')}
+              data-testid="button-order-type-pickup"
+            >
+              <div className="flex items-center gap-2">
+                <ShoppingBag className="w-4 h-4" />
+                <span className="font-medium">Pickup</span>
+              </div>
+              <span className="text-xs opacity-80">No fee</span>
+            </TabsTrigger>
+          )}
         </TabsList>
       </Tabs>
       

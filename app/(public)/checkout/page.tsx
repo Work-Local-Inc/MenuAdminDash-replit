@@ -85,6 +85,7 @@ export default function CheckoutPage() {
   const [schedulesLoading, setSchedulesLoading] = useState(false)
   const [isDeliveryBlocked, setIsDeliveryBlocked] = useState(false)
   const [isSubmittingCashOrder, setIsSubmittingCashOrder] = useState(false)
+  const [serviceConfig, setServiceConfig] = useState<{ has_delivery_enabled?: boolean; pickup_enabled?: boolean } | null>(null)
 
   // Debug: Log currentUser changes
   useEffect(() => {
@@ -96,29 +97,44 @@ export default function CheckoutPage() {
     console.log('[Checkout] ⭐ loading state changed:', loading)
   }, [loading])
   
-  // Fetch restaurant schedules for time slot validation
+  // Fetch restaurant schedules and service config for time slot validation
   useEffect(() => {
-    const fetchSchedules = async () => {
+    const fetchRestaurantData = async () => {
       if (!restaurantSlug) return
       
       setSchedulesLoading(true)
       try {
-        const response = await fetch(`/api/customer/restaurants/${restaurantSlug}/schedules`)
-        if (response.ok) {
-          const data = await response.json()
+        // Fetch schedules
+        const schedulesResponse = await fetch(`/api/customer/restaurants/${restaurantSlug}/schedules`)
+        if (schedulesResponse.ok) {
+          const data = await schedulesResponse.json()
           console.log('[Checkout] Schedules loaded:', data.schedules?.length || 0)
           setSchedules(data.schedules || [])
         } else {
           console.warn('[Checkout] Failed to fetch schedules, using defaults')
         }
+        
+        // Fetch service config (delivery/pickup enabled flags)
+        const restaurantResponse = await fetch(`/api/customer/restaurants/${restaurantSlug}`)
+        if (restaurantResponse.ok) {
+          const restaurantData = await restaurantResponse.json()
+          const config = restaurantData.delivery_and_pickup_configs?.[0] || restaurantData.delivery_and_pickup_configs
+          if (config) {
+            console.log('[Checkout] Service config loaded:', config)
+            setServiceConfig({
+              has_delivery_enabled: config.has_delivery_enabled,
+              pickup_enabled: config.pickup_enabled
+            })
+          }
+        }
       } catch (error) {
-        console.error('[Checkout] Error fetching schedules:', error)
+        console.error('[Checkout] Error fetching restaurant data:', error)
       } finally {
         setSchedulesLoading(false)
       }
     }
     
-    fetchSchedules()
+    fetchRestaurantData()
   }, [restaurantSlug])
 
   useEffect(() => {
@@ -473,7 +489,7 @@ export default function CheckoutPage() {
             {/* Order Type Selector - Always visible */}
             <Card>
               <CardContent className="p-6">
-                <OrderTypeSelector schedules={schedules} onDeliveryBlocked={setIsDeliveryBlocked} brandedColor={restaurantPrimaryColor || undefined} />
+                <OrderTypeSelector schedules={schedules} onDeliveryBlocked={setIsDeliveryBlocked} brandedColor={restaurantPrimaryColor || undefined} serviceConfig={serviceConfig || undefined} />
               </CardContent>
             </Card>
 
