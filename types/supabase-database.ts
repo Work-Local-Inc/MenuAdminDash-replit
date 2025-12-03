@@ -185,6 +185,7 @@ export interface Database {
           restaurant_id: number
           has_delivery_enabled: boolean
           pickup_enabled: boolean
+          distance_based_delivery_fee: boolean
           takeout_time_minutes: number | null
           twilio_call: boolean | null
           closing_warning_min: number | null

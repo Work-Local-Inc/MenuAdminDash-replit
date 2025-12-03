@@ -50,32 +50,42 @@
 
 There are **TWO** types of delivery fees:
 
-#### 1. Flat Fee (227 restaurants)
+#### 1. Flat Fee (177 restaurants)
+- Flag: `delivery_and_pickup_configs.distance_based_delivery_fee = false`
 - Stored in: `restaurant_delivery_areas.delivery_fee`
-- Flag: `distance_based_delivery_fee = false`
 - Example: $3.00 flat fee for any address in zone
 
 #### 2. Distance-Based Fee (8 restaurants)
+- Flag: `delivery_and_pickup_configs.distance_based_delivery_fee = true`
 - Stored in: `restaurant_distance_based_delivery_fees`
-- Flag: `restaurant_delivery_areas.distance_based_delivery_fee = true`
 - Example: $5.00 for 5km, $6.00 for 6km, etc.
 
 ### Where to Find What
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                        DELIVERY FEE LOOKUP                          │
+│                    DELIVERY FEE LOOKUP FLOW                         │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
-│  1. Check restaurant_delivery_areas.distance_based_delivery_fee    │
+│  STEP 1: Query delivery_and_pickup_configs (indexed lookup)        │
+│          → Get: has_delivery_enabled, distance_based_delivery_fee  │
 │                                                                     │
-│     ├─ FALSE → Use restaurant_delivery_areas.delivery_fee          │
-│     │          (flat fee for the zone)                              │
+│  STEP 2: IF has_delivery_enabled = false → No delivery available   │
+│                                                                     │
+│  STEP 3: Branch based on distance_based_delivery_fee               │
+│                                                                     │
+│     ├─ FALSE → Query restaurant_delivery_areas                     │
+│     │          → Check ST_Contains(geometry, address_point)         │
+│     │          → Return delivery_fee (flat fee for zone)           │
 │     │                                                               │
-│     └─ TRUE  → Query restaurant_distance_based_delivery_fees       │
-│                by restaurant_id + distance_in_km                    │
+│     └─ TRUE  → Calculate distance from restaurant to address       │
+│                → Query restaurant_distance_based_delivery_fees     │
+│                → Return total_delivery_fee for matching distance   │
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
+
+Performance Note: distance_based_delivery_fee has a partial index 
+(idx_delivery_pickup_distance_based) for fast lookups of distance-based restaurants.
 ```
 
 ---
@@ -91,19 +101,21 @@ There are **TWO** types of delivery fees:
           ┌────────────────────────┼────────────────────────────────┐
           │                        │                                │
           ▼                        ▼                                ▼
-┌─────────────────────┐  ┌─────────────────────────┐  ┌─────────────────────────────┐
-│ delivery_and_pickup │  │ restaurant_delivery_    │  │ restaurant_schedules        │
-│ _configs (185)      │  │ areas (235)             │  │ (2,890)                     │
-├─────────────────────┤  ├─────────────────────────┤  ├─────────────────────────────┤
-│ has_delivery_enabled│  │ geometry (polygon)      │  │ type (delivery/takeout)     │
-│ pickup_enabled      │  │ delivery_fee (flat)     │  │ day_start, day_stop         │
-│ takeout_time_minutes│  │ delivery_min_order      │  │ time_start, time_stop       │
-│ twilio_call         │  │ distance_based_fee ─────┼──┼───────────────┐             │
-│ closing_warning_min │  │ estimated_delivery_min  │  │               │             │
-└─────────────────────┘  └─────────────────────────┘  └───────────────┼─────────────┘
-                                                                      │
-                                                                      │ IF true
-                                                                      ▼
+┌─────────────────────────┐  ┌─────────────────────────┐  ┌─────────────────────────────┐
+│ delivery_and_pickup     │  │ restaurant_delivery_    │  │ restaurant_schedules        │
+│ _configs (185)          │  │ areas (235)             │  │ (2,890)                     │
+├─────────────────────────┤  ├─────────────────────────┤  ├─────────────────────────────┤
+│ has_delivery_enabled    │  │ geometry (polygon)      │  │ type (delivery/takeout)     │
+│ pickup_enabled          │  │ delivery_fee (flat)     │  │ day_start, day_stop         │
+│ distance_based_delivery │  │ delivery_min_order      │  │ time_start, time_stop       │
+│ _fee ───────────────────┼──┼─────────────────────────┼──┼───────────────┐             │
+│ takeout_time_minutes    │  │ estimated_delivery_min  │  │               │             │
+│ twilio_call             │  │                         │  │               │             │
+│ closing_warning_min     │  │                         │  │               │             │
+└─────────────────────────┘  └─────────────────────────┘  └───────────────┼─────────────┘
+                                                                          │
+                                                                          │ IF true
+                                                                          ▼
 ┌─────────────────────────────────────────────────────────────────────────────────┐
 │                    restaurant_distance_based_delivery_fees (44)                 │
 ├─────────────────────────────────────────────────────────────────────────────────┤
@@ -271,7 +283,7 @@ Before making changes to this entity:
 
 - [ ] All restaurants have a record in `delivery_and_pickup_configs`
 - [ ] Restaurants with `has_delivery_enabled = true` have at least one delivery area
-- [ ] Distance-based restaurants have `distance_based_delivery_fee = true` in areas
+- [ ] Distance-based restaurants have `distance_based_delivery_fee = true` in `delivery_and_pickup_configs`
 - [ ] Distance-based restaurants have fee tiers in `restaurant_distance_based_delivery_fees`
 - [ ] All schedules have valid time ranges
 - [ ] No schedule conflicts exist (check `v_schedule_conflicts`)
