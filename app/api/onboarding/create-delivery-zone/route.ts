@@ -20,30 +20,45 @@ export async function POST(request: NextRequest) {
     await verifyAdminAuth(request);
     
     const body = await request.json();
+    console.log('Create delivery zone request:', body);
+    
     const validatedData = createDeliveryZoneSchema.parse(body);
 
     const supabase = createAdminClient() as any;
 
-    // Call Santiago's SQL function directly
-    const { data, error } = await supabase.rpc('create_delivery_zone_onboarding', {
-      p_restaurant_id: validatedData.restaurant_id,
-      p_zone_name: validatedData.zone_name,
-      p_center_latitude: validatedData.center_latitude,
-      p_center_longitude: validatedData.center_longitude,
-      p_radius_meters: validatedData.radius_meters,
-      p_delivery_fee_cents: validatedData.delivery_fee_cents,
-      p_minimum_order_cents: validatedData.minimum_order_cents,
-      p_estimated_delivery_minutes: validatedData.estimated_delivery_minutes,
+    // Insert into restaurant_delivery_zones table
+    const { data, error } = await supabase
+      .from('restaurant_delivery_zones')
+      .insert({
+        restaurant_id: validatedData.restaurant_id,
+        zone_name: validatedData.zone_name || 'Default Zone',
+        center_latitude: validatedData.center_latitude,
+        center_longitude: validatedData.center_longitude,
+        radius_meters: validatedData.radius_meters || 5000,
+        delivery_fee_cents: validatedData.delivery_fee_cents,
+        minimum_order_cents: validatedData.minimum_order_cents,
+        estimated_delivery_minutes: validatedData.estimated_delivery_minutes || 45,
+        is_active: true,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Delivery zone insert error:', error);
+      throw error;
+    }
+
+    return NextResponse.json({
+      success: true,
+      delivery_zone: data,
+      message: 'Delivery zone created successfully',
     });
-
-    if (error) throw error;
-
-    return NextResponse.json(data);
   } catch (error: any) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode });
     }
     if (error instanceof z.ZodError) {
+      console.error('Validation error:', error.errors);
       return NextResponse.json({ error: error.errors }, { status: 400 });
     }
     console.error('Create delivery zone onboarding error:', error);

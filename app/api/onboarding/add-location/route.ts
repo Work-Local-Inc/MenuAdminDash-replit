@@ -10,10 +10,10 @@ const addLocationSchema = z.object({
   city_id: z.number(),
   province_id: z.number(),
   postal_code: z.string().min(1, 'Postal code is required'),
-  latitude: z.number(),
-  longitude: z.number(),
+  latitude: z.number().optional().nullable(),
+  longitude: z.number().optional().nullable(),
   phone: z.string().optional().nullable(),
-  email: z.string().email().optional().nullable(),
+  email: z.string().email().optional().nullable().or(z.literal('')),
 });
 
 export async function POST(request: NextRequest) {
@@ -21,31 +21,101 @@ export async function POST(request: NextRequest) {
     await verifyAdminAuth(request);
     
     const body = await request.json();
+    console.log('Add location request body:', body);
+    
     const validatedData = addLocationSchema.parse(body);
 
     const supabase = createAdminClient() as any;
 
-    // Call Santiago's SQL function directly
-    const { data, error } = await supabase.rpc('add_restaurant_location_onboarding', {
-      p_restaurant_id: validatedData.restaurant_id,
-      p_street_address: validatedData.street_address,
-      p_city_id: validatedData.city_id,
-      p_province_id: validatedData.province_id,
-      p_postal_code: validatedData.postal_code,
-      p_latitude: validatedData.latitude,
-      p_longitude: validatedData.longitude,
-      p_phone: validatedData.phone,
-      p_email: validatedData.email,
+    // First check if a location already exists for this restaurant
+    const { data: existingLocation } = await supabase
+      .from('restaurant_locations')
+      .select('id')
+      .eq('restaurant_id', validatedData.restaurant_id)
+      .eq('is_primary', true)
+      .single();
+
+    let result;
+    
+    if (existingLocation) {
+      // Update existing location
+      const { data, error } = await supabase
+        .from('restaurant_locations')
+        .update({
+          street_address: validatedData.street_address,
+          city_id: validatedData.city_id,
+          province_id: validatedData.province_id,
+          postal_code: validatedData.postal_code,
+          latitude: validatedData.latitude || null,
+          longitude: validatedData.longitude || null,
+          phone: validatedData.phone || null,
+          email: validatedData.email || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existingLocation.id)
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('Location update error:', error);
+        throw error;
+      }
+      result = data;
+    } else {
+      // Create new location
+      const { data, error } = await supabase
+        .from('restaurant_locations')
+        .insert({
+          restaurant_id: validatedData.restaurant_id,
+          street_address: validatedData.street_address,
+          city_id: validatedData.city_id,
+          province_id: validatedData.province_id,
+          postal_code: validatedData.postal_code,
+          latitude: validatedData.latitude || null,
+          longitude: validatedData.longitude || null,
+          phone: validatedData.phone || null,
+          email: validatedData.email || null,
+          is_primary: true,
+          is_active: true,
+        })
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('Location insert error:', error);
+        throw error;
+      }
+      result = data;
+    }
+
+    // Also update restaurant_contacts if phone/email provided
+    if (validatedData.phone || validatedData.email) {
+      const { error: contactError } = await supabase
+        .from('restaurant_contacts')
+        .upsert({
+          restaurant_id: validatedData.restaurant_id,
+          phone: validatedData.phone || null,
+          email: validatedData.email || null,
+        }, {
+          onConflict: 'restaurant_id'
+        });
+      
+      if (contactError) {
+        console.error('Contact upsert error (non-fatal):', contactError);
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      location: result,
+      message: 'Location saved successfully',
     });
-
-    if (error) throw error;
-
-    return NextResponse.json(data);
   } catch (error: any) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode });
     }
     if (error instanceof z.ZodError) {
+      console.error('Validation error:', error.errors);
       return NextResponse.json({ error: error.errors }, { status: 400 });
     }
     console.error('Add location onboarding error:', error);
