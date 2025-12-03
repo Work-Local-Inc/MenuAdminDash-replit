@@ -116,16 +116,27 @@ export default function CheckoutPage() {
         
         // Fetch service config (delivery/pickup enabled flags)
         const restaurantResponse = await fetch(`/api/customer/restaurants/${restaurantSlug}`)
+        console.log('[Checkout] Restaurant API response status:', restaurantResponse.status)
         if (restaurantResponse.ok) {
           const restaurantData = await restaurantResponse.json()
+          console.log('[Checkout] Restaurant data keys:', Object.keys(restaurantData))
+          console.log('[Checkout] delivery_and_pickup_configs raw:', restaurantData.delivery_and_pickup_configs)
           const config = restaurantData.delivery_and_pickup_configs?.[0] || restaurantData.delivery_and_pickup_configs
+          console.log('[Checkout] Parsed config:', config)
           if (config) {
-            console.log('[Checkout] Service config loaded:', config)
+            console.log('[Checkout] ✅ Service config loaded:', { 
+              has_delivery_enabled: config.has_delivery_enabled, 
+              pickup_enabled: config.pickup_enabled 
+            })
             setServiceConfig({
               has_delivery_enabled: config.has_delivery_enabled,
               pickup_enabled: config.pickup_enabled
             })
+          } else {
+            console.log('[Checkout] ⚠️ No service config found - delivery/pickup will default to enabled')
           }
+        } else {
+          console.warn('[Checkout] ⚠️ Restaurant API returned error:', restaurantResponse.status)
         }
       } catch (error) {
         console.error('[Checkout] Error fetching restaurant data:', error)
