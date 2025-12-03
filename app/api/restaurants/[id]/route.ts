@@ -43,23 +43,20 @@ export async function PATCH(
     // Validate request body
     const validatedData = restaurantUpdateSchema.parse(body)
 
-    // If status is being updated, use Edge Function for audit trail
+    // If status is being updated, update directly (Edge Function approach was unreliable)
     if (validatedData.status) {
-      const { data: statusData, error: statusError } = await supabase.functions.invoke('update-restaurant-status', {
-        body: {
-          restaurant_id: parseInt(params.id),
-          new_status: validatedData.status,
-          reason: body.reason || `Status changed to ${validatedData.status} by admin`
-        }
-      })
+      // Update status directly in the database
+      const { error: statusError } = await supabase
+        .from('restaurants')
+        .update({ status: validatedData.status })
+        .eq('id', params.id)
 
-      if (statusError) throw statusError
-
-      if (!statusData?.success) {
-        return NextResponse.json({ 
-          error: statusData?.message || 'Failed to update status' 
-        }, { status: 400 })
+      if (statusError) {
+        console.error('[Restaurant API] Status update error:', statusError)
+        throw statusError
       }
+
+      console.log(`[Restaurant API] Status updated for restaurant ${params.id} to ${validatedData.status}`)
 
       // Remove status from validatedData so we don't update it again
       const { status, ...otherFields } = validatedData
