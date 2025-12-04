@@ -1,6 +1,8 @@
 "use client"
 
 import { useState } from "react"
+import { useSearchParams } from "next/navigation"
+import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -12,8 +14,9 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { useCoupons, useCreateCoupon } from "@/lib/hooks/use-coupons"
+import { useRestaurants } from "@/lib/hooks/use-restaurants"
 import { formatCurrency, formatDate } from "@/lib/utils"
-import { Plus, Search, Tag } from "lucide-react"
+import { Plus, Search, Tag, ArrowLeft, Building2, AlertCircle } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -32,11 +35,20 @@ const couponSchema = z.object({
 type CouponFormValues = z.infer<typeof couponSchema>
 
 export default function CouponsPage() {
+  const searchParams = useSearchParams()
+  const restaurantId = searchParams.get('restaurant')
+  
   const [search, setSearch] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const { data: coupons = [], isLoading } = useCoupons()
-  const createCoupon = useCreateCoupon()
+  
+  // Fetch coupons filtered by restaurant
+  const { data: coupons = [], isLoading } = useCoupons(restaurantId || undefined)
+  const createCoupon = useCreateCoupon(restaurantId || undefined)
   const { toast } = useToast()
+  
+  // Get restaurant info for display
+  const { data: restaurants = [] } = useRestaurants({ status: 'active' })
+  const selectedRestaurant = restaurants.find((r: any) => r.id?.toString() === restaurantId)
 
   const form = useForm<CouponFormValues>({
     resolver: zodResolver(couponSchema),
@@ -44,7 +56,7 @@ export default function CouponsPage() {
       code: "",
       discount_type: "percentage" as const,
       discount_value: 0,
-      is_global: true,
+      is_global: false, // Default to restaurant-specific, not global
       min_order_value: undefined,
       max_uses: undefined,
       expires_at: undefined,
@@ -79,12 +91,59 @@ export default function CouponsPage() {
     }
   }
 
+  // If no restaurant selected, show prompt to select one
+  if (!restaurantId) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Coupons</h1>
+            <p className="text-muted-foreground">Manage promotional coupons and discounts</p>
+          </div>
+        </div>
+        <Card>
+          <CardContent className="py-12 text-center">
+            <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <p className="text-lg font-medium mb-2">No Restaurant Selected</p>
+            <p className="text-muted-foreground mb-4">
+              Please select a restaurant from the Marketing Hub to manage its coupons
+            </p>
+            <Button asChild>
+              <Link href="/admin/promotions">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Go to Marketing Hub
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
+      {/* Back link and restaurant context */}
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" size="sm" asChild>
+          <Link href={`/admin/promotions?restaurant=${restaurantId}`}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Marketing Hub
+          </Link>
+        </Button>
+        {selectedRestaurant && (
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/5 border border-primary/20 rounded-lg">
+            <Building2 className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium">{selectedRestaurant.name}</span>
+          </div>
+        )}
+      </div>
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Coupons</h1>
-          <p className="text-muted-foreground">Manage promotional coupons and discounts</p>
+          <p className="text-muted-foreground">
+            Manage coupons for {selectedRestaurant?.name || 'your restaurant'}
+          </p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
@@ -236,9 +295,14 @@ export default function CouponsPage() {
                   render={({ field }) => (
                     <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                       <div className="space-y-0.5">
-                        <FormLabel className="text-base">Global Coupon</FormLabel>
+                        <FormLabel className="text-base">
+                          {field.value ? "Global Coupon" : "Restaurant-Specific Coupon"}
+                        </FormLabel>
                         <FormDescription>
-                          Available for all restaurants
+                          {field.value 
+                            ? "Available for ALL restaurants on the platform"
+                            : `Only available for ${selectedRestaurant?.name || 'this restaurant'}`
+                          }
                         </FormDescription>
                       </div>
                       <FormControl>
