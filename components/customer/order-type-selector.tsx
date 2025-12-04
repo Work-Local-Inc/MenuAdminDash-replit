@@ -126,6 +126,12 @@ export function OrderTypeSelector({ className, schedules = [], onDeliveryBlocked
   const isDeliveryEnabledInConfig = serviceConfig?.has_delivery_enabled ?? true;
   const isPickupEnabledInConfig = serviceConfig?.pickup_enabled ?? true;
   
+  // Calculate effective order type - this is the order type that should be used throughout the component
+  // It handles the case where only one service is enabled (force that service type)
+  const isPickupOnly = !isDeliveryEnabledInConfig && isPickupEnabledInConfig;
+  const isDeliveryOnly = isDeliveryEnabledInConfig && !isPickupEnabledInConfig;
+  const effectiveOrderType = isPickupOnly ? 'pickup' : (isDeliveryOnly ? 'delivery' : orderType);
+  
   // Memoize service open status to prevent inconsistent results across component
   const deliveryStatus = useMemo(() => isServiceOpen(schedules, 'delivery'), [schedules]);
   const pickupStatus = useMemo(() => isServiceOpen(schedules, 'takeout'), [schedules]);
@@ -138,12 +144,12 @@ export function OrderTypeSelector({ className, schedules = [], onDeliveryBlocked
   const isDeliveryUnavailable = !isDeliveryEnabledInConfig || isDeliveryClosed;
   const isPickupUnavailable = !isPickupEnabledInConfig || isPickupClosed;
   
-  // Determine if current service type is closed
-  const isCurrentServiceClosed = orderType === 'delivery' ? isDeliveryClosed : isPickupClosed;
-  const currentServiceOpensAt = orderType === 'delivery' ? deliveryStatus.opensAt : pickupStatus.opensAt;
+  // Determine if current service type is closed - use effectiveOrderType for consistency
+  const isCurrentServiceClosed = effectiveOrderType === 'delivery' ? isDeliveryClosed : isPickupClosed;
+  const currentServiceOpensAt = effectiveOrderType === 'delivery' ? deliveryStatus.opensAt : pickupStatus.opensAt;
   
-  // Check if schedules are missing for the current service type
-  const hasNoSchedulesForService = orderType === 'delivery' 
+  // Check if schedules are missing for the current service type - use effectiveOrderType
+  const hasNoSchedulesForService = effectiveOrderType === 'delivery' 
     ? !deliveryStatus.hasAnySchedules 
     : !pickupStatus.hasAnySchedules;
   
@@ -222,7 +228,7 @@ export function OrderTypeSelector({ className, schedules = [], onDeliveryBlocked
         <Alert className="mt-4" variant="default">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            {orderType === 'delivery' ? 'Delivery' : 'Pickup'} is currently closed
+            {effectiveOrderType === 'delivery' ? 'Delivery' : 'Pickup'} is currently closed
             {currentServiceOpensAt && `. Opens at ${formatTimeForDisplay(currentServiceOpensAt)}`}
             . You can schedule your order for a later time below.
           </AlertDescription>
@@ -234,7 +240,7 @@ export function OrderTypeSelector({ className, schedules = [], onDeliveryBlocked
         <Alert className="mt-4" variant="default">
           <Info className="h-4 w-4" />
           <AlertDescription>
-            No {orderType === 'delivery' ? 'delivery' : 'pickup'} hours are configured for this restaurant. 
+            No {effectiveOrderType === 'delivery' ? 'delivery' : 'pickup'} hours are configured for this restaurant. 
             Please contact the restaurant directly to confirm availability.
           </AlertDescription>
         </Alert>
@@ -244,7 +250,7 @@ export function OrderTypeSelector({ className, schedules = [], onDeliveryBlocked
       <Separator className="my-4" />
       <PickupTimeSelector 
         schedules={schedules} 
-        orderType={orderType}
+        orderType={effectiveOrderType}
         brandedColor={brandedColor}
         isServiceClosed={isCurrentServiceClosed}
         serviceOpensAt={currentServiceOpensAt}
