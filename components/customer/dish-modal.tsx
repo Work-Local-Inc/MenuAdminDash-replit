@@ -170,7 +170,7 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
   
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0" data-testid={`modal-dish-${dish.id}`}>
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-2xl max-h-[90vh] overflow-y-auto p-0 mx-4 sm:mx-auto" data-testid={`modal-dish-${dish.id}`}>
         {/* Hero Image - Full Width at Top */}
         {dish.image_url && (
           <div className="w-full h-48 sm:h-64 bg-muted relative">
@@ -349,8 +349,8 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
           </div>
           
           {/* Quantity and Add to Cart */}
-          <div className="flex items-center justify-between gap-4 pt-4 border-t">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-4 border-t">
+            <div className="flex items-center justify-center sm:justify-start gap-3">
               <Label className="font-semibold">Quantity:</Label>
               <div className="flex items-center gap-2">
                 <Button
@@ -381,7 +381,7 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
             <Button
               size="lg"
               onClick={handleAddToCart}
-              className={`px-8 ${getButtonClassName(false)}`}
+              className={`w-full sm:w-auto px-8 ${getButtonClassName(false)}`}
               data-testid="button-add-to-cart"
             >
               Add to Cart - ${Number(itemTotal).toFixed(2)}
