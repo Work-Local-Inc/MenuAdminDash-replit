@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -26,7 +26,7 @@ const campaignTypes = [
     description: 'Create a discount code customers enter at checkout',
     icon: Tag,
     color: 'bg-blue-500',
-    href: '/admin/coupons',
+    baseHref: '/admin/coupons',
     features: ['Percentage or fixed discount', 'Usage limits', 'Expiration dates', 'Restaurant specific or global'],
   },
   {
@@ -35,7 +35,7 @@ const campaignTypes = [
     description: 'Create automatic discounts like BOGO, combos, or time-based offers',
     icon: Gift,
     color: 'bg-purple-500',
-    href: '/admin/promotions/deals',
+    baseHref: '/admin/promotions/deals',
     features: ['Buy one get one', 'Combo meals', 'Happy hour discounts', 'Limited time offers'],
   },
   {
@@ -44,7 +44,7 @@ const campaignTypes = [
     description: 'Suggest additional items to increase average order value',
     icon: TrendingUp,
     color: 'bg-green-500',
-    href: '/admin/promotions/upsells',
+    baseHref: '/admin/promotions/upsells',
     features: ['Cart suggestions', 'Cross-sell products', 'Add-on discounts', 'Smart recommendations'],
   },
 ]
@@ -102,14 +102,21 @@ const templates = [
 
 export default function CreateCampaignPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const restaurantId = searchParams.get('restaurant')
   const [selectedType, setSelectedType] = useState<string | null>(null)
+
+  // Build href with restaurant context
+  const buildHref = (baseHref: string) => {
+    return restaurantId ? `${baseHref}?restaurant=${restaurantId}` : baseHref
+  }
 
   return (
     <div className="space-y-8">
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
-          <Link href="/admin/promotions">
+          <Link href={restaurantId ? `/admin/promotions?restaurant=${restaurantId}` : "/admin/promotions"}>
             <ArrowLeft className="h-5 w-5" />
           </Link>
         </Button>
@@ -131,7 +138,7 @@ export default function CreateCampaignPage() {
               className={`cursor-pointer transition-all hover:shadow-lg ${
                 selectedType === type.id ? 'ring-2 ring-primary' : ''
               }`}
-              onClick={() => router.push(type.href)}
+              onClick={() => router.push(buildHref(type.baseHref))}
             >
               <CardContent className="p-6">
                 <div className={`p-3 rounded-xl ${type.color} w-fit mb-4`}>
@@ -172,7 +179,7 @@ export default function CreateCampaignPage() {
               className="group relative overflow-hidden rounded-xl border-2 hover:border-primary/50 p-6 text-left transition-all hover:shadow-lg bg-card"
               onClick={() => {
                 const type = campaignTypes.find(t => t.id === template.type)
-                if (type) router.push(type.href)
+                if (type) router.push(buildHref(type.baseHref))
               }}
             >
               {template.popular && (
