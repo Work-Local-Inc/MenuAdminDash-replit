@@ -344,6 +344,7 @@ export default function CouponsPage() {
                         <Input 
                           type="date" 
                           data-testid="input-expires-at"
+                          className="relative z-50"
                           {...field}
                           value={field.value ? field.value.split('T')[0] : ''}
                           onChange={(e) => field.onChange(e.target.value ? `${e.target.value}T23:59:59Z` : '')}
@@ -437,30 +438,39 @@ export default function CouponsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredCoupons.map((coupon: any) => (
-                    <TableRow key={coupon.id} data-testid={`row-coupon-${coupon.id}`}>
-                      <TableCell className="font-mono font-bold">{coupon.code}</TableCell>
-                      <TableCell className="capitalize">{coupon.discount_type}</TableCell>
-                      <TableCell>
-                        {coupon.discount_type === "percentage" 
-                          ? `${coupon.discount_value}%` 
-                          : formatCurrency(coupon.discount_value, 'CAD')
-                        }
-                      </TableCell>
-                      <TableCell>
-                        {coupon.min_order_value ? formatCurrency(coupon.min_order_value, 'CAD') : "—"}
-                      </TableCell>
-                      <TableCell>{coupon.max_uses || "Unlimited"}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {coupon.expires_at ? formatDate(coupon.expires_at) : "No expiry"}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={coupon.is_global ? "default" : "secondary"}>
-                          {coupon.is_global ? "Global" : "Restaurant"}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {filteredCoupons.map((coupon: any) => {
+                    // Database uses: discount_amount, minimum_purchase, max_redemptions, valid_until_at
+                    // Also check legacy names for backwards compatibility
+                    const discountValue = coupon.discount_amount ?? coupon.redeem_value_limit ?? coupon.discount_value
+                    const minOrder = coupon.minimum_purchase ?? coupon.min_order_value
+                    const maxUses = coupon.max_redemptions ?? coupon.usage_limit ?? coupon.max_uses
+                    const expiresAt = coupon.valid_until_at ?? coupon.expires_at
+                    
+                    return (
+                      <TableRow key={coupon.id} data-testid={`row-coupon-${coupon.id}`}>
+                        <TableCell className="font-mono font-bold">{coupon.code}</TableCell>
+                        <TableCell className="capitalize">{coupon.discount_type}</TableCell>
+                        <TableCell>
+                          {coupon.discount_type === "percentage" || coupon.discount_type === "percent"
+                            ? `${discountValue}%` 
+                            : formatCurrency(discountValue, 'CAD')
+                          }
+                        </TableCell>
+                        <TableCell>
+                          {minOrder ? formatCurrency(minOrder, 'CAD') : "—"}
+                        </TableCell>
+                        <TableCell>{maxUses || "Unlimited"}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {expiresAt ? formatDate(expiresAt) : "No expiry"}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="secondary">
+                            Restaurant
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
                 </TableBody>
               </Table>
             </div>

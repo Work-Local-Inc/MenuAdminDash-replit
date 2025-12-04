@@ -2,6 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
 /**
+ * Extract restaurant ID from slug format: "restaurant-name-123"
+ */
+function extractIdFromSlug(slug: string): number | null {
+  // Try to match ID at end of slug (format: restaurant-name-123)
+  const match = slug.match(/-(\d+)$/);
+  if (match) return parseInt(match[1], 10);
+  
+  // Try pure numeric slug
+  const numericMatch = slug.match(/^(\d+)$/);
+  if (numericMatch) return parseInt(numericMatch[1], 10);
+  
+  return null;
+}
+
+/**
  * POST /api/promotions/validate
  * Validate a promo code against promotional_coupons or promotional_deals
  */
@@ -19,11 +34,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // First, get restaurant_id from slug
+    // Extract restaurant ID from slug (format: restaurant-name-123)
+    const restaurant_id = extractIdFromSlug(restaurant_slug);
+    
+    if (!restaurant_id) {
+      return NextResponse.json(
+        { error: 'Invalid restaurant identifier' },
+        { status: 400 }
+      );
+    }
+    
+    // Verify restaurant exists
     const { data: restaurant, error: restaurantError } = await supabase
       .from('restaurants')
       .select('id')
-      .eq('slug', restaurant_slug)
+      .eq('id', restaurant_id)
       .single();
 
     if (restaurantError || !restaurant) {
@@ -32,8 +57,6 @@ export async function POST(request: NextRequest) {
         { status: 404 }
       );
     }
-
-    const restaurant_id = restaurant.id;
 
     // =====================================================
     // Check promotional_coupons (legacy/main coupons table)
@@ -66,8 +89,18 @@ export async function POST(request: NextRequest) {
         );
       }
       
-      // Check usage limit
-      if (coupon.usage_limit !== null && coupon.usage_count >= coupon.usage_limit) {
+      // Check if coupon is active
+      if (coupon.is_active === false) {
+        return NextResponse.json(
+          { error: 'This promo code is no longer active' },
+          { status: 400 }
+        );
+      }
+      
+      // Check usage limit - handle both old (usage_limit/usage_count) and new (max_redemptions/redemption_count) column names
+      const usageLimit = coupon.max_redemptions ?? coupon.usage_limit;
+      const usageCount = coupon.redemption_count ?? coupon.usage_count ?? 0;
+      if (usageLimit !== null && usageLimit !== undefined && usageCount >= usageLimit) {
         return NextResponse.json(
           { error: 'This promo code has reached its usage limit' },
           { status: 400 }
@@ -113,36 +146,38 @@ export async function POST(request: NextRequest) {
         }
       }
       
-      // Calculate discount
+      // Calculate discount - handle both old and new column names
+      // Old: redeem_value_limit, percent/currency
+      // New: discount_amount, percentage/fixed
       let discountValue = 0;
       let description = '';
+      let discountType = coupon.discount_type;
       
-      switch (coupon.discount_type) {
-        case 'percent':
-          discountValue = coupon.redeem_value_limit || 0;
-          description = `${discountValue}% off your order`;
-          break;
-        case 'currency':
-          discountValue = coupon.redeem_value_limit || 0;
-          description = `$${discountValue} off your order`;
-          break;
-        case 'item':
-          discountValue = 0; // Item value determined at checkout
-          description = coupon.name || 'Free item';
-          break;
-        case 'delivery':
-          discountValue = 0; // Delivery fee
-          description = 'Free delivery';
-          break;
-        default:
-          discountValue = coupon.redeem_value_limit || 0;
-          description = coupon.name || 'Discount applied';
+      // Normalize discount type names
+      if (discountType === 'percent' || discountType === 'percentage') {
+        discountValue = coupon.discount_amount ?? coupon.redeem_value_limit ?? 0;
+        description = `${discountValue}% off your order`;
+        discountType = 'percent'; // Normalize for frontend
+      } else if (discountType === 'currency' || discountType === 'fixed') {
+        discountValue = coupon.discount_amount ?? coupon.redeem_value_limit ?? 0;
+        description = `$${discountValue} off your order`;
+        discountType = 'currency'; // Normalize for frontend
+      } else if (discountType === 'item') {
+        discountValue = 0; // Item value determined at checkout
+        description = coupon.name || 'Free item';
+      } else if (discountType === 'delivery') {
+        discountValue = 0; // Delivery fee
+        description = 'Free delivery';
+      } else {
+        // Fallback - try to get value from either column
+        discountValue = coupon.discount_amount ?? coupon.redeem_value_limit ?? 0;
+        description = coupon.name || 'Discount applied';
       }
       
       return NextResponse.json({
         valid: true,
         code: coupon.code,
-        discount_type: coupon.discount_type,
+        discount_type: discountType, // Use normalized type
         discount_value: discountValue,
         description: description,
         promo_id: coupon.id,
