@@ -40,7 +40,7 @@ import {
 } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
 
-// Quick action card component
+// Quick action card component - uses onClick for reliable navigation
 function QuickActionCard({ 
   icon: Icon, 
   title, 
@@ -48,6 +48,7 @@ function QuickActionCard({
   href, 
   color,
   restaurantId,
+  onNavigate,
 }: { 
   icon: any
   title: string
@@ -55,30 +56,36 @@ function QuickActionCard({
   href: string
   color: string
   restaurantId?: string
+  onNavigate: (href: string) => void
 }) {
-  const fullHref = restaurantId ? `${href}?restaurant=${restaurantId}` : href
+  const handleClick = () => {
+    const fullHref = restaurantId ? `${href}?restaurant=${restaurantId}` : href
+    onNavigate(fullHref)
+  }
   
   return (
-    <Link href={fullHref}>
-      <Card className="group hover:shadow-lg transition-all duration-200 cursor-pointer border-2 hover:border-primary/50">
-        <CardContent className="p-6">
-          <div className="flex items-start gap-4">
-            <div className={`p-3 rounded-xl ${color}`}>
-              <Icon className="h-6 w-6 text-white" />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-semibold text-lg group-hover:text-primary transition-colors">
-                {title}
-              </h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                {description}
-              </p>
-            </div>
-            <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+    <Card 
+      className="group hover:shadow-lg transition-all duration-200 cursor-pointer border-2 hover:border-primary/50"
+      onClick={handleClick}
+      data-testid={`card-${title.toLowerCase().replace(/\s+/g, '-')}`}
+    >
+      <CardContent className="p-6">
+        <div className="flex items-start gap-4">
+          <div className={`p-3 rounded-xl ${color}`}>
+            <Icon className="h-6 w-6 text-white" />
           </div>
-        </CardContent>
-      </Card>
-    </Link>
+          <div className="flex-1">
+            <h3 className="font-semibold text-lg group-hover:text-primary transition-colors">
+              {title}
+            </h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              {description}
+            </p>
+          </div>
+          <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 
@@ -179,7 +186,7 @@ export default function MarketingHubPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   
-  // Restaurant selection state
+  // Restaurant selection state - synced with URL
   const initialRestaurantId = searchParams.get('restaurant') || ''
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string>(initialRestaurantId)
   
@@ -355,6 +362,7 @@ export default function MarketingHubPage() {
                 href="/admin/coupons"
                 color="bg-blue-500"
                 restaurantId={selectedRestaurantId}
+                onNavigate={(href) => router.push(href)}
               />
               <QuickActionCard
                 icon={Gift}
@@ -363,6 +371,7 @@ export default function MarketingHubPage() {
                 href="/admin/promotions/deals"
                 color="bg-purple-500"
                 restaurantId={selectedRestaurantId}
+                onNavigate={(href) => router.push(href)}
               />
               <QuickActionCard
                 icon={TrendingUp}
@@ -371,6 +380,7 @@ export default function MarketingHubPage() {
                 href="/admin/promotions/upsells"
                 color="bg-green-500"
                 restaurantId={selectedRestaurantId}
+                onNavigate={(href) => router.push(href)}
               />
             </div>
           </div>
