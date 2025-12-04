@@ -362,7 +362,9 @@ export function RestaurantHours({ restaurantId }: RestaurantHoursProps) {
               <DialogHeader>
                 <DialogTitle>{editingSchedule ? "Edit Schedule" : "Add New Schedule"}</DialogTitle>
                 <DialogDescription>
-                  {editingSchedule ? "Update operating hours" : "Add operating hours for delivery or takeout"}
+                  {editingSchedule 
+                    ? "Update operating hours for this day" 
+                    : "Select multiple days to create schedules in bulk - saves time!"}
                 </DialogDescription>
               </DialogHeader>
               <Form {...form}>
