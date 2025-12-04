@@ -108,7 +108,10 @@ export default function CreateCampaignPage() {
 
   // Build href with restaurant context
   const buildHref = (baseHref: string) => {
-    return restaurantId ? `${baseHref}?restaurant=${restaurantId}` : baseHref
+    const fullHref = restaurantId ? `${baseHref}?restaurant=${restaurantId}` : baseHref
+    // DEBUG
+    alert(`CreateCampaignPage buildHref:\nbaseHref: ${baseHref}\nrestaurantId: ${restaurantId}\nfullHref: ${fullHref}`)
+    return fullHref
   }
 
   return (
