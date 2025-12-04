@@ -60,6 +60,8 @@ function QuickActionCard({
 }) {
   const handleClick = () => {
     const fullHref = restaurantId ? `${href}?restaurant=${restaurantId}` : href
+    // DEBUG: Show alert to confirm what URL we're navigating to
+    alert(`Navigating to: ${fullHref}\nRestaurant ID: ${restaurantId || 'NONE'}`)
     onNavigate(fullHref)
   }
   
