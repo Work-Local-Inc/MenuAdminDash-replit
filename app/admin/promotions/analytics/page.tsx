@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -22,6 +23,7 @@ import {
   Percent,
   Ticket,
   RefreshCcw,
+  Building2,
 } from "lucide-react"
 import {
   BarChart,
@@ -58,10 +60,24 @@ interface ChartData {
 const CHART_COLORS = ['#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#EF4444', '#EC4899']
 
 export default function AnalyticsPage() {
+  const searchParams = useSearchParams()
+  const restaurantIdFromUrl = searchParams.get('restaurant')
+  
   const { data: restaurants } = useAdminRestaurants()
-  const [selectedRestaurantId, setSelectedRestaurantId] = useState<string>("all")
+  // Use URL param if provided, otherwise default to "all"
+  const [selectedRestaurantId, setSelectedRestaurantId] = useState<string>(restaurantIdFromUrl || "all")
   const [chartData, setChartData] = useState<ChartData | null>(null)
   const [loading, setLoading] = useState(true)
+  
+  // Sync state with URL when URL changes
+  useEffect(() => {
+    if (restaurantIdFromUrl && restaurantIdFromUrl !== selectedRestaurantId) {
+      setSelectedRestaurantId(restaurantIdFromUrl)
+    }
+  }, [restaurantIdFromUrl])
+  
+  // Find selected restaurant info
+  const selectedRestaurant = restaurants?.find((r: any) => r.id?.toString() === selectedRestaurantId)
 
   const fetchChartData = async () => {
     setLoading(true)
@@ -128,7 +144,7 @@ export default function AnalyticsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" asChild>
-            <Link href="/admin/promotions">
+            <Link href={selectedRestaurantId !== "all" ? `/admin/promotions?restaurant=${selectedRestaurantId}` : '/admin/promotions'}>
               <ArrowLeft className="h-5 w-5" />
             </Link>
           </Button>
@@ -140,7 +156,10 @@ export default function AnalyticsPage() {
               Campaign Analytics
             </h1>
             <p className="text-muted-foreground mt-1">
-              Track performance of your marketing campaigns
+              {selectedRestaurant 
+                ? `Analytics for ${selectedRestaurant.name}`
+                : 'Track performance of your marketing campaigns'
+              }
             </p>
           </div>
         </div>
