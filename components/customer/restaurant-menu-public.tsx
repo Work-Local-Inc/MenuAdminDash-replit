@@ -15,12 +15,14 @@ interface RestaurantMenuPublicProps {
   restaurant: any
   courses: any[]
   hasMenu?: boolean
+  slug?: string // Actual URL slug from the page
 }
 
 export default function RestaurantMenuPublic({
   restaurant,
   courses,
   hasMenu = true,
+  slug: urlSlug,
 }: RestaurantMenuPublicProps) {
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -34,10 +36,11 @@ export default function RestaurantMenuPublic({
   // Resolve branding colors - treats legacy grays/blacks as "unset" and returns Menu.ca red
   const brandColors = resolveBrandingColors(restaurant)
 
-  // Generate restaurant slug for API calls
+  // Use URL slug if provided, otherwise generate one (fallback)
   const restaurantSlug = useMemo(() => {
+    if (urlSlug) return urlSlug
     return `${restaurant.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${restaurant.id}`
-  }, [restaurant.name, restaurant.id])
+  }, [urlSlug, restaurant.name, restaurant.id])
 
   useEffect(() => {
     setMounted(true)
@@ -60,14 +63,14 @@ export default function RestaurantMenuPublic({
     )
     const deliveryFee = activeArea?.delivery_fee ?? 0
     const minOrder = activeArea?.delivery_min_order || serviceConfig?.delivery_min_order || 0
-    const slug = `${restaurant.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${restaurant.id}`
 
     const address = streetAddress
       ? `${streetAddress}${postalCode ? `, ${postalCode}` : ''}`
       : undefined
 
-    setRestaurant(restaurant.id, restaurant.name, slug, deliveryFee, minOrder, address, brandColors.primary)
-  }, [restaurant.id, restaurant.name, restaurant.restaurant_delivery_areas, serviceConfig, setRestaurant, streetAddress, postalCode, brandColors.primary])
+    // Use the restaurantSlug which prefers urlSlug if provided
+    setRestaurant(restaurant.id, restaurant.name, restaurantSlug, deliveryFee, minOrder, address, brandColors.primary)
+  }, [restaurant.id, restaurant.name, restaurant.restaurant_delivery_areas, serviceConfig, setRestaurant, streetAddress, postalCode, brandColors.primary, restaurantSlug])
 
   const scrollToCategory = (courseId: string) => {
     const element = document.getElementById(`category-${courseId}`)

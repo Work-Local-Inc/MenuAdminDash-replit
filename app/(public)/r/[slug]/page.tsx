@@ -187,7 +187,7 @@ export default async function RestaurantPage({ params }: RestaurantPageProps) {
   
   return (
     <div style={dynamicStyle}>
-      <RestaurantMenu restaurant={restaurant} courses={courses} />
+      <RestaurantMenu restaurant={restaurant} courses={courses} slug={params.slug} />
     </div>
   );
 }

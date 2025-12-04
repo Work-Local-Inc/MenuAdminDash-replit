@@ -43,6 +43,7 @@ interface RestaurantMenuProps {
   courses: any[];
   hasMenu?: boolean;
   editorMode?: boolean;
+  slug?: string; // Actual URL slug from the page
   availableModifierGroups?: any[];
   getCategoryModifierIds?: (categoryId: number) => number[];
   onToggleCategoryModifier?: (categoryId: number, modifierGroupId: number, isAssociated: boolean) => Promise<void>;
@@ -68,6 +69,7 @@ export default function RestaurantMenu({
   courses, 
   hasMenu = true,
   editorMode = false,
+  slug: urlSlug,
   availableModifierGroups = [],
   getCategoryModifierIds,
   onToggleCategoryModifier,
@@ -121,7 +123,9 @@ export default function RestaurantMenu({
       );
       const deliveryFee = activeArea?.delivery_fee ?? 0;
       const minOrder = activeArea?.delivery_min_order || serviceConfig?.delivery_min_order || 0;
-      const slug = `${restaurant.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${restaurant.id}`;
+      
+      // Use URL slug if provided, otherwise generate one (fallback)
+      const slug = urlSlug || `${restaurant.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${restaurant.id}`;
       
       // Build restaurant address for pickup display
       const address = streetAddress 
@@ -133,7 +137,7 @@ export default function RestaurantMenu({
       
       setRestaurant(restaurant.id, restaurant.name, slug, deliveryFee, minOrder, address, primaryColor);
     }
-  }, [editorMode, restaurant.id, restaurant.name, restaurant.restaurant_delivery_areas, serviceConfig, setRestaurant, streetAddress, postalCode, restaurant.primary_color]);
+  }, [editorMode, restaurant.id, restaurant.name, restaurant.restaurant_delivery_areas, serviceConfig, setRestaurant, streetAddress, postalCode, restaurant.primary_color, urlSlug]);
   
   // Scroll to category section
   const scrollToCategory = (courseId: string) => {

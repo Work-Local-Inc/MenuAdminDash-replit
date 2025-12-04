@@ -76,6 +76,13 @@ export async function POST(request: NextRequest) {
       .is('deleted_at', null)
       .single();
 
+    console.log('[Promo Validate] Coupon lookup:', { 
+      code: code.toUpperCase(), 
+      restaurant_id, 
+      coupon: coupon ? { id: coupon.id, code: coupon.code } : null, 
+      couponError: couponError?.message 
+    });
+
     if (coupon && !couponError) {
       // Found a coupon! Validate it
       const now = new Date();
