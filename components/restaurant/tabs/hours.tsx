@@ -14,11 +14,15 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Checkbox } from "@/components/ui/checkbox"
 import { useToast } from "@/hooks/use-toast"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { Plus, Clock, Pencil, Trash2 } from "lucide-react"
+
+// Short day labels for checkboxes
+const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 
 // Helper to convert 12-hour format to 24-hour format
 const convertTo24Hour = (time: string): string => {
@@ -80,6 +84,7 @@ export function RestaurantHours({ restaurantId }: RestaurantHoursProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingSchedule, setEditingSchedule] = useState<any>(null)
   const [activeTab, setActiveTab] = useState<"delivery" | "takeout">("delivery")
+  const [selectedDays, setSelectedDays] = useState<number[]>([1, 2, 3, 4, 5]) // Default: Mon-Fri
   const { toast } = useToast()
 
   // Fetch schedules
@@ -100,21 +105,42 @@ export function RestaurantHours({ restaurantId }: RestaurantHoursProps) {
     },
   })
 
-  // Create schedule
+  // Create schedule - handles multiple days by creating one schedule per day
   const createSchedule = useMutation({
-    mutationFn: async (data: ScheduleFormValues) => {
-      const res = await fetch(`/api/restaurants/${restaurantId}/schedules`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...data, restaurant_id: restaurantId }),
-      })
-      if (!res.ok) throw new Error(await res.text())
-      return res.json()
+    mutationFn: async (data: ScheduleFormValues & { days?: number[] }) => {
+      const daysToCreate = data.days || [data.day_start]
+      const results = []
+      
+      for (const day of daysToCreate) {
+        const scheduleData = {
+          type: data.type,
+          day_start: day,
+          day_stop: day, // Each schedule is for a single day
+          time_start: data.time_start,
+          time_stop: data.time_stop,
+          is_enabled: data.is_enabled,
+          restaurant_id: restaurantId,
+        }
+        
+        const res = await fetch(`/api/restaurants/${restaurantId}/schedules`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(scheduleData),
+        })
+        if (!res.ok) {
+          const errorText = await res.text()
+          throw new Error(`Failed for ${DAYS[day]?.label || day}: ${errorText}`)
+        }
+        results.push(await res.json())
+      }
+      return results
     },
-    onSuccess: () => {
+    onSuccess: (results) => {
       queryClient.invalidateQueries({ queryKey: ['/api/restaurants', restaurantId, 'schedules'] })
-      toast({ title: "Success", description: "Schedule created successfully" })
+      const count = Array.isArray(results) ? results.length : 1
+      toast({ title: "Success", description: `${count} schedule(s) created successfully` })
       setIsDialogOpen(false)
+      setSelectedDays([1, 2, 3, 4, 5]) // Reset to default
       form.reset()
     },
     onError: (error: any) => {
@@ -193,9 +219,28 @@ export function RestaurantHours({ restaurantId }: RestaurantHoursProps) {
     if (editingSchedule) {
       await updateSchedule.mutateAsync({ id: editingSchedule.id, data })
     } else {
-      await createSchedule.mutateAsync(data)
+      // When creating, use the selectedDays checkboxes
+      if (selectedDays.length === 0) {
+        toast({ title: "Error", description: "Please select at least one day", variant: "destructive" })
+        return
+      }
+      await createSchedule.mutateAsync({ ...data, days: selectedDays })
     }
   }
+  
+  // Toggle a day in the selected days array
+  const toggleDay = (day: number) => {
+    setSelectedDays(prev => 
+      prev.includes(day) 
+        ? prev.filter(d => d !== day)
+        : [...prev, day].sort((a, b) => a - b)
+    )
+  }
+  
+  // Quick select helpers
+  const selectWeekdays = () => setSelectedDays([1, 2, 3, 4, 5])
+  const selectWeekends = () => setSelectedDays([0, 6])
+  const selectAllDays = () => setSelectedDays([0, 1, 2, 3, 4, 5, 6])
 
   const handleEdit = (schedule: any) => {
     setEditingSchedule(schedule)
@@ -344,16 +389,21 @@ export function RestaurantHours({ restaurantId }: RestaurantHoursProps) {
                     )}
                   />
 
-                  <div className="grid grid-cols-2 gap-4">
+                  {/* Day Selection - Checkboxes for create, single dropdown for edit */}
+                  {editingSchedule ? (
+                    // Edit mode: Single day dropdown (since each schedule is for one day)
                     <FormField
                       control={form.control}
                       name="day_start"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Start Day</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value?.toString()}>
+                          <FormLabel>Day</FormLabel>
+                          <Select onValueChange={(val) => {
+                            field.onChange(val)
+                            form.setValue('day_stop', parseInt(val))
+                          }} value={field.value?.toString()}>
                             <FormControl>
-                              <SelectTrigger data-testid="select-day-start">
+                              <SelectTrigger data-testid="select-day">
                                 <SelectValue placeholder="Select day" />
                               </SelectTrigger>
                             </FormControl>
@@ -369,33 +419,45 @@ export function RestaurantHours({ restaurantId }: RestaurantHoursProps) {
                         </FormItem>
                       )}
                     />
-
-                    <FormField
-                      control={form.control}
-                      name="day_stop"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>End Day</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value?.toString()}>
-                            <FormControl>
-                              <SelectTrigger data-testid="select-day-stop">
-                                <SelectValue placeholder="Select day" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {DAYS.map((day) => (
-                                <SelectItem key={day.value} value={day.value.toString()}>
-                                  {day.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormDescription>For single day, use same as start day</FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                  ) : (
+                    // Create mode: Multi-day checkboxes
+                    <div className="space-y-3">
+                      <FormLabel>Days of Week</FormLabel>
+                      <div className="flex items-center gap-2">
+                        {DAYS.map((day, index) => (
+                          <div 
+                            key={day.value}
+                            className="flex flex-col items-center gap-1"
+                          >
+                            <span className="text-xs text-muted-foreground font-medium">
+                              {DAY_LABELS[index]}
+                            </span>
+                            <Checkbox
+                              id={`day-${day.value}`}
+                              checked={selectedDays.includes(day.value)}
+                              onCheckedChange={() => toggleDay(day.value)}
+                              data-testid={`checkbox-day-${day.value}`}
+                              className="h-8 w-8"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex gap-2 mt-2">
+                        <Button type="button" variant="outline" size="sm" onClick={selectWeekdays}>
+                          Weekdays
+                        </Button>
+                        <Button type="button" variant="outline" size="sm" onClick={selectWeekends}>
+                          Weekends
+                        </Button>
+                        <Button type="button" variant="outline" size="sm" onClick={selectAllDays}>
+                          All Days
+                        </Button>
+                      </div>
+                      <FormDescription>
+                        Select multiple days to create schedules in bulk
+                      </FormDescription>
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
