@@ -86,13 +86,8 @@ const menuItems = [
   },
   {
     title: "Marketing",
+    url: "/admin/promotions",
     icon: Megaphone,
-    items: [
-      { title: "Marketing Hub", url: "/admin/promotions" },
-      { title: "Coupons", url: "/admin/coupons" },
-      { title: "Deals & Promos", url: "/admin/promotions/deals" },
-      { title: "Upsells", url: "/admin/promotions/upsells" },
-    ],
   },
   {
     title: "Users",
