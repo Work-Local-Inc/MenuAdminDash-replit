@@ -20,12 +20,42 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { Plus, Clock, Pencil, Trash2 } from "lucide-react"
 
+// Helper to convert 12-hour format to 24-hour format
+const convertTo24Hour = (time: string): string => {
+  if (!time) return time
+  // If already in 24-hour format (no AM/PM), return as-is
+  if (!time.toLowerCase().includes('am') && !time.toLowerCase().includes('pm')) {
+    return time
+  }
+  
+  // Parse 12-hour format like "10:00 AM" or "08:00 PM"
+  const match = time.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i)
+  if (!match) return time
+  
+  let [, hours, minutes, period] = match
+  let hour = parseInt(hours, 10)
+  
+  if (period.toUpperCase() === 'PM' && hour !== 12) {
+    hour += 12
+  } else if (period.toUpperCase() === 'AM' && hour === 12) {
+    hour = 0
+  }
+  
+  return `${hour.toString().padStart(2, '0')}:${minutes}`
+}
+
+// Time validation that accepts both 12-hour and 24-hour formats
+const timeSchema = z.string().transform(convertTo24Hour).refine(
+  (val) => /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(val),
+  { message: "Invalid time format" }
+)
+
 const scheduleSchema = z.object({
   type: z.enum(["delivery", "takeout"]),
   day_start: z.coerce.number().min(0).max(6),
   day_stop: z.coerce.number().min(0).max(6),
-  time_start: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Invalid time format (HH:MM)"),
-  time_stop: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Invalid time format (HH:MM)"),
+  time_start: timeSchema,
+  time_stop: timeSchema,
   is_enabled: z.boolean().default(true),
   notes: z.string().optional(),
 })
