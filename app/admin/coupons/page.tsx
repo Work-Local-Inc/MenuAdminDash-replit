@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { useSearchParams } from "next/navigation"
+import { useState, useEffect } from "react"
+import { useSearchParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -16,7 +16,7 @@ import { Switch } from "@/components/ui/switch"
 import { useCoupons, useCreateCoupon } from "@/lib/hooks/use-coupons"
 import { useRestaurants } from "@/lib/hooks/use-restaurants"
 import { formatCurrency, formatDate } from "@/lib/utils"
-import { Plus, Search, Tag, ArrowLeft, Building2, AlertCircle } from "lucide-react"
+import { Plus, Search, Tag, ArrowLeft, Building2, Store } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -35,20 +35,37 @@ const couponSchema = z.object({
 type CouponFormValues = z.infer<typeof couponSchema>
 
 export default function CouponsPage() {
+  const router = useRouter()
   const searchParams = useSearchParams()
-  const restaurantId = searchParams.get('restaurant')
+  const urlRestaurantId = searchParams.get('restaurant')
+  
+  // Local state for selected restaurant - synced with URL
+  const [selectedRestaurantId, setSelectedRestaurantId] = useState<string>(urlRestaurantId || '')
+  
+  // Sync state with URL
+  useEffect(() => {
+    if (urlRestaurantId && urlRestaurantId !== selectedRestaurantId) {
+      setSelectedRestaurantId(urlRestaurantId)
+    }
+  }, [urlRestaurantId])
   
   const [search, setSearch] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   
-  // Fetch coupons filtered by restaurant
-  const { data: coupons = [], isLoading } = useCoupons(restaurantId || undefined)
-  const createCoupon = useCreateCoupon(restaurantId || undefined)
-  const { toast } = useToast()
-  
   // Get restaurant info for display
-  const { data: restaurants = [] } = useRestaurants({ status: 'active' })
-  const selectedRestaurant = restaurants.find((r: any) => r.id?.toString() === restaurantId)
+  const { data: restaurants = [], isLoading: loadingRestaurants } = useRestaurants({ status: 'active' })
+  const selectedRestaurant = restaurants.find((r: any) => r.id?.toString() === selectedRestaurantId)
+  
+  // Handler to update both state and URL when restaurant changes
+  const handleRestaurantChange = (restaurantId: string) => {
+    setSelectedRestaurantId(restaurantId)
+    router.push(`/admin/coupons?restaurant=${restaurantId}`)
+  }
+  
+  // Fetch coupons filtered by restaurant (only when restaurant is selected)
+  const { data: coupons = [], isLoading } = useCoupons(selectedRestaurantId || undefined)
+  const createCoupon = useCreateCoupon(selectedRestaurantId || undefined)
+  const { toast } = useToast()
 
   const form = useForm<CouponFormValues>({
     resolver: zodResolver(couponSchema),
@@ -91,29 +108,53 @@ export default function CouponsPage() {
     }
   }
 
-  // If no restaurant selected, show prompt to select one
-  if (!restaurantId) {
+  // If no restaurant selected, show restaurant selector
+  if (!selectedRestaurantId) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Coupons</h1>
+            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
+              <div className="p-2 bg-blue-500 rounded-xl">
+                <Tag className="h-6 w-6 text-white" />
+              </div>
+              Coupons
+            </h1>
             <p className="text-muted-foreground">Manage promotional coupons and discounts</p>
           </div>
         </div>
+        
+        {/* Restaurant Selector */}
         <Card>
-          <CardContent className="py-12 text-center">
-            <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <p className="text-lg font-medium mb-2">No Restaurant Selected</p>
-            <p className="text-muted-foreground mb-4">
-              Please select a restaurant from the Marketing Hub to manage its coupons
-            </p>
-            <Button asChild>
-              <Link href="/admin/promotions">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Go to Marketing Hub
-              </Link>
-            </Button>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Store className="h-5 w-5" />
+              Select Location
+            </CardTitle>
+            <CardDescription>
+              Choose a restaurant location to manage its coupons
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loadingRestaurants ? (
+              <Skeleton className="h-10 w-full max-w-md" />
+            ) : (
+              <Select value={selectedRestaurantId} onValueChange={handleRestaurantChange}>
+                <SelectTrigger className="w-full max-w-md" data-testid="select-restaurant">
+                  <SelectValue placeholder="Select a restaurant location" />
+                </SelectTrigger>
+                <SelectContent>
+                  {restaurants.map((restaurant: any) => (
+                    <SelectItem key={restaurant.id} value={restaurant.id.toString()}>
+                      <div className="flex items-center gap-2">
+                        <Building2 className="h-4 w-4 text-muted-foreground" />
+                        {restaurant.name} - {restaurant.city}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -125,7 +166,7 @@ export default function CouponsPage() {
       {/* Back link and restaurant context */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="sm" asChild>
-          <Link href={`/admin/promotions?restaurant=${restaurantId}`}>
+          <Link href={`/admin/promotions?restaurant=${selectedRestaurantId}`}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Marketing Hub
           </Link>
