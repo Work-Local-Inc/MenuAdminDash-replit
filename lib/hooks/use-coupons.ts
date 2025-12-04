@@ -3,18 +3,22 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useToast } from '@/hooks/use-toast'
 
-// Fetch coupons - optionally filtered by restaurant_id for multi-tenancy
+// Fetch coupons - REQUIRES restaurant_id for multi-tenancy security
+// Will not fetch until a valid restaurant ID is provided
 export function useCoupons(restaurantId?: string | number) {
   const id = restaurantId ? String(restaurantId) : null
   
   return useQuery({
     queryKey: ['/api/coupons', { restaurant: id }],
     queryFn: async () => {
-      const url = id ? `/api/coupons?restaurant=${id}` : '/api/coupons'
-      const res = await fetch(url)
+      if (!id) {
+        return [] // Never fetch without restaurant context
+      }
+      const res = await fetch(`/api/coupons?restaurant=${id}`)
       if (!res.ok) throw new Error('Failed to fetch coupons')
       return res.json()
     },
+    enabled: !!id, // Only fetch when restaurant ID is provided
   })
 }
 

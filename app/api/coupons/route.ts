@@ -11,19 +11,20 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const restaurantId = searchParams.get('restaurant')
     
-    let query = supabase
-      .from('promotional_coupons')
-      .select('*')
-      .order('created_at', { ascending: false })
-    
-    // If restaurant_id provided, filter to show only that restaurant's coupons
-    // Also include global coupons (is_global = true OR restaurant_id is null)
-    if (restaurantId) {
-      // Show: this restaurant's coupons OR global coupons
-      query = query.or(`restaurant_id.eq.${restaurantId},is_global.eq.true,restaurant_id.is.null`)
+    // SECURITY: Require restaurant_id to prevent data leakage across restaurants
+    if (!restaurantId) {
+      return NextResponse.json(
+        { error: 'Restaurant ID is required for multi-tenant security' },
+        { status: 400 }
+      )
     }
     
-    const { data, error } = await query
+    // Show: this restaurant's specific coupons OR global coupons
+    const { data, error } = await supabase
+      .from('promotional_coupons')
+      .select('*')
+      .or(`restaurant_id.eq.${restaurantId},is_global.eq.true,restaurant_id.is.null`)
+      .order('created_at', { ascending: false })
     
     if (error) throw error
     return NextResponse.json(data || [])

@@ -77,7 +77,7 @@ export default function AnalyticsPage() {
   }, [restaurantIdFromUrl])
   
   // Find selected restaurant info
-  const selectedRestaurant = restaurants?.find((r: any) => r.id?.toString() === selectedRestaurantId)
+  const selectedRestaurant = (restaurants as any[])?.find((r: any) => r.id?.toString() === selectedRestaurantId)
 
   const fetchChartData = async () => {
     setLoading(true)
