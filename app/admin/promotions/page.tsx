@@ -190,6 +190,9 @@ export default function MarketingHubPage() {
   const initialRestaurantId = searchParams.get('restaurant') || ''
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string>(initialRestaurantId)
   
+  // Fetch restaurants
+  const { data: restaurants = [], isLoading: loadingRestaurants } = useRestaurants({ status: 'active' })
+  
   // Update state when URL changes
   useEffect(() => {
     const urlRestaurantId = searchParams.get('restaurant') || ''
@@ -197,6 +200,15 @@ export default function MarketingHubPage() {
       setSelectedRestaurantId(urlRestaurantId)
     }
   }, [searchParams])
+  
+  // Auto-select if user only has access to 1 restaurant
+  useEffect(() => {
+    if (!selectedRestaurantId && !loadingRestaurants && restaurants.length === 1) {
+      const onlyRestaurant = restaurants[0]
+      setSelectedRestaurantId(onlyRestaurant.id.toString())
+      router.replace(`/admin/promotions?restaurant=${onlyRestaurant.id}`)
+    }
+  }, [restaurants, loadingRestaurants, selectedRestaurantId, router])
   
   // Handler to update both state and URL
   const handleRestaurantChange = (restaurantId: string) => {
@@ -207,9 +219,6 @@ export default function MarketingHubPage() {
       router.push('/admin/promotions')
     }
   }
-  
-  // Fetch restaurants
-  const { data: restaurants = [], isLoading: loadingRestaurants } = useRestaurants({ status: 'active' })
   
   // Get selected restaurant info
   const selectedRestaurant = restaurants.find((r: any) => r.id.toString() === selectedRestaurantId)

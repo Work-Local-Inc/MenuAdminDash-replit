@@ -41,6 +41,12 @@ export default function CouponsPage() {
   
   // Local state for selected restaurant - synced with URL
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string>(urlRestaurantId || '')
+  const [search, setSearch] = useState("")
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  
+  // Get restaurant info for display
+  const { data: restaurants = [], isLoading: loadingRestaurants } = useRestaurants({ status: 'active' })
+  const selectedRestaurant = restaurants.find((r: any) => r.id?.toString() === selectedRestaurantId)
   
   // Sync state with URL
   useEffect(() => {
@@ -49,12 +55,14 @@ export default function CouponsPage() {
     }
   }, [urlRestaurantId])
   
-  const [search, setSearch] = useState("")
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  
-  // Get restaurant info for display
-  const { data: restaurants = [], isLoading: loadingRestaurants } = useRestaurants({ status: 'active' })
-  const selectedRestaurant = restaurants.find((r: any) => r.id?.toString() === selectedRestaurantId)
+  // Auto-select if user only has access to 1 restaurant
+  useEffect(() => {
+    if (!selectedRestaurantId && !loadingRestaurants && restaurants.length === 1) {
+      const onlyRestaurant = restaurants[0]
+      setSelectedRestaurantId(onlyRestaurant.id.toString())
+      router.replace(`/admin/coupons?restaurant=${onlyRestaurant.id}`)
+    }
+  }, [restaurants, loadingRestaurants, selectedRestaurantId, router])
   
   // Handler to update both state and URL when restaurant changes
   const handleRestaurantChange = (restaurantId: string) => {
