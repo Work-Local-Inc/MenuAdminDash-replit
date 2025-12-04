@@ -188,7 +188,6 @@ export interface Database {
           distance_based_delivery_fee: boolean
           takeout_time_minutes: number | null
           twilio_call: boolean | null
-          closing_warning_min: number | null
           accepts_tips: boolean | null
           created_at: string
           updated_at: string | null

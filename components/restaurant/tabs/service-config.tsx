@@ -19,7 +19,6 @@ const configSchema = z.object({
   pickup_enabled: z.boolean(),
   distance_based_delivery_fee: z.boolean(),
   takeout_time_minutes: z.coerce.number().min(0).nullable(),
-  closing_warning_min: z.coerce.number().min(0).nullable(),
   twilio_call: z.boolean().nullable(),
   accepts_tips: z.boolean().nullable(),
 })
@@ -35,7 +34,6 @@ interface ServiceConfig {
   distance_based_delivery_fee: boolean
   takeout_time_minutes: number | null
   twilio_call: boolean | null
-  closing_warning_min: number | null
   accepts_tips: boolean | null
   created_at: string
   updated_at: string | null
@@ -65,7 +63,6 @@ export function RestaurantServiceConfig({ restaurantId }: RestaurantServiceConfi
       pickup_enabled: false,
       distance_based_delivery_fee: false,
       takeout_time_minutes: null,
-      closing_warning_min: null,
       twilio_call: null,
       accepts_tips: null,
     },
@@ -78,7 +75,6 @@ export function RestaurantServiceConfig({ restaurantId }: RestaurantServiceConfi
         pickup_enabled: config.pickup_enabled ?? false,
         distance_based_delivery_fee: config.distance_based_delivery_fee ?? false,
         takeout_time_minutes: config.takeout_time_minutes,
-        closing_warning_min: config.closing_warning_min,
         twilio_call: config.twilio_call,
         accepts_tips: config.accepts_tips,
       })
@@ -293,28 +289,6 @@ export function RestaurantServiceConfig({ restaurantId }: RestaurantServiceConfi
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="closing_warning_min"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Closing Warning (minutes)</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      placeholder="30"
-                      {...field}
-                      value={field.value ?? ''}
-                      data-testid="input-closing-warning"
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    How many minutes before closing to warn customers that online ordering will close soon
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
           </CardContent>
         </Card>
 

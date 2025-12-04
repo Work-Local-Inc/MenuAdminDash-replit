@@ -37,12 +37,31 @@ export async function POST(
     const supabase = createAdminClient() as any
     const body = await request.json()
     
+    // Only include columns that exist in the database
+    // Note: closing_warning_min does NOT exist in production DB
+    const insertData: Record<string, any> = {
+      restaurant_id: parseInt(params.id),
+    }
+    const allowedColumns = [
+      'has_delivery_enabled',
+      'pickup_enabled', 
+      'distance_based_delivery_fee',
+      'takeout_time_minutes',
+      'twilio_call',
+      'accepts_tips'
+    ]
+    
+    for (const column of allowedColumns) {
+      if (column in body) {
+        insertData[column] = body[column]
+      }
+    }
+    
+    console.log('[ServiceConfig POST] Creating config:', insertData)
+    
     const { data, error } = await supabase
       .from('delivery_and_pickup_configs')
-      .insert({
-        ...body,
-        restaurant_id: parseInt(params.id),
-      })
+      .insert(insertData)
       .select()
       .single()
     
