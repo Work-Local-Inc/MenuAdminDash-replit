@@ -17,7 +17,8 @@ import { OrderTypeSelector } from '@/components/customer/order-type-selector'
 import { Schedule } from '@/components/customer/pickup-time-selector'
 import { PromoCodeInput } from '@/components/customer/promo-code-input'
 import { useToast } from '@/hooks/use-toast'
-import { ShoppingCart, MapPin, CreditCard, ArrowLeft, LogIn, LogOut, User, ShoppingBag, Store, Wallet } from 'lucide-react'
+import { ShoppingCart, MapPin, CreditCard, ArrowLeft, LogIn, LogOut, User, ShoppingBag, Store, Wallet, Info } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import Link from 'next/link'
 
 // Use production Stripe key if available, fall back to test key
@@ -86,6 +87,11 @@ export default function CheckoutPage() {
   const [isDeliveryBlocked, setIsDeliveryBlocked] = useState(false)
   const [isSubmittingCashOrder, setIsSubmittingCashOrder] = useState(false)
   const [serviceConfig, setServiceConfig] = useState<{ has_delivery_enabled?: boolean; pickup_enabled?: boolean } | null>(null)
+
+  // Derived checkout mode - determines if we're in pickup-only, delivery-only, or both mode
+  const isPickupOnly = serviceConfig && !serviceConfig.has_delivery_enabled && serviceConfig.pickup_enabled
+  const isDeliveryOnly = serviceConfig && serviceConfig.has_delivery_enabled && !serviceConfig.pickup_enabled
+  const effectiveOrderType = isPickupOnly ? 'pickup' : (isDeliveryOnly ? 'delivery' : orderType)
 
   // Debug: Log currentUser changes
   useEffect(() => {
@@ -494,6 +500,16 @@ export default function CheckoutPage() {
           </div>
         </div>
 
+        {/* Pickup Only Banner - Show when only pickup is enabled */}
+        {isPickupOnly && (
+          <Alert className="mb-6 bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800">
+            <Store className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <AlertDescription className="text-blue-700 dark:text-blue-300">
+              <span className="font-medium">Pickup Order</span> — This restaurant only offers pickup. Your order will be ready for collection at the restaurant.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
@@ -510,10 +526,10 @@ export default function CheckoutPage() {
                 <div className="flex items-center gap-4">
                   <div className={`flex items-center gap-2 ${step === 'address' ? 'text-primary' : 'text-muted-foreground'}`}>
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'address' ? 'bg-primary text-primary-foreground' : 'bg-green-500 text-white'}`}>
-                      {orderType === 'pickup' ? <ShoppingBag className="w-4 h-4" /> : <MapPin className="w-4 h-4" />}
+                      {effectiveOrderType === 'pickup' ? <ShoppingBag className="w-4 h-4" /> : <MapPin className="w-4 h-4" />}
                     </div>
                     <span className="font-medium hidden sm:inline">
-                      {orderType === 'pickup' ? 'Pickup' : 'Address'}
+                      {effectiveOrderType === 'pickup' ? 'Pickup' : 'Address'}
                     </span>
                   </div>
                   <Separator className="flex-1" />
@@ -535,7 +551,7 @@ export default function CheckoutPage() {
             </Card>
 
             {/* Step Content - Delivery Flow - Only show when not blocked */}
-            {step === 'address' && orderType === 'delivery' && !isDeliveryBlocked && (
+            {step === 'address' && effectiveOrderType === 'delivery' && !isDeliveryBlocked && (
               <CheckoutAddressForm 
                 key={currentUser?.id || 'guest'} 
                 userId={currentUser?.id}
@@ -546,7 +562,7 @@ export default function CheckoutPage() {
             )}
             
             {/* Step Content - Pickup Flow */}
-            {step === 'address' && orderType === 'pickup' && (
+            {step === 'address' && effectiveOrderType === 'pickup' && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -706,7 +722,7 @@ export default function CheckoutPage() {
                       <span data-testid="text-discount">-${discount.toFixed(2)}</span>
                     </div>
                   )}
-                  {orderType === 'delivery' ? (
+                  {effectiveOrderType === 'delivery' ? (
                     <div className="flex justify-between">
                       <span>Delivery Fee</span>
                       <span data-testid="text-delivery-fee">
@@ -720,7 +736,7 @@ export default function CheckoutPage() {
                   ) : (
                     <div className="flex justify-between text-green-600">
                       <span>Pickup</span>
-                      <span data-testid="text-delivery-fee">Free</span>
+                      <span data-testid="text-delivery-fee">No fee</span>
                     </div>
                   )}
                   <div className="flex justify-between">
