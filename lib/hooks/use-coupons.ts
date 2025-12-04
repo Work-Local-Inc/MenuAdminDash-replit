@@ -25,14 +25,28 @@ export function useCoupons(restaurantId?: string | number) {
 export function useCreateCoupon(restaurantId?: string | number) {
   const queryClient = useQueryClient()
   const { toast } = useToast()
-  const id = restaurantId ? String(restaurantId) : null
+  const id = restaurantId ? Number(restaurantId) : null
 
   return useMutation({
     mutationFn: async (data: any) => {
-      // Always include restaurant_id if provided (for restaurant-specific coupons)
+      if (!id) {
+        throw new Error('Restaurant ID is required to create a coupon')
+      }
+      
+      // Transform form data to match database column names
+      // Coupons are ALWAYS restaurant-specific (no global coupons)
       const payload = {
-        ...data,
-        restaurant_id: data.is_global ? null : (data.restaurant_id || restaurantId),
+        code: data.code,
+        name: data.name || data.code, // Use code as name if not provided
+        description: data.description || null,
+        discount_type: data.discount_type,
+        discount_amount: data.discount_amount,
+        minimum_purchase: data.minimum_purchase || null,
+        max_redemptions: data.max_redemptions || null,
+        valid_until_at: data.valid_until_at || null,
+        valid_from_at: data.valid_from_at || null,
+        restaurant_id: id, // Always required - location-specific only
+        is_active: true,
       }
       
       const res = await fetch('/api/coupons', {

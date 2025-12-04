@@ -11,7 +11,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const restaurantId = searchParams.get('restaurant')
     
-    // SECURITY: Require restaurant_id to prevent data leakage across restaurants
+    // SECURITY: Require restaurant_id - coupons are ALWAYS location-specific
+    // No global coupons exist - each of 190 locations manages their own promotions
     if (!restaurantId) {
       return NextResponse.json(
         { error: 'Restaurant ID is required for multi-tenant security' },
@@ -19,11 +20,11 @@ export async function GET(request: NextRequest) {
       )
     }
     
-    // Show: this restaurant's specific coupons OR global coupons
+    // Only fetch coupons for THIS specific restaurant
     const { data, error } = await supabase
       .from('promotional_coupons')
       .select('*')
-      .or(`restaurant_id.eq.${restaurantId},is_global.eq.true,restaurant_id.is.null`)
+      .eq('restaurant_id', restaurantId)
       .order('created_at', { ascending: false })
     
     if (error) throw error

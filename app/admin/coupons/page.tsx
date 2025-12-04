@@ -12,7 +12,6 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
 import { useCoupons, useCreateCoupon } from "@/lib/hooks/use-coupons"
 import { useRestaurants } from "@/lib/hooks/use-restaurants"
 import { formatCurrency, formatDate } from "@/lib/utils"
@@ -22,17 +21,29 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { useToast } from "@/hooks/use-toast"
 
+// Form schema - matches database column names
+// NO global option - coupons are ALWAYS location-specific
 const couponSchema = z.object({
   code: z.string().min(1, "Code is required"),
+  name: z.string().optional(),
+  description: z.string().optional(),
   discount_type: z.enum(["percentage", "fixed"]),
-  discount_value: z.coerce.number().positive("Must be greater than 0"),
-  min_order_value: z.coerce.number().optional(),
-  max_uses: z.coerce.number().int().positive().optional(),
-  expires_at: z.string().optional(),
-  is_global: z.boolean().optional(),
+  discount_amount: z.coerce.number().positive("Must be greater than 0"),
+  minimum_purchase: z.union([z.coerce.number().positive(), z.literal('')]).optional(),
+  max_redemptions: z.union([z.coerce.number().int().positive(), z.literal('')]).optional(),
+  valid_until_at: z.string().optional(),
 })
 
-type CouponFormValues = z.infer<typeof couponSchema>
+type CouponFormValues = {
+  code: string
+  name?: string
+  description?: string
+  discount_type: "percentage" | "fixed"
+  discount_amount: number
+  minimum_purchase?: number | ''
+  max_redemptions?: number | ''
+  valid_until_at?: string
+}
 
 export default function CouponsPage() {
   const router = useRouter()
@@ -79,12 +90,13 @@ export default function CouponsPage() {
     resolver: zodResolver(couponSchema),
     defaultValues: {
       code: "",
+      name: "",
+      description: "",
       discount_type: "percentage" as const,
-      discount_value: 0,
-      is_global: false, // Default to restaurant-specific, not global
-      min_order_value: undefined,
-      max_uses: undefined,
-      expires_at: undefined,
+      discount_amount: 0,
+      minimum_purchase: undefined,
+      max_redemptions: undefined,
+      valid_until_at: "",
     },
   })
 
@@ -257,7 +269,7 @@ export default function CouponsPage() {
 
                   <FormField
                     control={form.control}
-                    name="discount_value"
+                    name="discount_amount"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Discount Value</FormLabel>
@@ -266,7 +278,7 @@ export default function CouponsPage() {
                             type="number" 
                             step="0.01"
                             placeholder="10" 
-                            data-testid="input-discount-value"
+                            data-testid="input-discount-amount"
                             {...field} 
                           />
                         </FormControl>
@@ -282,7 +294,7 @@ export default function CouponsPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
-                    name="min_order_value"
+                    name="minimum_purchase"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Min Order Value (Optional)</FormLabel>
@@ -292,7 +304,8 @@ export default function CouponsPage() {
                             step="0.01"
                             placeholder="25.00" 
                             data-testid="input-min-order"
-                            {...field} 
+                            {...field}
+                            value={field.value ?? ''}
                           />
                         </FormControl>
                         <FormMessage />
@@ -302,7 +315,7 @@ export default function CouponsPage() {
 
                   <FormField
                     control={form.control}
-                    name="max_uses"
+                    name="max_redemptions"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Max Uses (Optional)</FormLabel>
@@ -311,7 +324,8 @@ export default function CouponsPage() {
                             type="number" 
                             placeholder="100" 
                             data-testid="input-max-uses"
-                            {...field} 
+                            {...field}
+                            value={field.value ?? ''}
                           />
                         </FormControl>
                         <FormMessage />
@@ -322,45 +336,23 @@ export default function CouponsPage() {
 
                 <FormField
                   control={form.control}
-                  name="expires_at"
+                  name="valid_until_at"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Expiration Date (Optional)</FormLabel>
                       <FormControl>
                         <Input 
-                          type="datetime-local" 
+                          type="date" 
                           data-testid="input-expires-at"
-                          {...field} 
+                          {...field}
+                          value={field.value ? field.value.split('T')[0] : ''}
+                          onChange={(e) => field.onChange(e.target.value ? `${e.target.value}T23:59:59Z` : '')}
                         />
                       </FormControl>
+                      <FormDescription>
+                        Coupon will expire at the end of this day
+                      </FormDescription>
                       <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="is_global"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                      <div className="space-y-0.5">
-                        <FormLabel className="text-base">
-                          {field.value ? "Global Coupon" : "Restaurant-Specific Coupon"}
-                        </FormLabel>
-                        <FormDescription>
-                          {field.value 
-                            ? "Available for ALL restaurants on the platform"
-                            : `Only available for ${selectedRestaurant?.name || 'this restaurant'}`
-                          }
-                        </FormDescription>
-                      </div>
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                          data-testid="switch-is-global"
-                        />
-                      </FormControl>
                     </FormItem>
                   )}
                 />
