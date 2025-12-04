@@ -39,15 +39,32 @@ export async function POST(
     const supabase = createAdminClient() as any
     const body = await request.json()
     
-    // Remove restaurant_id from body if present, use params.id instead
-    const { restaurant_id, ...scheduleData } = body
+    // Only include columns that exist in the database
+    // Note: 'notes' column does NOT exist in production DB
+    const insertData: Record<string, any> = {
+      restaurant_id: parseInt(params.id),
+    }
+    
+    const allowedColumns = [
+      'type',
+      'day_start',
+      'day_stop', 
+      'time_start',
+      'time_stop',
+      'is_enabled'
+    ]
+    
+    for (const column of allowedColumns) {
+      if (column in body) {
+        insertData[column] = body[column]
+      }
+    }
+    
+    console.log('[Schedules POST] Creating schedule:', insertData)
     
     const { data, error } = await supabase
       .from('restaurant_schedules')
-      .insert({
-        ...scheduleData,
-        restaurant_id: parseInt(params.id),
-      })
+      .insert(insertData)
       .select()
       .single()
     
