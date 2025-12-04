@@ -424,7 +424,7 @@ export function RestaurantHours({ restaurantId }: RestaurantHoursProps) {
                   ) : (
                     // Create mode: Multi-day checkboxes
                     <div className="space-y-3">
-                      <FormLabel>Days of Week</FormLabel>
+                      <label className="text-sm font-medium leading-none">Days of Week</label>
                       <div className="flex items-center gap-2">
                         {DAYS.map((day, index) => (
                           <div 
@@ -455,9 +455,9 @@ export function RestaurantHours({ restaurantId }: RestaurantHoursProps) {
                           All Days
                         </Button>
                       </div>
-                      <FormDescription>
+                      <p className="text-sm text-muted-foreground">
                         Select multiple days to create schedules in bulk
-                      </FormDescription>
+                      </p>
                     </div>
                   )}
 
