@@ -21,8 +21,8 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { Plus, Clock, Pencil, Trash2 } from "lucide-react"
 
-// Short day labels for checkboxes
-const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
+// Short day labels for checkboxes (Mon=1 to Sun=7, matching database constraint)
+const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 
 // Helper to convert 12-hour format to 24-hour format
 const convertTo24Hour = (time: string): string => {
@@ -56,8 +56,8 @@ const timeSchema = z.string().transform(convertTo24Hour).refine(
 
 const scheduleSchema = z.object({
   type: z.enum(["delivery", "takeout"]),
-  day_start: z.coerce.number().min(0).max(6),
-  day_stop: z.coerce.number().min(0).max(6),
+  day_start: z.coerce.number().min(1).max(7),
+  day_stop: z.coerce.number().min(1).max(7),
   time_start: timeSchema,
   time_stop: timeSchema,
   is_enabled: z.boolean().default(true),
@@ -70,21 +70,22 @@ interface RestaurantHoursProps {
   restaurantId: string
 }
 
+// Days use 1-7 to match database constraint (Mon=1, Tue=2, ..., Sun=7)
 const DAYS = [
-  { value: 0, label: "Sunday" },
   { value: 1, label: "Monday" },
   { value: 2, label: "Tuesday" },
   { value: 3, label: "Wednesday" },
   { value: 4, label: "Thursday" },
   { value: 5, label: "Friday" },
   { value: 6, label: "Saturday" },
+  { value: 7, label: "Sunday" },
 ]
 
 export function RestaurantHours({ restaurantId }: RestaurantHoursProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingSchedule, setEditingSchedule] = useState<any>(null)
   const [activeTab, setActiveTab] = useState<"delivery" | "takeout">("delivery")
-  const [selectedDays, setSelectedDays] = useState<number[]>([1, 2, 3, 4, 5]) // Default: Mon-Fri
+  const [selectedDays, setSelectedDays] = useState<number[]>([1, 2, 3, 4, 5]) // Default: Mon-Fri (1-5)
   const { toast } = useToast()
 
   // Fetch schedules
@@ -140,7 +141,7 @@ export function RestaurantHours({ restaurantId }: RestaurantHoursProps) {
       const count = Array.isArray(results) ? results.length : 1
       toast({ title: "Success", description: `${count} schedule(s) created successfully` })
       setIsDialogOpen(false)
-      setSelectedDays([1, 2, 3, 4, 5]) // Reset to default
+      setSelectedDays([1, 2, 3, 4, 5]) // Reset to default Mon-Fri
       form.reset()
     },
     onError: (error: any) => {
@@ -237,10 +238,10 @@ export function RestaurantHours({ restaurantId }: RestaurantHoursProps) {
     )
   }
   
-  // Quick select helpers
+  // Quick select helpers (Mon=1, Tue=2, ..., Sat=6, Sun=7)
   const selectWeekdays = () => setSelectedDays([1, 2, 3, 4, 5])
-  const selectWeekends = () => setSelectedDays([0, 6])
-  const selectAllDays = () => setSelectedDays([0, 1, 2, 3, 4, 5, 6])
+  const selectWeekends = () => setSelectedDays([6, 7])
+  const selectAllDays = () => setSelectedDays([1, 2, 3, 4, 5, 6, 7])
 
   const handleEdit = (schedule: any) => {
     setEditingSchedule(schedule)
