@@ -170,7 +170,7 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
   
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-[calc(100vw-2rem)] max-w-2xl max-h-[90vh] overflow-y-auto p-0 mx-4 sm:mx-auto" data-testid={`modal-dish-${dish.id}`}>
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-2xl max-h-[90vh] overflow-y-auto p-0" data-testid={`modal-dish-${dish.id}`}>
         {/* Hero Image - Full Width at Top */}
         {dish.image_url && (
           <div className="w-full h-48 sm:h-64 bg-muted relative">
