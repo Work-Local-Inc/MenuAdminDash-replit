@@ -27,6 +27,8 @@ export async function POST(request: NextRequest) {
     
     const { code, restaurant_slug, subtotal, order_type, user_id } = body;
     
+    console.log('[Promo Validate] Request:', { code, restaurant_slug, subtotal, order_type });
+    
     if (!code || !restaurant_slug) {
       return NextResponse.json(
         { error: 'Code and restaurant are required' },
@@ -36,6 +38,8 @@ export async function POST(request: NextRequest) {
 
     // Extract restaurant ID from slug (format: restaurant-name-123)
     const restaurant_id = extractIdFromSlug(restaurant_slug);
+    
+    console.log('[Promo Validate] Extracted restaurant_id:', restaurant_id, 'from slug:', restaurant_slug);
     
     if (!restaurant_id) {
       return NextResponse.json(
@@ -51,7 +55,10 @@ export async function POST(request: NextRequest) {
       .eq('id', restaurant_id)
       .single();
 
+    console.log('[Promo Validate] Restaurant lookup:', { restaurant, restaurantError });
+
     if (restaurantError || !restaurant) {
+      console.log('[Promo Validate] Restaurant not found for ID:', restaurant_id);
       return NextResponse.json(
         { error: 'Restaurant not found' },
         { status: 404 }
