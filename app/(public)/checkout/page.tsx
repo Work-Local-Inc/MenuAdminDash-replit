@@ -9,6 +9,7 @@ import { loadStripe } from '@stripe/stripe-js'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
+import { Skeleton } from '@/components/ui/skeleton'
 import { CheckoutAddressForm } from '@/components/customer/checkout-address-form'
 import { CheckoutPaymentForm } from '@/components/customer/checkout-payment-form'
 import { CheckoutPaymentSelection } from '@/components/customer/checkout-payment-selection'
@@ -87,6 +88,7 @@ export default function CheckoutPage() {
   const [isDeliveryBlocked, setIsDeliveryBlocked] = useState(false)
   const [isSubmittingCashOrder, setIsSubmittingCashOrder] = useState(false)
   const [serviceConfig, setServiceConfig] = useState<{ has_delivery_enabled?: boolean; pickup_enabled?: boolean } | null>(null)
+  const [serviceConfigLoading, setServiceConfigLoading] = useState(true) // Start as loading to prevent flash
 
   // Derived checkout mode - determines if we're in pickup-only, delivery-only, or both mode
   const isPickupOnly = serviceConfig && !serviceConfig.has_delivery_enabled && serviceConfig.pickup_enabled
@@ -106,9 +108,13 @@ export default function CheckoutPage() {
   // Fetch restaurant schedules and service config for time slot validation
   useEffect(() => {
     const fetchRestaurantData = async () => {
-      if (!restaurantSlug) return
+      if (!restaurantSlug) {
+        setServiceConfigLoading(false)
+        return
+      }
       
       setSchedulesLoading(true)
+      setServiceConfigLoading(true)
       try {
         // Fetch schedules
         const schedulesResponse = await fetch(`/api/customer/restaurants/${restaurantSlug}/schedules`)
@@ -148,6 +154,7 @@ export default function CheckoutPage() {
         console.error('[Checkout] Error fetching restaurant data:', error)
       } finally {
         setSchedulesLoading(false)
+        setServiceConfigLoading(false)
       }
     }
     
@@ -500,8 +507,8 @@ export default function CheckoutPage() {
           </div>
         </div>
 
-        {/* Pickup Only Banner - Show when only pickup is enabled */}
-        {isPickupOnly && (
+        {/* Pickup Only Banner - Show when only pickup is enabled (after config loads) */}
+        {!serviceConfigLoading && isPickupOnly && (
           <Alert className="mb-6 bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800">
             <Store className="h-4 w-4 text-blue-600 dark:text-blue-400" />
             <AlertDescription className="text-blue-700 dark:text-blue-300">
@@ -513,10 +520,26 @@ export default function CheckoutPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Order Type Selector - Always visible */}
+            {/* Order Type Selector - Show skeleton while loading, then actual content */}
             <Card>
               <CardContent className="p-6">
-                <OrderTypeSelector schedules={schedules} onDeliveryBlocked={setIsDeliveryBlocked} brandedColor={restaurantPrimaryColor || undefined} serviceConfig={serviceConfig || undefined} />
+                {serviceConfigLoading ? (
+                  <div className="space-y-4">
+                    {/* Skeleton for tabs */}
+                    <Skeleton className="h-14 w-full rounded-md" />
+                    {/* Skeleton for separator */}
+                    <Skeleton className="h-px w-full" />
+                    {/* Skeleton for time selector header */}
+                    <Skeleton className="h-6 w-48" />
+                    {/* Skeleton for time selection buttons */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <Skeleton className="h-24 w-full rounded-lg" />
+                      <Skeleton className="h-24 w-full rounded-lg" />
+                    </div>
+                  </div>
+                ) : (
+                  <OrderTypeSelector schedules={schedules} onDeliveryBlocked={setIsDeliveryBlocked} brandedColor={restaurantPrimaryColor || undefined} serviceConfig={serviceConfig || undefined} />
+                )}
               </CardContent>
             </Card>
 
