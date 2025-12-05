@@ -58,9 +58,9 @@ export async function POST(request: NextRequest) {
     console.log('[Promo Validate] Restaurant lookup:', { restaurant, restaurantError });
 
     if (restaurantError || !restaurant) {
-      console.log('[Promo Validate] Restaurant not found for ID:', restaurant_id);
+      console.log('[Promo Validate] Restaurant not found for ID:', restaurant_id, 'Error:', restaurantError);
       return NextResponse.json(
-        { error: 'Restaurant not found' },
+        { error: `Restaurant not found (slug: ${restaurant_slug}, id: ${restaurant_id})` },
         { status: 404 }
       );
     }

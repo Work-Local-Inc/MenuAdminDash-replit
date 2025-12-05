@@ -32,6 +32,13 @@ export function PromoCodeInput({ restaurantSlug, brandedButtonStyle }: PromoCode
     setLoading(true)
     setError(null)
     
+    console.log('[PromoCodeInput] Validating with:', {
+      code: code.trim().toUpperCase(),
+      restaurant_slug: restaurantSlug,
+      subtotal,
+      order_type: orderType,
+    })
+    
     try {
       const response = await fetch('/api/promotions/validate', {
         method: 'POST',

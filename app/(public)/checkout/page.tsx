@@ -70,6 +70,15 @@ export default function CheckoutPage() {
     appliedPromo
   } = useCartStore()
   
+  // Debug: Log what slug the cart has stored
+  useEffect(() => {
+    console.log('[Checkout] Cart restaurant info:', {
+      restaurantSlug,
+      restaurantName,
+      restaurantId: useCartStore.getState().restaurantId,
+    })
+  }, [restaurantSlug, restaurantName])
+  
   // Create button style with restaurant's primary color
   const brandedButtonStyle = restaurantPrimaryColor 
     ? { backgroundColor: restaurantPrimaryColor, borderColor: restaurantPrimaryColor }
