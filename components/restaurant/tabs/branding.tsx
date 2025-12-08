@@ -118,32 +118,54 @@ export function RestaurantBranding({ restaurantId }: RestaurantBrandingProps) {
 
       // Upload logo if file selected
       if (logoFile) {
+        console.log('[Branding] Uploading logo...', { 
+          name: logoFile.name, 
+          size: logoFile.size, 
+          type: logoFile.type 
+        })
+        
         const formData = new FormData()
         formData.append('file', logoFile)
         formData.append('bucket', 'restaurant-logos')
         formData.append('path', `${restaurantId}/${Date.now()}_${logoFile.name}`)
 
-        const uploadResponse = await apiRequest('/api/storage/upload', {
-          method: 'POST',
-          body: formData,
-        })
-
-        logoUrl = uploadResponse.url
+        try {
+          const uploadResponse = await apiRequest('/api/storage/upload', {
+            method: 'POST',
+            body: formData,
+          })
+          logoUrl = uploadResponse.url
+          console.log('[Branding] Logo uploaded successfully:', logoUrl)
+        } catch (uploadError: any) {
+          console.error('[Branding] Logo upload failed:', uploadError)
+          throw new Error(`Logo upload failed: ${uploadError.message}`)
+        }
       }
 
       // Upload banner if file selected
       if (bannerFile) {
+        console.log('[Branding] Uploading banner...', { 
+          name: bannerFile.name, 
+          size: bannerFile.size, 
+          type: bannerFile.type 
+        })
+        
         const formData = new FormData()
         formData.append('file', bannerFile)
         formData.append('bucket', 'restaurant-images')
         formData.append('path', `${restaurantId}/${Date.now()}_${bannerFile.name}`)
 
-        const uploadResponse = await apiRequest('/api/storage/upload', {
-          method: 'POST',
-          body: formData,
-        })
-
-        bannerUrl = uploadResponse.url
+        try {
+          const uploadResponse = await apiRequest('/api/storage/upload', {
+            method: 'POST',
+            body: formData,
+          })
+          bannerUrl = uploadResponse.url
+          console.log('[Branding] Banner uploaded successfully:', bannerUrl)
+        } catch (uploadError: any) {
+          console.error('[Branding] Banner upload failed:', uploadError)
+          throw new Error(`Banner upload failed: ${uploadError.message}`)
+        }
       }
 
       // Convert empty strings to null for backend compatibility

@@ -29,18 +29,25 @@ export async function apiRequest(url: string, options?: RequestInit) {
   // Detect FormData and let browser set Content-Type with multipart boundary
   const isFormData = options?.body instanceof FormData
   
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      // Only set JSON Content-Type for non-FormData requests
-      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
-      ...options?.headers,
-    },
-  })
+  let response: Response
+  try {
+    response = await fetch(url, {
+      ...options,
+      headers: {
+        // Only set JSON Content-Type for non-FormData requests
+        ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+        ...options?.headers,
+      },
+    })
+  } catch (fetchError: any) {
+    // Network error - request didn't complete
+    console.error('[apiRequest] Fetch failed:', fetchError)
+    throw new Error(`Network error: ${fetchError.message || 'Failed to fetch'}`)
+  }
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: response.statusText }))
-    throw new Error(error.error || 'Request failed')
+    throw new Error(error.error || `Request failed with status ${response.status}`)
   }
 
   return response.json()

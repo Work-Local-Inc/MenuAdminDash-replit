@@ -3,6 +3,11 @@ import { verifyAdminAuth } from '@/lib/auth/admin-check'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AuthError } from '@/lib/errors'
 
+// Next.js App Router Route Segment Config
+// Extend timeout for file uploads
+export const maxDuration = 60 // seconds
+export const dynamic = 'force-dynamic'
+
 // Whitelist of allowed storage buckets
 const ALLOWED_BUCKETS = ['restaurant-logos', 'restaurant-images', 'dish-images']
 
@@ -27,16 +32,41 @@ function sanitizeFilename(filename: string): string {
 }
 
 export async function POST(request: NextRequest) {
+  console.log('[Storage Upload] Starting upload request')
+  
   try {
+    // Verify auth first
+    console.log('[Storage Upload] Verifying admin auth...')
     await verifyAdminAuth(request)
+    console.log('[Storage Upload] Auth verified')
     
     const supabase = createAdminClient() as any
     
-    const formData = await request.formData()
+    // Parse form data
+    console.log('[Storage Upload] Parsing form data...')
+    let formData: FormData
+    try {
+      formData = await request.formData()
+    } catch (formError: any) {
+      console.error('[Storage Upload] Failed to parse form data:', formError)
+      return NextResponse.json(
+        { error: `Failed to parse form data: ${formError.message}` },
+        { status: 400 }
+      )
+    }
     
     const file = formData.get('file') as File
     const bucket = formData.get('bucket') as string
     const path = formData.get('path') as string
+    
+    console.log('[Storage Upload] Form data:', { 
+      hasFile: !!file, 
+      fileName: file?.name,
+      fileSize: file?.size,
+      fileType: file?.type,
+      bucket, 
+      path 
+    })
 
     if (!file || !bucket || !path) {
       return NextResponse.json(
@@ -85,10 +115,13 @@ export async function POST(request: NextRequest) {
     const sanitizedPath = pathParts.join('/')
 
     // Convert file to buffer
+    console.log('[Storage Upload] Converting file to buffer...')
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
+    console.log('[Storage Upload] Buffer created, size:', buffer.length)
 
     // Upload to Supabase Storage
+    console.log('[Storage Upload] Uploading to Supabase storage...', { bucket, path: sanitizedPath })
     const { data, error } = await supabase.storage
       .from(bucket)
       .upload(sanitizedPath, buffer, {
@@ -96,15 +129,23 @@ export async function POST(request: NextRequest) {
         upsert: true,
       })
 
-    if (error) throw error
+    if (error) {
+      console.error('[Storage Upload] Supabase upload error:', error)
+      throw error
+    }
+    
+    console.log('[Storage Upload] Upload successful:', data)
 
     // Get public URL
     const { data: { publicUrl } } = supabase.storage
       .from(bucket)
       .getPublicUrl(data.path)
+    
+    console.log('[Storage Upload] Public URL generated:', publicUrl)
 
     return NextResponse.json({ url: publicUrl, path: data.path })
   } catch (error: any) {
+    console.error('[Storage Upload] Error:', error)
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode })
     }
