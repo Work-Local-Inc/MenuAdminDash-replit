@@ -242,7 +242,11 @@ export async function POST(request: NextRequest) {
     }
 
     const email = guest_email || user?.email
-    if (email && delivery_address) {
+    console.log('[Cash Order API] Attempting to send confirmation email to:', email)
+    
+    if (!email) {
+      console.warn('[Cash Order API] No customer email available - skipping confirmation email')
+    } else if (email && delivery_address) {
       try {
         await sendOrderConfirmationEmail({
           customerEmail: email,
@@ -268,8 +272,14 @@ export async function POST(request: NextRequest) {
             delivery_instructions: delivery_address.delivery_instructions,
           },
         })
-      } catch (emailError) {
-        console.error('[Cash Order API] Email error:', emailError)
+        console.log('[Cash Order API] ✅ Order confirmation email sent successfully to:', email)
+      } catch (emailError: any) {
+        console.error('[Cash Order API] ❌ Failed to send order confirmation email:', {
+          error: emailError?.message || emailError,
+          customerEmail: email,
+          orderNumber: order.id,
+          hint: 'If using Resend free tier, emails can only be sent to verified domains'
+        })
       }
     }
 

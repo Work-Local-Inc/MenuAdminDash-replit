@@ -464,7 +464,11 @@ export async function POST(request: NextRequest) {
 
     // Send order confirmation email (don't fail order if email fails)
     const customerEmail = user?.email || guest_email
-    if (customerEmail) {
+    console.log('[Order API] Attempting to send confirmation email to:', customerEmail)
+    
+    if (!customerEmail) {
+      console.warn('[Order API] No customer email available - skipping confirmation email')
+    } else {
       try {
         // Format the estimated time for the email
         let estimatedTime: string | undefined
@@ -497,8 +501,14 @@ export async function POST(request: NextRequest) {
           customerEmail,
           estimatedDeliveryTime: estimatedTime,
         })
-      } catch (emailError) {
-        console.error('Failed to send order confirmation email:', emailError)
+        console.log('[Order API] ✅ Order confirmation email sent successfully to:', customerEmail)
+      } catch (emailError: any) {
+        console.error('[Order API] ❌ Failed to send order confirmation email:', {
+          error: emailError?.message || emailError,
+          customerEmail,
+          orderNumber: order.id,
+          hint: 'If using Resend free tier, emails can only be sent to verified domains'
+        })
       }
     }
 
