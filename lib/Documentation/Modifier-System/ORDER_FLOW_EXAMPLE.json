@@ -1,0 +1,192 @@
+{
+  "order": {
+    "order_id": "ord-12345",
+    "restaurant_id": "rest-001",
+    "items": [
+      {
+        "menu_item_id": "pizza-123",
+        "menu_item_name": "Large Pepperoni Pizza",
+        "quantity": 1,
+        "base_price": 18.99,
+        "modifier_selections": [
+          {
+            "modifier_group_id": "group-crust",
+            "modifier_group_name": "Crust Type",
+            "nesting_level": 1,
+            "selections": [
+              {
+                "modifier_id": "mod-stuffed",
+                "modifier_name": "Stuffed Crust",
+                "quantity": 1,
+                "price": 2.00,
+                "nested_modifiers": []
+              }
+            ]
+          },
+          {
+            "modifier_group_id": "group-toppings",
+            "modifier_group_name": "Additional Toppings",
+            "nesting_level": 1,
+            "selections": [
+              {
+                "modifier_id": "mod-pepperoni",
+                "modifier_name": "Pepperoni",
+                "quantity": 1,
+                "price": 1.50,
+                "nested_modifiers": [
+                  {
+                    "modifier_group_id": "group-placement",
+                    "modifier_group_name": "Topping Placement",
+                    "nesting_level": 2,
+                    "selections": [
+                      {
+                        "modifier_id": "mod-left",
+                        "modifier_name": "Left Half Only",
+                        "quantity": 1,
+                        "price": 0.00
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "modifier_id": "mod-mushrooms",
+                "modifier_name": "Mushrooms",
+                "quantity": 1,
+                "price": 1.00,
+                "nested_modifiers": [
+                  {
+                    "modifier_group_id": "group-placement",
+                    "modifier_group_name": "Topping Placement",
+                    "nesting_level": 2,
+                    "selections": [
+                      {
+                        "modifier_id": "mod-right",
+                        "modifier_name": "Right Half Only",
+                        "quantity": 1,
+                        "price": 0.00
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "modifier_id": "mod-extra-cheese",
+                "modifier_name": "Extra Cheese",
+                "quantity": 2,
+                "price": 3.00,
+                "nested_modifiers": [
+                  {
+                    "modifier_group_id": "group-placement",
+                    "modifier_group_name": "Topping Placement",
+                    "nesting_level": 2,
+                    "selections": [
+                      {
+                        "modifier_id": "mod-whole",
+                        "modifier_name": "Whole Pizza",
+                        "quantity": 1,
+                        "price": 0.00
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "item_total": 26.49,
+        "display_string": "Large Pepperoni Pizza - Stuffed Crust, Pepperoni (Left Half), Mushrooms (Right Half), 2x Extra Cheese (Whole)"
+      },
+      {
+        "menu_item_id": "wings-456",
+        "menu_item_name": "10pc Wings",
+        "quantity": 1,
+        "base_price": 12.99,
+        "modifier_selections": [
+          {
+            "modifier_group_id": "group-wing-sauce",
+            "modifier_group_name": "Wing Sauce",
+            "nesting_level": 1,
+            "selections": [
+              {
+                "modifier_id": "mod-bbq",
+                "modifier_name": "BBQ",
+                "quantity": 1,
+                "price": 0.00,
+                "nested_modifiers": []
+              }
+            ]
+          },
+          {
+            "modifier_group_id": "group-wing-heat",
+            "modifier_group_name": "Heat Level",
+            "nesting_level": 1,
+            "selections": [
+              {
+                "modifier_id": "mod-medium",
+                "modifier_name": "Medium",
+                "quantity": 1,
+                "price": 0.00,
+                "nested_modifiers": []
+              }
+            ]
+          }
+        ],
+        "item_total": 12.99,
+        "display_string": "10pc Wings - BBQ, Medium Heat"
+      }
+    ],
+    "subtotal": 39.48,
+    "tax": 5.13,
+    "total": 44.61
+  },
+  
+  "ui_flow_example": {
+    "step_1": {
+      "action": "Customer selects '2 Pizza Special'",
+      "next": "Show Pizza 1 configuration"
+    },
+    "step_2": {
+      "action": "Pizza 1 - Select Crust Type",
+      "modifier_group": "group-crust",
+      "required": true,
+      "exclusive": true,
+      "options": ["Thin Crust ($0)", "Hand Tossed ($0)", "Stuffed Crust (+$2)"]
+    },
+    "step_3": {
+      "action": "Pizza 1 - Choose 2 Free Toppings",
+      "modifier_group": "group-toppings",
+      "required": true,
+      "min": 2,
+      "max": 10,
+      "free_qty": 2,
+      "note": "First 2 free, additional toppings $1-$1.50 each"
+    },
+    "step_4": {
+      "action": "For each topping selected - Choose placement",
+      "modifier_group": "group-placement",
+      "note": "This is a NESTED modifier that appears for EACH topping",
+      "required": true,
+      "exclusive": true,
+      "options": ["Whole Pizza", "Left Half Only", "Right Half Only"]
+    },
+    "step_5": {
+      "action": "Add Dipping Sauces (optional)",
+      "modifier_group": "group-dips",
+      "required": false
+    },
+    "step_6": {
+      "action": "Repeat steps 2-5 for Pizza 2"
+    },
+    "step_7": {
+      "action": "Configure Wings",
+      "modifier_group": "group-wing-sauce",
+      "required": true
+    },
+    "step_8": {
+      "action": "Show upsells",
+      "note": "Drinks, sides, desserts",
+      "technique": "Separate from modifiers - these are additional menu_items"
+    }
+  }
+}
