@@ -13,6 +13,7 @@ export interface ModifierGroupListItem {
   linked_dish_count: number;
   supports_placements: boolean;
   supports_size_pricing: boolean;
+  display_order: number;
 }
 
 export async function GET(request: NextRequest) {
@@ -91,7 +92,7 @@ async function fetchSimpleModifierGroups(
   const { data: modifierGroups } = await supabase
     .schema('menuca_v3')
     .from('modifier_groups')
-    .select('id, dish_id, name, is_required, min_selections, max_selections')
+    .select('id, dish_id, name, is_required, min_selections, max_selections, display_order')
     .in('dish_id', dishIds)
     .is('deleted_at', null);
   
@@ -123,7 +124,8 @@ async function fetchSimpleModifierGroups(
     modifier_count: modifierCountByGroup[g.id] || 0,
     linked_dish_count: 1,
     supports_placements: false,
-    supports_size_pricing: false
+    supports_size_pricing: false,
+    display_order: g.display_order || 1
   }));
 }
 
@@ -131,12 +133,20 @@ async function fetchComboModifierGroups(
   supabase: any,
   restaurantId: number
 ): Promise<ModifierGroupListItem[]> {
-  const { data: comboGroups } = await supabase
+  console.log('[fetchComboModifierGroups] Querying combo_groups with restaurant_id:', restaurantId);
+  
+  const { data: comboGroups, error } = await supabase
     .schema('menuca_v3')
     .from('combo_groups')
-    .select('id, name')
+    .select('id, name, display_order')
     .eq('restaurant_id', restaurantId)
     .is('deleted_at', null);
+  
+  console.log('[fetchComboModifierGroups] Result:', { 
+    count: comboGroups?.length || 0, 
+    error: error?.message,
+    sample: comboGroups?.slice(0, 3)
+  });
   
   if (!comboGroups || comboGroups.length === 0) {
     return [];
@@ -178,7 +188,8 @@ async function fetchComboModifierGroups(
       modifier_count: 0,
       linked_dish_count: dishCountByGroup[g.id] || 0,
       supports_placements: false,
-      supports_size_pricing: false
+      supports_size_pricing: false,
+      display_order: g.display_order || 1
     }));
   }
   
@@ -301,7 +312,8 @@ async function fetchComboModifierGroups(
       modifier_count: totalModifierCount,
       linked_dish_count: dishCountByGroup[g.id] || 0,
       supports_placements: hasPlacements,
-      supports_size_pricing: hasSizePricing
+      supports_size_pricing: hasSizePricing,
+      display_order: g.display_order || 1
     };
   });
 }

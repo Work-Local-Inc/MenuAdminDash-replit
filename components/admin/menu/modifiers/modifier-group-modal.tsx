@@ -46,6 +46,7 @@ interface ModifierGroupListItem {
   linked_dish_count: number
   supports_placements: boolean
   supports_size_pricing: boolean
+  display_order: number
 }
 
 interface ModifierOption {
@@ -433,48 +434,70 @@ export function ModifierGroupModal({ group, restaurantId, open, onClose }: Modif
                       <p className="text-muted-foreground">No dishes found</p>
                     </div>
                   ) : (
-                    <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                      {dishes.map((dish) => {
-                        const isChecked = dishStates[dish.id] ?? (dish.inherited || dish.override)
-                        return (
-                          <div 
-                            key={dish.id}
-                            className={`flex items-center gap-4 p-4 rounded-lg border ${
-                              dish.override ? 'border-orange-300 bg-orange-50/50 dark:border-orange-800 dark:bg-orange-950/20' : ''
-                            }`}
-                            data-testid={`dish-row-${dish.id}`}
-                          >
-                            <Checkbox 
-                              checked={isChecked}
-                              onCheckedChange={(checked) => {
-                                setDishStates(prev => ({ ...prev, [dish.id]: !!checked }))
-                              }}
-                            />
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium">{dish.name}</p>
-                              <p className="text-xs text-muted-foreground">{dish.category}</p>
+                    <div className="max-h-[400px] overflow-y-auto border rounded-lg">
+                      {(() => {
+                        const grouped = dishes.reduce((acc, dish) => {
+                          const cat = dish.category || 'Uncategorized'
+                          if (!acc[cat]) acc[cat] = []
+                          acc[cat].push(dish)
+                          return acc
+                        }, {} as Record<string, typeof dishes>)
+                        
+                        return Object.entries(grouped).map(([categoryName, categoryDishes]) => (
+                          <div key={categoryName} className="border-b last:border-b-0">
+                            <div className="sticky top-0 z-10 bg-muted/80 backdrop-blur-sm px-4 py-2 border-b">
+                              <div className="flex items-center justify-between">
+                                <span className="font-medium text-sm">{categoryName}</span>
+                                <Badge variant="secondary" className="text-xs">
+                                  {categoryDishes.filter(d => dishStates[d.id] ?? (d.inherited || d.override)).length}/{categoryDishes.length}
+                                </Badge>
+                              </div>
                             </div>
-                            
-                            {dish.inherited && !dish.override && (
-                              <Badge variant="outline" className="text-xs gap-1 bg-muted/50">
-                                <CornerDownRight className="h-3 w-3" />
-                                From {dish.category}
-                              </Badge>
-                            )}
-                            
-                            {dish.override && (
-                              <Badge variant="outline" className="text-xs gap-1 bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300 border-orange-300 dark:border-orange-700">
-                                <Zap className="h-3 w-3" />
-                                {dish.overrideReason || 'Override'}
-                              </Badge>
-                            )}
-                            
-                            <Button variant="outline" size="sm" data-testid={`button-override-${dish.id}`}>
-                              Override
-                            </Button>
+                            <div className="divide-y">
+                              {categoryDishes.map((dish) => {
+                                const isChecked = dishStates[dish.id] ?? (dish.inherited || dish.override)
+                                return (
+                                  <div 
+                                    key={dish.id}
+                                    className={`flex items-center gap-4 px-4 py-3 ${
+                                      dish.override ? 'bg-orange-50/50 dark:bg-orange-950/20' : ''
+                                    }`}
+                                    data-testid={`dish-row-${dish.id}`}
+                                  >
+                                    <Checkbox 
+                                      checked={isChecked}
+                                      onCheckedChange={(checked) => {
+                                        setDishStates(prev => ({ ...prev, [dish.id]: !!checked }))
+                                      }}
+                                    />
+                                    <div className="flex-1 min-w-0">
+                                      <p className="font-medium">{dish.name}</p>
+                                    </div>
+                                    
+                                    {dish.inherited && !dish.override && (
+                                      <Badge variant="outline" className="text-xs gap-1 bg-muted/50">
+                                        <CornerDownRight className="h-3 w-3" />
+                                        Inherited
+                                      </Badge>
+                                    )}
+                                    
+                                    {dish.override && (
+                                      <Badge variant="outline" className="text-xs gap-1 bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300 border-orange-300 dark:border-orange-700">
+                                        <Zap className="h-3 w-3" />
+                                        {dish.overrideReason || 'Override'}
+                                      </Badge>
+                                    )}
+                                    
+                                    <Button variant="outline" size="sm" data-testid={`button-override-${dish.id}`}>
+                                      Override
+                                    </Button>
+                                  </div>
+                                )
+                              })}
+                            </div>
                           </div>
-                        )
-                      })}
+                        ))
+                      })()}
                     </div>
                   )}
                 </div>
@@ -537,7 +560,7 @@ export function ModifierGroupModal({ group, restaurantId, open, onClose }: Modif
                   <div className="p-6 rounded-lg border space-y-4">
                     <h3 className="font-semibold">Display Order</h3>
                     <p className="text-sm text-muted-foreground">Order shown to customers (1 = first)</p>
-                    <Input type="number" defaultValue={1} min={1} className="w-24" />
+                    <Input type="number" defaultValue={group.display_order || 1} min={1} className="w-24" />
                   </div>
 
                   <div className="p-6 rounded-lg border space-y-4">
