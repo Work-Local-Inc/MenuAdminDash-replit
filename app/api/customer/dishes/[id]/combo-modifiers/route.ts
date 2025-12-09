@@ -90,7 +90,7 @@ export async function GET(
     
     const sectionIds = sections.map((s: any) => s.id);
     
-    // Fetch modifier groups for these sections
+    // Fetch modifier groups for these sections - only selected ones
     const { data: modifierGroups, error: groupsError } = await supabase
       .schema('menuca_v3')
       .from('combo_modifier_groups')
@@ -101,7 +101,8 @@ export async function GET(
         type_code,
         is_selected
       `)
-      .in('combo_group_section_id', sectionIds);
+      .in('combo_group_section_id', sectionIds)
+      .eq('is_selected', true);
     
     if (groupsError) {
       throw groupsError;
