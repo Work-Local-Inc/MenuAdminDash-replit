@@ -119,7 +119,7 @@ interface ModifierGroupGridProps {
 const ModifierGroupGrid = ({ groups, viewMode, getSelectionLabel, onSelectGroup, isInactive }: ModifierGroupGridProps) => {
   if (viewMode === 'list') {
     return (
-      <div className="space-y-1">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-2">
         {groups.map(group => (
           <div
             key={group.id}
