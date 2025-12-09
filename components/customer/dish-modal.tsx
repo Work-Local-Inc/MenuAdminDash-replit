@@ -220,6 +220,39 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
     return section.section_type === 'custom_ingredients';
   };
 
+  // Helper to recalculate prices for all modifiers in a section based on free_items
+  const recalculateSectionPrices = (
+    sectionKey: string,
+    newSelections: number[],
+    section: ComboGroupSection,
+    modifierGroup: ComboModifierGroup
+  ) => {
+    const freeItems = section.free_items || 0;
+    
+    // Update prices for all modifiers in this section based on their position
+    setSelectedModifiers(prev => {
+      const updatedModifiers = [...prev];
+      
+      newSelections.forEach((modId, index) => {
+        const modifierIndex = updatedModifiers.findIndex(m => m.id === modId);
+        if (modifierIndex !== -1) {
+          const originalModifier = modifierGroup.modifiers.find(m => m.id === modId);
+          if (originalModifier) {
+            const fullPrice = getComboModifierPrice(originalModifier);
+            // Free if within free_items limit, otherwise full price
+            const effectivePrice = index < freeItems ? 0 : fullPrice;
+            updatedModifiers[modifierIndex] = {
+              ...updatedModifiers[modifierIndex],
+              price: effectivePrice,
+            };
+          }
+        }
+      });
+      
+      return updatedModifiers;
+    });
+  };
+
   const handleComboModifierToggle = (
     section: ComboGroupSection,
     modifierGroup: ComboModifierGroup,
@@ -257,24 +290,35 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
 
     setComboSelections({ ...comboSelections, [sectionKey]: newSelections });
 
-    const price = getComboModifierPrice(modifier);
+    const freeItems = section.free_items || 0;
+    const fullPrice = getComboModifierPrice(modifier);
     const defaultPlacement: PlacementType = modifier.placements?.includes('whole') ? 'whole' : (modifier.placements?.[0] || 'whole');
 
     if (checked) {
+      // Calculate effective price based on position in selection order
+      const positionInSelection = newSelections.indexOf(modifier.id);
+      const effectivePrice = positionInSelection < freeItems ? 0 : fullPrice;
+      
       if (modifier.placements && modifier.placements.length > 0) {
         setModifierPlacements(prev => ({ ...prev, [modifier.id]: defaultPlacement }));
       }
       setSelectedModifiers(prev => [...prev, {
         id: modifier.id,
         name: modifier.name,
-        price,
+        price: effectivePrice,
         placement: modifier.placements && modifier.placements.length > 0 ? defaultPlacement : undefined,
       }]);
     } else {
+      // Remove the modifier
       setSelectedModifiers(prev => prev.filter(m => m.id !== modifier.id));
       const newPlacements = { ...modifierPlacements };
       delete newPlacements[modifier.id];
       setModifierPlacements(newPlacements);
+      
+      // Recalculate prices for remaining items (they may shift into free slots)
+      if (freeItems > 0 && newSelections.length > 0) {
+        setTimeout(() => recalculateSectionPrices(sectionKey, newSelections, section, modifierGroup), 0);
+      }
     }
   };
 
@@ -634,8 +678,11 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
                                       }}
                                     >
                                       {modifierGroup.modifiers.map((modifier) => {
-                                        const price = getComboModifierPrice(modifier);
+                                        const fullPrice = getComboModifierPrice(modifier);
                                         const isSelected = currentSelections.includes(modifier.id);
+                                        const selectionIndex = currentSelections.indexOf(modifier.id);
+                                        const freeItems = section.free_items || 0;
+                                        const isFreeSlot = isSelected && selectionIndex < freeItems;
                                         // Use database placements if available, otherwise auto-enable for pizza toppings
                                         const hasPlacements = (modifier.placements && modifier.placements.length > 0) || showPizzaPlacements;
                                         const placements = (modifier.placements && modifier.placements.length > 0) ? modifier.placements : (showPizzaPlacements ? defaultPlacements : []);
@@ -652,11 +699,13 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
                                               <Label htmlFor={`combo-modifier-${modifierKey}`} className="flex-1 cursor-pointer">
                                                 <div className="flex items-center justify-between">
                                                   <span>{modifier.name}</span>
-                                                  {price > 0 && (
-                                                    <span className="text-sm text-muted-foreground">
-                                                      +${Number(price).toFixed(2)}
-                                                    </span>
-                                                  )}
+                                                  <span className="text-sm">
+                                                    {isSelected && isFreeSlot ? (
+                                                      <span className="text-green-600 font-medium">Free</span>
+                                                    ) : fullPrice > 0 ? (
+                                                      <span className="text-muted-foreground">+${Number(fullPrice).toFixed(2)}</span>
+                                                    ) : null}
+                                                  </span>
                                                 </div>
                                               </Label>
                                             </div>
@@ -670,9 +719,12 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
                                   ) : (
                                     <div className="space-y-2">
                                       {modifierGroup.modifiers.map((modifier) => {
-                                        const price = getComboModifierPrice(modifier);
+                                        const fullPrice = getComboModifierPrice(modifier);
                                         const isSelected = isComboModifierSelected(section.id, modifierGroup.id, modifier.id, instanceIndex);
                                         const isDisabled = !isSelected && isMaxSelections;
+                                        const selectionIndex = currentSelections.indexOf(modifier.id);
+                                        const freeItems = section.free_items || 0;
+                                        const isFreeSlot = isSelected && selectionIndex < freeItems;
                                         // Use database placements if available, otherwise auto-enable for pizza toppings
                                         const hasPlacements = (modifier.placements && modifier.placements.length > 0) || showPizzaPlacements;
                                         const placements = (modifier.placements && modifier.placements.length > 0) ? modifier.placements : (showPizzaPlacements ? defaultPlacements : []);
@@ -696,11 +748,13 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
                                               >
                                                 <div className="flex items-center justify-between">
                                                   <span>{modifier.name}</span>
-                                                  {price > 0 && (
-                                                    <span className="text-sm text-muted-foreground">
-                                                      +${Number(price).toFixed(2)}
-                                                    </span>
-                                                  )}
+                                                  <span className="text-sm">
+                                                    {isFreeSlot ? (
+                                                      <span className="text-green-600 font-medium">Free</span>
+                                                    ) : fullPrice > 0 ? (
+                                                      <span className="text-muted-foreground">+${Number(fullPrice).toFixed(2)}</span>
+                                                    ) : null}
+                                                  </span>
                                                 </div>
                                               </Label>
                                             </div>
