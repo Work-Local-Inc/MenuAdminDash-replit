@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Plus, Minus } from 'lucide-react';
+import { Plus, Minus, Circle } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -15,8 +15,52 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useCartStore } from '@/lib/stores/cart-store';
-import type { CartModifier } from '@/lib/stores/cart-store';
+import type { CartModifier, PlacementType } from '@/lib/stores/cart-store';
 import type { ModifierGroupWithModifiers } from '@/lib/types/menu';
+
+interface ComboModifier {
+  id: number;
+  combo_modifier_group_id: number;
+  name: string;
+  display_order: number;
+  prices: Array<{ id: number; size_variant: string | null; price: number }>;
+  placements: PlacementType[];
+}
+
+interface ComboModifierGroup {
+  id: number;
+  combo_group_section_id: number;
+  name: string;
+  type_code: string | null;
+  is_selected: boolean;
+  modifiers: ComboModifier[];
+}
+
+interface ComboGroupSection {
+  id: number;
+  combo_group_id: number;
+  section_type: string | null;
+  use_header: string | null;
+  display_order: number;
+  free_items: number;
+  min_selection: number;
+  max_selection: number;
+  is_active: boolean;
+  modifier_groups: ComboModifierGroup[];
+}
+
+interface ComboGroup {
+  id: number;
+  name: string;
+  description: string | null;
+  combo_rules: any;
+  combo_price: number | null;
+  pricing_rules: any;
+  display_order: number;
+  is_active: boolean;
+  is_available: boolean;
+  sections: ComboGroupSection[];
+}
 
 interface DishModalProps {
   dish: any;
@@ -27,9 +71,8 @@ interface DishModalProps {
 }
 
 export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: DishModalProps) {
-  // Helper function to get button branding class - only applies to non-icon buttons
   const getButtonClassName = (isIcon: boolean = false) => {
-    if (isIcon) return ''; // Icon buttons always keep default ShadCN geometry
+    if (isIcon) return '';
     
     return buttonStyle === 'square' 
       ? 'rounded-none' 
@@ -42,19 +85,25 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
   const [quantity, setQuantity] = useState(1);
   const [specialInstructions, setSpecialInstructions] = useState('');
   const [modifierGroups, setModifierGroups] = useState<ModifierGroupWithModifiers[]>([]);
+  const [comboGroups, setComboGroups] = useState<ComboGroup[]>([]);
   const [isLoadingModifiers, setIsLoadingModifiers] = useState(false);
   const [groupSelections, setGroupSelections] = useState<Record<number, number[]>>({});
+  const [comboSelections, setComboSelections] = useState<Record<string, number[]>>({});
+  const [modifierPlacements, setModifierPlacements] = useState<Record<number, PlacementType>>({});
   
   const addItem = useCartStore((state) => state.addItem);
   
-  // Load modifiers when modal opens
   useEffect(() => {
     if (isOpen && dish.id) {
       setIsLoadingModifiers(true);
-      fetch(`/api/customer/dishes/${dish.id}/modifiers`)
-        .then(res => res.json())
-        .then(data => {
-          setModifierGroups(data || []);
+      
+      Promise.all([
+        fetch(`/api/customer/dishes/${dish.id}/modifiers`).then(res => res.json()),
+        fetch(`/api/customer/dishes/${dish.id}/combo-modifiers`).then(res => res.json())
+      ])
+        .then(([modifiersData, comboData]) => {
+          setModifierGroups(modifiersData || []);
+          setComboGroups(Array.isArray(comboData) ? comboData : []);
           setIsLoadingModifiers(false);
         })
         .catch(err => {
@@ -64,26 +113,23 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
     }
   }, [isOpen, dish.id]);
   
-  // Reset state when modal opens/closes
   useEffect(() => {
     if (isOpen) {
-      // Set default size to first available option
       const defaultSize = dish.prices?.[0]?.size_variant || 'Regular';
       setSelectedSize(defaultSize);
       setSelectedModifiers([]);
       setQuantity(1);
       setSpecialInstructions('');
       setGroupSelections({});
+      setComboSelections({});
+      setModifierPlacements({});
     }
   }, [isOpen, dish.prices]);
   
-  // Parse size options from prices array or fallback to base_price
   const getSizeOptions = () => {
     if (dish.prices && Array.isArray(dish.prices) && dish.prices.length > 0) {
-      // Check if there are any non-null size variants
       const hasLabeledVariants = dish.prices.some((p: any) => p.size_variant !== null && p.size_variant !== undefined);
       
-      // Filter out null size_variant if there are labeled variants
       const filteredPrices = hasLabeledVariants
         ? dish.prices.filter((p: any) => p.size_variant !== null && p.size_variant !== undefined)
         : dish.prices;
@@ -103,14 +149,18 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
   const selectedSizeOption = sizeOptions.find((s: any) => s.name === selectedSize) || sizeOptions[0];
   const sizePrice = selectedSizeOption?.price || 0;
   
-  // Get modifier price for selected size
   const getModifierPrice = (modifier: any): number => {
     if (!modifier.prices || modifier.prices.length === 0) return 0;
     const priceForSize = modifier.prices.find((p: any) => p.size_variant === selectedSize);
     return priceForSize?.price || modifier.prices[0]?.price || 0;
   };
 
-  // Handle modifier selection/deselection
+  const getComboModifierPrice = (modifier: ComboModifier): number => {
+    if (!modifier.prices || modifier.prices.length === 0) return 0;
+    const priceForSize = modifier.prices.find(p => p.size_variant === selectedSize);
+    return priceForSize?.price || modifier.prices[0]?.price || 0;
+  };
+
   const handleModifierToggle = (group: ModifierGroupWithModifiers, modifierId: number, checked: boolean) => {
     const currentSelections = groupSelections[group.id] || [];
     let newSelections: number[];
@@ -144,7 +194,80 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
       }]);
     } else {
       setSelectedModifiers(selectedModifiers.filter(m => m.id !== modifier.id));
+      const newPlacements = { ...modifierPlacements };
+      delete newPlacements[modifier.id];
+      setModifierPlacements(newPlacements);
     }
+  };
+
+  const getComboSectionKey = (sectionId: number, groupId: number) => `${sectionId}-${groupId}`;
+
+  const handleComboModifierToggle = (
+    section: ComboGroupSection,
+    modifierGroup: ComboModifierGroup,
+    modifier: ComboModifier,
+    checked: boolean
+  ) => {
+    const sectionKey = getComboSectionKey(section.id, modifierGroup.id);
+    const currentSelections = comboSelections[sectionKey] || [];
+    let newSelections: number[];
+
+    if (section.max_selection === 1) {
+      newSelections = checked ? [modifier.id] : [];
+      if (!checked) {
+        const oldModifierId = currentSelections[0];
+        if (oldModifierId) {
+          setSelectedModifiers(prev => prev.filter(m => m.id !== oldModifierId));
+          const newPlacements = { ...modifierPlacements };
+          delete newPlacements[oldModifierId];
+          setModifierPlacements(newPlacements);
+        }
+      }
+    } else {
+      if (checked) {
+        if (section.max_selection === 0 || currentSelections.length < section.max_selection) {
+          newSelections = [...currentSelections, modifier.id];
+        } else {
+          return;
+        }
+      } else {
+        newSelections = currentSelections.filter(id => id !== modifier.id);
+      }
+    }
+
+    setComboSelections({ ...comboSelections, [sectionKey]: newSelections });
+
+    const price = getComboModifierPrice(modifier);
+    const defaultPlacement: PlacementType = modifier.placements?.includes('whole') ? 'whole' : (modifier.placements?.[0] || 'whole');
+
+    if (checked) {
+      if (modifier.placements && modifier.placements.length > 0) {
+        setModifierPlacements(prev => ({ ...prev, [modifier.id]: defaultPlacement }));
+      }
+      setSelectedModifiers(prev => [...prev, {
+        id: modifier.id,
+        name: modifier.name,
+        price,
+        placement: modifier.placements && modifier.placements.length > 0 ? defaultPlacement : undefined,
+      }]);
+    } else {
+      setSelectedModifiers(prev => prev.filter(m => m.id !== modifier.id));
+      const newPlacements = { ...modifierPlacements };
+      delete newPlacements[modifier.id];
+      setModifierPlacements(newPlacements);
+    }
+  };
+
+  const handlePlacementChange = (modifierId: number, placement: PlacementType) => {
+    setModifierPlacements(prev => ({ ...prev, [modifierId]: placement }));
+    setSelectedModifiers(prev => prev.map(m => 
+      m.id === modifierId ? { ...m, placement } : m
+    ));
+  };
+
+  const isComboModifierSelected = (sectionId: number, groupId: number, modifierId: number): boolean => {
+    const sectionKey = getComboSectionKey(sectionId, groupId);
+    return (comboSelections[sectionKey] || []).includes(modifierId);
   };
   
   const handleAddToCart = () => {
@@ -167,11 +290,82 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
   };
   
   const itemTotal = (sizePrice + selectedModifiers.reduce((sum, m) => sum + m.price, 0)) * quantity;
+
+  const PlacementSelector = ({ modifierId, placements }: { modifierId: number; placements: PlacementType[] }) => {
+    const currentPlacement = modifierPlacements[modifierId] || 'whole';
+    
+    return (
+      <div className="flex items-center gap-1 mt-2 ml-6">
+        <RadioGroup 
+          value={currentPlacement} 
+          onValueChange={(value) => handlePlacementChange(modifierId, value as PlacementType)}
+          className="flex flex-row gap-3"
+        >
+          {placements.includes('whole') && (
+            <div className="flex items-center gap-1.5">
+              <RadioGroupItem 
+                value="whole" 
+                id={`placement-whole-${modifierId}`}
+                data-testid={`radio-placement-whole-${modifierId}`}
+                className="h-3.5 w-3.5"
+              />
+              <Label 
+                htmlFor={`placement-whole-${modifierId}`} 
+                className="text-xs cursor-pointer flex items-center gap-1"
+              >
+                <Circle className="h-3 w-3 fill-current" />
+                Whole
+              </Label>
+            </div>
+          )}
+          {placements.includes('left') && (
+            <div className="flex items-center gap-1.5">
+              <RadioGroupItem 
+                value="left" 
+                id={`placement-left-${modifierId}`}
+                data-testid={`radio-placement-left-${modifierId}`}
+                className="h-3.5 w-3.5"
+              />
+              <Label 
+                htmlFor={`placement-left-${modifierId}`} 
+                className="text-xs cursor-pointer flex items-center gap-1"
+              >
+                <div className="h-3 w-3 rounded-full overflow-hidden flex">
+                  <div className="w-1/2 bg-current" />
+                  <div className="w-1/2 bg-muted-foreground/20" />
+                </div>
+                Left
+              </Label>
+            </div>
+          )}
+          {placements.includes('right') && (
+            <div className="flex items-center gap-1.5">
+              <RadioGroupItem 
+                value="right" 
+                id={`placement-right-${modifierId}`}
+                data-testid={`radio-placement-right-${modifierId}`}
+                className="h-3.5 w-3.5"
+              />
+              <Label 
+                htmlFor={`placement-right-${modifierId}`} 
+                className="text-xs cursor-pointer flex items-center gap-1"
+              >
+                <div className="h-3 w-3 rounded-full overflow-hidden flex">
+                  <div className="w-1/2 bg-muted-foreground/20" />
+                  <div className="w-1/2 bg-current" />
+                </div>
+                Right
+              </Label>
+            </div>
+          )}
+        </RadioGroup>
+      </div>
+    );
+  };
   
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="w-[calc(100vw-2rem)] max-w-2xl max-h-[90vh] overflow-y-auto p-0" data-testid={`modal-dish-${dish.id}`}>
-        {/* Hero Image - Full Width at Top */}
         {dish.image_url && (
           <div className="w-full h-48 sm:h-64 bg-muted relative">
             <img
@@ -183,7 +377,6 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
           </div>
         )}
         
-        {/* Content Area with Padding */}
         <div className="p-6 space-y-6">
           <DialogHeader>
             <DialogTitle className="text-2xl" data-testid={`text-modal-title-${dish.id}`}>
@@ -191,14 +384,12 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
             </DialogTitle>
           </DialogHeader>
           
-          {/* Description */}
           {dish.description && (
             <p className="text-muted-foreground" data-testid={`text-modal-description-${dish.id}`}>
               {dish.description}
             </p>
           )}
           
-          {/* Size Selection */}
           {Array.isArray(sizeOptions) && sizeOptions.length > 1 && (
             <div>
               <Label className="text-base font-semibold mb-3 block">Select Size</Label>
@@ -222,8 +413,7 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
             </div>
           )}
           
-          {/* Modifier Groups */}
-          {modifierGroups.length > 0 ? (
+          {modifierGroups.length > 0 && (
             <div className="space-y-4">
               {modifierGroups.map((group) => {
                 const groupSelected = groupSelections[group.id] || [];
@@ -231,13 +421,11 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
 
                 return (
                   <div key={group.id} className="border rounded-lg p-4 bg-muted/30 space-y-3">
-                    {/* Group Header with Optional/Required Label */}
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1">
                         <Label className="text-base font-semibold block">
                           {group.name}
                         </Label>
-                        {/* Optional/Required and Max Selection Info */}
                         <div className="flex items-center gap-2 mt-1">
                           {group.is_required ? (
                             <Badge variant="destructive" className="text-xs">Required</Badge>
@@ -253,7 +441,6 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
                       </div>
                     </div>
                     
-                    {/* Instructions */}
                     {group.instructions && (
                       <p className="text-sm text-muted-foreground -mt-1">{group.instructions}</p>
                     )}
@@ -331,9 +518,160 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
                 );
               })}
             </div>
-          ) : null}
+          )}
+
+          {comboGroups.length > 0 && (
+            <div className="space-y-4">
+              {comboGroups.map((comboGroup) => (
+                <div key={comboGroup.id} className="space-y-4">
+                  {comboGroup.sections.map((section) => {
+                    const allModifiers = section.modifier_groups.flatMap(mg => mg.modifiers);
+                    if (allModifiers.length === 0) return null;
+
+                    return (
+                      <div key={section.id} className="border rounded-lg p-4 bg-muted/30 space-y-3" data-testid={`combo-section-${section.id}`}>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1">
+                            {section.use_header && (
+                              <Label className="text-base font-semibold block">
+                                {section.use_header}
+                              </Label>
+                            )}
+                            <div className="flex items-center gap-2 mt-1">
+                              {section.min_selection > 0 ? (
+                                <Badge variant="destructive" className="text-xs">Required</Badge>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">Optional</span>
+                              )}
+                              {section.free_items > 0 && (
+                                <span className="text-xs text-muted-foreground">
+                                  • {section.free_items} free
+                                </span>
+                              )}
+                              {section.max_selection > 0 && (
+                                <span className="text-xs text-muted-foreground">
+                                  • {section.max_selection === 1 ? 'Choose 1' : `Max ${section.max_selection}`}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {section.modifier_groups.map((modifierGroup) => {
+                          const sectionKey = getComboSectionKey(section.id, modifierGroup.id);
+                          const currentSelections = comboSelections[sectionKey] || [];
+                          const isMaxSelections = section.max_selection > 0 && currentSelections.length >= section.max_selection;
+
+                          return (
+                            <div key={modifierGroup.id} className="space-y-2">
+                              {modifierGroup.name && section.modifier_groups.length > 1 && (
+                                <Label className="text-sm font-medium text-muted-foreground block">
+                                  {modifierGroup.name}
+                                </Label>
+                              )}
+
+                              {section.max_selection === 1 ? (
+                                <RadioGroup
+                                  value={currentSelections[0]?.toString() || ''}
+                                  onValueChange={(value) => {
+                                    const modifierId = parseInt(value);
+                                    const modifier = modifierGroup.modifiers.find(m => m.id === modifierId);
+                                    if (modifier) {
+                                      const oldModifierId = currentSelections[0];
+                                      if (oldModifierId) {
+                                        const oldModifier = modifierGroup.modifiers.find(m => m.id === oldModifierId);
+                                        if (oldModifier) {
+                                          handleComboModifierToggle(section, modifierGroup, oldModifier, false);
+                                        }
+                                      }
+                                      handleComboModifierToggle(section, modifierGroup, modifier, true);
+                                    }
+                                  }}
+                                >
+                                  {modifierGroup.modifiers.map((modifier) => {
+                                    const price = getComboModifierPrice(modifier);
+                                    const isSelected = currentSelections.includes(modifier.id);
+                                    const hasPlacements = modifier.placements && modifier.placements.length > 0;
+                                    
+                                    return (
+                                      <div key={modifier.id}>
+                                        <div className="flex items-center space-x-2 mb-1">
+                                          <RadioGroupItem
+                                            value={modifier.id.toString()}
+                                            id={`combo-modifier-${modifier.id}`}
+                                            data-testid={`radio-combo-modifier-${modifier.id}`}
+                                          />
+                                          <Label htmlFor={`combo-modifier-${modifier.id}`} className="flex-1 cursor-pointer">
+                                            <div className="flex items-center justify-between">
+                                              <span>{modifier.name}</span>
+                                              {price > 0 && (
+                                                <span className="text-sm text-muted-foreground">
+                                                  +${Number(price).toFixed(2)}
+                                                </span>
+                                              )}
+                                            </div>
+                                          </Label>
+                                        </div>
+                                        {isSelected && hasPlacements && (
+                                          <PlacementSelector modifierId={modifier.id} placements={modifier.placements} />
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </RadioGroup>
+                              ) : (
+                                <div className="space-y-2">
+                                  {modifierGroup.modifiers.map((modifier) => {
+                                    const price = getComboModifierPrice(modifier);
+                                    const isSelected = isComboModifierSelected(section.id, modifierGroup.id, modifier.id);
+                                    const isDisabled = !isSelected && isMaxSelections;
+                                    const hasPlacements = modifier.placements && modifier.placements.length > 0;
+                                    
+                                    return (
+                                      <div key={modifier.id}>
+                                        <div className="flex items-start space-x-3">
+                                          <Checkbox
+                                            id={`combo-modifier-${modifier.id}`}
+                                            checked={isSelected}
+                                            disabled={isDisabled}
+                                            onCheckedChange={(checked) => 
+                                              handleComboModifierToggle(section, modifierGroup, modifier, checked as boolean)
+                                            }
+                                            data-testid={`checkbox-combo-modifier-${modifier.id}`}
+                                          />
+                                          <Label 
+                                            htmlFor={`combo-modifier-${modifier.id}`} 
+                                            className={`flex-1 cursor-pointer font-normal ${isDisabled ? 'opacity-50' : ''}`}
+                                          >
+                                            <div className="flex items-center justify-between">
+                                              <span>{modifier.name}</span>
+                                              {price > 0 && (
+                                                <span className="text-sm text-muted-foreground">
+                                                  +${Number(price).toFixed(2)}
+                                                </span>
+                                              )}
+                                            </div>
+                                          </Label>
+                                        </div>
+                                        {isSelected && hasPlacements && (
+                                          <PlacementSelector modifierId={modifier.id} placements={modifier.placements} />
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          )}
           
-          {/* Special Instructions */}
           <div>
             <Label htmlFor="special-instructions" className="text-base font-semibold mb-3 block">
               Special Instructions (Optional)
@@ -348,7 +686,6 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
             />
           </div>
           
-          {/* Quantity and Add to Cart */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-4 border-t">
             <div className="flex items-center justify-center sm:justify-start gap-3">
               <Label className="font-semibold">Quantity:</Label>

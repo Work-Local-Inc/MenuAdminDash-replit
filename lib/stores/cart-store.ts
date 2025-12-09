@@ -8,10 +8,13 @@ export interface PickupTime {
   scheduledTime?: string; // ISO date string for scheduled pickup
 }
 
+export type PlacementType = 'whole' | 'left' | 'right';
+
 export interface CartModifier {
   id: number;
   name: string;
   price: number;
+  placement?: PlacementType; // For pizza toppings: whole, left, or right
 }
 
 export interface CartItem {
@@ -89,9 +92,13 @@ function generateCartItemId(
   modifiers: CartModifier[],
   specialInstructions?: string
 ): string {
-  const modifierIds = modifiers.map(m => m.id).sort().join('-');
+  // Include placement in modifier hash so same topping with different placements are separate items
+  const modifierHash = modifiers
+    .map(m => `${m.id}:${m.placement || 'whole'}`)
+    .sort()
+    .join('-');
   const instructions = specialInstructions?.trim() || '';
-  return `${dishId}-${size}-${modifierIds}-${instructions}`.toLowerCase();
+  return `${dishId}-${size}-${modifierHash}-${instructions}`.toLowerCase();
 }
 
 // Helper function to calculate item subtotal
