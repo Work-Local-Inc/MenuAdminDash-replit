@@ -34,6 +34,9 @@ Preferred communication style: Simple, everyday language.
     -   **Unified Menu Builder**: Single interface for menu editing, mirroring customer-facing design.
     -   **Grid Layout**: Responsive dish cards with hover controls and image upload.
     -   **Modifier Groups Architecture**: True linking system for modifier groups, allowing global updates to propagate automatically. Global modifier groups are managed in a library and associated with categories without cloning. Dishes inherit modifiers from their category, with options to break inheritance for custom dish-specific modifiers.
+    -   **Unified Modifier Manager** (`/admin/menu/modifiers/r/[restaurantId]`): Modifier-first workflow for efficient bulk management of 120+ dish catalogs. Unifies simple modifiers (`modifier_groups`) and combo modifiers (`combo_groups` hierarchy for pizzas with size-based pricing/placements) into a single catalog grid.
+    -   **ID Mapping (CRITICAL)**: `combo_groups.restaurant_id` uses V3 IDs directly, but simple modifiers link through `dishes.restaurant_id` which uses `legacy_v1_id`. API handles this automatically.
+    -   **Terminology Rule**: Database tables use "template" but UI/code ALWAYS uses "modifier" or "modifier group".
     -   **Size & Price Variants Management**: Integrated into the Edit Dish dialog for flexible pricing with size variants (e.g., Small/Medium/Large). Supports unlimited variants per dish, inline editing, drag-and-drop reordering, and multi-tenant validation.
     -   **Drag-and-Drop**: For reordering categories and dishes.
     -   **Bulk Operations**: Multi-select dishes for batch actions.
