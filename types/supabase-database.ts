@@ -539,6 +539,145 @@ export interface Database {
         Update: Partial<Database['menuca_v3']['Tables']['combo_items']['Insert']>
       }
 
+      // ==================== COMBO MODIFIER SYSTEM ====================
+      // These tables support pizza combos with sections, modifier groups, and size-based pricing
+      // See: lib/Documentation/Modifier-System/COMBO_GROUPS_SCHEMA.md
+      
+      combo_group_sections: {
+        Row: {
+          id: number
+          combo_group_id: number
+          section_type: string // bread, custom_ingredients, dressing, sauce, side_dish, extras, cooking_method
+          use_header: string
+          display_order: number
+          free_items: number // e.g., "First 3 Toppings Free"
+          min_selection: number
+          max_selection: number
+          is_active: boolean
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: Omit<Database['menuca_v3']['Tables']['combo_group_sections']['Row'], 'id' | 'created_at' | 'updated_at'> & {
+          id?: number
+          free_items?: number
+          min_selection?: number
+          max_selection?: number
+          is_active?: boolean
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: Partial<Database['menuca_v3']['Tables']['combo_group_sections']['Insert']>
+      }
+
+      combo_modifier_groups: {
+        Row: {
+          id: number
+          combo_group_section_id: number
+          name: string
+          type_code: string | null
+          is_selected: boolean // Whether this is the default selection
+          source_id: number | null // V1 CRM identifier
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: Omit<Database['menuca_v3']['Tables']['combo_modifier_groups']['Row'], 'id' | 'created_at' | 'updated_at'> & {
+          id?: number
+          is_selected?: boolean
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: Partial<Database['menuca_v3']['Tables']['combo_modifier_groups']['Insert']>
+      }
+
+      combo_modifiers: {
+        Row: {
+          id: number
+          combo_modifier_group_id: number
+          name: string
+          display_order: number | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: Omit<Database['menuca_v3']['Tables']['combo_modifiers']['Row'], 'id' | 'created_at' | 'updated_at'> & {
+          id?: number
+          display_order?: number | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: Partial<Database['menuca_v3']['Tables']['combo_modifiers']['Insert']>
+      }
+
+      combo_modifier_prices: {
+        Row: {
+          id: number
+          combo_modifier_id: number
+          size_variant: string | null // e.g., "Small", "Medium", "Large"
+          price: number
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: Omit<Database['menuca_v3']['Tables']['combo_modifier_prices']['Row'], 'id' | 'created_at' | 'updated_at'> & {
+          id?: number
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: Partial<Database['menuca_v3']['Tables']['combo_modifier_prices']['Insert']>
+      }
+
+      combo_modifier_placements: {
+        Row: {
+          id: number
+          combo_modifier_id: number
+          placement: 'whole' | 'left' | 'right'
+          created_at: string
+        }
+        Insert: Omit<Database['menuca_v3']['Tables']['combo_modifier_placements']['Row'], 'id' | 'created_at'> & {
+          id?: number
+          created_at?: string
+        }
+        Update: Partial<Database['menuca_v3']['Tables']['combo_modifier_placements']['Insert']>
+      }
+
+      dish_combo_groups: {
+        Row: {
+          id: number
+          dish_id: number
+          combo_group_id: number
+          is_active: boolean
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: Omit<Database['menuca_v3']['Tables']['dish_combo_groups']['Row'], 'id' | 'created_at' | 'updated_at'> & {
+          id?: number
+          is_active?: boolean
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: Partial<Database['menuca_v3']['Tables']['dish_combo_groups']['Insert']>
+      }
+
+      order_item_modifiers: {
+        Row: {
+          id: number
+          order_item_id: number
+          combo_modifier_id: number
+          combo_modifier_group_id: number | null
+          size_variant: string | null
+          price_charged: number
+          quantity: number
+          placement: 'whole' | 'left' | 'right'
+          created_at: string
+        }
+        Insert: Omit<Database['menuca_v3']['Tables']['order_item_modifiers']['Row'], 'id' | 'created_at'> & {
+          id?: number
+          price_charged?: number
+          quantity?: number
+          placement?: 'whole' | 'left' | 'right'
+          created_at?: string
+        }
+        Update: Partial<Database['menuca_v3']['Tables']['order_item_modifiers']['Insert']>
+      }
+
       dish_modifiers: {
         Row: {
           id: number
@@ -930,4 +1069,57 @@ export const ServiceType = {
   DELIVERY: 'delivery',
   TAKEOUT: 'takeout',
 } as const
+
+// ==================== COMBO MODIFIER SYSTEM TYPES ====================
+export type ComboGroupSection = Database['menuca_v3']['Tables']['combo_group_sections']['Row']
+export type ComboModifierGroup = Database['menuca_v3']['Tables']['combo_modifier_groups']['Row']
+export type ComboModifier = Database['menuca_v3']['Tables']['combo_modifiers']['Row']
+export type ComboModifierPrice = Database['menuca_v3']['Tables']['combo_modifier_prices']['Row']
+export type ComboModifierPlacement = Database['menuca_v3']['Tables']['combo_modifier_placements']['Row']
+export type DishComboGroup = Database['menuca_v3']['Tables']['dish_combo_groups']['Row']
+export type OrderItemModifier = Database['menuca_v3']['Tables']['order_item_modifiers']['Row']
+
+// Placement type - used throughout the app
+export type PlacementType = 'whole' | 'left' | 'right'
+
+export const Placement = {
+  WHOLE: 'whole',
+  LEFT: 'left',
+  RIGHT: 'right',
+} as const
+
+// Section types from V1/V2 system
+export const SectionType = {
+  BREAD: 'bread',
+  CUSTOM_INGREDIENTS: 'custom_ingredients',
+  DRESSING: 'dressing',
+  SAUCE: 'sauce',
+  SIDE_DISH: 'side_dish',
+  EXTRAS: 'extras',
+  COOKING_METHOD: 'cooking_method',
+} as const
+
+export type SectionTypeValue = typeof SectionType[keyof typeof SectionType]
+
+// Extended modifier type with placements array (for API responses)
+export interface ComboModifierWithPlacements extends ComboModifier {
+  placements: PlacementType[]
+  prices: ComboModifierPrice[]
+}
+
+// Extended modifier group with modifiers (for API responses)
+export interface ComboModifierGroupWithModifiers extends ComboModifierGroup {
+  modifiers: ComboModifierWithPlacements[]
+}
+
+// Cart item modifier selection (for frontend state)
+export interface CartModifierSelection {
+  modifierId: number
+  modifierName: string
+  modifierGroupId: number
+  sizeVariant: string | null
+  price: number
+  quantity: number
+  placement: PlacementType
+}
 
