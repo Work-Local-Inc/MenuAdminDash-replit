@@ -47,7 +47,12 @@ import {
   Grid3X3,
   List,
   CircleDot,
-  MapPin
+  MapPin,
+  Trash2,
+  GripVertical,
+  DollarSign,
+  AlertCircle,
+  Archive
 } from "lucide-react"
 import { useRestaurant } from "@/lib/hooks/use-restaurants"
 import Link from "next/link"
@@ -75,6 +80,18 @@ interface DishListItem {
   modifier_count: number
 }
 
+interface ModifierOption {
+  id: number
+  name: string
+  price: number
+  is_default: boolean
+  is_included: boolean
+  display_order: number
+  modifier_type: string | null
+  size_prices?: Array<{ size: string; price: number }>
+  placements?: Array<{ placement: string; price_modifier: number }>
+}
+
 const SourceIcon = ({ source }: { source: 'simple' | 'combo' }) => {
   if (source === 'combo') {
     return <Pizza className="h-4 w-4 text-orange-500" />
@@ -91,6 +108,116 @@ const SourceBadge = ({ source }: { source: 'simple' | 'combo' }) => {
   return <Badge variant="outline" className={className}>{label}</Badge>
 }
 
+interface ModifierGroupGridProps {
+  groups: ModifierGroupListItem[]
+  viewMode: 'grid' | 'list'
+  getSelectionLabel: (group: ModifierGroupListItem) => string
+  onSelectGroup: (id: number) => void
+  isInactive?: boolean
+}
+
+const ModifierGroupGrid = ({ groups, viewMode, getSelectionLabel, onSelectGroup, isInactive }: ModifierGroupGridProps) => {
+  if (viewMode === 'list') {
+    return (
+      <div className="space-y-1">
+        {groups.map(group => (
+          <div
+            key={group.id}
+            className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer hover-elevate transition-all ${isInactive ? 'opacity-60' : ''}`}
+            onClick={() => onSelectGroup(group.id)}
+            data-testid={`row-modifier-group-${group.id}`}
+          >
+            <SourceIcon source={group.source} />
+            <div className="flex-1 min-w-0">
+              <span className="font-medium truncate">{group.name}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span>{group.modifier_count} options</span>
+              <span>•</span>
+              <span>{group.linked_dish_count} dishes</span>
+            </div>
+            {group.is_required && (
+              <Badge variant="destructive" className="text-xs">Required</Badge>
+            )}
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {groups.map(group => (
+        <Card 
+          key={group.id} 
+          className={`cursor-pointer hover-elevate transition-all ${isInactive ? 'opacity-60' : ''}`}
+          onClick={() => onSelectGroup(group.id)}
+          data-testid={`card-modifier-group-${group.id}`}
+        >
+          <CardContent className="pt-4">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-start gap-3 min-w-0">
+                <div className="p-2 rounded-lg bg-muted">
+                  <SourceIcon source={group.source} />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-semibold truncate">{group.name}</h3>
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                    <span className="text-xs text-muted-foreground">
+                      {getSelectionLabel(group)}
+                    </span>
+                    <span className="text-xs text-muted-foreground">•</span>
+                    <span className="text-xs text-muted-foreground">
+                      {group.modifier_count} option{group.modifier_count !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+            </div>
+            
+            <div className="flex items-center gap-2 mt-4 flex-wrap">
+              <SourceBadge source={group.source} />
+              {group.is_required && (
+                <Badge variant="destructive" className="text-xs">Required</Badge>
+              )}
+              {group.supports_placements && (
+                <Badge variant="outline" className="text-xs">
+                  <MapPin className="h-3 w-3 mr-1" />
+                  Placements
+                </Badge>
+              )}
+              {group.supports_size_pricing && (
+                <Badge variant="outline" className="text-xs">
+                  Size Pricing
+                </Badge>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between mt-4 pt-3 border-t">
+              <span className="text-sm text-muted-foreground">
+                {group.linked_dish_count === 0 ? (
+                  <span className="text-amber-600 dark:text-amber-400">Not linked to any dishes</span>
+                ) : (
+                  `Linked to ${group.linked_dish_count} dish${group.linked_dish_count !== 1 ? 'es' : ''}`
+                )}
+              </span>
+              <Button variant="ghost" size="sm" onClick={(e) => {
+                e.stopPropagation()
+                onSelectGroup(group.id)
+              }}>
+                <Edit className="h-3 w-3 mr-1" />
+                Manage
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  )
+}
+
 export default function RestaurantModifiersPage() {
   const params = useParams()
   const router = useRouter()
@@ -98,9 +225,12 @@ export default function RestaurantModifiersPage() {
   
   const [searchTerm, setSearchTerm] = useState('')
   const [sourceFilter, setSourceFilter] = useState<string>('all')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [selectedDishIds, setSelectedDishIds] = useState<Set<number>>(new Set())
+  const [editingOption, setEditingOption] = useState<number | null>(null)
+  const [editingName, setEditingName] = useState('')
 
   const { data: restaurant, isLoading: loadingRestaurant } = useRestaurant(restaurantId)
 
@@ -124,13 +254,29 @@ export default function RestaurantModifiersPage() {
     enabled: !!restaurantId,
   })
 
+  const selectedGroup = modifierGroups.find(g => g.id === selectedGroupId)
+
+  const { data: modifierOptions, isLoading: loadingOptions, refetch: refetchOptions } = useQuery<{ options: ModifierOption[], source: string, groupId: number }>({
+    queryKey: ['modifier-options', selectedGroupId, selectedGroup?.source],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/menu/unified-modifiers/groups/${selectedGroupId}/options?source=${selectedGroup?.source}`)
+      if (!res.ok) throw new Error('Failed to fetch modifier options')
+      return res.json()
+    },
+    enabled: !!selectedGroupId && !!selectedGroup,
+  })
+
   const filteredGroups = modifierGroups.filter(group => {
     const matchesSearch = group.name.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesSource = sourceFilter === 'all' || group.source === sourceFilter
-    return matchesSearch && matchesSource
+    const matchesStatus = statusFilter === 'all' || 
+      (statusFilter === 'active' && group.linked_dish_count > 0) ||
+      (statusFilter === 'inactive' && group.linked_dish_count === 0)
+    return matchesSearch && matchesSource && matchesStatus
   })
 
-  const selectedGroup = modifierGroups.find(g => g.id === selectedGroupId)
+  const activeGroups = filteredGroups.filter(g => g.linked_dish_count > 0)
+  const inactiveGroups = filteredGroups.filter(g => g.linked_dish_count === 0)
 
   const getSelectionLabel = (group: ModifierGroupListItem) => {
     if (group.is_required) {
@@ -218,6 +364,16 @@ export default function RestaurantModifiersPage() {
                 <SelectItem value="combo">Pizza/Combo</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-36" data-testid="select-status-filter">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive (0 dishes)</SelectItem>
+              </SelectContent>
+            </Select>
             <div className="flex items-center border rounded-md">
               <Button
                 variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
@@ -263,69 +419,41 @@ export default function RestaurantModifiersPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4' : 'space-y-3'}>
-          {filteredGroups.map(group => (
-            <Card 
-              key={group.id} 
-              className="cursor-pointer hover-elevate transition-all"
-              onClick={() => setSelectedGroupId(group.id)}
-              data-testid={`card-modifier-group-${group.id}`}
-            >
-              <CardContent className="pt-4">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-start gap-3 min-w-0">
-                    <div className="p-2 rounded-lg bg-muted">
-                      <SourceIcon source={group.source} />
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="font-semibold truncate">{group.name}</h3>
-                      <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        <span className="text-xs text-muted-foreground">
-                          {getSelectionLabel(group)}
-                        </span>
-                        <span className="text-xs text-muted-foreground">•</span>
-                        <span className="text-xs text-muted-foreground">
-                          {group.modifier_count} option{group.modifier_count !== 1 ? 's' : ''}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+        <div className="space-y-6">
+          {statusFilter === 'all' && inactiveGroups.length > 0 && activeGroups.length > 0 ? (
+            <>
+              <ModifierGroupGrid
+                groups={activeGroups}
+                viewMode={viewMode}
+                getSelectionLabel={getSelectionLabel}
+                onSelectGroup={setSelectedGroupId}
+              />
+              
+              <div className="pt-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <Archive className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="text-sm font-medium text-muted-foreground">
+                    Inactive ({inactiveGroups.length} not linked to any dishes)
+                  </h3>
                 </div>
-                
-                <div className="flex items-center gap-2 mt-4 flex-wrap">
-                  <SourceBadge source={group.source} />
-                  {group.is_required && (
-                    <Badge variant="destructive" className="text-xs">Required</Badge>
-                  )}
-                  {group.supports_placements && (
-                    <Badge variant="outline" className="text-xs">
-                      <MapPin className="h-3 w-3 mr-1" />
-                      Placements
-                    </Badge>
-                  )}
-                  {group.supports_size_pricing && (
-                    <Badge variant="outline" className="text-xs">
-                      Size Pricing
-                    </Badge>
-                  )}
-                </div>
-
-                <div className="flex items-center justify-between mt-4 pt-3 border-t">
-                  <span className="text-sm text-muted-foreground">
-                    Linked to {group.linked_dish_count} dish{group.linked_dish_count !== 1 ? 'es' : ''}
-                  </span>
-                  <Button variant="ghost" size="sm" onClick={(e) => {
-                    e.stopPropagation()
-                    setSelectedGroupId(group.id)
-                  }}>
-                    <Edit className="h-3 w-3 mr-1" />
-                    Manage
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                <ModifierGroupGrid
+                  groups={inactiveGroups}
+                  viewMode={viewMode}
+                  getSelectionLabel={getSelectionLabel}
+                  onSelectGroup={setSelectedGroupId}
+                  isInactive
+                />
+              </div>
+            </>
+          ) : (
+            <ModifierGroupGrid
+              groups={filteredGroups}
+              viewMode={viewMode}
+              getSelectionLabel={getSelectionLabel}
+              onSelectGroup={setSelectedGroupId}
+              isInactive={statusFilter === 'inactive'}
+            />
+          )}
         </div>
       )}
 
@@ -402,12 +530,133 @@ export default function RestaurantModifiersPage() {
                 </div>
               </TabsContent>
 
-              <TabsContent value="modifiers" className="mt-4">
-                <div className="text-center py-8 text-muted-foreground">
-                  <Layers className="mx-auto h-12 w-12 mb-4 opacity-50" />
-                  <p>Modifier options editing coming soon</p>
-                  <p className="text-sm mt-2">Use the main menu editor to manage individual modifiers</p>
+              <TabsContent value="modifiers" className="mt-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    {modifierOptions?.options?.length || 0} options in this group
+                  </p>
+                  <Button size="sm" data-testid="button-add-option">
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add Option
+                  </Button>
                 </div>
+
+                {loadingOptions ? (
+                  <div className="space-y-2">
+                    {[1, 2, 3, 4].map(i => (
+                      <Skeleton key={i} className="h-14 w-full" />
+                    ))}
+                  </div>
+                ) : !modifierOptions?.options?.length ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Layers className="mx-auto h-12 w-12 mb-4 opacity-50" />
+                    <p>No options in this group yet</p>
+                    <p className="text-sm mt-2">Add options that customers can select</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                    {modifierOptions.options.map((option, index) => (
+                      <div
+                        key={option.id}
+                        className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50"
+                        data-testid={`option-row-${option.id}`}
+                      >
+                        <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab" />
+                        
+                        {editingOption === option.id ? (
+                          <Input
+                            value={editingName}
+                            onChange={(e) => setEditingName(e.target.value)}
+                            className="flex-1"
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                setEditingOption(null)
+                              } else if (e.key === 'Escape') {
+                                setEditingOption(null)
+                              }
+                            }}
+                            data-testid={`input-option-name-${option.id}`}
+                          />
+                        ) : (
+                          <div 
+                            className="flex-1 cursor-pointer"
+                            onClick={() => {
+                              setEditingOption(option.id)
+                              setEditingName(option.name)
+                            }}
+                          >
+                            <p className="font-medium">{option.name}</p>
+                            {option.is_default && (
+                              <span className="text-xs text-muted-foreground">Default selection</span>
+                            )}
+                          </div>
+                        )}
+                        
+                        <div className="flex items-center gap-2">
+                          {option.price > 0 && (
+                            <Badge variant="outline" className="text-xs">
+                              <DollarSign className="h-3 w-3" />
+                              {option.price.toFixed(2)}
+                            </Badge>
+                          )}
+                          {option.is_included && (
+                            <Badge variant="secondary" className="text-xs">Included</Badge>
+                          )}
+                        </div>
+
+                        {editingOption === option.id ? (
+                          <div className="flex gap-1">
+                            <Button 
+                              size="icon" 
+                              variant="ghost"
+                              onClick={() => setEditingOption(null)}
+                            >
+                              <Check className="h-4 w-4 text-green-600" />
+                            </Button>
+                            <Button 
+                              size="icon" 
+                              variant="ghost"
+                              onClick={() => setEditingOption(null)}
+                            >
+                              <X className="h-4 w-4 text-red-600" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex gap-1">
+                            <Button 
+                              size="icon" 
+                              variant="ghost"
+                              onClick={() => {
+                                setEditingOption(option.id)
+                                setEditingName(option.name)
+                              }}
+                              data-testid={`button-edit-option-${option.id}`}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              size="icon" 
+                              variant="ghost"
+                              data-testid={`button-delete-option-${option.id}`}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {selectedGroup.source === 'combo' && modifierOptions?.options?.some(o => o.size_prices?.length) && (
+                  <div className="pt-4 border-t">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                      <AlertCircle className="h-4 w-4" />
+                      <span>This group has size-based pricing. Prices vary by pizza size.</span>
+                    </div>
+                  </div>
+                )}
               </TabsContent>
 
               <TabsContent value="dishes" className="mt-4 space-y-4">
