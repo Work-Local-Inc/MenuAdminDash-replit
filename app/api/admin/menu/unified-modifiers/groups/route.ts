@@ -135,8 +135,7 @@ async function fetchComboModifierGroups(
 ): Promise<ModifierGroupListItem[]> {
   console.log('[fetchComboModifierGroups] Querying combo_groups with restaurant_id:', restaurantId);
   
-  // Note: combo_groups table doesn't have display_order column
-  // Actual columns: id, restaurant_id, name, number_of_items, display_header, source_id, created_at, updated_at, deleted_at
+  // combo_groups table doesn't have display_order - it lives on combo_group_sections
   const { data: comboGroups, error } = await supabase
     .schema('menuca_v3')
     .from('combo_groups')
@@ -166,7 +165,7 @@ async function fetchComboModifierGroups(
     supabase
       .schema('menuca_v3')
       .from('combo_group_sections')
-      .select('id, combo_group_id, min_selection, max_selection')
+      .select('id, combo_group_id, min_selection, max_selection, display_order')
       .in('combo_group_id', comboGroupIds)
       .eq('is_active', true)
   ]);
@@ -177,6 +176,16 @@ async function fetchComboModifierGroups(
   const dishCountByGroup: Record<number, number> = {};
   dishLinks.forEach((link: any) => {
     dishCountByGroup[link.combo_group_id] = (dishCountByGroup[link.combo_group_id] || 0) + 1;
+  });
+  
+  // Get minimum display_order per combo_group from sections
+  const displayOrderByGroup: Record<number, number> = {};
+  sections.forEach((s: any) => {
+    const currentMin = displayOrderByGroup[s.combo_group_id];
+    const sectionOrder = s.display_order ?? 999;
+    if (currentMin === undefined || sectionOrder < currentMin) {
+      displayOrderByGroup[s.combo_group_id] = sectionOrder;
+    }
   });
   
   if (sections.length === 0) {
@@ -191,7 +200,7 @@ async function fetchComboModifierGroups(
       linked_dish_count: dishCountByGroup[g.id] || 0,
       supports_placements: false,
       supports_size_pricing: false,
-      display_order: 1 // combo_groups table doesn't have display_order column
+      display_order: 1 // No sections, default to 1
     }));
   }
   
@@ -315,7 +324,7 @@ async function fetchComboModifierGroups(
       linked_dish_count: dishCountByGroup[g.id] || 0,
       supports_placements: hasPlacements,
       supports_size_pricing: hasSizePricing,
-      display_order: 1 // combo_groups table doesn't have display_order column
+      display_order: displayOrderByGroup[g.id] ?? 1 // From combo_group_sections.display_order
     };
   });
 }

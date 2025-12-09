@@ -40,6 +40,7 @@ Preferred communication style: Simple, everyday language.
         -   **Options Tab**: Click a modifier group to open sheet with Overview/Options/Dishes tabs. Options tab fetches real modifier items from the database hierarchy with edit/delete controls and price badges.
     -   **ID Mapping (CRITICAL)**: `combo_groups.restaurant_id` uses V3 IDs directly, but simple modifiers link through `dishes.restaurant_id` which uses `legacy_v1_id`. API handles this automatically.
     -   **Terminology Rule**: Database tables use "template" but UI/code ALWAYS uses "modifier" or "modifier group".
+    -   **Combo Modifier Hierarchy**: `combo_groups` → `combo_group_sections` → `combo_modifier_groups` → `combo_modifiers`. Note: `display_order` lives on `combo_group_sections`, NOT on `combo_groups`.
     -   **Size & Price Variants Management**: Integrated into the Edit Dish dialog for flexible pricing with size variants (e.g., Small/Medium/Large). Supports unlimited variants per dish, inline editing, drag-and-drop reordering, and multi-tenant validation.
     -   **Drag-and-Drop**: For reordering categories and dishes.
     -   **Bulk Operations**: Multi-select dishes for batch actions.
