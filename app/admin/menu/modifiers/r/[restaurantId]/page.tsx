@@ -1,16 +1,13 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useState } from "react"
+import { useParams } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
-import { Checkbox } from "@/components/ui/checkbox"
 import {
   Select,
   SelectContent,
@@ -18,44 +15,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet"
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs"
 import { 
   Pizza, 
   Utensils, 
-  Package, 
   Search, 
-  Settings,
   Layers,
   Edit,
   Plus,
   ArrowLeft,
-  Check,
-  X,
   ChevronRight,
   Grid3X3,
   List,
   CircleDot,
   MapPin,
-  Trash2,
-  GripVertical,
-  DollarSign,
-  AlertCircle,
   Archive
 } from "lucide-react"
 import { useRestaurant } from "@/lib/hooks/use-restaurants"
 import Link from "next/link"
+import { ModifierGroupModal } from "@/components/admin/menu/modifiers/modifier-group-modal"
 
 interface ModifierGroupListItem {
   id: number
@@ -70,27 +47,6 @@ interface ModifierGroupListItem {
   supports_size_pricing: boolean
 }
 
-interface DishListItem {
-  id: number
-  name: string
-  category: string
-  category_id: number | null
-  dish_type: 'simple' | 'pizza' | 'combo'
-  has_modifiers: boolean
-  modifier_count: number
-}
-
-interface ModifierOption {
-  id: number
-  name: string
-  price: number
-  is_default: boolean
-  is_included: boolean
-  display_order: number
-  modifier_type: string | null
-  size_prices?: Array<{ size: string; price: number }>
-  placements?: Array<{ placement: string; price_modifier: number }>
-}
 
 const SourceIcon = ({ source }: { source: 'simple' | 'combo' }) => {
   if (source === 'combo') {
@@ -220,7 +176,6 @@ const ModifierGroupGrid = ({ groups, viewMode, getSelectionLabel, onSelectGroup,
 
 export default function RestaurantModifiersPage() {
   const params = useParams()
-  const router = useRouter()
   const restaurantId = params.restaurantId as string
   
   const [searchTerm, setSearchTerm] = useState('')
@@ -228,9 +183,6 @@ export default function RestaurantModifiersPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
-  const [selectedDishIds, setSelectedDishIds] = useState<Set<number>>(new Set())
-  const [editingOption, setEditingOption] = useState<number | null>(null)
-  const [editingName, setEditingName] = useState('')
 
   const { data: restaurant, isLoading: loadingRestaurant } = useRestaurant(restaurantId)
 
@@ -244,27 +196,7 @@ export default function RestaurantModifiersPage() {
     enabled: !!restaurantId,
   })
 
-  const { data: dishes = [], isLoading: loadingDishes } = useQuery<DishListItem[]>({
-    queryKey: ['unified-modifiers-dishes', restaurantId],
-    queryFn: async () => {
-      const res = await fetch(`/api/admin/menu/unified-modifiers/dishes?restaurant_id=${restaurantId}`)
-      if (!res.ok) throw new Error('Failed to fetch dishes')
-      return res.json()
-    },
-    enabled: !!restaurantId,
-  })
-
-  const selectedGroup = modifierGroups.find(g => g.id === selectedGroupId)
-
-  const { data: modifierOptions, isLoading: loadingOptions, refetch: refetchOptions } = useQuery<{ options: ModifierOption[], source: string, groupId: number }>({
-    queryKey: ['modifier-options', selectedGroupId, selectedGroup?.source],
-    queryFn: async () => {
-      const res = await fetch(`/api/admin/menu/unified-modifiers/groups/${selectedGroupId}/options?source=${selectedGroup?.source}`)
-      if (!res.ok) throw new Error('Failed to fetch modifier options')
-      return res.json()
-    },
-    enabled: !!selectedGroupId && !!selectedGroup,
-  })
+  const selectedGroup = modifierGroups.find(g => g.id === selectedGroupId) || null
 
   const filteredGroups = modifierGroups.filter(group => {
     const matchesSearch = group.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -286,26 +218,6 @@ export default function RestaurantModifiersPage() {
       return `Pick ${group.min_selections}-${group.max_selections}`
     }
     return group.max_selections > 0 ? `Up to ${group.max_selections}` : 'Optional'
-  }
-
-  const toggleDishSelection = (dishId: number) => {
-    setSelectedDishIds(prev => {
-      const next = new Set(prev)
-      if (next.has(dishId)) {
-        next.delete(dishId)
-      } else {
-        next.add(dishId)
-      }
-      return next
-    })
-  }
-
-  const selectAllDishes = () => {
-    setSelectedDishIds(new Set(dishes.map(d => d.id)))
-  }
-
-  const clearDishSelection = () => {
-    setSelectedDishIds(new Set())
   }
 
   if (loadingRestaurant) {
@@ -457,276 +369,12 @@ export default function RestaurantModifiersPage() {
         </div>
       )}
 
-      <Sheet open={!!selectedGroupId} onOpenChange={(open) => !open && setSelectedGroupId(null)}>
-        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle className="flex items-center gap-2">
-              {selectedGroup && (
-                <>
-                  <SourceIcon source={selectedGroup.source} />
-                  {selectedGroup.name}
-                </>
-              )}
-            </SheetTitle>
-            <SheetDescription>
-              Manage modifier options and dish assignments
-            </SheetDescription>
-          </SheetHeader>
-
-          {selectedGroup && (
-            <Tabs defaultValue="overview" className="mt-6">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="overview">Overview</TabsTrigger>
-                <TabsTrigger value="modifiers">Options</TabsTrigger>
-                <TabsTrigger value="dishes">Dishes</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="overview" className="space-y-4 mt-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 rounded-lg bg-muted">
-                    <p className="text-sm text-muted-foreground">Type</p>
-                    <p className="font-semibold capitalize">{selectedGroup.source}</p>
-                  </div>
-                  <div className="p-4 rounded-lg bg-muted">
-                    <p className="text-sm text-muted-foreground">Selection</p>
-                    <p className="font-semibold">{getSelectionLabel(selectedGroup)}</p>
-                  </div>
-                  <div className="p-4 rounded-lg bg-muted">
-                    <p className="text-sm text-muted-foreground">Options</p>
-                    <p className="font-semibold">{selectedGroup.modifier_count}</p>
-                  </div>
-                  <div className="p-4 rounded-lg bg-muted">
-                    <p className="text-sm text-muted-foreground">Linked Dishes</p>
-                    <p className="font-semibold">{selectedGroup.linked_dish_count}</p>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  {selectedGroup.is_required && (
-                    <Badge variant="destructive">Required</Badge>
-                  )}
-                  {selectedGroup.supports_placements && (
-                    <Badge variant="outline">
-                      <CircleDot className="h-3 w-3 mr-1" />
-                      Pizza Placements
-                    </Badge>
-                  )}
-                  {selectedGroup.supports_size_pricing && (
-                    <Badge variant="outline">Size-based Pricing</Badge>
-                  )}
-                </div>
-
-                <Separator />
-
-                <div className="flex gap-2">
-                  <Button className="flex-1" variant="outline" data-testid="button-edit-group">
-                    <Edit className="h-4 w-4 mr-2" />
-                    Edit Details
-                  </Button>
-                  <Button className="flex-1" data-testid="button-manage-options">
-                    <Settings className="h-4 w-4 mr-2" />
-                    Manage Options
-                  </Button>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="modifiers" className="mt-4 space-y-4">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-muted-foreground">
-                    {modifierOptions?.options?.length || 0} options in this group
-                  </p>
-                  <Button size="sm" data-testid="button-add-option">
-                    <Plus className="h-4 w-4 mr-1" />
-                    Add Option
-                  </Button>
-                </div>
-
-                {loadingOptions ? (
-                  <div className="space-y-2">
-                    {[1, 2, 3, 4].map(i => (
-                      <Skeleton key={i} className="h-14 w-full" />
-                    ))}
-                  </div>
-                ) : !modifierOptions?.options?.length ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Layers className="mx-auto h-12 w-12 mb-4 opacity-50" />
-                    <p>No options in this group yet</p>
-                    <p className="text-sm mt-2">Add options that customers can select</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                    {modifierOptions.options.map((option, index) => (
-                      <div
-                        key={option.id}
-                        className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50"
-                        data-testid={`option-row-${option.id}`}
-                      >
-                        <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab" />
-                        
-                        {editingOption === option.id ? (
-                          <Input
-                            value={editingName}
-                            onChange={(e) => setEditingName(e.target.value)}
-                            className="flex-1"
-                            autoFocus
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                setEditingOption(null)
-                              } else if (e.key === 'Escape') {
-                                setEditingOption(null)
-                              }
-                            }}
-                            data-testid={`input-option-name-${option.id}`}
-                          />
-                        ) : (
-                          <div 
-                            className="flex-1 cursor-pointer"
-                            onClick={() => {
-                              setEditingOption(option.id)
-                              setEditingName(option.name)
-                            }}
-                          >
-                            <p className="font-medium">{option.name}</p>
-                            {option.is_default && (
-                              <span className="text-xs text-muted-foreground">Default selection</span>
-                            )}
-                          </div>
-                        )}
-                        
-                        <div className="flex items-center gap-2">
-                          {option.price > 0 && (
-                            <Badge variant="outline" className="text-xs">
-                              <DollarSign className="h-3 w-3" />
-                              {option.price.toFixed(2)}
-                            </Badge>
-                          )}
-                          {option.is_included && (
-                            <Badge variant="secondary" className="text-xs">Included</Badge>
-                          )}
-                        </div>
-
-                        {editingOption === option.id ? (
-                          <div className="flex gap-1">
-                            <Button 
-                              size="icon" 
-                              variant="ghost"
-                              onClick={() => setEditingOption(null)}
-                            >
-                              <Check className="h-4 w-4 text-green-600" />
-                            </Button>
-                            <Button 
-                              size="icon" 
-                              variant="ghost"
-                              onClick={() => setEditingOption(null)}
-                            >
-                              <X className="h-4 w-4 text-red-600" />
-                            </Button>
-                          </div>
-                        ) : (
-                          <div className="flex gap-1">
-                            <Button 
-                              size="icon" 
-                              variant="ghost"
-                              onClick={() => {
-                                setEditingOption(option.id)
-                                setEditingName(option.name)
-                              }}
-                              data-testid={`button-edit-option-${option.id}`}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                              size="icon" 
-                              variant="ghost"
-                              data-testid={`button-delete-option-${option.id}`}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {selectedGroup.source === 'combo' && modifierOptions?.options?.some(o => o.size_prices?.length) && (
-                  <div className="pt-4 border-t">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                      <AlertCircle className="h-4 w-4" />
-                      <span>This group has size-based pricing. Prices vary by pizza size.</span>
-                    </div>
-                  </div>
-                )}
-              </TabsContent>
-
-              <TabsContent value="dishes" className="mt-4 space-y-4">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-muted-foreground">
-                    Select dishes to link this modifier group
-                  </p>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={selectAllDishes}>
-                      Select All
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={clearDishSelection}>
-                      Clear
-                    </Button>
-                  </div>
-                </div>
-
-                {loadingDishes ? (
-                  <div className="space-y-2">
-                    {[1, 2, 3, 4, 5].map(i => (
-                      <Skeleton key={i} className="h-12 w-full" />
-                    ))}
-                  </div>
-                ) : dishes.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <p>No dishes found for this restaurant</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                    {dishes.map(dish => (
-                      <div
-                        key={dish.id}
-                        className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50"
-                        data-testid={`dish-checkbox-${dish.id}`}
-                      >
-                        <Checkbox
-                          id={`dish-${dish.id}`}
-                          checked={selectedDishIds.has(dish.id)}
-                          onCheckedChange={() => toggleDishSelection(dish.id)}
-                        />
-                        <label 
-                          htmlFor={`dish-${dish.id}`}
-                          className="flex-1 cursor-pointer"
-                        >
-                          <p className="font-medium">{dish.name}</p>
-                          <p className="text-xs text-muted-foreground">{dish.category}</p>
-                        </label>
-                        {dish.has_modifiers && (
-                          <Badge variant="secondary" className="text-xs">
-                            {dish.modifier_count} groups
-                          </Badge>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {selectedDishIds.size > 0 && (
-                  <div className="sticky bottom-0 pt-4 border-t bg-background">
-                    <Button className="w-full" data-testid="button-apply-assignments">
-                      <Check className="h-4 w-4 mr-2" />
-                      Link to {selectedDishIds.size} Dish{selectedDishIds.size !== 1 ? 'es' : ''}
-                    </Button>
-                  </div>
-                )}
-              </TabsContent>
-            </Tabs>
-          )}
-        </SheetContent>
-      </Sheet>
+      <ModifierGroupModal
+        group={selectedGroup}
+        restaurantId={restaurantId}
+        open={!!selectedGroupId}
+        onClose={() => setSelectedGroupId(null)}
+      />
     </div>
   )
 }
