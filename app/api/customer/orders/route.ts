@@ -287,7 +287,8 @@ export async function POST(request: NextRequest) {
           validatedModifiers.push({
             id: mod.id,
             name: modifierData.name,
-            price: modPrice
+            price: modPrice,
+            placement: mod.placement || null
           })
         }
       }

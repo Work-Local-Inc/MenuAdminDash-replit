@@ -511,3 +511,93 @@ JOIN menuca_v3.combo_groups cg ON cgs.combo_group_id = cg.id
 JOIN menuca_v3.restaurants r ON cg.restaurant_id = r.id
 WHERE cmp.id = 12345;
 ```
+
+---
+
+## PLACEMENT SYSTEM (Pizza Half-and-Half Toppings)
+
+**Added:** 2025-12-09
+
+### Overview
+
+The placement system enables pizza "half-and-half" functionality, allowing customers to place toppings on the whole pizza, left half, or right half.
+
+### Table 7: `combo_modifier_placements`
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | BIGSERIAL | PRIMARY KEY | Unique identifier |
+| combo_modifier_id | BIGINT | FK → combo_modifiers.id, NOT NULL | Parent modifier |
+| placement | TEXT | NOT NULL, CHECK IN ('whole', 'left', 'right') | Allowed placement option |
+| UNIQUE | | (combo_modifier_id, placement) | Prevent duplicate placements |
+
+### SQL CREATE Statement
+
+```sql
+CREATE TABLE menuca_v3.combo_modifier_placements (
+    id BIGSERIAL PRIMARY KEY,
+    combo_modifier_id BIGINT NOT NULL REFERENCES menuca_v3.combo_modifiers(id) ON DELETE CASCADE,
+    placement TEXT NOT NULL CHECK (placement IN ('whole', 'left', 'right')),
+    UNIQUE(combo_modifier_id, placement)
+);
+CREATE INDEX idx_combo_modifier_placements_modifier ON menuca_v3.combo_modifier_placements(combo_modifier_id);
+```
+
+### Order Storage
+
+Orders store modifiers as JSONB in the `orders.items` column (Stripe orders) or `order_items.modifiers` column (cash orders). The placement is included in the modifier object:
+
+```json
+{
+  "id": 2168,
+  "name": "Pepperoni",
+  "price": 2.50,
+  "placement": "left"
+}
+```
+
+If using a separate `order_item_modifiers` table, add the column:
+
+```sql
+ALTER TABLE menuca_v3.order_item_modifiers 
+ADD COLUMN placement TEXT CHECK (placement IS NULL OR placement IN ('whole', 'left', 'right'));
+```
+
+### API Response Format
+
+The `/api/customer/dishes/[id]/combo-modifiers` endpoint returns placements as an array:
+
+```json
+{
+  "modifiers": [
+    {
+      "id": 2168,
+      "name": "Pepperoni",
+      "prices": [...],
+      "placements": ["whole", "left", "right"]
+    }
+  ]
+}
+```
+
+### UI Behavior
+
+- When a modifier has non-empty `placements` array, a placement selector appears
+- Default placement is "whole" if available, otherwise the first placement option
+- Placement is displayed in cart as "Pepperoni (Left Half)" or "Pepperoni (Right Half)"
+- Placement does NOT affect pricing (same price regardless of placement)
+
+### Cart Storage
+
+The `CartModifier` interface includes optional placement:
+
+```typescript
+interface CartModifier {
+  id: number;
+  name: string;
+  price: number;
+  placement?: 'whole' | 'left' | 'right';
+}
+```
+
+Cart item IDs include placement in the hash, so "Pepperoni (Left)" and "Pepperoni (Right)" create separate cart items.

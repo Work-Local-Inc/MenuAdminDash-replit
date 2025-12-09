@@ -91,9 +91,14 @@ export function CartDrawer({ isOpen, onClose, restaurant, buttonStyle }: CartDra
                       
                       {item.modifiers.length > 0 && (
                         <div className="text-sm text-muted-foreground mb-1">
-                          {item.modifiers.map((mod, idx) => (
-                            <div key={idx}>+ {mod.name} (+${Number(mod.price).toFixed(2)})</div>
-                          ))}
+                          {item.modifiers.map((mod, idx) => {
+                            const placementSuffix = mod.placement === 'left' ? ' (Left Half)' 
+                              : mod.placement === 'right' ? ' (Right Half)' 
+                              : '';
+                            return (
+                              <div key={idx}>+ {mod.name}{placementSuffix} (+${Number(mod.price).toFixed(2)})</div>
+                            );
+                          })}
                         </div>
                       )}
                       

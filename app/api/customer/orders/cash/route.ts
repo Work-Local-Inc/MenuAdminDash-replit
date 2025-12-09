@@ -153,7 +153,8 @@ export async function POST(request: NextRequest) {
             modifier_id: mod.id,
             modifier_name: mod.name,
             modifier_price: modPrice.toString(),
-            quantity: 1
+            quantity: 1,
+            placement: mod.placement || null
           })
         }
       }
