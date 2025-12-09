@@ -83,6 +83,16 @@ export async function GET(
       // combo_group_sections which contain combo_modifier_groups which contain combo_modifiers
       // We need to traverse this hierarchy
       
+      // First get the combo_group name for debugging
+      const { data: comboGroup } = await supabase
+        .schema('menuca_v3')
+        .from('combo_groups')
+        .select('id, name')
+        .eq('id', groupId)
+        .single()
+      
+      console.log('[Options API] Fetching options for combo_group:', { groupId, comboGroupName: comboGroup?.name })
+      
       // First get all sections for this combo_group
       const { data: sections } = await supabase
         .schema('menuca_v3')
@@ -90,56 +100,13 @@ export async function GET(
         .select('id, name')
         .eq('combo_group_id', groupId)
       
+      console.log('[Options API] Found sections:', sections?.map(s => ({ id: s.id, name: s.name })))
+      
       if (!sections?.length) {
-        // Maybe it's directly a combo_modifier_group id?
-        const { data: modifierGroup } = await supabase
-          .schema('menuca_v3')
-          .from('combo_modifier_groups')
-          .select('id, name, is_selected')
-          .eq('id', groupId)
-          .single()
-        
-        if (modifierGroup) {
-          // Get modifiers directly from this group
-          const { data: modifiers, error } = await supabase
-            .schema('menuca_v3')
-            .from('combo_modifiers')
-            .select('id, name, display_order')
-            .eq('combo_modifier_group_id', groupId)
-            .order('display_order')
-          
-          if (error) {
-            console.error('Error fetching combo modifiers:', error)
-            throw error
-          }
-          
-          const modifierIds = modifiers?.map(m => m.id) || []
-          
-          const { data: pricesData } = await supabase
-            .schema('menuca_v3')
-            .from('combo_modifier_prices')
-            .select('combo_modifier_id, price, size_variant')
-            .in('combo_modifier_id', modifierIds)
-          
-          options = (modifiers || []).map(m => {
-            const prices = pricesData?.filter(p => p.combo_modifier_id === m.id) || []
-            const basePrice = prices.find(p => !p.size_variant)?.price || prices[0]?.price || 0
-            
-            return {
-              id: m.id,
-              name: m.name,
-              price: basePrice,
-              is_default: false,
-              is_included: false,
-              display_order: m.display_order || 0,
-              modifier_type: null,
-              size_prices: prices.filter(p => p.size_variant).map(p => ({
-                size: p.size_variant || '',
-                price: p.price
-              }))
-            }
-          })
-        }
+        // This combo_group has no sections - return empty options
+        // Do NOT fall back to combo_modifier_groups - they have separate ID spaces
+        console.log('[Options API] No sections found for combo_group, returning empty options')
+        options = []
       } else {
         // Traverse the full hierarchy
         const sectionIds = sections.map(s => s.id)
@@ -151,6 +118,8 @@ export async function GET(
           .in('combo_group_section_id', sectionIds)
         
         const groupIds = modifierGroups?.map(g => g.id) || []
+        
+        console.log('[Options API] Found modifier_groups:', modifierGroups?.map(g => ({ id: g.id, name: g.name })))
         
         const { data: modifiers, error } = await supabase
           .schema('menuca_v3')
