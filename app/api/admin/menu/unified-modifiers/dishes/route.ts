@@ -41,23 +41,35 @@ export async function GET(request: NextRequest) {
     // Use legacy_v1_id if available, otherwise use the V3 id
     const effectiveRestaurantId = restaurant?.legacy_v1_id || restaurantIdNum;
     
-    const { data: dishes, error } = await supabase
-      .schema('menuca_v3')
-      .from('dishes')
-      .select(`
-        id,
-        name,
-        is_combo,
-        course_id,
-        courses:course_id (id, name)
-      `)
-      .eq('restaurant_id', effectiveRestaurantId)
-      .is('deleted_at', null)
-      .order('name', { ascending: true });
+    // Fetch dishes and courses separately (PostgREST foreign key relationship not available)
+    const [dishesResult, coursesResult] = await Promise.all([
+      supabase
+        .schema('menuca_v3')
+        .from('dishes')
+        .select('id, name, is_combo, course_id')
+        .eq('restaurant_id', effectiveRestaurantId)
+        .is('deleted_at', null)
+        .order('name', { ascending: true }),
+      supabase
+        .schema('menuca_v3')
+        .from('courses')
+        .select('id, name')
+        .eq('restaurant_id', effectiveRestaurantId)
+        .is('deleted_at', null)
+    ]);
     
-    if (error) throw error;
+    if (dishesResult.error) throw dishesResult.error;
     
-    const dishIds = (dishes || []).map((d: any) => d.id);
+    const dishes = dishesResult.data || [];
+    const courses = coursesResult.data || [];
+    
+    // Build course lookup map
+    const courseMap: Record<number, string> = {};
+    courses.forEach((c: any) => {
+      courseMap[c.id] = c.name;
+    });
+    
+    const dishIds = dishes.map((d: any) => d.id);
     
     if (dishIds.length === 0) {
       return NextResponse.json([]);
@@ -88,7 +100,7 @@ export async function GET(request: NextRequest) {
       comboGroupsByDish[c.dish_id] = (comboGroupsByDish[c.dish_id] || 0) + 1;
     });
     
-    const enrichedDishes: DishListItem[] = (dishes || []).map((d: any) => {
+    const enrichedDishes: DishListItem[] = dishes.map((d: any) => {
       const hasCombo = comboGroupsByDish[d.id] > 0;
       const hasSimple = simpleGroupsByDish[d.id] > 0;
       
@@ -104,7 +116,7 @@ export async function GET(request: NextRequest) {
       return {
         id: d.id,
         name: d.name,
-        category: d.courses?.name || 'Uncategorized',
+        category: courseMap[d.course_id] || 'Uncategorized',
         category_id: d.course_id,
         dish_type: dishType,
         has_modifiers: hasSimple || hasCombo,
