@@ -122,9 +122,10 @@ export function ModifierGroupModal({ group, restaurantId, open, onClose }: Modif
   })
 
   const { data: dishes = [], isLoading: loadingDishes } = useQuery<DishAssignment[]>({
-    queryKey: ['modifier-dish-assignments', restaurantId, group?.id],
+    queryKey: ['modifier-dish-assignments', restaurantId, group?.id, group?.source],
     queryFn: async () => {
-      const res = await fetch(`/api/admin/menu/unified-modifiers/dish-assignments?restaurant_id=${restaurantId}&group_id=${group?.id}`)
+      const source = group?.source || 'combo'
+      const res = await fetch(`/api/admin/menu/unified-modifiers/dish-assignments?restaurant_id=${restaurantId}&group_id=${group?.id}&source=${source}`)
       if (!res.ok) return []
       return res.json()
     },
