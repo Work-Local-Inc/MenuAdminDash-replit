@@ -35,24 +35,18 @@ export async function GET(
     const comboGroupIds = dishComboGroups.map((dcg: any) => dcg.combo_group_id);
     
     // Fetch combo groups with their metadata
+    // Actual columns: id, restaurant_id, name, number_of_items, display_header, source_id, created_at, updated_at, deleted_at
     const { data: comboGroups, error: comboGroupsError } = await supabase
       .schema('menuca_v3')
       .from('combo_groups')
       .select(`
         id,
         name,
-        description,
-        combo_rules,
-        combo_price,
-        pricing_rules,
-        display_order,
-        is_active,
-        is_available
+        number_of_items,
+        display_header
       `)
       .in('id', comboGroupIds)
-      .eq('is_active', true)
-      .eq('is_available', true)
-      .order('display_order', { ascending: true });
+      .is('deleted_at', null);
     
     if (comboGroupsError) {
       throw comboGroupsError;
@@ -244,10 +238,21 @@ export async function GET(
     });
     
     // Build final result: combo_groups with nested sections
-    const result = comboGroups.map((cg: any) => ({
-      ...cg,
-      sections: sectionsByComboGroup[cg.id] || []
-    }));
+    // Get display_order from the minimum of sections' display_order
+    const result = comboGroups.map((cg: any) => {
+      const cgSections = sectionsByComboGroup[cg.id] || [];
+      const minDisplayOrder = cgSections.length > 0 
+        ? Math.min(...cgSections.map((s: any) => s.display_order ?? 999))
+        : 1;
+      return {
+        ...cg,
+        display_order: minDisplayOrder,
+        sections: cgSections
+      };
+    });
+    
+    // Sort by display_order
+    result.sort((a: any, b: any) => (a.display_order ?? 999) - (b.display_order ?? 999));
     
     return NextResponse.json(result);
   } catch (error: any) {
