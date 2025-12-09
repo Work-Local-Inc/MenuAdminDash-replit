@@ -38,30 +38,55 @@ export async function GET(request: NextRequest) {
       .eq('id', restaurantIdNum)
       .single();
     
-    // Use legacy_v1_id if available, otherwise use the V3 id
-    const effectiveRestaurantId = restaurant?.legacy_v1_id || restaurantIdNum;
+    // For Centertown and similar restaurants, dishes might be stored with V3 ID
+    // Try V3 ID first, then fall back to legacy_v1_id if no results
+    const legacyId = restaurant?.legacy_v1_id || restaurantIdNum;
     
-    // Fetch dishes and courses separately (PostgREST foreign key relationship not available)
-    const [dishesResult, coursesResult] = await Promise.all([
+    console.log('[Dishes API] Restaurant lookup:', { inputId: restaurantIdNum, restaurant, legacyId });
+    
+    // Try V3 ID first (restaurantIdNum)
+    let [dishesResult, coursesResult] = await Promise.all([
       supabase
         .schema('menuca_v3')
         .from('dishes')
         .select('id, name, is_combo, course_id')
-        .eq('restaurant_id', effectiveRestaurantId)
+        .eq('restaurant_id', restaurantIdNum)
         .is('deleted_at', null)
         .order('name', { ascending: true }),
       supabase
         .schema('menuca_v3')
         .from('courses')
         .select('id, name')
-        .eq('restaurant_id', effectiveRestaurantId)
+        .eq('restaurant_id', restaurantIdNum)
         .is('deleted_at', null)
     ]);
+    
+    // If no dishes found with V3 ID and legacy ID is different, try legacy
+    if ((!dishesResult.data || dishesResult.data.length === 0) && legacyId !== restaurantIdNum) {
+      console.log('[Dishes API] No dishes with V3 ID, trying legacy ID:', legacyId);
+      [dishesResult, coursesResult] = await Promise.all([
+        supabase
+          .schema('menuca_v3')
+          .from('dishes')
+          .select('id, name, is_combo, course_id')
+          .eq('restaurant_id', legacyId)
+          .is('deleted_at', null)
+          .order('name', { ascending: true }),
+        supabase
+          .schema('menuca_v3')
+          .from('courses')
+          .select('id, name')
+          .eq('restaurant_id', legacyId)
+          .is('deleted_at', null)
+      ]);
+    }
     
     if (dishesResult.error) throw dishesResult.error;
     
     const dishes = dishesResult.data || [];
     const courses = coursesResult.data || [];
+    
+    console.log('[Dishes API] Found dishes:', dishes.length, 'courses:', courses.length);
     
     // Build course lookup map
     const courseMap: Record<number, string> = {};
