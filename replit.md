@@ -6,6 +6,13 @@ The Menu.ca Admin Dashboard is a Next.js 14 application for managing a multi-ten
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
+## Testing & Admin Access
+- **Admin test credentials**: Stored as secrets `ADMIN_TEST_EMAIL` and `ADMIN_TEST_PASSWORD`
+- **Admin login path**: `/admin` (redirects to login if not authenticated)
+- **Test restaurants**:
+  - Econo Pizza: restaurant_id=1009 (V3 ID matches dishes)
+  - Centertown Donair & Pizza: restaurant_id=131 (legacy_v1_id=255 for dishes)
+
 ## System Architecture
 
 ### Frontend

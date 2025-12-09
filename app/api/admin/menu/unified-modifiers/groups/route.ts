@@ -41,10 +41,23 @@ export async function GET(request: NextRequest) {
     
     const effectiveRestaurantId = restaurant?.legacy_v1_id || restaurantIdNum;
     
+    console.log('[Modifier Groups API] Restaurant lookup:', {
+      inputId: restaurantIdNum,
+      legacyId: restaurant?.legacy_v1_id,
+      effectiveId: effectiveRestaurantId
+    });
+    
+    // Simple modifier groups are queried through dishes (use legacy ID)
+    // Combo groups have direct restaurant_id FK to restaurants.id (use V3 ID)
     const [simpleGroups, comboGroups] = await Promise.all([
       fetchSimpleModifierGroups(supabase, effectiveRestaurantId),
-      fetchComboModifierGroups(supabase, effectiveRestaurantId)
+      fetchComboModifierGroups(supabase, restaurantIdNum) // Use V3 ID for combo_groups
     ]);
+    
+    console.log('[Modifier Groups API] Results:', {
+      simpleCount: simpleGroups.length,
+      comboCount: comboGroups.length
+    });
     
     const allGroups = [...simpleGroups, ...comboGroups];
     
