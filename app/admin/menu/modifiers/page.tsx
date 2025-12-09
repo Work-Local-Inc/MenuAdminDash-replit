@@ -127,12 +127,22 @@ export default function UnifiedModifierManagerPage() {
   const { data: restaurants = [], isLoading: loadingRestaurants } = useRestaurants()
 
   const { data: dishes = [], isLoading: loadingDishes } = useQuery<DishListItem[]>({
-    queryKey: ['/api/admin/menu/unified-modifiers/dishes', selectedRestaurantId],
+    queryKey: ['unified-modifiers-dishes', selectedRestaurantId],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/menu/unified-modifiers/dishes?restaurant_id=${selectedRestaurantId}`)
+      if (!res.ok) throw new Error('Failed to fetch dishes')
+      return res.json()
+    },
     enabled: !!selectedRestaurantId,
   })
 
   const { data: modifiersData, isLoading: loadingModifiers } = useQuery<UnifiedDishModifiers>({
-    queryKey: ['/api/admin/menu/unified-modifiers', selectedDishId],
+    queryKey: ['unified-modifiers', selectedDishId],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/menu/unified-modifiers?dish_id=${selectedDishId}`)
+      if (!res.ok) throw new Error('Failed to fetch modifiers')
+      return res.json()
+    },
     enabled: !!selectedDishId,
   })
 
