@@ -59,6 +59,8 @@ interface ComboGroup {
   display_order: number;
   is_active: boolean;
   is_available: boolean;
+  number_of_items: number;
+  display_header: string | null;
   sections: ComboGroupSection[];
 }
 
@@ -200,15 +202,33 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
     }
   };
 
-  const getComboSectionKey = (sectionId: number, groupId: number) => `${sectionId}-${groupId}`;
+  const getComboSectionKey = (sectionId: number, groupId: number, instanceIndex: number = 0) => `${sectionId}-${groupId}-${instanceIndex}`;
+  
+  // Parse display_header (semicolon-separated) to get contextual labels
+  const getContextualLabels = (displayHeader: string | null, numberOfItems: number): string[] => {
+    if (displayHeader) {
+      const labels = displayHeader.split(';').map(s => s.trim()).filter(Boolean);
+      if (labels.length >= numberOfItems) return labels;
+    }
+    // Fallback labels
+    const ordinals = ['First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth', 'Seventh', 'Eighth'];
+    return Array.from({ length: numberOfItems }, (_, i) => ordinals[i] || `Item ${i + 1}`);
+  };
+  
+  // Check if this section should show pizza placements
+  const isPizzaToppingSection = (section: ComboGroupSection): boolean => {
+    return section.section_type === 'custom_ingredients';
+  };
 
   const handleComboModifierToggle = (
     section: ComboGroupSection,
     modifierGroup: ComboModifierGroup,
     modifier: ComboModifier,
-    checked: boolean
+    checked: boolean,
+    instanceIndex: number = 0,
+    instanceLabel: string = ''
   ) => {
-    const sectionKey = getComboSectionKey(section.id, modifierGroup.id);
+    const sectionKey = getComboSectionKey(section.id, modifierGroup.id, instanceIndex);
     const currentSelections = comboSelections[sectionKey] || [];
     let newSelections: number[];
 
@@ -265,8 +285,8 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
     ));
   };
 
-  const isComboModifierSelected = (sectionId: number, groupId: number, modifierId: number): boolean => {
-    const sectionKey = getComboSectionKey(sectionId, groupId);
+  const isComboModifierSelected = (sectionId: number, groupId: number, modifierId: number, instanceIndex: number = 0): boolean => {
+    const sectionKey = getComboSectionKey(sectionId, groupId, instanceIndex);
     return (comboSelections[sectionKey] || []).includes(modifierId);
   };
   
@@ -415,7 +435,14 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
           
           {modifierGroups.length > 0 && (
             <div className="space-y-4">
-              {modifierGroups.map((group) => {
+              {/* Sort modifier groups: Drinks last */}
+              {[...modifierGroups].sort((a, b) => {
+                const aIsDrinks = a.name.toLowerCase().includes('drink');
+                const bIsDrinks = b.name.toLowerCase().includes('drink');
+                if (aIsDrinks && !bIsDrinks) return 1;
+                if (!aIsDrinks && bIsDrinks) return -1;
+                return (a.display_order || 0) - (b.display_order || 0);
+              }).map((group) => {
                 const groupSelected = groupSelections[group.id] || [];
                 const isMaxSelections = group.max_selections > 0 && groupSelected.length >= group.max_selections;
 
@@ -522,153 +549,182 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
 
           {comboGroups.length > 0 && (
             <div className="space-y-4">
-              {comboGroups.map((comboGroup) => (
-                <div key={comboGroup.id} className="space-y-4">
-                  {comboGroup.sections.map((section) => {
-                    const allModifiers = section.modifier_groups.flatMap(mg => mg.modifiers);
-                    if (allModifiers.length === 0) return null;
+              {/* Sort combo groups by display_order */}
+              {[...comboGroups].sort((a, b) => (a.display_order || 0) - (b.display_order || 0)).map((comboGroup) => {
+                const numberOfItems = comboGroup.number_of_items || 1;
+                const contextualLabels = getContextualLabels(comboGroup.display_header, numberOfItems);
+                
+                return (
+                  <div key={comboGroup.id} className="space-y-4">
+                    {/* Repeat sections based on number_of_items */}
+                    {Array.from({ length: numberOfItems }).map((_, instanceIndex) => (
+                      comboGroup.sections.map((section) => {
+                        const allModifiers = section.modifier_groups.flatMap(mg => mg.modifiers);
+                        if (allModifiers.length === 0) return null;
+                        
+                        // Check if this section should show pizza placements
+                        const showPizzaPlacements = isPizzaToppingSection(section);
+                        const defaultPlacements: PlacementType[] = ['whole', 'left', 'right'];
 
-                    return (
-                      <div key={section.id} className="border rounded-lg p-4 bg-muted/30 space-y-3" data-testid={`combo-section-${section.id}`}>
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1">
-                            {section.use_header && (
-                              <Label className="text-base font-semibold block">
-                                {section.use_header}
-                              </Label>
-                            )}
-                            <div className="flex items-center gap-2 mt-1">
-                              {section.min_selection > 0 ? (
-                                <Badge variant="destructive" className="text-xs">Required</Badge>
-                              ) : (
-                                <span className="text-xs text-muted-foreground">Optional</span>
-                              )}
-                              {section.free_items > 0 && (
-                                <span className="text-xs text-muted-foreground">
-                                  • {section.free_items} free
-                                </span>
-                              )}
-                              {section.max_selection > 0 && (
-                                <span className="text-xs text-muted-foreground">
-                                  • {section.max_selection === 1 ? 'Choose 1' : `Max ${section.max_selection}`}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        {section.modifier_groups.map((modifierGroup) => {
-                          const sectionKey = getComboSectionKey(section.id, modifierGroup.id);
-                          const currentSelections = comboSelections[sectionKey] || [];
-                          const isMaxSelections = section.max_selection > 0 && currentSelections.length >= section.max_selection;
-
-                          return (
-                            <div key={modifierGroup.id} className="space-y-2">
-                              {modifierGroup.name && section.modifier_groups.length > 1 && (
-                                <Label className="text-sm font-medium text-muted-foreground block">
-                                  {modifierGroup.name}
-                                </Label>
-                              )}
-
-                              {section.max_selection === 1 ? (
-                                <RadioGroup
-                                  value={currentSelections[0]?.toString() || ''}
-                                  onValueChange={(value) => {
-                                    const modifierId = parseInt(value);
-                                    const modifier = modifierGroup.modifiers.find(m => m.id === modifierId);
-                                    if (modifier) {
-                                      const oldModifierId = currentSelections[0];
-                                      if (oldModifierId) {
-                                        const oldModifier = modifierGroup.modifiers.find(m => m.id === oldModifierId);
-                                        if (oldModifier) {
-                                          handleComboModifierToggle(section, modifierGroup, oldModifier, false);
-                                        }
-                                      }
-                                      handleComboModifierToggle(section, modifierGroup, modifier, true);
-                                    }
-                                  }}
-                                >
-                                  {modifierGroup.modifiers.map((modifier) => {
-                                    const price = getComboModifierPrice(modifier);
-                                    const isSelected = currentSelections.includes(modifier.id);
-                                    const hasPlacements = modifier.placements && modifier.placements.length > 0;
-                                    
-                                    return (
-                                      <div key={modifier.id}>
-                                        <div className="flex items-center space-x-2 mb-1">
-                                          <RadioGroupItem
-                                            value={modifier.id.toString()}
-                                            id={`combo-modifier-${modifier.id}`}
-                                            data-testid={`radio-combo-modifier-${modifier.id}`}
-                                          />
-                                          <Label htmlFor={`combo-modifier-${modifier.id}`} className="flex-1 cursor-pointer">
-                                            <div className="flex items-center justify-between">
-                                              <span>{modifier.name}</span>
-                                              {price > 0 && (
-                                                <span className="text-sm text-muted-foreground">
-                                                  +${Number(price).toFixed(2)}
-                                                </span>
-                                              )}
-                                            </div>
-                                          </Label>
-                                        </div>
-                                        {isSelected && hasPlacements && (
-                                          <PlacementSelector modifierId={modifier.id} placements={modifier.placements} />
-                                        )}
-                                      </div>
-                                    );
-                                  })}
-                                </RadioGroup>
-                              ) : (
-                                <div className="space-y-2">
-                                  {modifierGroup.modifiers.map((modifier) => {
-                                    const price = getComboModifierPrice(modifier);
-                                    const isSelected = isComboModifierSelected(section.id, modifierGroup.id, modifier.id);
-                                    const isDisabled = !isSelected && isMaxSelections;
-                                    const hasPlacements = modifier.placements && modifier.placements.length > 0;
-                                    
-                                    return (
-                                      <div key={modifier.id}>
-                                        <div className="flex items-start space-x-3">
-                                          <Checkbox
-                                            id={`combo-modifier-${modifier.id}`}
-                                            checked={isSelected}
-                                            disabled={isDisabled}
-                                            onCheckedChange={(checked) => 
-                                              handleComboModifierToggle(section, modifierGroup, modifier, checked as boolean)
-                                            }
-                                            data-testid={`checkbox-combo-modifier-${modifier.id}`}
-                                          />
-                                          <Label 
-                                            htmlFor={`combo-modifier-${modifier.id}`} 
-                                            className={`flex-1 cursor-pointer font-normal ${isDisabled ? 'opacity-50' : ''}`}
-                                          >
-                                            <div className="flex items-center justify-between">
-                                              <span>{modifier.name}</span>
-                                              {price > 0 && (
-                                                <span className="text-sm text-muted-foreground">
-                                                  +${Number(price).toFixed(2)}
-                                                </span>
-                                              )}
-                                            </div>
-                                          </Label>
-                                        </div>
-                                        {isSelected && hasPlacements && (
-                                          <PlacementSelector modifierId={modifier.id} placements={modifier.placements} />
-                                        )}
-                                      </div>
-                                    );
-                                  })}
+                        return (
+                          <div 
+                            key={`${section.id}-${instanceIndex}`} 
+                            className="border rounded-lg p-4 bg-muted/30 space-y-3" 
+                            data-testid={`combo-section-${section.id}-${instanceIndex}`}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1">
+                                {/* Show contextual label for repeated sections */}
+                                {numberOfItems > 1 && (
+                                  <span className="text-sm font-medium text-muted-foreground block mb-1">
+                                    {contextualLabels[instanceIndex]}
+                                  </span>
+                                )}
+                                {section.use_header && (
+                                  <Label className="text-base font-semibold block">
+                                    {section.use_header}
+                                  </Label>
+                                )}
+                                <div className="flex items-center gap-2 mt-1">
+                                  {section.min_selection > 0 ? (
+                                    <Badge variant="destructive" className="text-xs">Required</Badge>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">Optional</span>
+                                  )}
+                                  {section.free_items > 0 && (
+                                    <span className="text-xs text-muted-foreground">
+                                      • {section.free_items} free
+                                    </span>
+                                  )}
+                                  {section.max_selection > 0 && (
+                                    <span className="text-xs text-muted-foreground">
+                                      • {section.max_selection === 1 ? 'Choose 1' : `Max ${section.max_selection}`}
+                                    </span>
+                                  )}
                                 </div>
-                              )}
+                              </div>
                             </div>
-                          );
-                        })}
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
+
+                            {section.modifier_groups.map((modifierGroup) => {
+                              const sectionKey = getComboSectionKey(section.id, modifierGroup.id, instanceIndex);
+                              const currentSelections = comboSelections[sectionKey] || [];
+                              const isMaxSelections = section.max_selection > 0 && currentSelections.length >= section.max_selection;
+
+                              return (
+                                <div key={`${modifierGroup.id}-${instanceIndex}`} className="space-y-2">
+                                  {modifierGroup.name && section.modifier_groups.length > 1 && (
+                                    <Label className="text-sm font-medium text-muted-foreground block">
+                                      {modifierGroup.name}
+                                    </Label>
+                                  )}
+
+                                  {section.max_selection === 1 ? (
+                                    <RadioGroup
+                                      value={currentSelections[0]?.toString() || ''}
+                                      onValueChange={(value) => {
+                                        const modifierId = parseInt(value);
+                                        const modifier = modifierGroup.modifiers.find(m => m.id === modifierId);
+                                        if (modifier) {
+                                          const oldModifierId = currentSelections[0];
+                                          if (oldModifierId) {
+                                            const oldModifier = modifierGroup.modifiers.find(m => m.id === oldModifierId);
+                                            if (oldModifier) {
+                                              handleComboModifierToggle(section, modifierGroup, oldModifier, false, instanceIndex, contextualLabels[instanceIndex]);
+                                            }
+                                          }
+                                          handleComboModifierToggle(section, modifierGroup, modifier, true, instanceIndex, contextualLabels[instanceIndex]);
+                                        }
+                                      }}
+                                    >
+                                      {modifierGroup.modifiers.map((modifier) => {
+                                        const price = getComboModifierPrice(modifier);
+                                        const isSelected = currentSelections.includes(modifier.id);
+                                        // Use database placements if available, otherwise auto-enable for pizza toppings
+                                        const hasPlacements = (modifier.placements && modifier.placements.length > 0) || showPizzaPlacements;
+                                        const placements = (modifier.placements && modifier.placements.length > 0) ? modifier.placements : (showPizzaPlacements ? defaultPlacements : []);
+                                        const modifierKey = `${modifier.id}-${instanceIndex}`;
+                                        
+                                        return (
+                                          <div key={modifierKey}>
+                                            <div className="flex items-center space-x-2 mb-1">
+                                              <RadioGroupItem
+                                                value={modifier.id.toString()}
+                                                id={`combo-modifier-${modifierKey}`}
+                                                data-testid={`radio-combo-modifier-${modifierKey}`}
+                                              />
+                                              <Label htmlFor={`combo-modifier-${modifierKey}`} className="flex-1 cursor-pointer">
+                                                <div className="flex items-center justify-between">
+                                                  <span>{modifier.name}</span>
+                                                  {price > 0 && (
+                                                    <span className="text-sm text-muted-foreground">
+                                                      +${Number(price).toFixed(2)}
+                                                    </span>
+                                                  )}
+                                                </div>
+                                              </Label>
+                                            </div>
+                                            {isSelected && hasPlacements && (
+                                              <PlacementSelector modifierId={modifier.id} placements={placements} />
+                                            )}
+                                          </div>
+                                        );
+                                      })}
+                                    </RadioGroup>
+                                  ) : (
+                                    <div className="space-y-2">
+                                      {modifierGroup.modifiers.map((modifier) => {
+                                        const price = getComboModifierPrice(modifier);
+                                        const isSelected = isComboModifierSelected(section.id, modifierGroup.id, modifier.id, instanceIndex);
+                                        const isDisabled = !isSelected && isMaxSelections;
+                                        // Use database placements if available, otherwise auto-enable for pizza toppings
+                                        const hasPlacements = (modifier.placements && modifier.placements.length > 0) || showPizzaPlacements;
+                                        const placements = (modifier.placements && modifier.placements.length > 0) ? modifier.placements : (showPizzaPlacements ? defaultPlacements : []);
+                                        const modifierKey = `${modifier.id}-${instanceIndex}`;
+                                        
+                                        return (
+                                          <div key={modifierKey}>
+                                            <div className="flex items-start space-x-3">
+                                              <Checkbox
+                                                id={`combo-modifier-${modifierKey}`}
+                                                checked={isSelected}
+                                                disabled={isDisabled}
+                                                onCheckedChange={(checked) => 
+                                                  handleComboModifierToggle(section, modifierGroup, modifier, checked as boolean, instanceIndex, contextualLabels[instanceIndex])
+                                                }
+                                                data-testid={`checkbox-combo-modifier-${modifierKey}`}
+                                              />
+                                              <Label 
+                                                htmlFor={`combo-modifier-${modifierKey}`} 
+                                                className={`flex-1 cursor-pointer font-normal ${isDisabled ? 'opacity-50' : ''}`}
+                                              >
+                                                <div className="flex items-center justify-between">
+                                                  <span>{modifier.name}</span>
+                                                  {price > 0 && (
+                                                    <span className="text-sm text-muted-foreground">
+                                                      +${Number(price).toFixed(2)}
+                                                    </span>
+                                                  )}
+                                                </div>
+                                              </Label>
+                                            </div>
+                                            {isSelected && hasPlacements && (
+                                              <PlacementSelector modifierId={modifier.id} placements={placements} />
+                                            )}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })
+                    ))}
+                  </div>
+                );
+              })}
             </div>
           )}
           
