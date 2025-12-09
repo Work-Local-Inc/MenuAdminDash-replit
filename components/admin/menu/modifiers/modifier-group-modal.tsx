@@ -65,6 +65,7 @@ interface CategoryAssignment {
   id: number
   name: string
   count: number
+  linkedCount?: number
   checked: boolean
 }
 
@@ -112,9 +113,10 @@ export function ModifierGroupModal({ group, restaurantId, open, onClose }: Modif
   })
 
   const { data: categories = [] } = useQuery<CategoryAssignment[]>({
-    queryKey: ['modifier-categories', restaurantId, group?.id],
+    queryKey: ['modifier-categories', restaurantId, group?.id, group?.source],
     queryFn: async () => {
-      const res = await fetch(`/api/admin/menu/unified-modifiers/categories?restaurant_id=${restaurantId}&group_id=${group?.id}`)
+      const source = group?.source || 'combo'
+      const res = await fetch(`/api/admin/menu/unified-modifiers/categories?restaurant_id=${restaurantId}&group_id=${group?.id}&source=${source}`)
       if (!res.ok) return []
       return res.json()
     },
@@ -370,10 +372,16 @@ export function ModifierGroupModal({ group, restaurantId, open, onClose }: Modif
                             />
                             <div className="flex-1 min-w-0">
                               <p className="font-medium truncate">{cat.name}</p>
-                              <p className="text-xs text-muted-foreground">{cat.count} items</p>
+                              <p className="text-xs text-muted-foreground">
+                                {cat.linkedCount && cat.linkedCount > 0 
+                                  ? `${cat.linkedCount}/${cat.count} linked` 
+                                  : `${cat.count} items`}
+                              </p>
                             </div>
                             {isChecked && (
-                              <span className="text-primary text-lg">✓</span>
+                              <Badge variant="secondary" className="text-xs shrink-0">
+                                {cat.linkedCount || 0} linked
+                              </Badge>
                             )}
                           </label>
                         )
