@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { verifyAdminAuth } from "@/lib/auth/admin-check"
-import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 
 interface ModifierOption {
   id: number
@@ -35,8 +35,8 @@ export async function GET(
   { params }: { params: { groupId: string } }
 ) {
   try {
-    await verifyAdminAuth()
-    const supabase = await createClient()
+    await verifyAdminAuth(request)
+    const supabase = createAdminClient() as any
     
     const groupId = parseInt(params.groupId)
     const { searchParams } = new URL(request.url)
@@ -94,13 +94,14 @@ export async function GET(
       console.log('[Options API] Fetching options for combo_group:', { groupId, comboGroupName: comboGroup?.name })
       
       // First get all sections for this combo_group
-      const { data: sections } = await supabase
+      const { data: sections, error: sectionsError } = await supabase
         .schema('menuca_v3')
         .from('combo_group_sections')
-        .select('id, name')
+        .select('id, section_type, use_header')
         .eq('combo_group_id', groupId)
+        .eq('is_active', true)
       
-      console.log('[Options API] Found sections:', sections?.map(s => ({ id: s.id, name: s.name })))
+      console.log('[Options API] Sections query result:', { sections, error: sectionsError?.message })
       
       if (!sections?.length) {
         // This combo_group has no sections - return empty options
