@@ -135,10 +135,12 @@ async function fetchComboModifierGroups(
 ): Promise<ModifierGroupListItem[]> {
   console.log('[fetchComboModifierGroups] Querying combo_groups with restaurant_id:', restaurantId);
   
+  // Note: combo_groups table doesn't have display_order column
+  // Actual columns: id, restaurant_id, name, number_of_items, display_header, source_id, created_at, updated_at, deleted_at
   const { data: comboGroups, error } = await supabase
     .schema('menuca_v3')
     .from('combo_groups')
-    .select('id, name, display_order')
+    .select('id, name')
     .eq('restaurant_id', restaurantId)
     .is('deleted_at', null);
   
@@ -189,7 +191,7 @@ async function fetchComboModifierGroups(
       linked_dish_count: dishCountByGroup[g.id] || 0,
       supports_placements: false,
       supports_size_pricing: false,
-      display_order: g.display_order || 1
+      display_order: 1 // combo_groups table doesn't have display_order column
     }));
   }
   
@@ -313,7 +315,7 @@ async function fetchComboModifierGroups(
       linked_dish_count: dishCountByGroup[g.id] || 0,
       supports_placements: hasPlacements,
       supports_size_pricing: hasSizePricing,
-      display_order: g.display_order || 1
+      display_order: 1 // combo_groups table doesn't have display_order column
     };
   });
 }
