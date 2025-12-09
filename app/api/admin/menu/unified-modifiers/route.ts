@@ -53,6 +53,7 @@ export async function GET(request: NextRequest) {
     const supabase = createAdminClient() as any;
     const dishIdNum = parseInt(dishId, 10);
     
+    // Fetch dish with restaurant info to get legacy_v1_id for proper lookups
     const { data: dish, error: dishError } = await supabase
       .schema('menuca_v3')
       .from('dishes')

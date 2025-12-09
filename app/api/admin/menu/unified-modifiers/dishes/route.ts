@@ -27,6 +27,19 @@ export async function GET(request: NextRequest) {
     }
     
     const supabase = createAdminClient() as any;
+    const restaurantIdNum = parseInt(restaurantId, 10);
+    
+    // Look up the restaurant to get legacy_v1_id if it exists
+    // Some restaurants have dishes stored under legacy_v1_id, others under the V3 id
+    const { data: restaurant } = await supabase
+      .schema('menuca_v3')
+      .from('restaurants')
+      .select('id, legacy_v1_id')
+      .eq('id', restaurantIdNum)
+      .single();
+    
+    // Use legacy_v1_id if available, otherwise use the V3 id
+    const effectiveRestaurantId = restaurant?.legacy_v1_id || restaurantIdNum;
     
     const { data: dishes, error } = await supabase
       .schema('menuca_v3')
@@ -38,7 +51,7 @@ export async function GET(request: NextRequest) {
         course_id,
         courses:course_id (id, name)
       `)
-      .eq('restaurant_id', parseInt(restaurantId, 10))
+      .eq('restaurant_id', effectiveRestaurantId)
       .is('deleted_at', null)
       .order('name', { ascending: true });
     
