@@ -433,16 +433,13 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
             </div>
           )}
           
-          {modifierGroups.length > 0 && (
+          {/* Non-Drinks simple modifiers first */}
+          {modifierGroups.filter(g => !g.name.toLowerCase().includes('drink')).length > 0 && (
             <div className="space-y-4">
-              {/* Sort modifier groups: Drinks last */}
-              {[...modifierGroups].sort((a, b) => {
-                const aIsDrinks = a.name.toLowerCase().includes('drink');
-                const bIsDrinks = b.name.toLowerCase().includes('drink');
-                if (aIsDrinks && !bIsDrinks) return 1;
-                if (!aIsDrinks && bIsDrinks) return -1;
-                return (a.display_order || 0) - (b.display_order || 0);
-              }).map((group) => {
+              {modifierGroups
+                .filter(g => !g.name.toLowerCase().includes('drink'))
+                .sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
+                .map((group) => {
                 const groupSelected = groupSelections[group.id] || [];
                 const isMaxSelections = group.max_selections > 0 && groupSelected.length >= group.max_selections;
 
@@ -725,6 +722,116 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {/* Drinks section - always last */}
+          {modifierGroups.filter(g => g.name.toLowerCase().includes('drink')).length > 0 && (
+            <div className="space-y-4">
+              {modifierGroups
+                .filter(g => g.name.toLowerCase().includes('drink'))
+                .map((group) => {
+                  const groupSelected = groupSelections[group.id] || [];
+                  const isMaxSelections = group.max_selections > 0 && groupSelected.length >= group.max_selections;
+
+                  return (
+                    <div key={group.id} className="border rounded-lg p-4 bg-muted/30 space-y-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
+                          <Label className="text-base font-semibold block">
+                            {group.name}
+                          </Label>
+                          <div className="flex items-center gap-2 mt-1">
+                            {group.is_required ? (
+                              <Badge variant="destructive" className="text-xs">Required</Badge>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">Optional</span>
+                            )}
+                            {group.max_selections > 0 && (
+                              <span className="text-xs text-muted-foreground">
+                                • {group.max_selections === 1 ? 'Choose 1' : `Max ${group.max_selections}`}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {group.instructions && (
+                        <p className="text-sm text-muted-foreground -mt-1">{group.instructions}</p>
+                      )}
+                      
+                      {group.max_selections === 1 ? (
+                        <RadioGroup
+                          value={groupSelected[0]?.toString() || ''}
+                          onValueChange={(value) => {
+                            const modifierId = parseInt(value);
+                            const oldSelection = groupSelected[0];
+                            if (oldSelection) {
+                              handleModifierToggle(group, oldSelection, false);
+                            }
+                            handleModifierToggle(group, modifierId, true);
+                          }}
+                        >
+                          {group.modifiers.map((modifier) => {
+                            const price = getModifierPrice(modifier);
+                            return (
+                              <div key={modifier.id} className="flex items-center space-x-2 mb-2">
+                                <RadioGroupItem
+                                  value={modifier.id.toString()}
+                                  id={`modifier-${modifier.id}`}
+                                  data-testid={`radio-modifier-${modifier.id}`}
+                                />
+                                <Label htmlFor={`modifier-${modifier.id}`} className="flex-1 cursor-pointer">
+                                  <div className="flex items-center justify-between">
+                                    <span>{modifier.name}</span>
+                                    {price > 0 && (
+                                      <span className="text-sm text-muted-foreground">
+                                        +${Number(price).toFixed(2)}
+                                      </span>
+                                    )}
+                                  </div>
+                                </Label>
+                              </div>
+                            );
+                          })}
+                        </RadioGroup>
+                      ) : (
+                        <div className="space-y-2">
+                          {group.modifiers.map((modifier) => {
+                            const price = getModifierPrice(modifier);
+                            const isSelected = (groupSelections[group.id] || []).includes(modifier.id);
+                            const isDisabled = !isSelected && isMaxSelections;
+
+                            return (
+                              <div key={modifier.id} className="flex items-start space-x-3">
+                                <Checkbox
+                                  id={`modifier-${modifier.id}`}
+                                  checked={isSelected}
+                                  disabled={isDisabled}
+                                  onCheckedChange={(checked) => handleModifierToggle(group, modifier.id, checked as boolean)}
+                                  data-testid={`checkbox-modifier-${modifier.id}`}
+                                />
+                                <Label 
+                                  htmlFor={`modifier-${modifier.id}`} 
+                                  className={`flex-1 cursor-pointer font-normal ${isDisabled ? 'opacity-50' : ''}`}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <span>{modifier.name}</span>
+                                    {price > 0 && (
+                                      <span className="text-sm text-muted-foreground">
+                                        +${Number(price).toFixed(2)}
+                                      </span>
+                                    )}
+                                  </div>
+                                </Label>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
             </div>
           )}
           
