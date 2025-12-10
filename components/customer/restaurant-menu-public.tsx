@@ -82,8 +82,9 @@ export default function RestaurantMenuPublic({
   const menuContent = (
     <div className="min-h-screen bg-background">
       {/* Only show banner if restaurant has a custom banner image */}
+      {/* Uber Eats style: taller hero on larger screens */}
       {restaurant.banner_image_url && (
-        <div className="w-full h-20 sm:h-24 md:h-32 bg-muted relative overflow-hidden">
+        <div className="w-full h-32 sm:h-40 md:h-48 lg:h-56 xl:h-64 bg-muted relative overflow-hidden">
           <img
             src={restaurant.banner_image_url}
             alt={`${restaurant.name} banner`}
@@ -92,7 +93,7 @@ export default function RestaurantMenuPublic({
           <img
             src="/images/order-online-badge.png"
             alt="Order Online"
-            className="absolute right-3 sm:right-4 md:right-6 top-1/2 -translate-y-1/2 h-14 sm:h-16 md:h-24 w-auto drop-shadow-lg"
+            className="absolute right-3 sm:right-4 md:right-6 lg:right-8 top-1/2 -translate-y-1/2 h-16 sm:h-20 md:h-24 lg:h-28 xl:h-32 w-auto drop-shadow-lg"
             data-testid="img-order-online-badge"
           />
         </div>
