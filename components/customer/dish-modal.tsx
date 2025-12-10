@@ -216,8 +216,14 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
   };
   
   // Check if this section should show pizza placements
+  // Detect by section_type OR by common topping-related keywords in the header
   const isPizzaToppingSection = (section: ComboGroupSection): boolean => {
-    return section.section_type === 'custom_ingredients';
+    if (section.section_type === 'custom_ingredients') return true;
+    
+    // Fallback: detect pizza toppings by header keywords
+    const header = (section.use_header || '').toLowerCase();
+    const toppingKeywords = ['topping', 'garniture', 'ingredient', 'add more', 'extra'];
+    return toppingKeywords.some(keyword => header.includes(keyword));
   };
 
   // Helper to recalculate prices for all modifiers in a section based on free_items
