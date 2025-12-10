@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { SearchableRestaurantSelect } from "@/components/admin/searchable-restaurant-select"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useRestaurants } from "@/lib/hooks/use-restaurants"
@@ -512,25 +513,16 @@ export default function DealsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {loadingRestaurants ? (
-              <Skeleton className="h-10 w-full max-w-md" />
-            ) : (
-              <Select value={selectedRestaurantId} onValueChange={handleRestaurantChange}>
-                <SelectTrigger className="w-full max-w-md">
-                  <SelectValue placeholder="Select a restaurant location" />
-                </SelectTrigger>
-                <SelectContent>
-                  {restaurants.map((restaurant: any) => (
-                    <SelectItem key={restaurant.id} value={restaurant.id.toString()}>
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4 text-muted-foreground" />
-                        {restaurant.name} - {restaurant.city}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
+            <div className="max-w-md">
+              <SearchableRestaurantSelect
+                restaurants={restaurants}
+                value={selectedRestaurantId}
+                onValueChange={handleRestaurantChange}
+                isLoading={loadingRestaurants}
+                placeholder="Select a restaurant location"
+                data-testid="select-restaurant"
+              />
+            </div>
           </CardContent>
         </Card>
       ) : (
@@ -544,18 +536,16 @@ export default function DealsPage() {
                 {selectedRestaurant?.name} - {selectedRestaurant?.city}
               </Badge>
             </div>
-            <Select value={selectedRestaurantId} onValueChange={handleRestaurantChange}>
-              <SelectTrigger className="w-auto h-8 text-xs border-primary/30">
-                <span className="text-muted-foreground">Change</span>
-              </SelectTrigger>
-              <SelectContent>
-                {restaurants.map((restaurant: any) => (
-                  <SelectItem key={restaurant.id} value={restaurant.id.toString()}>
-                    {restaurant.name} - {restaurant.city}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="w-48">
+              <SearchableRestaurantSelect
+                restaurants={restaurants}
+                value={selectedRestaurantId}
+                onValueChange={handleRestaurantChange}
+                isLoading={loadingRestaurants}
+                placeholder="Change restaurant"
+                data-testid="select-restaurant-change"
+              />
+            </div>
           </div>
 
           {/* Deal Type Quick Filters */}

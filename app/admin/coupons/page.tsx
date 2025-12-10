@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { SearchableRestaurantSelect } from "@/components/admin/searchable-restaurant-select"
 import { useCoupons, useCreateCoupon } from "@/lib/hooks/use-coupons"
 import { useRestaurants } from "@/lib/hooks/use-restaurants"
 import { formatCurrency, formatDate } from "@/lib/utils"
@@ -156,25 +157,16 @@ export default function CouponsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {loadingRestaurants ? (
-              <Skeleton className="h-10 w-full max-w-md" />
-            ) : (
-              <Select value={selectedRestaurantId} onValueChange={handleRestaurantChange}>
-                <SelectTrigger className="w-full max-w-md" data-testid="select-restaurant">
-                  <SelectValue placeholder="Select a restaurant location" />
-                </SelectTrigger>
-                <SelectContent>
-                  {restaurants.map((restaurant: any) => (
-                    <SelectItem key={restaurant.id} value={restaurant.id.toString()}>
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4 text-muted-foreground" />
-                        {restaurant.name} - {restaurant.city}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
+            <div className="max-w-md">
+              <SearchableRestaurantSelect
+                restaurants={restaurants}
+                value={selectedRestaurantId}
+                onValueChange={handleRestaurantChange}
+                isLoading={loadingRestaurants}
+                placeholder="Select a restaurant location"
+                data-testid="select-restaurant"
+              />
+            </div>
           </CardContent>
         </Card>
       </div>
