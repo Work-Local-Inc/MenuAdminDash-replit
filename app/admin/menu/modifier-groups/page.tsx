@@ -39,13 +39,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { SearchableRestaurantSelect } from "@/components/admin/searchable-restaurant-select"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
