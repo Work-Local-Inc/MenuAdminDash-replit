@@ -142,3 +142,42 @@ NEXT_PUBLIC_STRIPE_PUBLIC_KEY: process.env.TESTING_VITE_STRIPE_PUBLIC_KEY || pro
 - `components/customer/restaurant-menu-public.tsx` - Public menu component
 
 Reference: `AI-AGENTS-START-HERE/DELIVERY_ZONES_HANDOFF.md` for complete delivery zones documentation.
+
+### Dual Modifier Validation (Dec 2025)
+
+**Problem:** Order APIs were rejecting combo modifiers (pizza toppings) because they only validated against the `dish_modifiers` table (simple modifiers).
+
+**Solution:** Order validation now supports BOTH modifier types:
+
+1. **Simple Modifiers** (`dish_modifiers` table)
+   - Validated via: `modifier_group.dish_id === item.dishId`
+   - Price lookup: `dish_modifiers.price` (size-specific prices from `modifier_prices` table)
+
+2. **Combo Modifiers** (`combo_modifiers` table)
+   - Validated via: `dish_combo_groups` junction table
+   - Hierarchy: `combo_modifiers` → `combo_modifier_groups` → `combo_group_sections` → `combo_groups` → `dish_combo_groups`
+   - Price lookup: `combo_modifiers.price` field
+
+**Files Updated:**
+- `app/api/customer/orders/route.ts` - Stripe payment order creation
+- `app/api/customer/orders/cash/route.ts` - Cash payment order creation
+
+**Validation Flow:**
+```typescript
+// 1. Try simple modifier first
+const simpleModifier = simpleModifierMap.get(mod.id)
+if (simpleModifier) {
+  // Validate: simpleModifier.modifier_group.dish_id === item.dishId
+}
+
+// 2. If not found, check combo modifiers
+const comboModifier = comboModifierMap.get(mod.id)
+if (comboModifier) {
+  // Validate: comboGroupId is in dishComboGroupLinks.get(item.dishId)
+}
+```
+
+**Key Tables:**
+- `dish_modifiers` - Simple modifiers (sauces, add-ons)
+- `combo_modifiers` - Combo modifiers (pizza toppings with placements)
+- `dish_combo_groups` - Links dishes to combo groups
