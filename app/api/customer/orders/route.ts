@@ -248,14 +248,13 @@ export async function POST(request: NextRequest) {
       if (notFoundIds.length > 0) {
         console.log('[Order API] Looking for combo modifiers:', notFoundIds)
         
-        // Load combo modifiers
+        // Load combo modifiers (note: prices are in separate combo_modifier_prices table)
         const { data: comboModifiersData, error: comboModifiersError } = await adminSupabase
           .from('combo_modifiers')
           .select(`
             id,
             name,
-            combo_modifier_group_id,
-            price
+            combo_modifier_group_id
           `)
           .in('id', notFoundIds)
 
@@ -266,8 +265,24 @@ export async function POST(request: NextRequest) {
 
         comboModifiersData?.forEach((mod: any) => {
           comboModifierMap.set(mod.id, mod)
-          if (mod.price) {
-            comboModifierPriceMap.set(mod.id, parseFloat(mod.price))
+        })
+
+        // Load combo modifier prices from separate table
+        const { data: comboPricesData, error: comboPricesError } = await adminSupabase
+          .from('combo_modifier_prices')
+          .select('combo_modifier_id, price, size_variant')
+          .in('combo_modifier_id', notFoundIds)
+
+        if (comboPricesError) {
+          console.error('[Order API] Combo modifier prices error:', comboPricesError)
+          // Non-fatal - combo modifiers might be free (included)
+        }
+
+        comboPricesData?.forEach((priceRow: any) => {
+          // Store price by modifier ID (may need size matching later)
+          // For now, use the first price found (or base price without size_variant)
+          if (!comboModifierPriceMap.has(priceRow.combo_modifier_id)) {
+            comboModifierPriceMap.set(priceRow.combo_modifier_id, parseFloat(priceRow.price))
           }
         })
 

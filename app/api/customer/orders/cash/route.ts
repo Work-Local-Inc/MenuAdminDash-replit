@@ -131,14 +131,16 @@ export async function POST(request: NextRequest) {
       const potentialComboIds = (modifierIds as number[]).filter(id => !simpleModIds.has(id))
       
       if (potentialComboIds.length > 0) {
-        const { data: comboModifiersData } = await adminSupabase
-          .from('combo_modifiers')
-          .select('id, price')
-          .in('id', potentialComboIds)
+        // Load combo modifier prices from separate table (combo_modifiers doesn't have price column)
+        const { data: comboPricesData } = await adminSupabase
+          .from('combo_modifier_prices')
+          .select('combo_modifier_id, price')
+          .in('combo_modifier_id', potentialComboIds)
 
-        comboModifiersData?.forEach((mod: any) => {
-          if (mod.price) {
-            comboModifierPriceMap.set(mod.id, parseFloat(mod.price))
+        comboPricesData?.forEach((priceRow: any) => {
+          // Use first price found (combo modifiers may have size-based pricing)
+          if (!comboModifierPriceMap.has(priceRow.combo_modifier_id)) {
+            comboModifierPriceMap.set(priceRow.combo_modifier_id, parseFloat(priceRow.price))
           }
         })
       }
