@@ -51,6 +51,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { SearchableRestaurantSelect } from "@/components/admin/searchable-restaurant-select"
 import {
   Tabs,
   TabsContent,
@@ -374,22 +375,14 @@ export default function MenuDishesPage() {
           <CardDescription>Choose a restaurant to manage its menu dishes</CardDescription>
         </CardHeader>
         <CardContent>
-          {loadingRestaurants ? (
-            <Skeleton className="h-10 w-full" />
-          ) : (
-            <Select value={selectedRestaurantId} onValueChange={setSelectedRestaurantId}>
-              <SelectTrigger data-testid="select-restaurant">
-                <SelectValue placeholder="Select a restaurant" />
-              </SelectTrigger>
-              <SelectContent>
-                {restaurants.map((restaurant: any) => (
-                  <SelectItem key={restaurant.id} value={restaurant.id.toString()}>
-                    {restaurant.name} - {restaurant.city}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+          <SearchableRestaurantSelect
+            restaurants={restaurants}
+            value={selectedRestaurantId}
+            onValueChange={setSelectedRestaurantId}
+            isLoading={loadingRestaurants}
+            placeholder="Select a restaurant"
+            data-testid="select-restaurant"
+          />
         </CardContent>
       </Card>
 

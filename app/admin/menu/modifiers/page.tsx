@@ -4,19 +4,9 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Skeleton } from "@/components/ui/skeleton"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { SearchableRestaurantSelect } from "@/components/admin/searchable-restaurant-select"
 import { 
   Layers, 
-  Search, 
   Building2,
   ArrowRight,
   Settings
@@ -25,18 +15,15 @@ import { useRestaurants } from "@/lib/hooks/use-restaurants"
 
 export default function ModifierManagerPage() {
   const router = useRouter()
-  const [searchTerm, setSearchTerm] = useState('')
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string>('')
 
   const { data: restaurants = [], isLoading: loadingRestaurants } = useRestaurants()
 
-  const filteredRestaurants = restaurants.filter((r: any) =>
-    r.name.toLowerCase().includes(searchTerm.toLowerCase())
-  )
-
   const handleRestaurantSelect = (restaurantId: string) => {
     setSelectedRestaurantId(restaurantId)
-    router.push(`/admin/menu/modifiers/r/${restaurantId}`)
+    if (restaurantId) {
+      router.push(`/admin/menu/modifiers/r/${restaurantId}`)
+    }
   }
 
   const handleGoToRestaurant = () => {
@@ -70,50 +57,16 @@ export default function ModifierManagerPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex gap-4">
-            <Select
-              value={selectedRestaurantId}
-              onValueChange={handleRestaurantSelect}
-            >
-              <SelectTrigger
-                className="flex-1"
+            <div className="flex-1">
+              <SearchableRestaurantSelect
+                restaurants={restaurants}
+                value={selectedRestaurantId}
+                onValueChange={handleRestaurantSelect}
+                isLoading={loadingRestaurants}
+                placeholder="Choose a restaurant..."
                 data-testid="select-restaurant"
-              >
-                <SelectValue placeholder="Choose a restaurant..." />
-              </SelectTrigger>
-              <SelectContent>
-                <div className="px-2 pb-2">
-                  <div className="relative">
-                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search restaurants..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-8"
-                      data-testid="input-search-restaurants"
-                    />
-                  </div>
-                </div>
-                {loadingRestaurants ? (
-                  <SelectItem value="_loading" disabled>
-                    Loading restaurants...
-                  </SelectItem>
-                ) : filteredRestaurants.length === 0 ? (
-                  <SelectItem value="_empty" disabled>
-                    No restaurants found
-                  </SelectItem>
-                ) : (
-                  filteredRestaurants.map((restaurant: any) => (
-                    <SelectItem
-                      key={restaurant.id}
-                      value={restaurant.id.toString()}
-                      data-testid={`option-restaurant-${restaurant.id}`}
-                    >
-                      {restaurant.name}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
+              />
+            </div>
             <Button 
               onClick={handleGoToRestaurant}
               disabled={!selectedRestaurantId}

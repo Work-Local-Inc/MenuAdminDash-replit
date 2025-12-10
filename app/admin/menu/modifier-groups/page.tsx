@@ -46,6 +46,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { SearchableRestaurantSelect } from "@/components/admin/searchable-restaurant-select"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
@@ -247,39 +248,16 @@ export default function ModifierGroupsPage() {
             <Label htmlFor="restaurant-select" className="min-w-fit">
               Select Restaurant
             </Label>
-            <Select
-              value={selectedRestaurantId}
-              onValueChange={setSelectedRestaurantId}
-            >
-              <SelectTrigger
-                id="restaurant-select"
-                className="w-full max-w-md"
+            <div className="w-full max-w-md">
+              <SearchableRestaurantSelect
+                restaurants={restaurants}
+                value={selectedRestaurantId}
+                onValueChange={setSelectedRestaurantId}
+                isLoading={loadingRestaurants}
+                placeholder="Choose a restaurant..."
                 data-testid="select-restaurant"
-              >
-                <SelectValue placeholder="Choose a restaurant..." />
-              </SelectTrigger>
-              <SelectContent>
-                {loadingRestaurants ? (
-                  <SelectItem value="_loading" disabled>
-                    Loading restaurants...
-                  </SelectItem>
-                ) : restaurants.length === 0 ? (
-                  <SelectItem value="_empty" disabled>
-                    No restaurants available
-                  </SelectItem>
-                ) : (
-                  restaurants.map((restaurant: any) => (
-                    <SelectItem
-                      key={restaurant.id}
-                      value={restaurant.id.toString()}
-                      data-testid={`option-restaurant-${restaurant.id}`}
-                    >
-                      {restaurant.name}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
+              />
+            </div>
           </div>
         </CardContent>
       </Card>

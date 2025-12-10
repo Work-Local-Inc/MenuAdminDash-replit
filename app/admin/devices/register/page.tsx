@@ -7,8 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
+import { SearchableRestaurantSelect } from "@/components/admin/searchable-restaurant-select"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { useRestaurants } from "@/lib/hooks/use-restaurants"
 import { useRegisterDevice } from "@/lib/hooks/use-devices"
@@ -232,18 +232,14 @@ export default function RegisterDevicePage() {
 
             <div className="space-y-2">
               <Label htmlFor="restaurant">Restaurant *</Label>
-              <Select value={restaurantId} onValueChange={setRestaurantId}>
-                <SelectTrigger data-testid="select-restaurant">
-                  <SelectValue placeholder={loadingRestaurants ? "Loading..." : "Select a restaurant"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {restaurants.map((restaurant: any) => (
-                    <SelectItem key={restaurant.id} value={restaurant.id.toString()}>
-                      {restaurant.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableRestaurantSelect
+                restaurants={restaurants}
+                value={restaurantId}
+                onValueChange={setRestaurantId}
+                isLoading={loadingRestaurants}
+                placeholder="Select a restaurant"
+                data-testid="select-restaurant"
+              />
               <p className="text-xs text-muted-foreground">
                 The device will only receive orders for this restaurant
               </p>

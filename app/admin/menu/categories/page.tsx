@@ -50,6 +50,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { SearchableRestaurantSelect } from "@/components/admin/searchable-restaurant-select"
 import { useRestaurants } from "@/lib/hooks/use-restaurants"
 import {
   useMenuCourses,
@@ -190,22 +191,14 @@ export default function MenuCategoriesPage() {
           <CardDescription>Choose a restaurant to manage its menu categories</CardDescription>
         </CardHeader>
         <CardContent>
-          {loadingRestaurants ? (
-            <Skeleton className="h-10 w-full" />
-          ) : (
-            <Select value={selectedRestaurantId} onValueChange={setSelectedRestaurantId}>
-              <SelectTrigger data-testid="select-restaurant">
-                <SelectValue placeholder="Select a restaurant" />
-              </SelectTrigger>
-              <SelectContent>
-                {restaurants.map((restaurant: any) => (
-                  <SelectItem key={restaurant.id} value={restaurant.id.toString()}>
-                    {restaurant.name} - {restaurant.city}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+          <SearchableRestaurantSelect
+            restaurants={restaurants}
+            value={selectedRestaurantId}
+            onValueChange={setSelectedRestaurantId}
+            isLoading={loadingRestaurants}
+            placeholder="Select a restaurant"
+            data-testid="select-restaurant"
+          />
         </CardContent>
       </Card>
 
