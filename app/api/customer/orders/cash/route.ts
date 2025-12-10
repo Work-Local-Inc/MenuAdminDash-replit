@@ -49,6 +49,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Email required for guest checkout' }, { status: 400 })
     }
 
+    // VALIDATION: Guest orders MUST have a name (industry standard for pickup/delivery)
+    if (!user && (!delivery_address?.name || delivery_address.name.trim().length < 2)) {
+      return NextResponse.json({ error: 'Name required for order (e.g., "Order for John")' }, { status: 400 })
+    }
+
     const restaurantId = extractIdFromSlug(restaurant_slug)
     if (!restaurantId) {
       return NextResponse.json({ error: 'Invalid restaurant identifier' }, { status: 400 })

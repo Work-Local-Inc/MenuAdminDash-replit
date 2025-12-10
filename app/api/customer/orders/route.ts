@@ -50,6 +50,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Email required for guest checkout' }, { status: 400 })
     }
 
+    // VALIDATION: Guest orders MUST have a name (industry standard for pickup/delivery)
+    if (!user && (!delivery_address?.name || delivery_address.name.trim().length < 2)) {
+      console.error('[Order API] Guest checkout missing name')
+      return NextResponse.json({ error: 'Name required for order (e.g., "Order for John")' }, { status: 400 })
+    }
+
     // Verify payment intent
     const paymentIntent = await stripe.paymentIntents.retrieve(payment_intent_id)
     
