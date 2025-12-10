@@ -30,6 +30,8 @@ interface DeliveryAddress {
   postal_code: string
   delivery_instructions?: string
   email?: string // For guest checkouts
+  name?: string // Customer name for order
+  phone?: string // Customer phone number
   latitude?: number
   longitude?: number
 }
@@ -70,6 +72,8 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick,
   
   // New address form fields
   const [email, setEmail] = useState('') // For guest checkout
+  const [customerName, setCustomerName] = useState('') // Customer name for order
+  const [customerPhone, setCustomerPhone] = useState('') // Customer phone number
   const [streetAddress, setStreetAddress] = useState('')
   const [unit, setUnit] = useState('')
   const [city, setCity] = useState('')
@@ -256,13 +260,31 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick,
     }
 
     // Guest-specific validation
-    if (isGuest && (!email || !email.includes('@'))) {
-      toast({
-        title: "Email required",
-        description: "Please enter a valid email address",
-        variant: "destructive",
-      })
-      return
+    if (isGuest) {
+      if (!customerName || customerName.trim().length < 2) {
+        toast({
+          title: "Name required",
+          description: "Please enter your name",
+          variant: "destructive",
+        })
+        return
+      }
+      if (!customerPhone || customerPhone.trim().length < 7) {
+        toast({
+          title: "Phone required",
+          description: "Please enter a valid phone number",
+          variant: "destructive",
+        })
+        return
+      }
+      if (!email || !email.includes('@')) {
+        toast({
+          title: "Email required",
+          description: "Please enter a valid email address",
+          variant: "destructive",
+        })
+        return
+      }
     }
 
     setSubmitting(true)
@@ -278,6 +300,8 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick,
           postal_code: postalCode.toUpperCase().replace(/\s/g, ''),
           delivery_instructions: deliveryInstructions || undefined,
           email: email,
+          name: customerName.trim(), // Customer name for order/receipt
+          phone: customerPhone.trim(), // Customer phone for order/receipt
           latitude: latitude,
           longitude: longitude,
           // DO NOT include city_id for guests
@@ -521,24 +545,56 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick,
               )}
             </div>
 
-            {/* Email field for guest checkout */}
+            {/* Contact info fields for guest checkout */}
             {isGuest && (
-              <div className="space-y-2">
-                <Label htmlFor="guest-email">Email Address *</Label>
-                <Input
-                  id="guest-email"
-                  type="email"
-                  name="email"
-                  autoComplete="email"
-                  placeholder="your@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  data-testid="input-guest-email"
-                />
-                <p className="text-xs text-muted-foreground">
-                  We'll send your order confirmation to this email
-                </p>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="guest-name">Your Name *</Label>
+                    <Input
+                      id="guest-name"
+                      type="text"
+                      name="name"
+                      autoComplete="name"
+                      placeholder="John Smith"
+                      value={customerName}
+                      onChange={(e) => setCustomerName(e.target.value)}
+                      required
+                      data-testid="input-guest-name"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="guest-phone">Phone Number *</Label>
+                    <Input
+                      id="guest-phone"
+                      type="tel"
+                      name="phone"
+                      autoComplete="tel"
+                      placeholder="(613) 555-1234"
+                      value={customerPhone}
+                      onChange={(e) => setCustomerPhone(e.target.value)}
+                      required
+                      data-testid="input-guest-phone"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="guest-email">Email Address *</Label>
+                  <Input
+                    id="guest-email"
+                    type="email"
+                    name="email"
+                    autoComplete="email"
+                    placeholder="your@email.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    data-testid="input-guest-email"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    We'll send your order confirmation to this email
+                  </p>
+                </div>
               </div>
             )}
 

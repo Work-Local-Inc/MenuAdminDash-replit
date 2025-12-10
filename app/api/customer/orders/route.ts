@@ -539,7 +539,7 @@ export async function POST(request: NextRequest) {
       user_id: user_id || null, // NULL for guest orders
       is_guest_order: !user_id, // TRUE for guest checkouts
       guest_email: guest_email || null,
-      guest_phone: user_id ? null : '000-000-0000', // TODO: Collect phone in checkout form
+      guest_phone: user_id ? null : delivery_address?.phone || null,
       guest_name: user_id ? null : delivery_address?.name || 'Guest Customer',
       restaurant_id: restaurant.id,
       payment_status: 'paid',

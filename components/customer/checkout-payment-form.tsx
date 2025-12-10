@@ -73,6 +73,8 @@ interface DeliveryAddress {
   postal_code: string
   delivery_instructions?: string
   email?: string
+  name?: string // Customer name for order
+  phone?: string // Customer phone number
 }
 
 interface CheckoutPaymentFormProps {

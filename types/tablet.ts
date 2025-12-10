@@ -94,6 +94,7 @@ export interface TabletOrderItem {
     id: number
     name: string
     price: number
+    placement: 'whole' | 'left' | 'right' | null
   }>
   special_instructions?: string
 }

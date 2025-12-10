@@ -128,6 +128,7 @@ export async function GET(request: NextRequest) {
           id: mod.id,
           name: mod.name,
           price: parseFloat(mod.price) || 0,
+          placement: mod.placement || null, // 'whole', 'left', 'right', or null
         })),
         special_instructions: item.special_instructions,
       }))
