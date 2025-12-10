@@ -45,6 +45,8 @@ interface DeliveryAddress {
   postal_code: string
   delivery_instructions?: string
   email?: string // For guest checkouts
+  name?: string // Customer name for order
+  phone?: string // Customer phone number
 }
 
 export default function CheckoutPage() {
@@ -92,6 +94,8 @@ export default function CheckoutPage() {
   const [clientSecret, setClientSecret] = useState<string>('')
   const [showSignInModal, setShowSignInModal] = useState(false)
   const [guestPickupEmail, setGuestPickupEmail] = useState('')
+  const [guestPickupName, setGuestPickupName] = useState('')
+  const [guestPickupPhone, setGuestPickupPhone] = useState('')
   const [schedules, setSchedules] = useState<Schedule[]>([])
   const [schedulesLoading, setSchedulesLoading] = useState(false)
   const [isDeliveryBlocked, setIsDeliveryBlocked] = useState(false)
@@ -289,22 +293,45 @@ export default function CheckoutPage() {
   
   // Handler for pickup flow - go to payment method selection
   const handlePickupConfirmed = async () => {
-    // For guests, validate email
-    const email = currentUser?.email || guestPickupEmail
-    if (!currentUser && (!email || !email.includes('@'))) {
-      toast({
-        title: "Email required",
-        description: "Please enter a valid email address",
-        variant: "destructive",
-      })
-      return
+    // For guests, validate name, phone, and email
+    if (!currentUser) {
+      if (!guestPickupName || guestPickupName.trim().length < 2) {
+        toast({
+          title: "Name required",
+          description: "Please enter your name for the order",
+          variant: "destructive",
+        })
+        return
+      }
+      if (!guestPickupPhone || guestPickupPhone.trim().length < 7) {
+        toast({
+          title: "Phone required",
+          description: "Please enter a valid phone number",
+          variant: "destructive",
+        })
+        return
+      }
+      if (!guestPickupEmail || !guestPickupEmail.includes('@')) {
+        toast({
+          title: "Email required",
+          description: "Please enter a valid email address",
+          variant: "destructive",
+        })
+        return
+      }
     }
+    
+    const email = currentUser?.email || guestPickupEmail
+    const name = currentUser?.first_name || guestPickupName.trim()
+    const phone = currentUser?.phone || guestPickupPhone.trim()
     
     // For pickup, we don't need a delivery address - just the restaurant address
     const pickupAddress: DeliveryAddress = {
       street_address: restaurantAddress || restaurantName || 'Pickup at restaurant',
       postal_code: '',
       email: email,
+      name: name,
+      phone: phone,
     }
     
     setSelectedAddress(pickupAddress)
@@ -621,24 +648,59 @@ export default function CheckoutPage() {
                     </div>
                   </div>
                   
-                  {/* Guest Email for pickup */}
+                  {/* Guest contact info for pickup */}
                   {!currentUser && (
-                    <div className="space-y-2">
-                      <label htmlFor="guest-pickup-email" className="text-sm font-medium">
-                        Email Address *
-                      </label>
-                      <input
-                        type="email"
-                        id="guest-pickup-email"
-                        placeholder="your@email.com"
-                        className="w-full px-3 py-2 border rounded-md"
-                        data-testid="input-guest-pickup-email"
-                        value={guestPickupEmail}
-                        onChange={(e) => setGuestPickupEmail(e.target.value)}
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        We'll send your order confirmation to this email
-                      </p>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label htmlFor="guest-pickup-name" className="text-sm font-medium">
+                            Your Name *
+                          </label>
+                          <input
+                            type="text"
+                            id="guest-pickup-name"
+                            placeholder="John Smith"
+                            autoComplete="name"
+                            className="w-full px-3 py-2 border rounded-md"
+                            data-testid="input-guest-pickup-name"
+                            value={guestPickupName}
+                            onChange={(e) => setGuestPickupName(e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label htmlFor="guest-pickup-phone" className="text-sm font-medium">
+                            Phone Number *
+                          </label>
+                          <input
+                            type="tel"
+                            id="guest-pickup-phone"
+                            placeholder="(613) 555-1234"
+                            autoComplete="tel"
+                            className="w-full px-3 py-2 border rounded-md"
+                            data-testid="input-guest-pickup-phone"
+                            value={guestPickupPhone}
+                            onChange={(e) => setGuestPickupPhone(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label htmlFor="guest-pickup-email" className="text-sm font-medium">
+                          Email Address *
+                        </label>
+                        <input
+                          type="email"
+                          id="guest-pickup-email"
+                          placeholder="your@email.com"
+                          autoComplete="email"
+                          className="w-full px-3 py-2 border rounded-md"
+                          data-testid="input-guest-pickup-email"
+                          value={guestPickupEmail}
+                          onChange={(e) => setGuestPickupEmail(e.target.value)}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          We'll send your order confirmation to this email
+                        </p>
+                      </div>
                     </div>
                   )}
                   
