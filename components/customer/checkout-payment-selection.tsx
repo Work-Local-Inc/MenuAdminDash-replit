@@ -56,6 +56,9 @@ export function CheckoutPaymentSelection({
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<string>('')
 
+  // Track if we should auto-advance when only credit card is available
+  const [shouldAutoAdvance, setShouldAutoAdvance] = useState(false)
+
   useEffect(() => {
     const fetchOptions = async () => {
       try {
@@ -67,6 +70,10 @@ export function CheckoutPaymentSelection({
           setOptions(data)
           if (data.length === 1) {
             setSelected(data[0].payment_type)
+            // Mark for auto-advance if only credit card is available
+            if (data[0].payment_type === 'credit_card') {
+              setShouldAutoAdvance(true)
+            }
           } else if (data.length > 0) {
             const creditCard = data.find((o: PaymentOption) => o.payment_type === 'credit_card')
             if (creditCard) {
@@ -89,12 +96,20 @@ export function CheckoutPaymentSelection({
           display_order: 0 
         }])
         setSelected('credit_card')
+        setShouldAutoAdvance(true)
       } finally {
         setLoading(false)
       }
     }
     fetchOptions()
   }, [restaurantSlug, orderType])
+
+  // Auto-advance to credit card payment when it's the only option
+  useEffect(() => {
+    if (shouldAutoAdvance && !loading) {
+      onSelect('credit_card')
+    }
+  }, [shouldAutoAdvance, loading, onSelect])
 
   const handleContinue = () => {
     if (selected) {
@@ -117,8 +132,8 @@ export function CheckoutPaymentSelection({
     )
   }
 
-  if (options.length === 1 && options[0].payment_type === 'credit_card') {
-    onSelect('credit_card')
+  // If auto-advancing, show nothing while transitioning
+  if (shouldAutoAdvance) {
     return null
   }
 

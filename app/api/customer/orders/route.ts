@@ -190,11 +190,18 @@ export async function POST(request: NextRequest) {
       dishPriceOptions.set(priceRow.dish_id, existing)
     })
 
-    let modifierMap = new Map<number, { id: number; name: string; modifier_group: { id: number; dish_id: number } }>()
-    let modifierPriceMap = new Map<string, number>()
+    // Maps for simple modifiers (from dish_modifiers table)
+    let simpleModifierMap = new Map<number, { id: number; name: string; modifier_group: { id: number; dish_id: number } }>()
+    let simpleModifierPriceMap = new Map<string, number>()
+    
+    // Maps for combo modifiers (from combo_modifiers table)
+    let comboModifierMap = new Map<number, { id: number; name: string; combo_modifier_group_id: number }>()
+    let comboModifierPriceMap = new Map<number, number>()
+    let dishComboGroupLinks = new Map<number, Set<number>>() // dish_id -> set of combo_group_ids
 
     if (modifierIds.length > 0) {
-      const { data: modifiersData, error: modifiersError } = await adminSupabase
+      // First, try to load as simple modifiers
+      const { data: simpleModifiersData, error: simpleModifiersError } = await adminSupabase
         .from('dish_modifiers')
         .select(`
           id,
@@ -206,30 +213,128 @@ export async function POST(request: NextRequest) {
         `)
         .in('id', modifierIds)
 
-      if (modifiersError) {
-        console.error('[Order API] Modifier preload error:', modifiersError)
+      if (simpleModifiersError) {
+        console.error('[Order API] Simple modifier preload error:', simpleModifiersError)
         return NextResponse.json({ error: 'Failed to load modifiers' }, { status: 500 })
       }
 
-      modifiersData?.forEach((mod: any) => {
-        modifierMap.set(mod.id, mod)
+      simpleModifiersData?.forEach((mod: any) => {
+        simpleModifierMap.set(mod.id, mod)
       })
 
-      const { data: modifierPricesData, error: modifierPricesError } = await adminSupabase
-        .from('dish_modifier_prices')
-        .select('dish_modifier_id, dish_id, price')
-        .in('dish_modifier_id', modifierIds)
-        .eq('is_active', true)
+      // Load simple modifier prices
+      const simpleModIds = simpleModifiersData?.map((m: any) => m.id) || []
+      if (simpleModIds.length > 0) {
+        const { data: simpleModifierPricesData, error: simpleModifierPricesError } = await adminSupabase
+          .from('dish_modifier_prices')
+          .select('dish_modifier_id, dish_id, price')
+          .in('dish_modifier_id', simpleModIds)
+          .eq('is_active', true)
 
-      if (modifierPricesError) {
-        console.error('[Order API] Modifier price preload error:', modifierPricesError)
-        return NextResponse.json({ error: 'Failed to load modifier prices' }, { status: 500 })
+        if (simpleModifierPricesError) {
+          console.error('[Order API] Simple modifier price preload error:', simpleModifierPricesError)
+          return NextResponse.json({ error: 'Failed to load modifier prices' }, { status: 500 })
+        }
+
+        simpleModifierPricesData?.forEach((priceRow: any) => {
+          const key = `${priceRow.dish_modifier_id}-${priceRow.dish_id}`
+          simpleModifierPriceMap.set(key, parseFloat(priceRow.price))
+        })
       }
 
-      modifierPricesData?.forEach((priceRow: any) => {
-        const key = `${priceRow.dish_modifier_id}-${priceRow.dish_id}`
-        modifierPriceMap.set(key, parseFloat(priceRow.price))
-      })
+      // Find modifier IDs not found in simple modifiers - these might be combo modifiers
+      const notFoundIds = (modifierIds as number[]).filter((id: number) => !simpleModifierMap.has(id))
+      
+      if (notFoundIds.length > 0) {
+        console.log('[Order API] Looking for combo modifiers:', notFoundIds)
+        
+        // Load combo modifiers
+        const { data: comboModifiersData, error: comboModifiersError } = await adminSupabase
+          .from('combo_modifiers')
+          .select(`
+            id,
+            name,
+            combo_modifier_group_id,
+            price
+          `)
+          .in('id', notFoundIds)
+
+        if (comboModifiersError) {
+          console.error('[Order API] Combo modifier preload error:', comboModifiersError)
+          return NextResponse.json({ error: 'Failed to load combo modifiers' }, { status: 500 })
+        }
+
+        comboModifiersData?.forEach((mod: any) => {
+          comboModifierMap.set(mod.id, mod)
+          if (mod.price) {
+            comboModifierPriceMap.set(mod.id, parseFloat(mod.price))
+          }
+        })
+
+        // Load dish -> combo_group links to validate that combo modifiers belong to this dish
+        const { data: dishComboLinks, error: dishComboLinksError } = await adminSupabase
+          .from('dish_combo_groups')
+          .select('dish_id, combo_group_id')
+          .in('dish_id', dishIds)
+          .eq('is_active', true)
+
+        if (dishComboLinksError) {
+          console.error('[Order API] Dish combo group links error:', dishComboLinksError)
+          return NextResponse.json({ error: 'Failed to load dish combo links' }, { status: 500 })
+        }
+
+        dishComboLinks?.forEach((link: any) => {
+          if (!dishComboGroupLinks.has(link.dish_id)) {
+            dishComboGroupLinks.set(link.dish_id, new Set())
+          }
+          dishComboGroupLinks.get(link.dish_id)!.add(link.combo_group_id)
+        })
+
+        // Also load the combo_modifier_groups -> combo_group_sections -> combo_groups chain
+        // to validate the full path from combo modifier to dish
+        const comboModGroupIds = comboModifiersData?.map((m: any) => m.combo_modifier_group_id) || []
+        if (comboModGroupIds.length > 0) {
+          const { data: comboModGroups, error: comboModGroupsError } = await adminSupabase
+            .from('combo_modifier_groups')
+            .select('id, combo_group_section_id')
+            .in('id', comboModGroupIds)
+
+          if (!comboModGroupsError && comboModGroups) {
+            const sectionIds = comboModGroups.map((g: any) => g.combo_group_section_id)
+            
+            const { data: sections, error: sectionsError } = await adminSupabase
+              .from('combo_group_sections')
+              .select('id, combo_group_id')
+              .in('id', sectionIds)
+
+            if (!sectionsError && sections) {
+              // Build mapping: combo_modifier_group_id -> combo_group_id
+              const sectionToComboGroup = new Map<number, number>()
+              sections.forEach((s: any) => {
+                sectionToComboGroup.set(s.id, s.combo_group_id)
+              })
+
+              const modGroupToSection = new Map<number, number>()
+              comboModGroups.forEach((g: any) => {
+                modGroupToSection.set(g.id, g.combo_group_section_id)
+              })
+
+              // Store the combo_group_id for each combo modifier for validation
+              comboModifiersData?.forEach((mod: any) => {
+                const sectionId = modGroupToSection.get(mod.combo_modifier_group_id)
+                if (sectionId) {
+                  const comboGroupId = sectionToComboGroup.get(sectionId)
+                  if (comboGroupId) {
+                    // Store for validation: combo_modifier_id -> combo_group_id
+                    (mod as any)._comboGroupId = comboGroupId
+                    comboModifierMap.set(mod.id, mod)
+                  }
+                }
+              })
+            }
+          }
+        }
+      }
     }
 
     // SECURITY: Recompute totals on server to prevent client manipulation
@@ -269,27 +374,68 @@ export async function POST(request: NextRequest) {
       let itemTotal = dishPrice.price * item.quantity
       
       // SECURITY: Validate modifier prices from database and verify they belong to this dish
+      // Supports both simple modifiers (dish_modifiers) and combo modifiers (combo_modifiers)
       let validatedModifiers = []
       if (item.modifiers && item.modifiers.length > 0) {
         for (const mod of item.modifiers) {
-          const modifierData = modifierMap.get(mod.id)
+          // First check if it's a simple modifier
+          const simpleModifier = simpleModifierMap.get(mod.id)
+          
+          if (simpleModifier) {
+            // Validate simple modifier belongs to this dish
+            if (simpleModifier.modifier_group.dish_id !== item.dishId) {
+              console.error(`[Order API] Simple modifier ${mod.id} belongs to dish ${simpleModifier.modifier_group.dish_id}, not ${item.dishId}`)
+              return NextResponse.json({ 
+                error: `Invalid modifier ${mod.id} for dish ${item.dishId}` 
+              }, { status: 400 })
+            }
 
-          if (!modifierData || modifierData.modifier_group.dish_id !== item.dishId) {
-            return NextResponse.json({ 
-              error: `Invalid modifier ${mod.id} for dish ${item.dishId}` 
-            }, { status: 400 })
+            const modifierPriceKey = `${mod.id}-${item.dishId}`
+            const modPrice = simpleModifierPriceMap.get(modifierPriceKey) ?? 0
+
+            itemTotal += modPrice * item.quantity
+            validatedModifiers.push({
+              id: mod.id,
+              name: simpleModifier.name,
+              price: modPrice,
+              placement: mod.placement || null
+            })
+          } else {
+            // Check if it's a combo modifier
+            const comboModifier = comboModifierMap.get(mod.id) as any
+            
+            if (!comboModifier) {
+              console.error(`[Order API] Modifier ${mod.id} not found in simple or combo modifiers`)
+              return NextResponse.json({ 
+                error: `Invalid modifier ${mod.id} for dish ${item.dishId}` 
+              }, { status: 400 })
+            }
+
+            // Validate combo modifier belongs to this dish via dish_combo_groups
+            const comboGroupId = comboModifier._comboGroupId
+            const dishComboGroups = dishComboGroupLinks.get(item.dishId)
+            
+            if (!comboGroupId || !dishComboGroups || !dishComboGroups.has(comboGroupId)) {
+              console.error(`[Order API] Combo modifier ${mod.id} (combo_group: ${comboGroupId}) not linked to dish ${item.dishId}`)
+              console.error(`[Order API] Dish ${item.dishId} has combo groups:`, dishComboGroups ? Array.from(dishComboGroups) : 'none')
+              return NextResponse.json({ 
+                error: `Invalid modifier ${mod.id} for dish ${item.dishId}` 
+              }, { status: 400 })
+            }
+
+            // Use price from combo modifier or from cart (free items have price 0)
+            const modPrice = comboModifierPriceMap.get(mod.id) ?? 0
+            // Use the client price for free items logic (server will use client-submitted price)
+            const effectivePrice = mod.price ?? modPrice
+
+            itemTotal += effectivePrice * item.quantity
+            validatedModifiers.push({
+              id: mod.id,
+              name: comboModifier.name,
+              price: effectivePrice,
+              placement: mod.placement || null
+            })
           }
-
-          const modifierPriceKey = `${mod.id}-${item.dishId}`
-          const modPrice = modifierPriceMap.get(modifierPriceKey) ?? 0
-
-          itemTotal += modPrice * item.quantity
-          validatedModifiers.push({
-            id: mod.id,
-            name: modifierData.name,
-            price: modPrice,
-            placement: mod.placement || null
-          })
         }
       }
 

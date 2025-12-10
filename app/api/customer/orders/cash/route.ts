@@ -108,18 +108,40 @@ export async function POST(request: NextRequest) {
       })
     })
 
-    let modifierPriceMap = new Map<string, number>()
+    // Maps for simple modifiers (from dish_modifiers table)
+    let simpleModifierPriceMap = new Map<string, number>()
+    // Maps for combo modifiers (from combo_modifiers table)
+    let comboModifierPriceMap = new Map<number, number>()
+    
     if (modifierIds.length > 0) {
-      const { data: modifierPricesData } = await adminSupabase
+      // Load simple modifier prices
+      const { data: simpleModifierPricesData } = await adminSupabase
         .from('dish_modifier_prices')
         .select('dish_modifier_id, dish_id, price')
         .in('dish_modifier_id', modifierIds)
         .eq('is_active', true)
 
-      modifierPricesData?.forEach((priceRow: any) => {
+      simpleModifierPricesData?.forEach((priceRow: any) => {
         const key = `${priceRow.dish_modifier_id}-${priceRow.dish_id}`
-        modifierPriceMap.set(key, parseFloat(priceRow.price))
+        simpleModifierPriceMap.set(key, parseFloat(priceRow.price))
       })
+
+      // Also check combo modifiers for any IDs not found in simple modifiers
+      const simpleModIds = new Set(simpleModifierPricesData?.map((p: any) => p.dish_modifier_id) || [])
+      const potentialComboIds = (modifierIds as number[]).filter(id => !simpleModIds.has(id))
+      
+      if (potentialComboIds.length > 0) {
+        const { data: comboModifiersData } = await adminSupabase
+          .from('combo_modifiers')
+          .select('id, price')
+          .in('id', potentialComboIds)
+
+        comboModifiersData?.forEach((mod: any) => {
+          if (mod.price) {
+            comboModifierPriceMap.set(mod.id, parseFloat(mod.price))
+          }
+        })
+      }
     }
 
     let serverSubtotal = 0
@@ -146,8 +168,20 @@ export async function POST(request: NextRequest) {
 
       if (item.modifiers && item.modifiers.length > 0) {
         for (const mod of item.modifiers) {
+          // First check simple modifier price
           const modKey = `${mod.id}-${item.dishId}`
-          const modPrice = modifierPriceMap.get(modKey) || 0
+          let modPrice: number = simpleModifierPriceMap.get(modKey) ?? -1
+          
+          // If not found in simple modifiers, check combo modifiers
+          if (modPrice < 0) {
+            modPrice = comboModifierPriceMap.get(mod.id) ?? -1
+          }
+          
+          // If still not found, use client-provided price (for free items)
+          if (modPrice < 0) {
+            modPrice = mod.price ?? 0
+          }
+          
           itemTotal += modPrice * item.quantity
           validatedModifiers.push({
             modifier_id: mod.id,
