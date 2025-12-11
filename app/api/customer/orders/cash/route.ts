@@ -234,8 +234,9 @@ export async function POST(request: NextRequest) {
       restaurant_id: restaurant.id,
       user_id: dbUserId,
       guest_email: !dbUserId ? (guest_email || null) : null,
-      guest_name: !dbUserId ? (delivery_address?.name || 'Guest Customer') : null,
-      guest_phone: !dbUserId ? (delivery_address?.phone || null) : null,
+      // Always store customer name/phone for receipt printing (tablet API reads these fields)
+      guest_name: delivery_address?.name || 'Guest Customer',
+      guest_phone: delivery_address?.phone || null,
       is_guest_order: !dbUserId,
       order_type: finalOrderType,
       status: 'pending',

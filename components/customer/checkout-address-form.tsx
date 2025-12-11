@@ -70,6 +70,9 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick,
   const [loading, setLoading] = useState(!isGuest) // Skip loading for guests
   const [submitting, setSubmitting] = useState(false)
   
+  // User profile for logged-in users (name/phone for receipts)
+  const [userProfile, setUserProfile] = useState<{ name: string; phone: string; email: string } | null>(null)
+  
   // New address form fields
   const [email, setEmail] = useState('') // For guest checkout
   const [customerName, setCustomerName] = useState('') // Customer name for order
@@ -210,15 +213,21 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick,
   const loadSavedAddresses = async () => {
     if (!userId) return
     try {
-      const { data, error } = await supabase
-        .from('user_delivery_addresses')
-        .select(`
-          *,
-          city:cities(name)
-        `)
-        .eq('user_id', userId)
-        .order('is_default', { ascending: false })
+      // Fetch addresses and user profile in parallel
+      const [addressesResult, profileResult] = await Promise.all([
+        supabase
+          .from('user_delivery_addresses')
+          .select(`
+            *,
+            city:cities(name)
+          `)
+          .eq('user_id', userId)
+          .order('is_default', { ascending: false }),
+        // Also fetch user profile for name/phone (needed for receipts)
+        fetch('/api/customer/profile', { credentials: 'include' }).then(r => r.json()).catch(() => null)
+      ])
 
+      const { data, error } = addressesResult
       if (error) throw error
 
       const addresses = (data || []).map((addr: any) => ({
@@ -233,6 +242,16 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick,
       }))
 
       setSavedAddresses(addresses)
+      
+      // Store user profile for later use (name/phone for receipts)
+      if (profileResult?.user) {
+        const user = profileResult.user
+        setUserProfile({
+          name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Customer',
+          phone: user.phone || '',
+          email: user.email || '',
+        })
+      }
       
       // Auto-select default address and geocode it
       const defaultAddr = addresses.find((a: any) => (data as any[]).find((d: any) => d.id === a.id)?.is_default)
@@ -361,7 +380,15 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick,
       return
     }
 
-    onAddressConfirmed(selected)
+    // Enrich address with user's name/phone/email for receipts
+    const enrichedAddress: DeliveryAddress = {
+      ...selected,
+      name: userProfile?.name || 'Customer',
+      phone: userProfile?.phone || '',
+      email: userProfile?.email || '',
+    }
+
+    onAddressConfirmed(enrichedAddress)
   }
 
   if (loading) {

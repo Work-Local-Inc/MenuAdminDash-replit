@@ -322,7 +322,10 @@ export default function CheckoutPage() {
     }
     
     const email = currentUser?.email || guestPickupEmail
-    const name = currentUser?.first_name || guestPickupName.trim()
+    // Build full name from first_name and last_name if available
+    const userName = currentUser 
+      ? `${currentUser.first_name || ''} ${currentUser.last_name || ''}`.trim() || 'Customer'
+      : guestPickupName.trim()
     const phone = currentUser?.phone || guestPickupPhone.trim()
     
     // For pickup, we don't need a delivery address - just the restaurant address
@@ -330,7 +333,7 @@ export default function CheckoutPage() {
       street_address: restaurantAddress || restaurantName || 'Pickup at restaurant',
       postal_code: '',
       email: email,
-      name: name,
+      name: userName,
       phone: phone,
     }
     

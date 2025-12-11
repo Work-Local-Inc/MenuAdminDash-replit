@@ -545,8 +545,9 @@ export async function POST(request: NextRequest) {
       user_id: user_id || null, // NULL for guest orders
       is_guest_order: !user_id, // TRUE for guest checkouts
       guest_email: guest_email || null,
-      guest_phone: user_id ? null : delivery_address?.phone || null,
-      guest_name: user_id ? null : delivery_address?.name || 'Guest Customer',
+      // Always store customer name/phone for receipt printing (tablet API reads these fields)
+      guest_phone: delivery_address?.phone || null,
+      guest_name: delivery_address?.name || 'Guest Customer',
       restaurant_id: restaurant.id,
       payment_status: 'paid',
       stripe_payment_intent_id: payment_intent_id,
