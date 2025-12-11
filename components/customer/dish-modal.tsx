@@ -394,12 +394,23 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
     
     // Check combo group sections (min_selection > 0 means required)
     // Section min_selection applies to TOTAL selections across ALL modifier groups in that section
+    // IMPORTANT: Skip validation for sections that have no modifier options available (legacy data issue)
     for (const comboGroup of comboGroups) {
       const numberOfItems = comboGroup.number_of_items || 1;
       
       for (let instanceIndex = 0; instanceIndex < numberOfItems; instanceIndex++) {
         for (const section of comboGroup.sections) {
           if (section.min_selection > 0) {
+            // Check if this section has any selectable modifier options
+            const hasSelectableOptions = section.modifier_groups.some(
+              (mg) => mg.modifiers && mg.modifiers.length > 0
+            );
+            
+            // Skip validation for sections with no options (legacy data issue)
+            if (!hasSelectableOptions) {
+              continue;
+            }
+            
             // Count TOTAL selections across all modifier groups in this section
             let totalSectionSelections = 0;
             for (const modifierGroup of section.modifier_groups) {
