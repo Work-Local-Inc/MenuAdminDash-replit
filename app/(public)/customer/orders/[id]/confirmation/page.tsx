@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { useToast } from '@/hooks/use-toast'
-import { CheckCircle, MapPin, Phone, Store, Package, Home, Clock, Mail, Utensils, Banknote, CreditCard, AlertCircle } from 'lucide-react'
+import { CheckCircle, MapPin, Phone, Store, Package, Home, Clock, Mail, Utensils, Banknote, CreditCard, AlertCircle, MessageSquare } from 'lucide-react'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { PostOrderSignupModal } from '@/components/customer/post-order-signup-modal'
@@ -74,6 +74,7 @@ interface Order {
   items: OrderItem[]
   delivery_address: DeliveryAddress
   delivery_instructions: string | null
+  special_instructions: string | null
   created_at: string
   current_status: string
   restaurant: Restaurant
@@ -544,6 +545,23 @@ export default function OrderConfirmationPage() {
                   ))}
                 </CardContent>
               </Card>
+
+              {/* Order Notes */}
+              {order.special_instructions && (
+                <Card data-testid="card-order-notes" className="border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
+                      <MessageSquare className="w-5 h-5" />
+                      Your Order Notes
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-amber-700 dark:text-amber-300" data-testid="text-order-notes">
+                      {order.special_instructions}
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Price Breakdown */}
               <Card data-testid="card-price-breakdown">
