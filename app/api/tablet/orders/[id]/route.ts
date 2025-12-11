@@ -114,6 +114,7 @@ export async function GET(
 
     const serviceTime = deliveryAddress?.service_time || { type: 'asap' }
 
+    // Transform items - use 'notes' field for printer app compatibility
     const transformedItems: TabletOrderItem[] = items.map((item: any) => ({
       dish_id: item.dish_id,
       name: item.name,
@@ -125,8 +126,9 @@ export async function GET(
         id: mod.id,
         name: mod.name,
         price: parseFloat(mod.price) || 0,
+        placement: mod.placement || null,
       })),
-      special_instructions: item.special_instructions,
+      notes: item.special_instructions || item.notes || null, // Printer app expects 'notes'
     }))
 
     const transformedOrder: TabletOrder = {
@@ -161,6 +163,9 @@ export async function GET(
       payment_status: order.payment_status,
 
       service_time: serviceTime,
+
+      // Order-level notes for printer app (from special_instructions column)
+      notes: order.special_instructions || null,
 
       acknowledged_at: order.acknowledged_at || undefined,
       acknowledged_by_device_id: order.acknowledged_by_device_id || undefined,

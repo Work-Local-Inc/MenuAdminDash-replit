@@ -96,7 +96,7 @@ export interface TabletOrderItem {
     price: number
     placement: 'whole' | 'left' | 'right' | null
   }>
-  special_instructions?: string
+  notes?: string | null // Item-level special instructions (printer app expects 'notes')
 }
 
 export interface TabletOrderCustomer {
@@ -137,6 +137,8 @@ export interface TabletOrder {
     type: 'asap' | 'scheduled'
     scheduledTime?: string
   }
+
+  notes?: string | null // Order-level special instructions (printer app expects 'notes')
 
   acknowledged_at?: string
   acknowledged_by_device_id?: number
