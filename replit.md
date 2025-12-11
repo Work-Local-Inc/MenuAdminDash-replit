@@ -58,7 +58,11 @@ Preferred communication style: Simple, everyday language.
 -   **Address Management**: CRUD for `user_delivery_addresses`.
 -   **Payment Processing**: Stripe integration for secure payments, server-side payment intent creation, `stripe_customer_id` linkage, and `payment_transactions` tracking.
 -   **Order Management**: Order creation post-payment, order history, status tracking.
--   **Account Pages**: Dashboard for orders, addresses, and profile management.
+-   **Account Pages** (`/customer/account`): Customer dashboard with tabbed interface:
+    -   **Orders Tab**: View past order history with status tracking.
+    -   **Addresses Tab**: Full CRUD for saved delivery addresses (add, edit, delete, set default).
+    -   **Profile Tab**: Editable profile with first name, last name, phone (email read-only for security).
+    -   **Navigation**: Checkout header email is clickable link to account page when logged in.
 -   **Security**: Server-side price, amount, and quantity validation; payment replay protection; restaurant ownership validation; user authentication; webhook signature verification; OAuth email verification.
 -   **Default Branding System**: Restaurants without custom configuration get polished defaults:
     -   Default primary color: `#DC2626` (Menu.ca red) applied to banners, buttons, icons, and navigation throughout the entire ordering experience.
