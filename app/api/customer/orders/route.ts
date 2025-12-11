@@ -468,7 +468,8 @@ export async function POST(request: NextRequest) {
         quantity: item.quantity,
         unit_price: dishPrice.price,
         modifiers: validatedModifiers,
-        subtotal: itemTotal
+        subtotal: itemTotal,
+        special_instructions: item.specialInstructions || null
       })
     }
 
