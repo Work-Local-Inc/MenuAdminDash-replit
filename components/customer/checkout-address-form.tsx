@@ -73,6 +73,10 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick,
   // User profile for logged-in users (name/phone for receipts)
   const [userProfile, setUserProfile] = useState<{ name: string; phone: string; email: string } | null>(null)
   
+  // Inline phone entry for logged-in users missing phone
+  const [inlinePhone, setInlinePhone] = useState('')
+  const [savingPhone, setSavingPhone] = useState(false)
+  
   // New address form fields
   const [email, setEmail] = useState('') // For guest checkout
   const [customerName, setCustomerName] = useState('') // Customer name for order
@@ -369,12 +373,70 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick,
     }
   }
 
+  // Save inline phone to user's profile
+  const handleSaveInlinePhone = async () => {
+    const phoneToSave = inlinePhone.trim()
+    if (phoneToSave.length < 7) {
+      toast({
+        title: "Invalid phone",
+        description: "Please enter a valid phone number",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setSavingPhone(true)
+    try {
+      const response = await fetch('/api/customer/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: phoneToSave }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to save phone number')
+      }
+
+      const data = await response.json()
+      const savedPhone = data.user?.phone || phoneToSave
+      
+      // Update local profile state with the returned phone from API
+      setUserProfile(prev => prev ? { ...prev, phone: savedPhone } : { name: '', phone: savedPhone, email: '' })
+      
+      // Clear inline input since phone is now saved
+      setInlinePhone('')
+      
+      toast({
+        title: "Phone saved",
+        description: "Your phone number has been saved to your profile",
+      })
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save phone number",
+        variant: "destructive",
+      })
+    } finally {
+      setSavingPhone(false)
+    }
+  }
+
   const handleContinue = () => {
     const selected = savedAddresses.find(a => a.id === selectedAddressId)
     if (!selected) {
       toast({
         title: "No address selected",
         description: "Please select a delivery address",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Phone is required for order fulfillment - restaurants need to contact customers
+    if (!userProfile?.phone || userProfile.phone.trim().length < 7) {
+      toast({
+        title: "Phone number required",
+        description: "Please enter your phone number above",
         variant: "destructive",
       })
       return
@@ -528,11 +590,41 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick,
           </div>
         )}
 
+        {/* Phone Entry for logged-in users missing phone */}
+        {savedAddresses.length > 0 && !showNewAddressForm && (!userProfile?.phone || userProfile.phone.trim().length < 7) && (
+          <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4 space-y-3">
+            <div className="flex-1">
+              <p className="font-semibold text-sm text-amber-800 dark:text-amber-200">Phone number required</p>
+              <p className="text-sm text-amber-700 dark:text-amber-300">
+                Restaurants need your phone number to contact you about your order.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Input
+                type="tel"
+                placeholder="(613) 555-1234"
+                value={inlinePhone}
+                onChange={(e) => setInlinePhone(e.target.value)}
+                className="flex-1"
+                data-testid="input-inline-phone"
+              />
+              <Button
+                onClick={handleSaveInlinePhone}
+                disabled={savingPhone || inlinePhone.trim().length < 7}
+                size="sm"
+                data-testid="button-save-phone"
+              >
+                {savingPhone ? 'Saving...' : 'Save'}
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Continue Button for Saved Address */}
         {savedAddresses.length > 0 && !showNewAddressForm && (
           <Button
             onClick={handleContinue}
-            disabled={!selectedAddressId}
+            disabled={!selectedAddressId || !userProfile?.phone || userProfile.phone.trim().length < 7}
             className="w-full"
             size="lg"
             data-testid="button-continue-to-payment"

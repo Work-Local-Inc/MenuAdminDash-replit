@@ -378,6 +378,58 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
   
   const itemTotal = (sizePrice + selectedModifiers.reduce((sum, m) => sum + m.price, 0)) * quantity;
 
+  // Check if all required modifiers are selected
+  const getMissingRequirements = (): string[] => {
+    const missing: string[] = [];
+    
+    // Check simple modifier groups (required ones)
+    for (const group of modifierGroups) {
+      if (group.is_required) {
+        const groupSelected = groupSelections[group.id] || [];
+        if (groupSelected.length === 0) {
+          missing.push(group.name);
+        }
+      }
+    }
+    
+    // Check combo group sections (min_selection > 0 means required)
+    // Section min_selection applies to TOTAL selections across ALL modifier groups in that section
+    for (const comboGroup of comboGroups) {
+      const numberOfItems = comboGroup.number_of_items || 1;
+      
+      for (let instanceIndex = 0; instanceIndex < numberOfItems; instanceIndex++) {
+        for (const section of comboGroup.sections) {
+          if (section.min_selection > 0) {
+            // Count TOTAL selections across all modifier groups in this section
+            let totalSectionSelections = 0;
+            for (const modifierGroup of section.modifier_groups) {
+              const sectionKey = getComboSectionKey(section.id, modifierGroup.id, instanceIndex);
+              const currentSelections = comboSelections[sectionKey] || [];
+              totalSectionSelections += currentSelections.length;
+            }
+            
+            if (totalSectionSelections < section.min_selection) {
+              // Build a meaningful label for the whole section
+              const sectionLabel = section.use_header || section.modifier_groups[0]?.name || 'selection';
+              const contextLabel = numberOfItems > 1 
+                ? `${getContextualLabels(comboGroup.display_header, numberOfItems)[instanceIndex]} ${sectionLabel}`
+                : sectionLabel;
+              
+              if (!missing.includes(contextLabel)) {
+                missing.push(contextLabel);
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    return missing;
+  };
+
+  const missingRequirements = getMissingRequirements();
+  const canAddToCart = !isLoadingModifiers && missingRequirements.length === 0;
+
   const PlacementSelector = ({ modifierId, placements }: { modifierId: number; placements: PlacementType[] }) => {
     const currentPlacement = modifierPlacements[modifierId] || 'whole';
     
@@ -931,6 +983,16 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
             />
           </div>
           
+          {/* Required modifiers message */}
+          {!isLoadingModifiers && missingRequirements.length > 0 && (
+            <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+              <p className="text-sm text-amber-800 dark:text-amber-200 font-medium" data-testid="text-required-selections">
+                Please select: {missingRequirements.slice(0, 3).join(', ')}
+                {missingRequirements.length > 3 && ` (+${missingRequirements.length - 3} more)`}
+              </p>
+            </div>
+          )}
+          
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-4 border-t">
             <div className="flex items-center justify-center sm:justify-start gap-3">
               <Label className="font-semibold">Quantity:</Label>
@@ -963,10 +1025,18 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
             <Button
               size="lg"
               onClick={handleAddToCart}
+              disabled={!canAddToCart}
               className={`w-full sm:w-auto px-8 ${getButtonClassName(false)}`}
               data-testid="button-add-to-cart"
             >
-              Add to Cart - ${Number(itemTotal).toFixed(2)}
+              {isLoadingModifiers ? (
+                <>
+                  <span className="animate-spin mr-2">⏳</span>
+                  Loading options...
+                </>
+              ) : (
+                `Add to Cart - $${Number(itemTotal).toFixed(2)}`
+              )}
             </Button>
           </div>
         </div>

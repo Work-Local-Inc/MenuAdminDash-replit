@@ -230,6 +230,24 @@ export async function POST(request: NextRequest) {
 
     const dbUserId = user_id ? parseInt(user_id, 10) : null
 
+    // Format items for orders.items JSONB column (tablet API reads from here)
+    // Match the format used by credit card orders for consistency
+    const itemsForOrdersTable = validatedItems.map(item => ({
+      dish_id: item.dish_id,
+      name: item.dish_name,  // Use 'name' for consistency with credit card orders
+      size: item.size_variant || 'default',
+      quantity: item.quantity,
+      unit_price: parseFloat(item.unit_price),
+      subtotal: parseFloat(item.unit_price) * item.quantity,
+      special_instructions: item.special_instructions || null,  // Tablet API reads this as 'notes'
+      modifiers: item.modifiers.map(mod => ({
+        id: mod.modifier_id,
+        name: mod.modifier_name,
+        price: parseFloat(mod.modifier_price) || 0,
+        placement: mod.placement || null,
+      })),
+    }))
+
     const orderData = {
       restaurant_id: restaurant.id,
       user_id: dbUserId,
@@ -239,14 +257,15 @@ export async function POST(request: NextRequest) {
       guest_phone: delivery_address?.phone || null,
       is_guest_order: !dbUserId,
       order_type: finalOrderType,
-      status: 'pending',
+      order_status: 'pending',
       payment_status: 'pending',
       payment_method: payment_type,
       subtotal: serverSubtotal.toFixed(2),
-      tax: serverTax.toFixed(2),
+      tax_amount: serverTax.toFixed(2),
       delivery_fee: deliveryFee.toFixed(2),
-      total: serverTotal.toFixed(2),
-      delivery_address: delivery_address ? JSON.stringify(delivery_address) : null,
+      total_amount: serverTotal.toFixed(2),
+      delivery_address: delivery_address ? JSON.stringify({ ...delivery_address, service_time: parsedServiceTime }) : null,
+      items: itemsForOrdersTable,  // Store items in JSONB column for tablet API
       special_instructions: parsedServiceTime.type === 'scheduled' && parsedServiceTime.scheduledTime
         ? `Scheduled for: ${parsedServiceTime.scheduledTime}`
         : null,
