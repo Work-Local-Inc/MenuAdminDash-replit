@@ -215,12 +215,14 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
     return Array.from({ length: numberOfItems }, (_, i) => ordinals[i] || `Item ${i + 1}`);
   };
   
-  // Check if this section should show pizza placements
+  // Pizza topping keywords used for placement detection
+  const toppingKeywords = ['topping', 'garniture', 'ingredient', 'add more', 'extra'];
+  const defaultPlacements: PlacementType[] = ['whole', 'left', 'right'];
+
+  // Check if a combo section should show pizza placements
   // Detect by section_type OR by common topping-related keywords in the header/names
   const isPizzaToppingSection = (section: ComboGroupSection): boolean => {
     if (section.section_type === 'custom_ingredients') return true;
-    
-    const toppingKeywords = ['topping', 'garniture', 'ingredient', 'add more', 'extra'];
     
     // Check section header
     const header = (section.use_header || '').toLowerCase();
@@ -233,6 +235,12 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
     }
     
     return false;
+  };
+
+  // Check if a simple modifier group should show pizza placements
+  const isSimpleModifierToppingGroup = (group: { name: string }): boolean => {
+    const groupName = (group.name || '').toLowerCase();
+    return toppingKeywords.some(keyword => groupName.includes(keyword));
   };
 
   // Helper to recalculate prices for all modifiers in a section based on free_items
@@ -569,29 +577,35 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
                           const price = getModifierPrice(modifier);
                           const isSelected = groupSelected.includes(modifier.id);
                           const isDisabled = !isSelected && isMaxSelections;
+                          const showPlacements = isSimpleModifierToppingGroup(group);
                           
                           return (
-                            <div key={modifier.id} className="flex items-start space-x-3">
-                              <Checkbox
-                                id={`modifier-${modifier.id}`}
-                                checked={isSelected}
-                                disabled={isDisabled}
-                                onCheckedChange={(checked) => handleModifierToggle(group, modifier.id, checked as boolean)}
-                                data-testid={`checkbox-modifier-${modifier.id}`}
-                              />
-                              <Label 
-                                htmlFor={`modifier-${modifier.id}`} 
-                                className={`flex-1 cursor-pointer font-normal ${isDisabled ? 'opacity-50' : ''}`}
-                              >
-                                <div className="flex items-center justify-between">
-                                  <span>{modifier.name}</span>
-                                  {price > 0 && (
-                                    <span className="text-sm text-muted-foreground">
-                                      +${Number(price).toFixed(2)}
-                                    </span>
-                                  )}
-                                </div>
-                              </Label>
+                            <div key={modifier.id}>
+                              <div className="flex items-start space-x-3">
+                                <Checkbox
+                                  id={`modifier-${modifier.id}`}
+                                  checked={isSelected}
+                                  disabled={isDisabled}
+                                  onCheckedChange={(checked) => handleModifierToggle(group, modifier.id, checked as boolean)}
+                                  data-testid={`checkbox-modifier-${modifier.id}`}
+                                />
+                                <Label 
+                                  htmlFor={`modifier-${modifier.id}`} 
+                                  className={`flex-1 cursor-pointer font-normal ${isDisabled ? 'opacity-50' : ''}`}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <span>{modifier.name}</span>
+                                    {price > 0 && (
+                                      <span className="text-sm text-muted-foreground">
+                                        +${Number(price).toFixed(2)}
+                                      </span>
+                                    )}
+                                  </div>
+                                </Label>
+                              </div>
+                              {isSelected && showPlacements && (
+                                <PlacementSelector modifierId={modifier.id} placements={defaultPlacements} />
+                              )}
                             </div>
                           );
                         })}
@@ -620,7 +634,6 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
                         
                         // Check if this section should show pizza placements
                         const showPizzaPlacements = isPizzaToppingSection(section);
-                        const defaultPlacements: PlacementType[] = ['whole', 'left', 'right'];
 
                         return (
                           <div 
