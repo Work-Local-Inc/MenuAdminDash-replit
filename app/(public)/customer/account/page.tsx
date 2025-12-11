@@ -125,7 +125,7 @@ export default function CustomerAccountPage() {
           </TabsContent>
 
           <TabsContent value="profile">
-            <ProfileTab user={currentUser} />
+            <ProfileTab user={currentUser} onUserUpdate={setCurrentUser} />
           </TabsContent>
         </Tabs>
       </div>

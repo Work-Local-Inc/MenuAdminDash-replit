@@ -504,12 +504,16 @@ export default function CheckoutPage() {
             <div className="flex items-center gap-3">
               {currentUser ? (
                 <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2 text-sm">
+                  <Link 
+                    href="/customer/account" 
+                    className="flex items-center gap-2 text-sm hover:text-primary transition-colors"
+                    data-testid="link-account"
+                  >
                     <User className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">
+                    <span className="text-muted-foreground hover:text-primary">
                       {currentUser.email || currentUser.first_name || 'Account'}
                     </span>
-                  </div>
+                  </Link>
                   <Button 
                     variant="outline" 
                     size="sm"
