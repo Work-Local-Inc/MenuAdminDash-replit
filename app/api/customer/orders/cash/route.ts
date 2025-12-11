@@ -21,7 +21,8 @@ export async function POST(request: NextRequest) {
       guest_email,
       restaurant_slug,
       order_type,
-      service_time
+      service_time,
+      order_notes
     } = body
 
     console.log('[Cash Order API] Request:', { 
@@ -266,9 +267,14 @@ export async function POST(request: NextRequest) {
       total_amount: serverTotal.toFixed(2),
       delivery_address: delivery_address ? JSON.stringify({ ...delivery_address, service_time: parsedServiceTime }) : null,
       items: itemsForOrdersTable,  // Store items in JSONB column for tablet API
-      special_instructions: parsedServiceTime.type === 'scheduled' && parsedServiceTime.scheduledTime
-        ? `Scheduled for: ${parsedServiceTime.scheduledTime}`
-        : null,
+      special_instructions: (() => {
+        const parts: string[] = []
+        if (order_notes?.trim()) parts.push(order_notes.trim())
+        if (parsedServiceTime.type === 'scheduled' && parsedServiceTime.scheduledTime) {
+          parts.push(`Scheduled for: ${parsedServiceTime.scheduledTime}`)
+        }
+        return parts.length > 0 ? parts.join(' | ') : null
+      })(),
       stripe_payment_intent_id: cashOrderReference,
       scheduled_time: parsedServiceTime.scheduledTime || null,
     }

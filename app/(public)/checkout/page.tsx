@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
 import { CheckoutAddressForm } from '@/components/customer/checkout-address-form'
 import { CheckoutPaymentForm } from '@/components/customer/checkout-payment-form'
 import { CheckoutPaymentSelection } from '@/components/customer/checkout-payment-selection'
@@ -102,6 +104,7 @@ export default function CheckoutPage() {
   const [isSubmittingCashOrder, setIsSubmittingCashOrder] = useState(false)
   const [serviceConfig, setServiceConfig] = useState<{ has_delivery_enabled?: boolean; pickup_enabled?: boolean } | null>(null)
   const [serviceConfigLoading, setServiceConfigLoading] = useState(true) // Start as loading to prevent flash
+  const [orderNotes, setOrderNotes] = useState('')
 
   // Derived checkout mode - determines if we're in pickup-only, delivery-only, or both mode
   const isPickupOnly = serviceConfig && !serviceConfig.has_delivery_enabled && serviceConfig.pickup_enabled
@@ -365,6 +368,7 @@ export default function CheckoutPage() {
               guest_email: selectedAddress?.email,
               order_type: orderType,
               service_time: JSON.stringify(pickupTime),
+              order_notes: orderNotes.trim() || undefined,
             }
           }),
         })
@@ -416,7 +420,8 @@ export default function CheckoutPage() {
             order_type: orderType,
             service_time: pickupTime,
             delivery_fee: cashDeliveryFee,
-            tax_amount: cashTax
+            tax_amount: cashTax,
+            order_notes: orderNotes.trim() || undefined
           }),
         })
 
@@ -808,6 +813,27 @@ export default function CheckoutPage() {
                     />
                   </div>
                 )}
+
+                <Separator />
+                
+                {/* Order Notes */}
+                <div className="space-y-2">
+                  <Label htmlFor="order-notes" className="text-sm font-medium">
+                    Order Notes (optional)
+                  </Label>
+                  <Textarea
+                    id="order-notes"
+                    data-testid="input-order-notes"
+                    placeholder="Any special instructions for your order..."
+                    value={orderNotes}
+                    onChange={(e) => setOrderNotes(e.target.value)}
+                    className="min-h-[80px] resize-none text-sm"
+                    maxLength={500}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    These notes will be printed on your receipt
+                  </p>
+                </div>
 
                 <Separator />
 
