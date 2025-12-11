@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
@@ -11,9 +12,11 @@ import { Save, Loader2, Mail } from 'lucide-react'
 interface ProfileTabProps {
   user: any
   onUserUpdate?: (user: any) => void
+  redirectAfterSave?: string
 }
 
-export function ProfileTab({ user, onUserUpdate }: ProfileTabProps) {
+export function ProfileTab({ user, onUserUpdate, redirectAfterSave }: ProfileTabProps) {
+  const router = useRouter()
   const { toast } = useToast()
   const [firstName, setFirstName] = useState(user.first_name || '')
   const [lastName, setLastName] = useState(user.last_name || '')
@@ -45,13 +48,22 @@ export function ProfileTab({ user, onUserUpdate }: ProfileTabProps) {
 
       const { user: updatedUser } = await response.json()
       
-      toast({
-        title: "Profile updated",
-        description: "Your profile information has been saved.",
-      })
-
       if (onUserUpdate) {
         onUserUpdate(updatedUser)
+      }
+
+      toast({
+        title: "Profile updated",
+        description: redirectAfterSave 
+          ? "Your profile has been saved. Returning to checkout..." 
+          : "Your profile information has been saved.",
+      })
+
+      // Redirect after save if specified (e.g., back to checkout)
+      if (redirectAfterSave) {
+        setTimeout(() => {
+          router.push(redirectAfterSave)
+        }, 1000) // Short delay so user sees the success message
       }
     } catch (error: any) {
       toast({

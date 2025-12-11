@@ -505,7 +505,7 @@ export default function CheckoutPage() {
               {currentUser ? (
                 <div className="flex items-center gap-3">
                   <Link 
-                    href="/customer/account" 
+                    href="/customer/account?from=checkout" 
                     className="flex items-center gap-2 text-sm hover:text-primary transition-colors"
                     data-testid="link-account"
                   >

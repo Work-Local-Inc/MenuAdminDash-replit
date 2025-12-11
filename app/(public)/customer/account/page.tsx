@@ -1,13 +1,13 @@
 "use client"
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/hooks/use-toast'
-import { User, MapPin, CreditCard, LogOut, Package } from 'lucide-react'
+import { User, MapPin, CreditCard, LogOut, Package, ArrowLeft, ShoppingCart } from 'lucide-react'
 import Link from 'next/link'
 import { ProfileTab } from '@/components/customer/profile-tab'
 import { AddressesTab } from '@/components/customer/addresses-tab'
@@ -15,11 +15,15 @@ import { OrdersTab } from '@/components/customer/orders-tab'
 
 export default function CustomerAccountPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { toast } = useToast()
   const supabase = createClient()
   
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  
+  // Check if user came from checkout
+  const fromCheckout = searchParams.get('from') === 'checkout'
 
   useEffect(() => {
     checkAuth()
@@ -83,21 +87,38 @@ export default function CustomerAccountPage() {
     <div className="min-h-screen bg-muted/30">
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold">My Account</h1>
-            <p className="text-muted-foreground">
-              Welcome back, {currentUser.first_name}!
-            </p>
+        <div className="mb-6">
+          {/* Back to Checkout button when coming from checkout */}
+          {fromCheckout && (
+            <Button 
+              variant="ghost" 
+              asChild 
+              className="mb-4"
+              data-testid="button-back-to-checkout"
+            >
+              <Link href="/checkout">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Checkout
+              </Link>
+            </Button>
+          )}
+          
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold">My Account</h1>
+              <p className="text-muted-foreground">
+                Welcome back, {currentUser.first_name || currentUser.email}!
+              </p>
+            </div>
+            <Button 
+              variant="outline" 
+              onClick={handleSignOut}
+              data-testid="button-sign-out"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Sign Out
+            </Button>
           </div>
-          <Button 
-            variant="outline" 
-            onClick={handleSignOut}
-            data-testid="button-sign-out"
-          >
-            <LogOut className="w-4 h-4 mr-2" />
-            Sign Out
-          </Button>
         </div>
 
         <Tabs defaultValue="orders" className="space-y-6">
@@ -125,7 +146,11 @@ export default function CustomerAccountPage() {
           </TabsContent>
 
           <TabsContent value="profile">
-            <ProfileTab user={currentUser} onUserUpdate={setCurrentUser} />
+            <ProfileTab 
+              user={currentUser} 
+              onUserUpdate={setCurrentUser} 
+              redirectAfterSave={fromCheckout ? '/checkout' : undefined}
+            />
           </TabsContent>
         </Tabs>
       </div>
