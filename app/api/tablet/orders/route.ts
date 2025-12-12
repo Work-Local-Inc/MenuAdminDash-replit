@@ -142,7 +142,7 @@ export async function GET(request: NextRequest) {
 
         customer: {
           name: customerName,
-          phone: maskPhone(customerPhone),
+          phone: customerPhone,  // Full phone for restaurant to contact customer
           email: maskEmail(customerEmail),
         },
 
