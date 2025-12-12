@@ -98,6 +98,7 @@ export default function CheckoutPage() {
   const [guestPickupEmail, setGuestPickupEmail] = useState('')
   const [guestPickupName, setGuestPickupName] = useState('')
   const [guestPickupPhone, setGuestPickupPhone] = useState('')
+  const [loggedInPickupPhone, setLoggedInPickupPhone] = useState('') // For logged-in users missing phone
   const [schedules, setSchedules] = useState<Schedule[]>([])
   const [schedulesLoading, setSchedulesLoading] = useState(false)
   const [isDeliveryBlocked, setIsDeliveryBlocked] = useState(false)
@@ -322,6 +323,18 @@ export default function CheckoutPage() {
         })
         return
       }
+    } else {
+      // For logged-in users, phone is still required
+      // Prefer inline entry if provided, otherwise fall back to profile phone
+      const userPhone = loggedInPickupPhone.trim() || currentUser.phone || ''
+      if (!userPhone || userPhone.length < 7) {
+        toast({
+          title: "Phone required",
+          description: "Please enter your phone number so the restaurant can contact you",
+          variant: "destructive",
+        })
+        return
+      }
     }
     
     const email = currentUser?.email || guestPickupEmail
@@ -329,7 +342,8 @@ export default function CheckoutPage() {
     const userName = currentUser 
       ? `${currentUser.first_name || ''} ${currentUser.last_name || ''}`.trim() || 'Customer'
       : guestPickupName.trim()
-    const phone = currentUser?.phone || guestPickupPhone.trim()
+    // Prefer inline phone entry if provided, otherwise fall back to profile/guest phone
+    const phone = loggedInPickupPhone.trim() || currentUser?.phone || guestPickupPhone.trim()
     
     // For pickup, we don't need a delivery address - just the restaurant address
     const pickupAddress: DeliveryAddress = {
@@ -659,6 +673,39 @@ export default function CheckoutPage() {
                       </div>
                     </div>
                   </div>
+                  
+                  {/* Logged-in user info display + phone input if missing */}
+                  {currentUser && (
+                    <div className="space-y-4">
+                      <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                        <p className="text-sm font-medium text-green-800 dark:text-green-200">
+                          Ordering as {currentUser.first_name || currentUser.email}
+                        </p>
+                        <p className="text-xs text-green-600 dark:text-green-400">{currentUser.email}</p>
+                      </div>
+                      
+                      {/* Phone input for logged-in users missing phone */}
+                      {(!currentUser.phone || currentUser.phone.trim().length < 7) && (
+                        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 space-y-3">
+                          <div>
+                            <p className="font-semibold text-sm text-amber-800 dark:text-amber-200">Phone number required</p>
+                            <p className="text-xs text-amber-600 dark:text-amber-400">
+                              The restaurant needs your phone number to contact you about your order.
+                            </p>
+                          </div>
+                          <input
+                            type="tel"
+                            placeholder="(613) 555-1234"
+                            autoComplete="tel"
+                            className="w-full px-3 py-2 border rounded-md"
+                            data-testid="input-loggedin-pickup-phone"
+                            value={loggedInPickupPhone}
+                            onChange={(e) => setLoggedInPickupPhone(e.target.value)}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
                   
                   {/* Guest contact info for pickup */}
                   {!currentUser && (
