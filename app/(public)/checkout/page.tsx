@@ -815,27 +815,6 @@ export default function CheckoutPage() {
                 )}
 
                 <Separator />
-                
-                {/* Order Notes */}
-                <div className="space-y-2">
-                  <Label htmlFor="order-notes" className="text-sm font-medium">
-                    Order Notes (optional)
-                  </Label>
-                  <Textarea
-                    id="order-notes"
-                    data-testid="input-order-notes"
-                    placeholder="Any special instructions for your order..."
-                    value={orderNotes}
-                    onChange={(e) => setOrderNotes(e.target.value)}
-                    className="min-h-[80px] resize-none text-sm"
-                    maxLength={500}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    These notes will be printed on your receipt
-                  </p>
-                </div>
-
-                <Separator />
 
                 {/* Totals */}
                 <div className="space-y-2 text-sm">
