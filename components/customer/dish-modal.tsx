@@ -383,8 +383,13 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
     const missing: string[] = [];
     
     // Check simple modifier groups (required ones)
+    // Skip validation for groups that have no modifier options (data issue)
     for (const group of modifierGroups) {
       if (group.is_required) {
+        // Skip if group has no selectable modifiers
+        if (!group.modifiers || group.modifiers.length === 0) {
+          continue;
+        }
         const groupSelected = groupSelections[group.id] || [];
         if (groupSelected.length === 0) {
           missing.push(group.name);
