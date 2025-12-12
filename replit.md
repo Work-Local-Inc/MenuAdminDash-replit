@@ -155,3 +155,20 @@ Per-item notes flow: Dish Modal → Zustand Cart → Checkout API → Database (
 **Printer API:** Full phone number passed (unmasked) to tablet/printer API at `customer.phone`
 
 **File:** `app/api/tablet/orders/route.ts` (line 148)
+
+### Combo Modifier Free Items (Dec 2025)
+**Feature:** Combo sections with `free_items > 0` allow N items for free before charging.
+
+**Implementation:**
+- `CartModifier.paidQuantity`: Tracks how many of the selected quantity are actually paid (after free items applied)
+- Cart subtotal calculation uses `paidQuantity` instead of `quantity` for modifier pricing
+- Synchronous atomic state updates prevent race conditions when adjusting quantities
+
+**Free Items Logic:**
+- First N items selected in a section are free (where N = `section.free_items`)
+- Example: If `free_items=3` and customer adds 2 pepperoni + 2 mushroom = 4 total → first 3 free, 4th is paid
+- When items are deselected, remaining items shift into free slots automatically
+
+**Files:**
+- `components/customer/dish-modal.tsx` (handleComboModifierQuantityChange, handleComboModifierToggle)
+- `lib/stores/cart-store.ts` (calculateSubtotal uses paidQuantity)
