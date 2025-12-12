@@ -99,18 +99,27 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
   useEffect(() => {
     if (isOpen && dish.id) {
       setIsLoadingModifiers(true);
+      console.log(`[DishModal] Fetching modifiers for dish ${dish.id}`);
       
       Promise.all([
-        fetch(`/api/customer/dishes/${dish.id}/modifiers`).then(res => res.json()),
-        fetch(`/api/customer/dishes/${dish.id}/combo-modifiers`).then(res => res.json())
+        fetch(`/api/customer/dishes/${dish.id}/modifiers`).then(res => {
+          console.log(`[DishModal] Simple modifiers response status: ${res.status}`);
+          return res.json();
+        }),
+        fetch(`/api/customer/dishes/${dish.id}/combo-modifiers`).then(res => {
+          console.log(`[DishModal] Combo modifiers response status: ${res.status}`);
+          return res.json();
+        })
       ])
         .then(([modifiersData, comboData]) => {
+          console.log(`[DishModal] Simple modifiers:`, modifiersData?.length || 0, 'groups');
+          console.log(`[DishModal] Combo modifiers:`, Array.isArray(comboData) ? comboData.length : 0, 'groups');
           setModifierGroups(modifiersData || []);
           setComboGroups(Array.isArray(comboData) ? comboData : []);
           setIsLoadingModifiers(false);
         })
         .catch(err => {
-          console.error('Error loading modifiers:', err);
+          console.error('[DishModal] Error loading modifiers:', err);
           setIsLoadingModifiers(false);
         });
     }
@@ -235,6 +244,63 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
           return prev.map(m => m.id === modifier.id ? { ...m, quantity: newQty } : m);
         } else {
           return [...prev, { id: modifier.id, name: modifier.name, price, quantity: newQty }];
+        }
+      });
+    }
+  };
+
+  const handleComboModifierQuantityChange = (
+    section: ComboGroupSection,
+    modifierGroup: ComboModifierGroup,
+    modifier: ComboModifier,
+    delta: number,
+    instanceIndex: number = 0
+  ) => {
+    const sectionKey = getComboSectionKey(section.id, modifierGroup.id, instanceIndex);
+    const currentQty = modifierQuantities[modifier.id] || 0;
+    const newQty = Math.max(0, currentQty + delta);
+    
+    // Check max_selection constraint (total quantity across all modifiers in section)
+    if (delta > 0 && section.max_selection > 0) {
+      const totalInSection = section.modifier_groups.flatMap(mg => mg.modifiers)
+        .reduce((sum, m) => sum + (modifierQuantities[m.id] || 0), 0);
+      if (totalInSection >= section.max_selection) return;
+    }
+    
+    setModifierQuantities(prev => ({ ...prev, [modifier.id]: newQty }));
+    
+    // Update comboSelections for tracking
+    const currentSelections = comboSelections[sectionKey] || [];
+    if (newQty === 0 && currentSelections.includes(modifier.id)) {
+      setComboSelections(prev => ({ 
+        ...prev, 
+        [sectionKey]: currentSelections.filter(id => id !== modifier.id) 
+      }));
+    } else if (newQty > 0 && !currentSelections.includes(modifier.id)) {
+      setComboSelections(prev => ({ 
+        ...prev, 
+        [sectionKey]: [...currentSelections, modifier.id] 
+      }));
+    }
+    
+    // Calculate price (considering free_items)
+    const freeItems = section.free_items || 0;
+    const fullPrice = getComboModifierPrice(modifier);
+    
+    // Update selectedModifiers array
+    if (newQty === 0) {
+      setSelectedModifiers(prev => prev.filter(m => m.id !== modifier.id));
+    } else {
+      // For combo modifiers with quantity, charge full price per item after free items
+      // Note: free_items applies to the first N selections, not quantities
+      const effectivePrice = fullPrice;
+      
+      setSelectedModifiers(prev => {
+        const existing = prev.find(m => m.id === modifier.id);
+        if (existing) {
+          return prev.map(m => m.id === modifier.id ? { ...m, quantity: newQty, price: effectivePrice } : m);
+        } else {
+          return [...prev, { id: modifier.id, name: modifier.name, price: effectivePrice, quantity: newQty }];
         }
       });
     }
@@ -874,48 +940,63 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
                                       })}
                                     </RadioGroup>
                                   ) : (
-                                    <div className="space-y-2">
+                                    <div className="space-y-3">
                                       {modifierGroup.modifiers.map((modifier) => {
                                         const fullPrice = getComboModifierPrice(modifier);
-                                        const isSelected = isComboModifierSelected(section.id, modifierGroup.id, modifier.id, instanceIndex);
-                                        const isDisabled = !isSelected && isMaxSelections;
-                                        const selectionIndex = currentSelections.indexOf(modifier.id);
-                                        const freeItems = section.free_items || 0;
-                                        const isFreeSlot = isSelected && selectionIndex < freeItems;
+                                        const currentQty = modifierQuantities[modifier.id] || 0;
                                         // Use database placements if available, otherwise auto-enable for pizza toppings
                                         const hasPlacements = (modifier.placements && modifier.placements.length > 0) || showPizzaPlacements;
                                         const placements = (modifier.placements && modifier.placements.length > 0) ? modifier.placements : (showPizzaPlacements ? defaultPlacements : []);
                                         const modifierKey = `${modifier.id}-${instanceIndex}`;
                                         
+                                        // Calculate total quantity in section for max_selection check
+                                        const totalInSection = section.modifier_groups.flatMap(mg => mg.modifiers)
+                                          .reduce((sum, m) => sum + (modifierQuantities[m.id] || 0), 0);
+                                        const isMaxReached = section.max_selection > 0 && totalInSection >= section.max_selection;
+                                        
                                         return (
                                           <div key={modifierKey}>
-                                            <div className="flex items-start space-x-3">
-                                              <Checkbox
-                                                id={`combo-modifier-${modifierKey}`}
-                                                checked={isSelected}
-                                                disabled={isDisabled}
-                                                onCheckedChange={(checked) => 
-                                                  handleComboModifierToggle(section, modifierGroup, modifier, checked as boolean, instanceIndex, contextualLabels[instanceIndex])
-                                                }
-                                                data-testid={`checkbox-combo-modifier-${modifierKey}`}
-                                              />
-                                              <Label 
-                                                htmlFor={`combo-modifier-${modifierKey}`} 
-                                                className={`flex-1 cursor-pointer font-normal ${isDisabled ? 'opacity-50' : ''}`}
-                                              >
-                                                <div className="flex items-center justify-between">
-                                                  <span>{modifier.name}</span>
-                                                  <span className="text-sm">
-                                                    {isFreeSlot ? (
-                                                      <span className="text-green-600 font-medium">Free</span>
-                                                    ) : fullPrice > 0 ? (
-                                                      <span className="text-muted-foreground">+${Number(fullPrice).toFixed(2)}</span>
-                                                    ) : null}
+                                            <div className="flex items-center justify-between">
+                                              <div className="flex items-center gap-2">
+                                                <span>{modifier.name}</span>
+                                                {fullPrice > 0 && (
+                                                  <span className="text-sm text-muted-foreground">
+                                                    +${Number(fullPrice).toFixed(2)} each
                                                   </span>
-                                                </div>
-                                              </Label>
+                                                )}
+                                              </div>
+                                              <div className="flex items-center gap-2">
+                                                <Button
+                                                  size="icon"
+                                                  variant="outline"
+                                                  className="h-7 w-7"
+                                                  onClick={() => handleComboModifierQuantityChange(section, modifierGroup, modifier, -1, instanceIndex)}
+                                                  disabled={currentQty === 0}
+                                                  data-testid={`button-combo-modifier-decrease-${modifierKey}`}
+                                                >
+                                                  <Minus className="h-3 w-3" />
+                                                </Button>
+                                                <span className="w-6 text-center font-medium" data-testid={`text-combo-modifier-qty-${modifierKey}`}>
+                                                  {currentQty}
+                                                </span>
+                                                <Button
+                                                  size="icon"
+                                                  variant="outline"
+                                                  className="h-7 w-7"
+                                                  onClick={() => handleComboModifierQuantityChange(section, modifierGroup, modifier, 1, instanceIndex)}
+                                                  disabled={isMaxReached && currentQty === 0}
+                                                  data-testid={`button-combo-modifier-increase-${modifierKey}`}
+                                                >
+                                                  <Plus className="h-3 w-3" />
+                                                </Button>
+                                                {currentQty > 1 && fullPrice > 0 && (
+                                                  <span className="text-sm font-medium text-muted-foreground ml-1">
+                                                    = +${(fullPrice * currentQty).toFixed(2)}
+                                                  </span>
+                                                )}
+                                              </div>
                                             </div>
-                                            {isSelected && hasPlacements && (
+                                            {currentQty > 0 && hasPlacements && (
                                               <PlacementSelector modifierId={modifier.id} placements={placements} />
                                             )}
                                           </div>

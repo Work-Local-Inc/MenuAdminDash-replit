@@ -35,8 +35,13 @@ export async function GET(
     const comboGroupIds = dishComboGroups.map((dcg: any) => dcg.combo_group_id);
     
     // Fetch combo groups with their metadata
-    // Actual columns: id, restaurant_id, name, number_of_items, display_header, source_id, created_at, updated_at, deleted_at
-    const { data: comboGroups, error: comboGroupsError } = await supabase
+    // Note: number_of_items and display_header columns may not exist in all database versions
+    // Try to fetch them but fall back to defaults if they don't exist
+    let comboGroups: any[] = [];
+    let comboGroupsError: any = null;
+    
+    // First try with all columns
+    const fullResult = await supabase
       .schema('menuca_v3')
       .from('combo_groups')
       .select(`
@@ -48,9 +53,38 @@ export async function GET(
       .in('id', comboGroupIds)
       .is('deleted_at', null);
     
-    if (comboGroupsError) {
-      throw comboGroupsError;
+    if (fullResult.error) {
+      // If error mentions missing column, try fetching just basic columns
+      if (fullResult.error.message?.includes('does not exist') || fullResult.error.code === '42703') {
+        console.log('[Combo Modifiers API] Some columns missing, falling back to basic query');
+        const basicResult = await supabase
+          .schema('menuca_v3')
+          .from('combo_groups')
+          .select(`
+            id,
+            name
+          `)
+          .in('id', comboGroupIds)
+          .is('deleted_at', null);
+        
+        if (basicResult.error) {
+          throw basicResult.error;
+        }
+        
+        // Add default values for missing columns
+        comboGroups = (basicResult.data || []).map((cg: any) => ({
+          ...cg,
+          number_of_items: 1,
+          display_header: null
+        }));
+      } else {
+        throw fullResult.error;
+      }
+    } else {
+      comboGroups = fullResult.data || [];
     }
+    
+    comboGroupsError = null;
     
     if (!comboGroups || comboGroups.length === 0) {
       return NextResponse.json([]);
