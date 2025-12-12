@@ -172,3 +172,17 @@ Per-item notes flow: Dish Modal → Zustand Cart → Checkout API → Database (
 **Files:**
 - `components/customer/dish-modal.tsx` (handleComboModifierQuantityChange, handleComboModifierToggle)
 - `lib/stores/cart-store.ts` (calculateSubtotal uses paidQuantity)
+
+### Duplicate Modifier Consolidation (Dec 2025)
+**Problem:** When same modifier is selected multiple times (e.g., pepperoni as free topping + pepperoni as paid topping), cart and kitchen receipt showed separate lines. Kitchen couldn't tell it's "double pepperoni."
+
+**Solution:** Consolidate duplicate modifiers (same name + placement) in both cart display and tablet/printer API.
+
+**Display Logic:**
+- If same modifier appears multiple times with same placement, combine into single line
+- Show quantity: "Pepperoni x2" instead of two separate "Pepperoni" lines
+- Price displays sum of paid quantities: "(+$2.50)" for 1 free + 1 paid at $2.50
+
+**Files:**
+- `components/customer/cart-drawer.tsx` (consolidation logic in modifier rendering)
+- `app/api/tablet/orders/route.ts` (consolidation before sending to printer, includes `quantity` field)

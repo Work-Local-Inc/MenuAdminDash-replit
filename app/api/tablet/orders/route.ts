@@ -117,21 +117,46 @@ export async function GET(request: NextRequest) {
       const serviceTime = deliveryAddress?.service_time || { type: 'asap' }
 
       // Transform items - use 'notes' field for printer app compatibility
-      const transformedItems: TabletOrderItem[] = items.map((item: any) => ({
-        dish_id: item.dish_id,
-        name: item.name,
-        size: item.size || 'default',
-        quantity: item.quantity,
-        unit_price: parseFloat(item.unit_price) || 0,
-        subtotal: parseFloat(item.subtotal) || 0,
-        modifiers: (item.modifiers || []).map((mod: any) => ({
-          id: mod.id,
-          name: mod.name,
-          price: parseFloat(mod.price) || 0,
-          placement: mod.placement || null, // 'whole', 'left', 'right', or null
-        })),
-        notes: item.special_instructions || item.notes || null, // Printer app expects 'notes'
-      }))
+      const transformedItems: TabletOrderItem[] = items.map((item: any) => {
+        // Consolidate duplicate modifiers (same name + placement) for kitchen clarity
+        const modifiersRaw = item.modifiers || [];
+        const consolidated = new Map<string, {
+          id: number;
+          name: string;
+          price: number;
+          placement: string | null;
+          quantity: number;
+        }>();
+        
+        modifiersRaw.forEach((mod: any) => {
+          const key = `${mod.name}|${mod.placement || 'whole'}`;
+          const qty = mod.quantity || 1;
+          
+          if (consolidated.has(key)) {
+            const existing = consolidated.get(key)!;
+            existing.quantity += qty;
+          } else {
+            consolidated.set(key, {
+              id: mod.id,
+              name: mod.name,
+              price: parseFloat(mod.price) || 0,
+              placement: mod.placement || null,
+              quantity: qty
+            });
+          }
+        });
+        
+        return {
+          dish_id: item.dish_id,
+          name: item.name,
+          size: item.size || 'default',
+          quantity: item.quantity,
+          unit_price: parseFloat(item.unit_price) || 0,
+          subtotal: parseFloat(item.subtotal) || 0,
+          modifiers: Array.from(consolidated.values()),
+          notes: item.special_instructions || item.notes || null, // Printer app expects 'notes'
+        };
+      })
 
       return {
         id: order.id,

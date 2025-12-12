@@ -91,19 +91,49 @@ export function CartDrawer({ isOpen, onClose, restaurant, buttonStyle }: CartDra
                       
                       {item.modifiers.length > 0 && (
                         <div className="text-sm text-muted-foreground mb-1">
-                          {item.modifiers.map((mod, idx) => {
-                            const placementSuffix = mod.placement === 'left' ? ' (Left Half)' 
-                              : mod.placement === 'right' ? ' (Right Half)' 
-                              : '';
-                            // Use paidQuantity to determine if modifier is free
-                            const paidQty = mod.paidQuantity !== undefined ? mod.paidQuantity : (mod.quantity || 1);
-                            const priceDisplay = paidQty === 0 
-                              ? '(Free)' 
-                              : `(+$${Number(mod.price * paidQty).toFixed(2)})`;
-                            return (
-                              <div key={idx}>+ {mod.name}{placementSuffix} {priceDisplay}</div>
-                            );
-                          })}
+                          {(() => {
+                            // Consolidate duplicate modifiers (same name + placement)
+                            const consolidated = new Map<string, {
+                              name: string;
+                              placement?: string;
+                              price: number;
+                              totalQty: number;
+                              totalPaidQty: number;
+                            }>();
+                            
+                            item.modifiers.forEach((mod) => {
+                              const key = `${mod.name}|${mod.placement || 'whole'}`;
+                              const qty = mod.quantity || 1;
+                              const paidQty = mod.paidQuantity !== undefined ? mod.paidQuantity : qty;
+                              
+                              if (consolidated.has(key)) {
+                                const existing = consolidated.get(key)!;
+                                existing.totalQty += qty;
+                                existing.totalPaidQty += paidQty;
+                              } else {
+                                consolidated.set(key, {
+                                  name: mod.name,
+                                  placement: mod.placement,
+                                  price: mod.price,
+                                  totalQty: qty,
+                                  totalPaidQty: paidQty
+                                });
+                              }
+                            });
+                            
+                            return Array.from(consolidated.values()).map((mod, idx) => {
+                              const placementSuffix = mod.placement === 'left' ? ' (Left Half)' 
+                                : mod.placement === 'right' ? ' (Right Half)' 
+                                : '';
+                              const qtyDisplay = mod.totalQty > 1 ? ` x${mod.totalQty}` : '';
+                              const priceDisplay = mod.totalPaidQty === 0 
+                                ? '(Free)' 
+                                : `(+$${Number(mod.price * mod.totalPaidQty).toFixed(2)})`;
+                              return (
+                                <div key={idx}>+ {mod.name}{qtyDisplay}{placementSuffix} {priceDisplay}</div>
+                              );
+                            });
+                          })()}
                         </div>
                       )}
                       
