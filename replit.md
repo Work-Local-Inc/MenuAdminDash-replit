@@ -1,7 +1,7 @@
 # Menu.ca Admin Dashboard
 
 ## Overview
-The Menu.ca Admin Dashboard is a Next.js 14 application for managing a multi-tenant restaurant ordering platform. It integrates with an existing Supabase PostgreSQL database containing live production data. The primary goal is to streamline the administration of restaurants, orders, coupons, and user accounts, thereby enhancing the operational efficiency of a large-scale food ordering service.
+The Menu.ca Admin Dashboard is a Next.js 14 application designed for managing a multi-tenant restaurant ordering platform. It integrates with an existing Supabase PostgreSQL database containing live production data. The primary purpose is to streamline the administration of restaurants, orders, coupons, and user accounts, enhancing the operational efficiency of a large-scale food ordering service. Key capabilities include comprehensive restaurant and menu management, franchise oversight, and customer ordering system configuration. The business vision is to provide a robust, scalable, and intuitive platform for restaurant owners and administrators, positioning Menu.ca as a leading solution in the online food ordering market.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -22,55 +22,41 @@ Preferred communication style: Simple, everyday language.
 -   **State Management**: React Query for server state, React Hook Form with Zod for form management, Zustand for customer-facing shopping cart.
 
 ### Backend & Data Layer
--   **Database**: Supabase PostgreSQL.
-    -   **Schemas**: `public` (Admin tables) and `menuca_v3` (ALL restaurant platform data).
-    -   **Access**: All Supabase clients for restaurant data **MUST** be configured with `db: { schema: 'menuca_v3' }`.
+-   **Database**: Supabase PostgreSQL, with `public` and `menuca_v3` schemas. `menuca_v3` is critical for all restaurant platform data, requiring `db: { schema: 'menuca_v3' }` configuration for Supabase clients accessing restaurant data.
 -   **Data Operations**: Primarily SQL Functions for reads and Edge Functions for writes.
--   **Admin Users**: Custom tables for granular control with RLS bypass via service role client.
+-   **Admin Users**: Custom tables with RLS bypass via service role client for granular control.
 
 ### Core Features
 -   **Restaurant Management**: Status, online ordering toggle, contact, delivery area configuration.
 -   **Menu Management**:
-    -   **Unified Menu Builder**: Single interface for menu editing, mirroring customer-facing design.
-    -   **Grid Layout**: Responsive dish cards with hover controls and image upload.
-    -   **Modifier Groups Architecture**: True linking system for modifier groups, allowing global updates to propagate automatically. Global modifier groups are managed in a library and associated with categories without cloning. Dishes inherit modifiers from their category, with options to break inheritance for custom dish-specific modifiers.
-    -   **Unified Modifier Manager** (`/admin/menu/modifiers/r/[restaurantId]`): Modifier-first workflow for efficient bulk management of 120+ dish catalogs. Unifies simple modifiers (`modifier_groups`) and combo modifiers (`combo_groups` hierarchy for pizzas with size-based pricing/placements) into a single catalog grid.
-        -   **View Modes**: Toggle between Grid (cards) and List (compact rows) via `data-testid="button-view-grid"` and `data-testid="button-view-list"`.
-        -   **Status Filtering**: Filter by All/Active/Inactive. Inactive modifiers (0 dishes linked) display in separate section with reduced opacity when viewing "All".
-        -   **Options Tab**: Click a modifier group to open sheet with Overview/Options/Dishes tabs. Options tab fetches real modifier items from the database hierarchy with edit/delete controls and price badges.
-    -   **ID Mapping (CRITICAL)**: `combo_groups.restaurant_id` uses V3 IDs directly, but simple modifiers link through `dishes.restaurant_id` which uses `legacy_v1_id`. API handles this automatically.
-    -   **Terminology Rule**: Database tables use "template" but UI/code ALWAYS uses "modifier" or "modifier group".
-    -   **Combo Modifier Hierarchy**: `combo_groups` → `combo_group_sections` → `combo_modifier_groups` → `combo_modifiers`. Note: `display_order` lives on `combo_group_sections`, NOT on `combo_groups`.
-    -   **Size & Price Variants Management**: Integrated into the Edit Dish dialog for flexible pricing with size variants (e.g., Small/Medium/Large). Supports unlimited variants per dish, inline editing, drag-and-drop reordering, and multi-tenant validation.
+    -   **Unified Menu Builder**: Single interface for menu editing with a grid layout for responsive dish cards, image uploads, and inline editing.
+    -   **Modifier Groups Architecture**: True linking system for global modifier groups, enabling automatic propagation of updates. Dishes inherit modifiers from categories, with options to break inheritance.
+    -   **Unified Modifier Manager**: Modifier-first workflow for bulk management, combining simple and combo modifiers in a catalog grid with view modes (Grid/List) and status filtering.
+    -   **Size & Price Variants**: Integrated management within the Edit Dish dialog, supporting unlimited variants, inline editing, and drag-and-drop reordering.
     -   **Drag-and-Drop**: For reordering categories and dishes.
     -   **Bulk Operations**: Multi-select dishes for batch actions.
-    -   **Inline Editing**: Click-to-edit prices and dish modifiers.
 -   **Franchise Management**: Hierarchical system for linking restaurants, bulk updates, and analytics.
 -   **Categorization System**: Cuisine and tag-based discovery.
--   **Onboarding Tracking**: 8-step process with progress tracking.
--   **Domain Verification & SSL Monitoring**: Automated health checks.
+-   **Customer Ordering System**:
+    -   **Authentication**: Separate Supabase Auth for customers, including Google OAuth.
+    -   **Order Types**: Delivery vs. Pickup with contextual fees and scheduling based on `restaurant_schedules`.
+    -   **Delivery Area Fee Calculation**: Uses `restaurant_delivery_areas` for zone-based fees.
+    -   **Checkout Flow**: Multi-step process with Zustand cart, Google Places Autocomplete for addresses, and Stripe payment.
+    -   **Account Pages**: Customer dashboard for order history, address management, and profile editing.
+    -   **Security**: Server-side validation for prices, amounts, quantities, payment replay protection, restaurant ownership, user authentication, and webhook signature verification.
+    -   **Default Branding System**: Consistent default branding (e.g., Menu.ca red, default banners, icons) for restaurants without custom configurations.
 
-### Customer Ordering System
--   **Authentication**: Separate Supabase Auth for customers (`menuca_v3.users`), including Google OAuth for secure profile creation during checkout.
--   **Order Type Selection**: Industry-standard Delivery vs. Pickup toggle with contextual fees and pickup time scheduling (ASAP vs. Scheduled from restaurant operating hours). Integrates with `restaurant_schedules` for dynamic availability.
--   **Delivery Area Fee Calculation**: Uses `restaurant_delivery_areas` table for calculating fees in dollars based on delivery zones.
--   **Checkout Flow**: Multi-step process with Zustand-based cart, address confirmation (Google Places Autocomplete), and Stripe payment.
--   **Address Management**: CRUD for `user_delivery_addresses`.
--   **Payment Processing**: Stripe integration for secure payments, server-side payment intent creation, `stripe_customer_id` linkage, and `payment_transactions` tracking.
--   **Order Management**: Order creation post-payment, order history, status tracking.
--   **Account Pages** (`/customer/account`): Customer dashboard with tabbed interface:
-    -   **Orders Tab**: View past order history with status tracking.
-    -   **Addresses Tab**: Full CRUD for saved delivery addresses (add, edit, delete, set default).
-    -   **Profile Tab**: Editable profile with first name, last name, phone (email read-only for security).
-    -   **Navigation**: Checkout header email is clickable link to account page when logged in.
--   **Security**: Server-side price, amount, and quantity validation; payment replay protection; restaurant ownership validation; user authentication; webhook signature verification; OAuth email verification.
--   **Default Branding System**: Restaurants without custom configuration get polished defaults:
-    -   Default primary color: `#DC2626` (Menu.ca red) applied to banners, buttons, icons, and navigation throughout the entire ordering experience.
-    -   Default banner: Red gradient header with decorative circular elements when no custom banner image is set.
-    -   Default icon: Styled rounded square container with UtensilsCrossed icon when no custom logo is set.
-    -   Order Online badge: Always displayed on all restaurant pages (both custom and default banners).
-    -   Cart/basket button: Uses plain HTML button with inline styles to ensure brand color takes precedence over CSS framework defaults.
-    -   Consistent application: Default color flows through to cart button, checkout buttons, confirmation page, and all interactive elements.
+### UI/UX Decisions
+-   **Color Schemes**: Uses `next-themes` for dark/light mode.
+-   **Templates**: Utilizes shadcn/ui components for a consistent design system.
+-   **Design Approaches**: Responsive design with Tailwind CSS.
+
+### Technical Implementations
+-   **ID Mapping**: Critical handling of `combo_groups.restaurant_id` (V3 IDs) vs. `dishes.restaurant_id` (using `legacy_v1_id`) via API.
+-   **Terminology**: Database "template" is always "modifier" or "modifier group" in UI/code.
+-   **Combo Modifier Hierarchy**: `combo_groups` → `combo_group_sections` → `combo_modifier_groups` → `combo_modifiers`.
+-   **Per-Item Special Instructions**: Implemented for allergy safety, storing notes at the item level in the cart and database, and displaying them prominently on printed receipts via external printer software.
+-   **Modifier Filtering**: Customer-facing dish modals filter simple modifiers by `dish_id` and combo modifiers by `combo_modifier_groups.is_selected = true` (repurposed to mean "available/visible").
 
 ## External Dependencies
 
@@ -103,7 +89,7 @@ Preferred communication style: Simple, everyday language.
 ### Stripe Key Mismatch (CRITICAL - Nov 2025)
 **Problem:** Payment intents created with TEST key but retrieved with LIVE key = "No such payment_intent" error.
 
-**Lesson Learned:** When debugging Stripe issues, ALWAYS do a full codebase audit FIRST:
+**Lesson Learned:** When debugging Stripe issues, ALWAYS audit ALL Stripe files first:
 ```bash
 grep -r "new Stripe\|STRIPE_SECRET_KEY" app/api --include="*.ts"
 ```
@@ -119,109 +105,26 @@ grep -r "new Stripe\|STRIPE_SECRET_KEY" app/api --include="*.ts"
 const stripeSecretKey = process.env.TESTING_STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY
 ```
 
-**Frontend key (next.config.mjs):**
-```javascript
-NEXT_PUBLIC_STRIPE_PUBLIC_KEY: process.env.TESTING_VITE_STRIPE_PUBLIC_KEY || process.env.VITE_STRIPE_PUBLIC_KEY
-```
-
-**Never fix one endpoint at a time - audit ALL Stripe files before deploying.**
-
 ### Table & Column Renames (Dec 2025)
-
-**Tables Renamed:**
 - `restaurant_service_configs` → `delivery_and_pickup_configs`
 - `restaurant_delivery_fees` → `restaurant_distance_based_delivery_fees`
-
-**Columns Renamed:**
 - `min_order_value` → `delivery_min_order` (in `restaurant_delivery_areas`)
-- `tier_value` → `distance_in_km` (in `restaurant_distance_based_delivery_fees`)
-
-**Files Updated:**
-- `types/supabase-database.ts` - Type definitions
-- `app/api/restaurants/[id]/service-config/route.ts` - API routes
-- `app/api/restaurants/[id]/delivery-areas/route.ts` - Delivery areas API
-- `app/api/customer/restaurants/[slug]/route.ts` - Customer API
-- `app/api/customer/validate-delivery/route.ts` - Delivery validation
-- `components/customer/restaurant-menu.tsx` - Menu component
-- `components/customer/restaurant-menu-public.tsx` - Public menu component
-
-Reference: `AI-AGENTS-START-HERE/DELIVERY_ZONES_HANDOFF.md` for complete delivery zones documentation.
 
 ### Dual Modifier Validation (Dec 2025)
-
-**Problem:** Order APIs were rejecting combo modifiers (pizza toppings) because they only validated against the `dish_modifiers` table (simple modifiers).
-
-**Solution:** Order validation now supports BOTH modifier types:
-
-1. **Simple Modifiers** (`dish_modifiers` table)
-   - Validated via: `modifier_group.dish_id === item.dishId`
-   - Price lookup: `dish_modifiers.price` (size-specific prices from `modifier_prices` table)
-
-2. **Combo Modifiers** (`combo_modifiers` table)
-   - Validated via: `dish_combo_groups` junction table
-   - Hierarchy: `combo_modifiers` → `combo_modifier_groups` → `combo_group_sections` → `combo_groups` → `dish_combo_groups`
-   - Price lookup: `combo_modifiers.price` field
-
-**Files Updated:**
-- `app/api/customer/orders/route.ts` - Stripe payment order creation
-- `app/api/customer/orders/cash/route.ts` - Cash payment order creation
-
-**Validation Flow:**
-```typescript
-// 1. Try simple modifier first
-const simpleModifier = simpleModifierMap.get(mod.id)
-if (simpleModifier) {
-  // Validate: simpleModifier.modifier_group.dish_id === item.dishId
-}
-
-// 2. If not found, check combo modifiers
-const comboModifier = comboModifierMap.get(mod.id)
-if (comboModifier) {
-  // Validate: comboGroupId is in dishComboGroupLinks.get(item.dishId)
-}
-```
-
-**Key Tables:**
-- `dish_modifiers` - Simple modifiers (sauces, add-ons)
-- `combo_modifiers` - Combo modifiers (pizza toppings with placements)
-- `dish_combo_groups` - Links dishes to combo groups
+Order validation supports BOTH modifier types:
+1. **Simple Modifiers**: Validated via `modifier_group.dish_id === item.dishId`
+2. **Combo Modifiers**: Validated via `dish_combo_groups` junction table hierarchy
 
 ### Per-Item Special Instructions & Allergy Safety (Dec 2025)
+Per-item notes flow: Dish Modal → Zustand Cart → Checkout API → Database (orders.items JSONB) → Tablet/Printer API → Printed Receipt
 
-**Design Decision:** Per-item notes are strongly preferred over order-level notes because allergies and modifications are item-specific. This ensures safety notes travel with the specific dish they apply to.
+**ALLERGY SAFETY FEATURE:** External printer software auto-detects "allergy" keyword in notes and generates prominent **"!! ALLERGY !!"** alert on printed orders.
 
-**Data Flow:**
-```
-Dish Modal (specialInstructions input)
-    ↓
-Zustand Cart Store (item.specialInstructions)
-    ↓
-Checkout API (cart_items[].specialInstructions)
-    ↓
-Database (orders.items JSONB → item.special_instructions)
-    ↓
-Tablet/Printer API (maps special_instructions → 'notes' per item)
-    ↓
-Printed Receipt (notes displayed under each item)
-```
+### Modifier Filtering Fix (Dec 2025)
+**Bug:** Combo-modifiers API returned ALL modifier groups instead of dish-specific ones.
 
-**Files in the flow:**
-- `components/customer/dish-modal.tsx` - User enters notes
-- `lib/cart-store.ts` - Zustand stores `specialInstructions`
-- `components/customer/checkout-payment-form.tsx` - Sends to API
-- `app/api/customer/orders/route.ts` - Saves to database (credit card)
-- `app/api/customer/orders/cash/route.ts` - Saves to database (cash)
-- `app/api/tablet/orders/route.ts` - Maps to `notes` for printer
-- `app/(public)/customer/orders/[id]/confirmation/page.tsx` - Displays notes
+**Fix:** Added `.eq('is_selected', true)` filter to `combo_modifier_groups` query.
 
-**ALLERGY SAFETY FEATURE (External Printer Software):**
-The tablet/printer software (external to Menu.ca) automatically scans item notes for the keyword **"allergy"** and generates a prominent **"!! ALLERGY !!"** notification section on printed orders.
+**Key insight:** `is_selected` column is repurposed to mean "available/visible" (not pre-selection). This is because `combo_modifier_groups` lacks an `is_active` column.
 
-This is a critical safety feature because:
-- Allergy warnings in small text can be easily missed by busy kitchen staff
-- Automatic detection ensures allergies are NEVER overlooked
-- The printer vendor built this knowing allergies can be life-threatening
-
-**Usage:** Customers who enter notes containing "allergy" (e.g., "No peanuts - severe allergy") will trigger the alert automatically.
-
-**Potential other keywords to test:** The printer software may also detect: "vegetarian", "vegan", "gluten-free", "halal", "kosher", "nut allergy", "diabetic" - worth testing to discover full keyword list.
+**File:** `app/api/customer/dishes/[id]/combo-modifiers/route.ts` (line 109)
