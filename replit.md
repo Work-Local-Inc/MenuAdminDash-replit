@@ -128,3 +128,30 @@ Per-item notes flow: Dish Modal → Zustand Cart → Checkout API → Database (
 **Key insight:** `is_selected` column is repurposed to mean "available/visible" (not pre-selection). This is because `combo_modifier_groups` lacks an `is_active` column.
 
 **File:** `app/api/customer/dishes/[id]/combo-modifiers/route.ts` (line 109)
+
+### Modifier Quantity Steppers (Dec 2025)
+**Feature:** Customers can add multiple of the same modifier (e.g., 5 Creamy Garlic dips) using +/- quantity buttons.
+
+**UI Logic:**
+- `max_selections === 1`: Radio buttons (single choice)
+- `max_selections !== 1` (including 0 = unlimited): Quantity steppers with +/- buttons
+
+**Database Requirement:** For dips/sauces to show quantity steppers, the `modifier_groups.max_selections` column must be set to 0 (unlimited) or > 1. If set to 1, radio buttons are shown instead.
+
+**Cart Integration:** `CartModifier` now includes `quantity` field. Price calculation: `m.price * (m.quantity || 1)`
+
+**Files:**
+- `components/customer/dish-modal.tsx` (quantity stepper UI + handleModifierQuantityChange)
+- `lib/stores/cart-store.ts` (CartModifier type, calculateSubtotal, generateCartItemId)
+
+### Phone Number on Orders (Dec 2025)
+**Requirement:** All orders (delivery and pickup) require customer phone for restaurant contact.
+
+**Implementation:**
+- Guests: Phone field required with min 7 character validation
+- Logged-in users: If profile has no/invalid phone, inline phone input shown
+- Phone priority: Inline entry > Profile phone > Guest phone field
+
+**Printer API:** Full phone number passed (unmasked) to tablet/printer API at `customer.phone`
+
+**File:** `app/api/tablet/orders/route.ts` (line 148)
