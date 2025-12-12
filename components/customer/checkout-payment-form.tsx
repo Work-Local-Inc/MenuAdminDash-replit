@@ -199,6 +199,7 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
             size: item.size,
             quantity: item.quantity,
             modifiers: item.modifiers,
+            specialInstructions: item.specialInstructions,
           })),
         };
         

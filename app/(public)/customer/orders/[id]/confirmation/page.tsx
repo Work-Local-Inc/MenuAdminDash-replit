@@ -20,6 +20,7 @@ interface OrderItem {
   quantity: number
   unit_price: number
   subtotal: number
+  special_instructions?: string | null
   modifiers?: Array<{
     id: number
     name: string
@@ -534,6 +535,11 @@ export default function OrderConfirmationPage() {
                                 </p>
                               ))}
                             </div>
+                          )}
+                          {item.special_instructions && (
+                            <p className="ml-12 mt-1 text-xs italic text-amber-700 dark:text-amber-400" data-testid={`item-notes-${index}`}>
+                              Note: {item.special_instructions}
+                            </p>
                           )}
                         </div>
                         <p className="font-medium shrink-0" data-testid={`item-total-${index}`}>
