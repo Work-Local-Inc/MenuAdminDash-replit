@@ -185,3 +185,43 @@ if (comboModifier) {
 - `dish_modifiers` - Simple modifiers (sauces, add-ons)
 - `combo_modifiers` - Combo modifiers (pizza toppings with placements)
 - `dish_combo_groups` - Links dishes to combo groups
+
+### Per-Item Special Instructions & Allergy Safety (Dec 2025)
+
+**Design Decision:** Per-item notes are strongly preferred over order-level notes because allergies and modifications are item-specific. This ensures safety notes travel with the specific dish they apply to.
+
+**Data Flow:**
+```
+Dish Modal (specialInstructions input)
+    ↓
+Zustand Cart Store (item.specialInstructions)
+    ↓
+Checkout API (cart_items[].specialInstructions)
+    ↓
+Database (orders.items JSONB → item.special_instructions)
+    ↓
+Tablet/Printer API (maps special_instructions → 'notes' per item)
+    ↓
+Printed Receipt (notes displayed under each item)
+```
+
+**Files in the flow:**
+- `components/customer/dish-modal.tsx` - User enters notes
+- `lib/cart-store.ts` - Zustand stores `specialInstructions`
+- `components/customer/checkout-payment-form.tsx` - Sends to API
+- `app/api/customer/orders/route.ts` - Saves to database (credit card)
+- `app/api/customer/orders/cash/route.ts` - Saves to database (cash)
+- `app/api/tablet/orders/route.ts` - Maps to `notes` for printer
+- `app/(public)/customer/orders/[id]/confirmation/page.tsx` - Displays notes
+
+**ALLERGY SAFETY FEATURE (External Printer Software):**
+The tablet/printer software (external to Menu.ca) automatically scans item notes for the keyword **"allergy"** and generates a prominent **"!! ALLERGY !!"** notification section on printed orders.
+
+This is a critical safety feature because:
+- Allergy warnings in small text can be easily missed by busy kitchen staff
+- Automatic detection ensures allergies are NEVER overlooked
+- The printer vendor built this knowing allergies can be life-threatening
+
+**Usage:** Customers who enter notes containing "allergy" (e.g., "No peanuts - severe allergy") will trigger the alert automatically.
+
+**Potential other keywords to test:** The printer software may also detect: "vegetarian", "vegan", "gluten-free", "halal", "kosher", "nut allergy", "diabetic" - worth testing to discover full keyword list.
