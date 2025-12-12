@@ -14,6 +14,7 @@ export interface CartModifier {
   id: number;
   name: string;
   price: number;
+  quantity?: number; // For multiple of same modifier (e.g., 5 Creamy Garlic dips), default 1
   placement?: PlacementType; // For pizza toppings: whole, left, or right
 }
 
@@ -92,9 +93,9 @@ function generateCartItemId(
   modifiers: CartModifier[],
   specialInstructions?: string
 ): string {
-  // Include placement in modifier hash so same topping with different placements are separate items
+  // Include placement and quantity in modifier hash so same topping with different placements/quantities are separate items
   const modifierHash = modifiers
-    .map(m => `${m.id}:${m.placement || 'whole'}`)
+    .map(m => `${m.id}:${m.placement || 'whole'}:${m.quantity || 1}`)
     .sort()
     .join('-');
   const instructions = specialInstructions?.trim() || '';
@@ -107,7 +108,8 @@ function calculateSubtotal(
   modifiers: CartModifier[],
   quantity: number
 ): number {
-  const modifierTotal = modifiers.reduce((sum, m) => sum + m.price, 0);
+  // Multiply each modifier price by its quantity (default 1)
+  const modifierTotal = modifiers.reduce((sum, m) => sum + (m.price * (m.quantity || 1)), 0);
   return (sizePrice + modifierTotal) * quantity;
 }
 

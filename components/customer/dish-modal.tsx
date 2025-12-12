@@ -92,6 +92,7 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
   const [groupSelections, setGroupSelections] = useState<Record<number, number[]>>({});
   const [comboSelections, setComboSelections] = useState<Record<string, number[]>>({});
   const [modifierPlacements, setModifierPlacements] = useState<Record<number, PlacementType>>({});
+  const [modifierQuantities, setModifierQuantities] = useState<Record<number, number>>({});
   
   const addItem = useCartStore((state) => state.addItem);
   
@@ -125,6 +126,7 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
       setGroupSelections({});
       setComboSelections({});
       setModifierPlacements({});
+      setModifierQuantities({});
     }
   }, [isOpen, dish.prices]);
   
@@ -199,6 +201,42 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
       const newPlacements = { ...modifierPlacements };
       delete newPlacements[modifier.id];
       setModifierPlacements(newPlacements);
+    }
+  };
+
+  const handleModifierQuantityChange = (
+    group: ModifierGroupWithModifiers,
+    modifier: any,
+    delta: number
+  ) => {
+    const currentQty = modifierQuantities[modifier.id] || 0;
+    const newQty = Math.max(0, currentQty + delta);
+    
+    // Check max_selections constraint (total quantity across all modifiers in group)
+    if (delta > 0 && group.max_selections > 0) {
+      const totalInGroup = Object.entries(modifierQuantities)
+        .filter(([id]) => group.modifiers.some(m => m.id === parseInt(id)))
+        .reduce((sum, [, qty]) => sum + qty, 0);
+      if (totalInGroup >= group.max_selections) return;
+    }
+    
+    setModifierQuantities(prev => ({ ...prev, [modifier.id]: newQty }));
+    
+    // Update selectedModifiers array
+    const price = getModifierPrice(modifier);
+    if (newQty === 0) {
+      // Remove modifier
+      setSelectedModifiers(prev => prev.filter(m => m.id !== modifier.id));
+    } else {
+      // Add or update modifier with quantity
+      setSelectedModifiers(prev => {
+        const existing = prev.find(m => m.id === modifier.id);
+        if (existing) {
+          return prev.map(m => m.id === modifier.id ? { ...m, quantity: newQty } : m);
+        } else {
+          return [...prev, { id: modifier.id, name: modifier.name, price, quantity: newQty }];
+        }
+      });
     }
   };
 
@@ -376,7 +414,7 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
     onClose();
   };
   
-  const itemTotal = (sizePrice + selectedModifiers.reduce((sum, m) => sum + m.price, 0)) * quantity;
+  const itemTotal = (sizePrice + selectedModifiers.reduce((sum, m) => sum + (m.price * (m.quantity || 1)), 0)) * quantity;
 
   // Check if all required modifiers are selected
   const getMissingRequirements = (): string[] => {
@@ -640,38 +678,61 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
                         })}
                       </RadioGroup>
                     ) : (
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         {group.modifiers.map((modifier) => {
                           const price = getModifierPrice(modifier);
-                          const isSelected = groupSelected.includes(modifier.id);
-                          const isDisabled = !isSelected && isMaxSelections;
+                          const currentQty = modifierQuantities[modifier.id] || 0;
                           const showPlacements = isSimpleModifierToppingGroup(group);
+                          
+                          // Calculate total quantity in group for max_selections check
+                          const totalInGroup = Object.entries(modifierQuantities)
+                            .filter(([id]) => group.modifiers.some(m => m.id === parseInt(id)))
+                            .reduce((sum, [, qty]) => sum + qty, 0);
+                          const isMaxReached = group.max_selections > 0 && totalInGroup >= group.max_selections;
                           
                           return (
                             <div key={modifier.id}>
-                              <div className="flex items-start space-x-3">
-                                <Checkbox
-                                  id={`modifier-${modifier.id}`}
-                                  checked={isSelected}
-                                  disabled={isDisabled}
-                                  onCheckedChange={(checked) => handleModifierToggle(group, modifier.id, checked as boolean)}
-                                  data-testid={`checkbox-modifier-${modifier.id}`}
-                                />
-                                <Label 
-                                  htmlFor={`modifier-${modifier.id}`} 
-                                  className={`flex-1 cursor-pointer font-normal ${isDisabled ? 'opacity-50' : ''}`}
-                                >
-                                  <div className="flex items-center justify-between">
-                                    <span>{modifier.name}</span>
-                                    {price > 0 && (
-                                      <span className="text-sm text-muted-foreground">
-                                        +${Number(price).toFixed(2)}
-                                      </span>
-                                    )}
-                                  </div>
-                                </Label>
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <span>{modifier.name}</span>
+                                  {price > 0 && (
+                                    <span className="text-sm text-muted-foreground">
+                                      +${Number(price).toFixed(2)} each
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    size="icon"
+                                    variant="outline"
+                                    className="h-7 w-7"
+                                    onClick={() => handleModifierQuantityChange(group, modifier, -1)}
+                                    disabled={currentQty === 0}
+                                    data-testid={`button-modifier-decrease-${modifier.id}`}
+                                  >
+                                    <Minus className="h-3 w-3" />
+                                  </Button>
+                                  <span className="w-6 text-center font-medium" data-testid={`text-modifier-qty-${modifier.id}`}>
+                                    {currentQty}
+                                  </span>
+                                  <Button
+                                    size="icon"
+                                    variant="outline"
+                                    className="h-7 w-7"
+                                    onClick={() => handleModifierQuantityChange(group, modifier, 1)}
+                                    disabled={isMaxReached && currentQty === 0}
+                                    data-testid={`button-modifier-increase-${modifier.id}`}
+                                  >
+                                    <Plus className="h-3 w-3" />
+                                  </Button>
+                                  {currentQty > 1 && price > 0 && (
+                                    <span className="text-sm font-medium text-muted-foreground ml-1">
+                                      = +${(price * currentQty).toFixed(2)}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
-                              {isSelected && showPlacements && (
+                              {currentQty > 0 && showPlacements && (
                                 <PlacementSelector modifierId={modifier.id} placements={defaultPlacements} />
                               )}
                             </div>
@@ -946,34 +1007,57 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
                           })}
                         </RadioGroup>
                       ) : (
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                           {group.modifiers.map((modifier) => {
                             const price = getModifierPrice(modifier);
-                            const isSelected = (groupSelections[group.id] || []).includes(modifier.id);
-                            const isDisabled = !isSelected && isMaxSelections;
+                            const currentQty = modifierQuantities[modifier.id] || 0;
+                            
+                            // Calculate total quantity in group for max_selections check
+                            const totalInGroup = Object.entries(modifierQuantities)
+                              .filter(([id]) => group.modifiers.some(m => m.id === parseInt(id)))
+                              .reduce((sum, [, qty]) => sum + qty, 0);
+                            const isMaxReached = group.max_selections > 0 && totalInGroup >= group.max_selections;
 
                             return (
-                              <div key={modifier.id} className="flex items-start space-x-3">
-                                <Checkbox
-                                  id={`modifier-${modifier.id}`}
-                                  checked={isSelected}
-                                  disabled={isDisabled}
-                                  onCheckedChange={(checked) => handleModifierToggle(group, modifier.id, checked as boolean)}
-                                  data-testid={`checkbox-modifier-${modifier.id}`}
-                                />
-                                <Label 
-                                  htmlFor={`modifier-${modifier.id}`} 
-                                  className={`flex-1 cursor-pointer font-normal ${isDisabled ? 'opacity-50' : ''}`}
-                                >
-                                  <div className="flex items-center justify-between">
-                                    <span>{modifier.name}</span>
-                                    {price > 0 && (
-                                      <span className="text-sm text-muted-foreground">
-                                        +${Number(price).toFixed(2)}
-                                      </span>
-                                    )}
-                                  </div>
-                                </Label>
+                              <div key={modifier.id} className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <span>{modifier.name}</span>
+                                  {price > 0 && (
+                                    <span className="text-sm text-muted-foreground">
+                                      +${Number(price).toFixed(2)} each
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    size="icon"
+                                    variant="outline"
+                                    className="h-7 w-7"
+                                    onClick={() => handleModifierQuantityChange(group, modifier, -1)}
+                                    disabled={currentQty === 0}
+                                    data-testid={`button-modifier-decrease-${modifier.id}`}
+                                  >
+                                    <Minus className="h-3 w-3" />
+                                  </Button>
+                                  <span className="w-6 text-center font-medium" data-testid={`text-modifier-qty-${modifier.id}`}>
+                                    {currentQty}
+                                  </span>
+                                  <Button
+                                    size="icon"
+                                    variant="outline"
+                                    className="h-7 w-7"
+                                    onClick={() => handleModifierQuantityChange(group, modifier, 1)}
+                                    disabled={isMaxReached && currentQty === 0}
+                                    data-testid={`button-modifier-increase-${modifier.id}`}
+                                  >
+                                    <Plus className="h-3 w-3" />
+                                  </Button>
+                                  {currentQty > 1 && price > 0 && (
+                                    <span className="text-sm font-medium text-muted-foreground ml-1">
+                                      = +${(price * currentQty).toFixed(2)}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             );
                           })}
