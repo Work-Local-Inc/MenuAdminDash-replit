@@ -15,6 +15,7 @@ export interface CartModifier {
   name: string;
   price: number;
   quantity?: number; // For multiple of same modifier (e.g., 5 Creamy Garlic dips), default 1
+  paidQuantity?: number; // For free items tracking: how many of quantity are paid (after free items applied)
   placement?: PlacementType; // For pizza toppings: whole, left, or right
 }
 
@@ -108,8 +109,12 @@ function calculateSubtotal(
   modifiers: CartModifier[],
   quantity: number
 ): number {
-  // Multiply each modifier price by its quantity (default 1)
-  const modifierTotal = modifiers.reduce((sum, m) => sum + (m.price * (m.quantity || 1)), 0);
+  // Use paidQuantity if available (for combo modifiers with free items)
+  // Otherwise fall back to quantity for simple modifiers
+  const modifierTotal = modifiers.reduce((sum, m) => {
+    const paidQty = m.paidQuantity !== undefined ? m.paidQuantity : (m.quantity || 1);
+    return sum + (m.price * paidQty);
+  }, 0);
   return (sizePrice + modifierTotal) * quantity;
 }
 
