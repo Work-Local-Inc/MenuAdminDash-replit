@@ -91,7 +91,7 @@ export async function GET(
     const sectionIds = sections.map((s: any) => s.id);
     console.log(`[Combo Modifiers API] Dish ${dishId}: Section IDs being queried:`, sectionIds);
     
-    // Fetch ALL modifier groups for these sections (is_selected is for pre-selection, not filtering)
+    // Fetch only selected modifier groups (is_selected=true means this modifier group is available for this dish)
     const { data: modifierGroups, error: groupsError } = await supabase
       .schema('menuca_v3')
       .from('combo_modifier_groups')
@@ -102,7 +102,8 @@ export async function GET(
         type_code,
         is_selected
       `)
-      .in('combo_group_section_id', sectionIds);
+      .in('combo_group_section_id', sectionIds)
+      .eq('is_selected', true);
     
     console.log(`[Combo Modifiers API] Dish ${dishId}: ${sections.length} sections, ${modifierGroups?.length || 0} modifier groups`);
     
