@@ -147,7 +147,7 @@ export async function GET(request: NextRequest) {
         },
 
         delivery_address: order.order_type === 'delivery' && deliveryAddress ? {
-          street: deliveryAddress.street || deliveryAddress.address || '',
+          street: deliveryAddress.street_address || deliveryAddress.street || deliveryAddress.address || '',
           city: deliveryAddress.city || '',
           province: deliveryAddress.province || '',
           postal_code: deliveryAddress.postal_code || '',
