@@ -95,8 +95,13 @@ export function CartDrawer({ isOpen, onClose, restaurant, buttonStyle }: CartDra
                             const placementSuffix = mod.placement === 'left' ? ' (Left Half)' 
                               : mod.placement === 'right' ? ' (Right Half)' 
                               : '';
+                            // Use paidQuantity to determine if modifier is free
+                            const paidQty = mod.paidQuantity !== undefined ? mod.paidQuantity : (mod.quantity || 1);
+                            const priceDisplay = paidQty === 0 
+                              ? '(Free)' 
+                              : `(+$${Number(mod.price * paidQty).toFixed(2)})`;
                             return (
-                              <div key={idx}>+ {mod.name}{placementSuffix} (+${Number(mod.price).toFixed(2)})</div>
+                              <div key={idx}>+ {mod.name}{placementSuffix} {priceDisplay}</div>
                             );
                           })}
                         </div>
