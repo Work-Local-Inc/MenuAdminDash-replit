@@ -34,13 +34,10 @@ export async function GET(
     
     const comboGroupIds = dishComboGroups.map((dcg: any) => dcg.combo_group_id);
     
-    // Fetch combo groups with their metadata
-    // Note: number_of_items and display_header columns may not exist in all database versions
-    // Try to fetch them but fall back to defaults if they don't exist
+    // Fetch combo groups with their metadata including special section support
     let comboGroups: any[] = [];
-    let comboGroupsError: any = null;
     
-    // First try with all columns
+    // Fetch combo groups with all special section columns
     const fullResult = await supabase
       .schema('menuca_v3')
       .from('combo_groups')
@@ -48,7 +45,8 @@ export async function GET(
         id,
         name,
         number_of_items,
-        display_header
+        display_header,
+        has_special_section
       `)
       .in('id', comboGroupIds)
       .is('deleted_at', null);
@@ -75,7 +73,8 @@ export async function GET(
         comboGroups = (basicResult.data || []).map((cg: any) => ({
           ...cg,
           number_of_items: 1,
-          display_header: null
+          display_header: null,
+          has_special_section: false
         }));
       } else {
         throw fullResult.error;
@@ -84,7 +83,61 @@ export async function GET(
       comboGroups = fullResult.data || [];
     }
     
-    comboGroupsError = null;
+    // For combo groups with has_special_section=true, fetch dish selections
+    const specialComboGroupIds = comboGroups
+      .filter((cg: any) => cg.has_special_section === true)
+      .map((cg: any) => cg.id);
+    
+    let dishSelectionsByComboGroup: Record<number, any[]> = {};
+    
+    if (specialComboGroupIds.length > 0) {
+      // Fetch dish selections with joined dish and course data
+      const { data: dishSelections, error: dishSelectionsError } = await supabase
+        .schema('menuca_v3')
+        .from('combo_group_dish_selections')
+        .select(`
+          id,
+          combo_group_id,
+          dish_id,
+          size,
+          dishes:dish_id (
+            id,
+            name,
+            course_id,
+            courses:course_id (
+              id,
+              name
+            )
+          )
+        `)
+        .in('combo_group_id', specialComboGroupIds)
+        .eq('is_active', true);
+      
+      if (dishSelectionsError) {
+        console.error('[Combo Modifiers API] Error fetching dish selections:', dishSelectionsError);
+        // Continue without dish selections rather than failing completely
+      } else if (dishSelections) {
+        // Transform and group by combo_group_id
+        dishSelections.forEach((ds: any) => {
+          if (!dishSelectionsByComboGroup[ds.combo_group_id]) {
+            dishSelectionsByComboGroup[ds.combo_group_id] = [];
+          }
+          
+          const dish = ds.dishes;
+          const course = dish?.courses;
+          
+          dishSelectionsByComboGroup[ds.combo_group_id].push({
+            id: ds.id,
+            dish_id: ds.dish_id,
+            dish_name: dish?.name || `Dish ${ds.dish_id}`,
+            dish_display_name: null, // Can be extended if display name override exists
+            size: ds.size,
+            course_id: dish?.course_id || null,
+            course_name: course?.name || null
+          });
+        });
+      }
+    }
     
     if (!comboGroups || comboGroups.length === 0) {
       return NextResponse.json([]);
@@ -114,10 +167,11 @@ export async function GET(
     }
     
     if (!sections || sections.length === 0) {
-      // Return combo groups with empty sections
+      // Return combo groups with empty sections but include dish_selections for special combos
       const result = comboGroups.map((cg: any) => ({
         ...cg,
-        sections: []
+        sections: [],
+        dish_selections: dishSelectionsByComboGroup[cg.id] || []
       }));
       return NextResponse.json(result);
     }
@@ -159,7 +213,7 @@ export async function GET(
       console.log(`[Combo Modifiers API] Dish ${dishId}: No selected modifier groups found. Returning sections without options.`);
       console.log(`[Combo Modifiers API] Sections with min_selection > 0:`, sections.filter((s: any) => s.min_selection > 0).map((s: any) => ({ id: s.id, header: s.use_header, min: s.min_selection })));
       
-      // Return combo groups with sections but no modifier groups
+      // Return combo groups with sections but no modifier groups - include dish_selections for special combos
       const sectionsByComboGroup: Record<number, any[]> = {};
       sections.forEach((s: any) => {
         if (!sectionsByComboGroup[s.combo_group_id]) {
@@ -170,7 +224,8 @@ export async function GET(
       
       const result = comboGroups.map((cg: any) => ({
         ...cg,
-        sections: sectionsByComboGroup[cg.id] || []
+        sections: sectionsByComboGroup[cg.id] || [],
+        dish_selections: dishSelectionsByComboGroup[cg.id] || []
       }));
       return NextResponse.json(result);
     }
@@ -288,7 +343,7 @@ export async function GET(
       sectionsByComboGroup[s.combo_group_id].push(s);
     });
     
-    // Build final result: combo_groups with nested sections
+    // Build final result: combo_groups with nested sections and dish_selections
     // Get display_order from the minimum of sections' display_order
     const result = comboGroups.map((cg: any) => {
       const cgSections = sectionsByComboGroup[cg.id] || [];
@@ -298,7 +353,9 @@ export async function GET(
       return {
         ...cg,
         display_order: minDisplayOrder,
-        sections: cgSections
+        sections: cgSections,
+        // Include dish_selections for special combo groups
+        dish_selections: dishSelectionsByComboGroup[cg.id] || []
       };
     });
     

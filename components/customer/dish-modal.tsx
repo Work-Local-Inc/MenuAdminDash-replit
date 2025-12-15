@@ -49,6 +49,16 @@ interface ComboGroupSection {
   modifier_groups: ComboModifierGroup[];
 }
 
+interface ComboDishSelection {
+  id: number;
+  dish_id: number;
+  dish_name: string;
+  dish_display_name: string | null;
+  size: number | null;
+  course_id: number | null;
+  course_name: string | null;
+}
+
 interface ComboGroup {
   id: number;
   name: string;
@@ -61,6 +71,8 @@ interface ComboGroup {
   is_available: boolean;
   number_of_items: number;
   display_header: string | null;
+  has_special_section: boolean;
+  dish_selections: ComboDishSelection[];
   sections: ComboGroupSection[];
 }
 
@@ -93,6 +105,8 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
   const [comboSelections, setComboSelections] = useState<Record<string, number[]>>({});
   const [modifierPlacements, setModifierPlacements] = useState<Record<number, PlacementType>>({});
   const [modifierQuantities, setModifierQuantities] = useState<Record<number, number>>({});
+  // Special dish selections: key = `${comboGroupId}-${selectionIndex}`, value = dish selection id
+  const [specialDishSelections, setSpecialDishSelections] = useState<Record<string, number>>({});
   
   const addItem = useCartStore((state) => state.addItem);
   
@@ -136,6 +150,7 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
       setComboSelections({});
       setModifierPlacements({});
       setModifierQuantities({});
+      setSpecialDishSelections({});
     }
   }, [isOpen, dish.prices]);
   
@@ -491,6 +506,50 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
     ));
   };
 
+  // Handle special dish selection for combo groups with has_special_section=true
+  const handleSpecialDishSelection = (
+    comboGroup: ComboGroup,
+    selectionIndex: number,
+    dishSelection: ComboDishSelection | null,
+    contextLabel: string
+  ) => {
+    const key = `${comboGroup.id}-${selectionIndex}`;
+    
+    if (dishSelection === null) {
+      // Deselect
+      setSpecialDishSelections(prev => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+      
+      // Remove from selectedModifiers
+      // Use unique id based on combo group and selection index
+      const modifierId = comboGroup.id * 10000 + selectionIndex;
+      setSelectedModifiers(prev => prev.filter(m => m.id !== modifierId));
+    } else {
+      // Select new dish
+      setSpecialDishSelections(prev => ({ ...prev, [key]: dishSelection.id }));
+      
+      // Add as a modifier with the selected dish name
+      const modifierId = comboGroup.id * 10000 + selectionIndex;
+      const displayName = dishSelection.dish_display_name || dishSelection.dish_name;
+      const label = contextLabel ? `${contextLabel}: ${displayName}` : displayName;
+      
+      // Remove old selection if exists, then add new one
+      setSelectedModifiers(prev => {
+        const filtered = prev.filter(m => m.id !== modifierId);
+        return [...filtered, {
+          id: modifierId,
+          name: label,
+          price: 0, // Dish selections are typically included in combo price
+          quantity: 1,
+          paidQuantity: 0, // Free as part of combo
+        }];
+      });
+    }
+  };
+
   const isComboModifierSelected = (sectionId: number, groupId: number, modifierId: number, instanceIndex: number = 0): boolean => {
     const sectionKey = getComboSectionKey(sectionId, groupId, instanceIndex);
     return (comboSelections[sectionKey] || []).includes(modifierId);
@@ -547,6 +606,26 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
     // IMPORTANT: Skip validation for sections that have no modifier options available (legacy data issue)
     for (const comboGroup of comboGroups) {
       const numberOfItems = comboGroup.number_of_items || 1;
+      const contextualLabels = getContextualLabels(comboGroup.display_header, numberOfItems);
+      
+      // Check special dish selections if has_special_section is true
+      if (comboGroup.has_special_section && comboGroup.dish_selections && comboGroup.dish_selections.length > 0) {
+        for (let instanceIndex = 0; instanceIndex < numberOfItems; instanceIndex++) {
+          const key = `${comboGroup.id}-${instanceIndex}`;
+          const hasSelection = specialDishSelections[key] !== undefined;
+          
+          if (!hasSelection) {
+            // Use contextual label if available
+            const label = numberOfItems > 1 
+              ? contextualLabels[instanceIndex] 
+              : (comboGroup.name || 'selection');
+            
+            if (!missing.includes(label)) {
+              missing.push(label);
+            }
+          }
+        }
+      }
       
       for (let instanceIndex = 0; instanceIndex < numberOfItems; instanceIndex++) {
         for (const section of comboGroup.sections) {
@@ -573,7 +652,7 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
               // Build a meaningful label for the whole section
               const sectionLabel = section.use_header || section.modifier_groups[0]?.name || 'selection';
               const contextLabel = numberOfItems > 1 
-                ? `${getContextualLabels(comboGroup.display_header, numberOfItems)[instanceIndex]} ${sectionLabel}`
+                ? `${contextualLabels[instanceIndex]} ${sectionLabel}`
                 : sectionLabel;
               
               if (!missing.includes(contextLabel)) {
@@ -862,7 +941,100 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
                 
                 return (
                   <div key={comboGroup.id} className="space-y-4">
-                    {/* Repeat sections based on number_of_items */}
+                    {/* Special dish selection UI for combos with has_special_section=true */}
+                    {comboGroup.has_special_section && comboGroup.dish_selections && comboGroup.dish_selections.length > 0 && (
+                      Array.from({ length: numberOfItems }).map((_, instanceIndex) => {
+                        const key = `${comboGroup.id}-${instanceIndex}`;
+                        const selectedDishId = specialDishSelections[key];
+                        const selectedDish = comboGroup.dish_selections.find(ds => ds.id === selectedDishId);
+                        const contextLabel = contextualLabels[instanceIndex];
+                        
+                        // Group dishes by course for better organization
+                        const courseGroups: Record<string, ComboDishSelection[]> = {};
+                        comboGroup.dish_selections.forEach(ds => {
+                          const courseName = ds.course_name || 'Options';
+                          if (!courseGroups[courseName]) {
+                            courseGroups[courseName] = [];
+                          }
+                          courseGroups[courseName].push(ds);
+                        });
+                        
+                        return (
+                          <div 
+                            key={key}
+                            className="border rounded-lg p-4 bg-muted/30 space-y-3"
+                            data-testid={`special-dish-section-${key}`}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1">
+                                {numberOfItems > 1 && (
+                                  <span className="text-sm font-medium text-muted-foreground block mb-1">
+                                    {contextLabel}
+                                  </span>
+                                )}
+                                <Label className="text-base font-semibold block">
+                                  {comboGroup.name || 'Choose your item'}
+                                </Label>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <Badge variant="destructive" className="text-xs">Required</Badge>
+                                  <span className="text-xs text-muted-foreground">
+                                    • Choose 1 from {comboGroup.dish_selections.length} options
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {Object.entries(courseGroups).map(([courseName, dishes]) => (
+                              <div key={courseName} className="space-y-2">
+                                {Object.keys(courseGroups).length > 1 && (
+                                  <Label className="text-sm font-medium text-muted-foreground block">
+                                    {courseName}
+                                  </Label>
+                                )}
+                                <RadioGroup
+                                  value={selectedDishId?.toString() || ''}
+                                  onValueChange={(value) => {
+                                    const dishId = parseInt(value);
+                                    const dish = comboGroup.dish_selections.find(ds => ds.id === dishId);
+                                    handleSpecialDishSelection(comboGroup, instanceIndex, dish || null, contextLabel);
+                                  }}
+                                >
+                                  {dishes.map((dish) => {
+                                    const displayName = dish.dish_display_name || dish.dish_name;
+                                    const isSelected = selectedDishId === dish.id;
+                                    
+                                    return (
+                                      <div key={dish.id} className="flex items-center space-x-2">
+                                        <RadioGroupItem
+                                          value={dish.id.toString()}
+                                          id={`special-dish-${key}-${dish.id}`}
+                                          data-testid={`radio-special-dish-${key}-${dish.id}`}
+                                        />
+                                        <Label 
+                                          htmlFor={`special-dish-${key}-${dish.id}`} 
+                                          className="flex-1 cursor-pointer"
+                                        >
+                                          <div className="flex items-center justify-between">
+                                            <span className={isSelected ? 'font-medium' : ''}>
+                                              {displayName}
+                                            </span>
+                                            {isSelected && (
+                                              <span className="text-green-600 text-sm font-medium">Included</span>
+                                            )}
+                                          </div>
+                                        </Label>
+                                      </div>
+                                    );
+                                  })}
+                                </RadioGroup>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })
+                    )}
+                    
+                    {/* Repeat regular modifier sections based on number_of_items */}
                     {Array.from({ length: numberOfItems }).map((_, instanceIndex) => (
                       comboGroup.sections.map((section) => {
                         const allModifiers = section.modifier_groups.flatMap(mg => mg.modifiers);
