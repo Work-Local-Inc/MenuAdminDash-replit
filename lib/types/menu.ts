@@ -130,6 +130,101 @@ export interface RestaurantMenuResponse {
 }
 
 // ============================================
+// SPECIAL COMBO SELECTION TYPES
+// ============================================
+
+/**
+ * A dish that can be selected as part of a special combo
+ * (e.g., "Choose your Nacho" from a list of 12 nacho varieties)
+ */
+export interface ComboDishSelection {
+  id: number                      // combo_group_dish_selections.id
+  dish_id: number                 // The dish being offered as a selection
+  dish_name: string               // dishes.name
+  dish_display_name: string | null // Override display name (e.g., "Caesar Salad Large")
+  size: number | null             // Size variant: 0=Small, 1=Medium, 2=Large, 3=X-Large, null=no size
+  course_id: number | null        // For UI grouping
+  course_name: string | null      // For UI grouping (e.g., "Nachos", "Burgers")
+}
+
+/**
+ * Extended combo group that may have special dish selections
+ * When has_special_section=true, customers select from dish_selections array
+ */
+export interface ComboGroupWithSpecialSection {
+  id: number
+  name: string
+  display_order?: number
+  has_special_section: boolean    // If true, use dish_selections instead of just modifiers
+  number_of_items: number         // How many dishes customer must select (e.g., 1, 2, 3)
+  display_header: string | null   // UI header. Semicolon-separated for multiple: "First Burger;Second Burger"
+  dish_selections: ComboDishSelection[]  // The dishes customer can choose from
+  sections: ComboGroupSection[]   // Regular modifier sections (can coexist with dish_selections)
+}
+
+/**
+ * Combo group section with modifier groups
+ */
+export interface ComboGroupSection {
+  id: number
+  combo_group_id: number
+  section_type: string | null
+  use_header: string | null
+  display_order: number
+  free_items: number
+  min_selection: number
+  max_selection: number
+  is_active: boolean
+  modifier_groups: ComboModifierGroup[]
+}
+
+/**
+ * Modifier group within a combo section
+ */
+export interface ComboModifierGroup {
+  id: number
+  combo_group_section_id: number
+  name: string
+  type_code: string | null
+  min_selection: number
+  max_selection: number
+  is_selected: boolean
+  modifiers: ComboModifier[]
+}
+
+/**
+ * Individual modifier within a combo modifier group
+ */
+export interface ComboModifier {
+  id: number
+  combo_modifier_group_id: number
+  name: string
+  display_order: number
+  prices: ComboModifierPrice[]
+  placements?: ComboModifierPlacement[]
+}
+
+/**
+ * Price for a combo modifier
+ */
+export interface ComboModifierPrice {
+  id: number
+  combo_modifier_id: number
+  size_variant: string | null
+  price: number
+}
+
+/**
+ * Placement option for a combo modifier (e.g., "Whole", "Left Half", "Right Half")
+ */
+export interface ComboModifierPlacement {
+  id: number
+  combo_modifier_id: number
+  placement: string
+  price_adjustment: number
+}
+
+// ============================================
 // HELPER TYPES
 // ============================================
 
