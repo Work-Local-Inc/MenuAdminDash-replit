@@ -68,6 +68,7 @@ export async function GET(request: NextRequest) {
         tip_amount,
         total_amount,
         payment_status,
+        special_instructions,
         acknowledged_at,
         acknowledged_by_device_id
       `)
