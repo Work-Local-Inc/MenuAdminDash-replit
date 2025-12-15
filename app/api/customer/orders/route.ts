@@ -552,6 +552,25 @@ export async function POST(request: NextRequest) {
       return parts.length > 0 ? parts.join(' | ') : null
     })()
     
+    // For logged-in users, ensure we have their name for the kitchen receipt
+    // If delivery_address.name is empty but user_id exists, look up the user's name
+    let customerName = delivery_address?.name
+    if (!customerName && user_id) {
+      const { data: userData } = await adminSupabase
+        .from('users')
+        .select('first_name, last_name, email')
+        .eq('id', user_id)
+        .maybeSingle()
+      
+      if (userData) {
+        customerName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim()
+        if (!customerName) {
+          // Fallback to email prefix if no name
+          customerName = userData.email?.split('@')[0] || 'Customer'
+        }
+      }
+    }
+    
     const orderData = {
       order_number: orderNumber,
       order_type: dbOrderType, // Database values: "delivery" or "takeout"
@@ -561,7 +580,7 @@ export async function POST(request: NextRequest) {
       guest_email: guest_email || null,
       // Always store customer name/phone for receipt printing (tablet API reads these fields)
       guest_phone: delivery_address?.phone || null,
-      guest_name: delivery_address?.name || 'Guest Customer',
+      guest_name: customerName || 'Guest Customer',
       restaurant_id: restaurant.id,
       payment_status: 'paid',
       stripe_payment_intent_id: payment_intent_id,

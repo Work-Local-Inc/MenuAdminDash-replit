@@ -231,6 +231,25 @@ export async function POST(request: NextRequest) {
 
     const dbUserId = user_id ? parseInt(user_id, 10) : null
 
+    // For logged-in users, ensure we have their name for the kitchen receipt
+    // If delivery_address.name is empty but user_id exists, look up the user's name
+    let customerName = delivery_address?.name
+    if (!customerName && dbUserId) {
+      const { data: userData } = await adminSupabase
+        .from('users')
+        .select('first_name, last_name, email')
+        .eq('id', dbUserId)
+        .maybeSingle() as { data: { first_name: string | null; last_name: string | null; email: string | null } | null }
+      
+      if (userData) {
+        customerName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim()
+        if (!customerName) {
+          // Fallback to email prefix if no name
+          customerName = userData.email?.split('@')[0] || 'Customer'
+        }
+      }
+    }
+
     // Format items for orders.items JSONB column (tablet API reads from here)
     // Match the format used by credit card orders for consistency
     const itemsForOrdersTable = validatedItems.map(item => ({
@@ -254,7 +273,7 @@ export async function POST(request: NextRequest) {
       user_id: dbUserId,
       guest_email: !dbUserId ? (guest_email || null) : null,
       // Always store customer name/phone for receipt printing (tablet API reads these fields)
-      guest_name: delivery_address?.name || 'Guest Customer',
+      guest_name: customerName || 'Guest Customer',
       guest_phone: delivery_address?.phone || null,
       is_guest_order: !dbUserId,
       order_type: finalOrderType,

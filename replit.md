@@ -186,3 +186,22 @@ Per-item notes flow: Dish Modal → Zustand Cart → Checkout API → Database (
 **Files:**
 - `components/customer/cart-drawer.tsx` (consolidation logic in modifier rendering)
 - `app/api/tablet/orders/route.ts` (consolidation before sending to printer, includes `quantity` field)
+
+### Logged-in User Name on Kitchen Receipts (Dec 2025)
+**Problem:** When logged-in users placed orders, the kitchen receipt sometimes showed "Guest Customer" instead of their actual name (e.g., "Tim").
+
+**Root Cause:** The checkout relied on `delivery_address.name` being populated from the user's profile. If `first_name` and `last_name` were empty in the profile, it would fall back to "Guest Customer" in the order creation.
+
+**Solution:** Order creation APIs now look up the user's name directly from the `users` table when:
+1. `user_id` exists (logged-in user)
+2. `delivery_address.name` is empty
+
+**Name Resolution Priority:**
+1. `delivery_address.name` (from checkout form)
+2. `first_name + last_name` from users table
+3. Email prefix (e.g., "tim" from "tim@example.com")
+4. "Customer" as final fallback
+
+**Files:**
+- `app/api/customer/orders/route.ts` (credit card orders)
+- `app/api/customer/orders/cash/route.ts` (cash/debit orders)
