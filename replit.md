@@ -205,3 +205,15 @@ Per-item notes flow: Dish Modal → Zustand Cart → Checkout API → Database (
 **Files:**
 - `app/api/customer/orders/route.ts` (credit card orders)
 - `app/api/customer/orders/cash/route.ts` (cash/debit orders)
+
+### Delivery Notes / Order Notes Fix (Dec 2025)
+**Problem:** Delivery notes entered in the address form were not appearing on orders.
+
+**Root Cause:** The `delivery_instructions` field from `CheckoutAddressForm` was stored in `selectedAddress`, but the checkout page sent `orderNotes` (a separate empty state variable) to the API.
+
+**Solution:** 
+1. When address is confirmed, sync `delivery_instructions` to `orderNotes` state
+2. Added Order Notes textarea to pickup flow for consistency
+
+**Files:**
+- `app/(public)/checkout/page.tsx` (handleAddressConfirmed syncs notes, pickup flow now has notes field)

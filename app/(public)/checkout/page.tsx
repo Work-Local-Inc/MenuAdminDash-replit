@@ -290,6 +290,10 @@ export default function CheckoutPage() {
 
   const handleAddressConfirmed = async (address: DeliveryAddress) => {
     setSelectedAddress(address)
+    // Sync delivery_instructions from address form to orderNotes for API
+    if (address.delivery_instructions) {
+      setOrderNotes(address.delivery_instructions)
+    }
     // Move to payment method selection - don't create payment intent yet
     console.log('[Checkout] Address confirmed, moving to payment method selection')
     setStep('payment-method')
@@ -762,6 +766,21 @@ export default function CheckoutPage() {
                       </div>
                     </div>
                   )}
+                  
+                  {/* Order Notes (for all pickup orders) */}
+                  <div className="space-y-2">
+                    <label htmlFor="pickup-order-notes" className="text-sm font-medium">
+                      Order Notes (optional)
+                    </label>
+                    <Textarea
+                      id="pickup-order-notes"
+                      placeholder="e.g., Extra napkins please, allergy info, etc."
+                      value={orderNotes}
+                      onChange={(e) => setOrderNotes(e.target.value)}
+                      rows={2}
+                      data-testid="input-pickup-order-notes"
+                    />
+                  </div>
                   
                   {/* Continue Button */}
                   <Button
