@@ -12,6 +12,7 @@ import Link from 'next/link'
 import { format } from 'date-fns'
 import { PostOrderSignupModal } from '@/components/customer/post-order-signup-modal'
 import { useCartStore } from '@/lib/stores/cart-store'
+import { createRestaurantSlug } from '@/lib/utils/slugify'
 
 interface OrderItem {
   dish_id: number
@@ -616,12 +617,12 @@ export default function OrderConfirmationPage() {
               asChild 
               variant="default" 
               size="lg" 
-              data-testid="button-continue-browsing"
+              data-testid="button-back-to-menu"
               style={brandButtonStyle}
             >
-              <Link href="/">
-                <Home className="w-4 h-4 mr-2" />
-                Continue Browsing
+              <Link href={`/r/${createRestaurantSlug(order.restaurant.id, order.restaurant.name)}`}>
+                <Utensils className="w-4 h-4 mr-2" />
+                Back to Menu
               </Link>
             </Button>
           </div>
