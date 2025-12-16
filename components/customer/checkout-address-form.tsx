@@ -179,6 +179,12 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick,
     const address = savedAddresses.find(a => a.id === addressId)
     if (address) {
       geocodeAddress(address)
+      // Pre-populate delivery instructions from saved address if available
+      if (address.delivery_instructions) {
+        setDeliveryInstructions(address.delivery_instructions)
+      } else {
+        setDeliveryInstructions('')
+      }
     }
   }, [savedAddresses, geocodeAddress])
   
@@ -261,6 +267,8 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick,
       const defaultAddr = addresses.find((a: any) => (data as any[]).find((d: any) => d.id === a.id)?.is_default)
       if (defaultAddr?.id) {
         setSelectedAddressId(defaultAddr.id)
+        // Pre-populate delivery instructions from default address
+        setDeliveryInstructions(defaultAddr.delivery_instructions || '')
         // Geocode the default address for map preview
         geocodeAddress(defaultAddr)
       }
@@ -443,11 +451,13 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick,
     }
 
     // Enrich address with user's name/phone/email for receipts
+    // Include delivery instructions (user may have entered new ones or edited existing)
     const enrichedAddress: DeliveryAddress = {
       ...selected,
       name: userProfile?.name || 'Customer',
       phone: userProfile?.phone || '',
       email: userProfile?.email || '',
+      delivery_instructions: deliveryInstructions.trim() || undefined,
     }
 
     onAddressConfirmed(enrichedAddress)
@@ -617,6 +627,21 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick,
                 {savingPhone ? 'Saving...' : 'Save'}
               </Button>
             </div>
+          </div>
+        )}
+
+        {/* Delivery Notes for Saved Addresses */}
+        {savedAddresses.length > 0 && !showNewAddressForm && selectedAddressId && (
+          <div className="space-y-2">
+            <Label htmlFor="saved-address-delivery-instructions">Delivery Instructions (optional)</Label>
+            <Textarea
+              id="saved-address-delivery-instructions"
+              placeholder="e.g., Ring doorbell, leave at door, gate code #1234"
+              value={deliveryInstructions}
+              onChange={(e) => setDeliveryInstructions(e.target.value)}
+              rows={2}
+              data-testid="input-saved-address-delivery-instructions"
+            />
           </div>
         )}
 
