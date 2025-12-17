@@ -38,52 +38,37 @@ const getRestaurant = async (restaurantId: number) => {
   noStore(); // Disable caching to always fetch fresh branding settings
   const supabase = await createClient();
   
-  // Try with show_order_online_badge first, fall back without it if column doesn't exist
+  // Base query fields (always available)
+  const baseFields = `
+    id,
+    name,
+    banner_image_url,
+    logo_url,
+    logo_display_mode,
+    primary_color,
+    secondary_color,
+    font_family,
+    menu_layout,
+    button_style,
+    price_color,
+    checkout_button_color,
+    restaurant_delivery_areas(id, delivery_fee, delivery_min_order, is_active, estimated_delivery_minutes),
+    restaurant_locations(id, street_address, postal_code, phone)
+  `;
+  
+  // Try with all optional columns first
   let { data, error } = await supabase
     .from('restaurants')
-    .select(`
-      id,
-      name,
-      banner_image_url,
-      logo_url,
-      logo_display_mode,
-      show_order_online_badge,
-      primary_color,
-      secondary_color,
-      font_family,
-      menu_layout,
-      button_style,
-      price_color,
-      checkout_button_color,
-      image_card_description_lines,
-      restaurant_delivery_areas(id, delivery_fee, delivery_min_order, is_active, estimated_delivery_minutes),
-      restaurant_locations(id, street_address, postal_code, phone)
-    `)
+    .select(`${baseFields}, show_order_online_badge, image_card_description_lines`)
     .eq('id', restaurantId)
     .single<RestaurantRecord>();
 
-  // If the show_order_online_badge column doesn't exist, retry without it
+  // If a column doesn't exist (42703), fall back to base query
   if (error?.code === '42703') {
-    console.log('[Restaurant Page] show_order_online_badge column not found, retrying without it');
+    console.log('[Restaurant Page] Optional column not found, retrying with base fields only');
     const result = await supabase
       .from('restaurants')
-      .select(`
-        id,
-        name,
-        banner_image_url,
-        logo_url,
-        logo_display_mode,
-        primary_color,
-        secondary_color,
-        font_family,
-        menu_layout,
-        button_style,
-        price_color,
-        checkout_button_color,
-        image_card_description_lines,
-        restaurant_delivery_areas(id, delivery_fee, delivery_min_order, is_active, estimated_delivery_minutes),
-        restaurant_locations(id, street_address, postal_code, phone)
-      `)
+      .select(baseFields)
       .eq('id', restaurantId)
       .single<RestaurantRecord>();
     
