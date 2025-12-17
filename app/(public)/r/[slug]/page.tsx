@@ -52,23 +52,44 @@ const getRestaurant = async (restaurantId: number) => {
     button_style,
     price_color,
     checkout_button_color,
+    image_card_description_lines,
     restaurant_delivery_areas(id, delivery_fee, delivery_min_order, is_active, estimated_delivery_minutes),
     restaurant_locations(id, street_address, postal_code, phone)
   `;
   
-  // Try with all optional columns first
+  // Try with show_order_online_badge first (older optional column)
   let { data, error } = await supabase
     .from('restaurants')
-    .select(`${baseFields}, show_order_online_badge, image_card_description_lines`)
+    .select(`${baseFields}, show_order_online_badge`)
     .eq('id', restaurantId)
     .single<RestaurantRecord>();
 
-  // If a column doesn't exist (42703), fall back to base query
-  if (error?.code === '42703') {
-    console.log('[Restaurant Page] Optional column not found, retrying with base fields only');
+  // If show_order_online_badge doesn't exist, try without it
+  if (error?.code === '42703' && error.message?.includes('show_order_online_badge')) {
+    console.log('[Restaurant Page] show_order_online_badge column not found, retrying without it');
     const result = await supabase
       .from('restaurants')
       .select(baseFields)
+      .eq('id', restaurantId)
+      .single<RestaurantRecord>();
+    
+    data = result.data;
+    error = result.error;
+  }
+  
+  // If image_card_description_lines doesn't exist, try base fields without it
+  if (error?.code === '42703' && error.message?.includes('image_card_description_lines')) {
+    console.log('[Restaurant Page] image_card_description_lines column not found, retrying without it');
+    const baseWithoutDescLines = `
+      id, name, banner_image_url, logo_url, logo_display_mode,
+      primary_color, secondary_color, font_family, menu_layout, button_style,
+      price_color, checkout_button_color,
+      restaurant_delivery_areas(id, delivery_fee, delivery_min_order, is_active, estimated_delivery_minutes),
+      restaurant_locations(id, street_address, postal_code, phone)
+    `;
+    const result = await supabase
+      .from('restaurants')
+      .select(baseWithoutDescLines)
       .eq('id', restaurantId)
       .single<RestaurantRecord>();
     
