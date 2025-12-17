@@ -48,7 +48,7 @@ export function DishImageCard({ dish, restaurantId, buttonStyle, priceColor, but
         data-testid={`card-dish-image-${dish.id}`}
       >
         <CardContent className="p-0">
-          <div className="relative aspect-[4/3] bg-muted overflow-hidden">
+          <div className="relative aspect-[3/2] bg-muted overflow-hidden rounded-lg">
             {dish.image_url ? (
               <img
                 src={dish.image_url}
@@ -58,18 +58,8 @@ export function DishImageCard({ dish, restaurantId, buttonStyle, priceColor, but
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-muted">
-                <ImageOff className="w-12 h-12 text-muted-foreground/40" />
+                <ImageOff className="w-8 h-8 text-muted-foreground/40" />
               </div>
-            )}
-            
-            {dish.has_customization && (
-              <Badge 
-                variant="secondary" 
-                className="absolute top-2 left-2 text-xs bg-background/90 backdrop-blur-sm"
-                data-testid={`badge-customizable-${dish.id}`}
-              >
-                Customizable
-              </Badge>
             )}
             
             <button
@@ -78,41 +68,29 @@ export function DishImageCard({ dish, restaurantId, buttonStyle, priceColor, but
                 e.stopPropagation();
                 handleQuickAdd();
               }}
-              className={`absolute bottom-3 right-3 h-10 w-10 flex items-center justify-center text-white shadow-lg transition-all hover:scale-110 ${buttonClassName || 'rounded-full'}`}
+              className={`absolute bottom-2 right-2 h-8 w-8 flex items-center justify-center text-white shadow-lg transition-all hover:scale-110 ${buttonClassName || 'rounded-full'}`}
               style={{ backgroundColor: buttonColor || '#DC2626' }}
               data-testid={`button-add-dish-${dish.id}`}
               aria-label={`Add ${dish.name} to cart`}
             >
-              <Plus className="w-5 h-5" />
+              <Plus className="w-4 h-4" />
             </button>
           </div>
           
-          <div className="p-3 space-y-1">
-            <div className="flex items-start justify-between gap-2">
-              <h3 
-                className="font-semibold text-sm sm:text-base leading-tight line-clamp-2 flex-1"
-                data-testid={`text-dish-name-${dish.id}`}
-              >
-                {dish.name}
-              </h3>
-              <span 
-                className={`text-sm sm:text-base font-bold flex-shrink-0 whitespace-nowrap ${!priceColor ? 'text-primary' : ''}`}
-                style={priceColor ? { color: priceColor } : undefined}
-                data-testid={`text-dish-price-${dish.id}`}
-              >
-                {hasMultiplePrices && <span className="text-xs font-normal">From </span>}
-                ${displayPrice}
-              </span>
-            </div>
-            
-            {dish.description && dish.description.trim() !== '' && dish.description.trim() !== '-' && (
-              <p 
-                className="text-xs sm:text-sm text-muted-foreground line-clamp-2"
-                data-testid={`text-dish-description-${dish.id}`}
-              >
-                {dish.description}
-              </p>
-            )}
+          <div className="p-2 space-y-0.5">
+            <h3 
+              className="font-semibold text-xs sm:text-sm leading-tight line-clamp-2"
+              data-testid={`text-dish-name-${dish.id}`}
+            >
+              {dish.name}
+            </h3>
+            <span 
+              className={`text-xs sm:text-sm font-medium ${!priceColor ? 'text-muted-foreground' : ''}`}
+              style={priceColor ? { color: priceColor } : undefined}
+              data-testid={`text-dish-price-${dish.id}`}
+            >
+              ${displayPrice}
+            </span>
           </div>
         </CardContent>
       </Card>

@@ -137,13 +137,6 @@ export default async function RestaurantPage({ params }: RestaurantPageProps) {
     redirect('/');
   }
   
-  console.log('[Restaurant Page] Branding data:', {
-    restaurantId: restaurant.id,
-    name: restaurant.name,
-    menu_layout: restaurant.menu_layout,
-    primary_color: restaurant.primary_color
-  });
-  
   // Redirect to correct slug if needed
   const correctSlug = createRestaurantSlug(restaurant.id, restaurant.name);
   if (params.slug !== correctSlug) {
