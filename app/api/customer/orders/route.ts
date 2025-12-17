@@ -417,11 +417,13 @@ export async function POST(request: NextRequest) {
             const modifierPriceKey = `${mod.id}-${item.dishId}`
             const modPrice = simpleModifierPriceMap.get(modifierPriceKey) ?? 0
 
-            itemTotal += modPrice * item.quantity
+            const modQuantity = mod.quantity || 1
+            itemTotal += modPrice * modQuantity * item.quantity
             validatedModifiers.push({
               id: mod.id,
               name: simpleModifier.name,
               price: modPrice,
+              quantity: modQuantity,
               placement: mod.placement || null
             })
           } else {
@@ -452,11 +454,13 @@ export async function POST(request: NextRequest) {
             // Use the client price for free items logic (server will use client-submitted price)
             const effectivePrice = mod.price ?? modPrice
 
-            itemTotal += effectivePrice * item.quantity
+            const modQuantity = mod.quantity || 1
+            itemTotal += effectivePrice * modQuantity * item.quantity
             validatedModifiers.push({
               id: mod.id,
               name: comboModifier.name,
               price: effectivePrice,
+              quantity: modQuantity,
               placement: mod.placement || null
             })
           }

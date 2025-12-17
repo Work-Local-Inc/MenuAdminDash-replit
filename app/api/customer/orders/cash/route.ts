@@ -190,12 +190,13 @@ export async function POST(request: NextRequest) {
             modPrice = mod.price ?? 0
           }
           
-          itemTotal += modPrice * item.quantity
+          const modQuantity = mod.quantity || 1
+          itemTotal += modPrice * modQuantity * item.quantity
           validatedModifiers.push({
             modifier_id: mod.id,
             modifier_name: mod.name,
             modifier_price: modPrice.toString(),
-            quantity: 1,
+            quantity: modQuantity,
             placement: mod.placement || null
           })
         }
@@ -252,21 +253,34 @@ export async function POST(request: NextRequest) {
 
     // Format items for orders.items JSONB column (tablet API reads from here)
     // Match the format used by credit card orders for consistency
-    const itemsForOrdersTable = validatedItems.map(item => ({
-      dish_id: item.dish_id,
-      name: item.dish_name,  // Use 'name' for consistency with credit card orders
-      size: item.size_variant || 'default',
-      quantity: item.quantity,
-      unit_price: parseFloat(item.unit_price),
-      subtotal: parseFloat(item.unit_price) * item.quantity,
-      special_instructions: item.special_instructions || null,  // Tablet API reads this as 'notes'
-      modifiers: item.modifiers.map(mod => ({
-        id: mod.modifier_id,
-        name: mod.modifier_name,
-        price: parseFloat(mod.modifier_price) || 0,
-        placement: mod.placement || null,
-      })),
-    }))
+    const itemsForOrdersTable = validatedItems.map(item => {
+      const basePrice = parseFloat(item.unit_price)
+      // Calculate modifier total: sum of (price × quantity) for each modifier
+      const modifierTotal = item.modifiers.reduce((sum, mod) => {
+        const modPrice = parseFloat(mod.modifier_price) || 0
+        const modQty = mod.quantity || 1
+        return sum + (modPrice * modQty)
+      }, 0)
+      // Subtotal = (basePrice + modifierTotal) × item quantity
+      const subtotal = (basePrice + modifierTotal) * item.quantity
+      
+      return {
+        dish_id: item.dish_id,
+        name: item.dish_name,  // Use 'name' for consistency with credit card orders
+        size: item.size_variant || 'default',
+        quantity: item.quantity,
+        unit_price: basePrice,
+        subtotal: subtotal,
+        special_instructions: item.special_instructions || null,  // Tablet API reads this as 'notes'
+        modifiers: item.modifiers.map(mod => ({
+          id: mod.modifier_id,
+          name: mod.modifier_name,
+          price: parseFloat(mod.modifier_price) || 0,  // Unit price per modifier
+          quantity: mod.quantity || 1,
+          placement: mod.placement || null,
+        })),
+      }
+    })
 
     const orderData = {
       restaurant_id: restaurant.id,

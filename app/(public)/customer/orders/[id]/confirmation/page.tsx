@@ -26,6 +26,7 @@ interface OrderItem {
     id: number
     name: string
     price: number
+    quantity?: number
   }>
 }
 
@@ -530,11 +531,15 @@ export default function OrderConfirmationPage() {
                           </div>
                           {item.modifiers && item.modifiers.length > 0 && (
                             <div className="ml-12 mt-1 space-y-0.5">
-                              {item.modifiers.map((mod, modIndex) => (
-                                <p key={modIndex} className="text-xs text-muted-foreground">
-                                  + {mod.name} ${Number(mod.price).toFixed(2)}
-                                </p>
-                              ))}
+                              {item.modifiers.map((mod, modIndex) => {
+                                const qty = mod.quantity || 1
+                                const totalPrice = Number(mod.price) * qty
+                                return (
+                                  <p key={modIndex} className="text-xs text-muted-foreground">
+                                    + {mod.name}{qty > 1 ? ` x${qty}` : ''} ${totalPrice.toFixed(2)}
+                                  </p>
+                                )
+                              })}
                             </div>
                           )}
                           {item.special_instructions && (
