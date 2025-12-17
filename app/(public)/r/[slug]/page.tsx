@@ -29,6 +29,7 @@ interface RestaurantRecord {
   button_style: string | null;
   price_color: string | null;
   checkout_button_color: string | null;
+  image_card_description_lines: '2' | '3' | null;
   restaurant_delivery_areas?: { id: number; delivery_fee: number | null; delivery_min_order: number | null; is_active: boolean; estimated_delivery_minutes: number | null }[] | null;
   restaurant_locations?: { id: number; street_address: string | null; postal_code: string | null; phone: string | null }[] | null;
 }
@@ -54,6 +55,7 @@ const getRestaurant = async (restaurantId: number) => {
       button_style,
       price_color,
       checkout_button_color,
+      image_card_description_lines,
       restaurant_delivery_areas(id, delivery_fee, delivery_min_order, is_active, estimated_delivery_minutes),
       restaurant_locations(id, street_address, postal_code, phone)
     `)
@@ -78,6 +80,7 @@ const getRestaurant = async (restaurantId: number) => {
         button_style,
         price_color,
         checkout_button_color,
+        image_card_description_lines,
         restaurant_delivery_areas(id, delivery_fee, delivery_min_order, is_active, estimated_delivery_minutes),
         restaurant_locations(id, street_address, postal_code, phone)
       `)
