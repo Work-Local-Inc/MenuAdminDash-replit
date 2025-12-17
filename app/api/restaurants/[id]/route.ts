@@ -82,13 +82,13 @@ export async function PATCH(
         .select()
         .single()
 
-      // If error is about unknown column (logo_display_mode not yet added to DB), 
+      // If error is about unknown column (not yet added to DB), 
       // retry without that field
-      if (error && error.message?.includes('logo_display_mode')) {
-        const { logo_display_mode, ...dataWithoutLogoMode } = validatedData as any
+      if (error && (error.message?.includes('logo_display_mode') || error.message?.includes('image_card_description_lines'))) {
+        const { logo_display_mode, image_card_description_lines, ...dataWithoutNewFields } = validatedData as any
         const { data: retryData, error: retryError } = await supabase
           .from('restaurants')
-          .update(dataWithoutLogoMode)
+          .update(dataWithoutNewFields)
           .eq('id', params.id)
           .select()
           .single()
