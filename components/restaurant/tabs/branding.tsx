@@ -44,7 +44,7 @@ const brandingSchema = z.object({
   price_color: z.string().regex(/^#[0-9A-F]{6}$/i, 'Must be a valid hex color').or(z.literal('')).optional(),
   font_family: z.string().optional(),
   button_style: z.enum(['rounded', 'square']).optional(),
-  menu_layout: z.enum(['list', 'grid2', 'grid4']).optional(),
+  menu_layout: z.enum(['list', 'grid2', 'grid4', 'image_cards']).optional(),
 })
 
 type BrandingFormData = z.infer<typeof brandingSchema>
@@ -62,7 +62,7 @@ interface Restaurant {
   price_color?: string | null
   font_family?: string | null
   button_style?: 'rounded' | 'square' | null
-  menu_layout?: 'list' | 'grid2' | 'grid4' | null
+  menu_layout?: 'list' | 'grid2' | 'grid4' | 'image_cards' | null
 }
 
 interface RestaurantBrandingProps {
@@ -797,6 +797,24 @@ export function RestaurantBranding({ restaurantId }: RestaurantBrandingProps) {
                                 </div>
                               </Label>
                             </div>
+                            {/* Image Cards - Large hero images like DoorDash/Uber Eats */}
+                            <div className="flex items-center space-x-3 space-y-0">
+                              <RadioGroupItem value="image_cards" id="image_cards" />
+                              <Label htmlFor="image_cards" className="font-normal cursor-pointer">
+                                <div className="flex items-center gap-2">
+                                  <div className="grid grid-cols-2 gap-0.5 w-14">
+                                    <div className="w-6 h-5 bg-primary/30 rounded-t" />
+                                    <div className="w-6 h-5 bg-primary/30 rounded-t" />
+                                    <div className="w-6 h-2 bg-muted rounded-b" />
+                                    <div className="w-6 h-2 bg-muted rounded-b" />
+                                  </div>
+                                  <div>
+                                    <span className="font-medium">Image Cards</span>
+                                    <p className="text-xs text-muted-foreground">Large photos, best with dish images</p>
+                                  </div>
+                                </div>
+                              </Label>
+                            </div>
                           </RadioGroup>
                         </FormControl>
                         <FormDescription>
@@ -928,7 +946,7 @@ export function RestaurantBranding({ restaurantId }: RestaurantBrandingProps) {
                 {/* Menu Layout Preview */}
                 <div className="space-y-3">
                   <div className="text-sm font-medium">
-                    Menu Layout: {currentMenuLayout === 'list' ? 'Compact List' : currentMenuLayout === 'grid2' ? 'Grid (2 col)' : 'Grid (4 col)'}
+                    Menu Layout: {currentMenuLayout === 'list' ? 'Compact List' : currentMenuLayout === 'grid2' ? 'Grid (2 col)' : currentMenuLayout === 'image_cards' ? 'Image Cards' : 'Grid (4 col)'}
                   </div>
                   {currentMenuLayout === 'list' ? (
                     // Compact List Preview
@@ -955,6 +973,27 @@ export function RestaurantBranding({ restaurantId }: RestaurantBrandingProps) {
                           <div className="text-xs font-medium">Menu Item {i}</div>
                           <div className="text-xs text-muted-foreground">Description</div>
                           <div className="text-xs font-semibold" style={{ color: currentPriceColor }}>$12.99</div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : currentMenuLayout === 'image_cards' ? (
+                    // Image Cards Preview - Large hero images like DoorDash/Uber Eats
+                    <div className="grid grid-cols-2 gap-4">
+                      {[1, 2, 3, 4].map((i) => (
+                        <div key={i} className="border rounded-lg overflow-hidden">
+                          <div className="aspect-[4/3] bg-gradient-to-br from-primary/20 to-primary/5 relative">
+                            <div 
+                              className="absolute bottom-2 right-2 w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold"
+                              style={{ backgroundColor: currentPrimaryColor }}
+                            >+</div>
+                          </div>
+                          <div className="p-3 space-y-1">
+                            <div className="flex justify-between items-start">
+                              <div className="text-sm font-medium">Menu Item {i}</div>
+                              <div className="text-sm font-semibold" style={{ color: currentPriceColor }}>$12.99</div>
+                            </div>
+                            <div className="text-xs text-muted-foreground">Fresh and delicious</div>
+                          </div>
                         </div>
                       ))}
                     </div>

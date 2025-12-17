@@ -5,6 +5,7 @@ import { UtensilsCrossed, MapPin, Clock, Phone, ShoppingCart } from 'lucide-reac
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { DishCard } from './dish-card'
+import { DishImageCard } from './dish-image-card'
 import { DishListRow } from './dish-list-row'
 import { CartDrawer } from './cart-drawer'
 import { PromoBanner } from './promo-banner'
@@ -235,7 +236,7 @@ export default function RestaurantMenuPublic({
               const courseDishes = course.dishes || []
               // Map old layout values to new ones for backwards compatibility
               const rawLayout = restaurant.menu_layout
-              // 'list' = compact list rows, 'grid2' = 2-column grid, 'grid4' = 4-column grid
+              // 'list' = compact list rows, 'grid2' = 2-column grid, 'grid4' = 4-column grid, 'image_cards' = large hero images
               // Old 'grid' maps to 'grid2'
               const layout = rawLayout === 'grid' ? 'grid2' : rawLayout || 'grid4'
 
@@ -244,6 +245,8 @@ export default function RestaurantMenuPublic({
                   return 'grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4'
                 } else if (layout === 'grid4') {
                   return 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3'
+                } else if (layout === 'image_cards') {
+                  return 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6'
                 }
                 return ''
               }
@@ -312,6 +315,19 @@ export default function RestaurantMenuPublic({
                           </div>
                         </div>
                       </>
+                    ) : layout === 'image_cards' ? (
+                      <div className={getGridClasses()}>
+                        {courseDishes.map((dish: any) => (
+                          <DishImageCard
+                            key={dish.id}
+                            dish={dish}
+                            restaurantId={restaurant.id}
+                            buttonStyle={restaurant.button_style}
+                            priceColor={brandColors.price}
+                            buttonColor={brandColors.primary}
+                          />
+                        ))}
+                      </div>
                     ) : (
                       <div className={getGridClasses()}>
                         {courseDishes.map((dish: any) => (
