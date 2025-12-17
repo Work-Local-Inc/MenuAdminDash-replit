@@ -20,7 +20,7 @@ export const restaurantUpdateSchema = z.object({
   price_color: z.string().regex(/^#[0-9A-F]{6}$/i).nullable().optional(),
   font_family: z.string().nullable().optional(),
   button_style: z.enum(["rounded", "square"]).nullable().optional(),
-  menu_layout: z.enum(["list", "grid2", "grid4"]).nullable().optional(),
+  menu_layout: z.enum(["list", "grid2", "grid4", "image_cards"]).nullable().optional(),
 }).strict()
 
 export const restaurantCreateSchema = z.object({
