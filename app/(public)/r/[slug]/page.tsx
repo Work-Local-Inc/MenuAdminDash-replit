@@ -1,6 +1,6 @@
 import { notFound, redirect } from 'next/navigation';
 import { Metadata } from 'next';
-import { cache } from 'react';
+import { unstable_noStore as noStore } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { extractIdFromSlug, createRestaurantSlug } from '@/lib/utils/slugify';
 import RestaurantMenu from '@/components/customer/restaurant-menu-public';
@@ -33,7 +33,8 @@ interface RestaurantRecord {
   restaurant_locations?: { id: number; street_address: string | null; postal_code: string | null; phone: string | null }[] | null;
 }
 
-const getRestaurant = cache(async (restaurantId: number) => {
+const getRestaurant = async (restaurantId: number) => {
+  noStore(); // Disable caching to always fetch fresh branding settings
   const supabase = await createClient();
   
   // Try with show_order_online_badge first, fall back without it if column doesn't exist
@@ -93,7 +94,7 @@ const getRestaurant = cache(async (restaurantId: number) => {
   }
 
   return data;
-});
+};
 
 export async function generateMetadata({ params }: RestaurantPageProps): Promise<Metadata> {
   const restaurantId = extractIdFromSlug(params.slug);
