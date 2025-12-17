@@ -91,6 +91,14 @@ export function DishImageCard({ dish, restaurantId, buttonStyle, priceColor, but
             >
               ${displayPrice}
             </span>
+            {dish.description && dish.description.trim() !== '' && dish.description.trim() !== '-' && (
+              <p 
+                className="text-xs text-muted-foreground line-clamp-1"
+                data-testid={`text-dish-description-${dish.id}`}
+              >
+                {dish.description}
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>
