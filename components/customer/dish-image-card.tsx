@@ -93,7 +93,7 @@ export function DishImageCard({ dish, restaurantId, buttonStyle, priceColor, but
             </span>
             {dish.description && dish.description.trim() !== '' && dish.description.trim() !== '-' && (
               <p 
-                className="text-xs text-muted-foreground line-clamp-1"
+                className="text-xs text-muted-foreground line-clamp-2"
                 data-testid={`text-dish-description-${dish.id}`}
               >
                 {dish.description}
