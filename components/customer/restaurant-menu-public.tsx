@@ -325,6 +325,7 @@ export default function RestaurantMenuPublic({
                             buttonStyle={restaurant.button_style}
                             priceColor={brandColors.price}
                             buttonColor={brandColors.primary}
+                            descriptionLines={restaurant.image_card_description_lines}
                           />
                         ))}
                       </div>

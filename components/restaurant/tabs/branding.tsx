@@ -45,6 +45,7 @@ const brandingSchema = z.object({
   font_family: z.string().optional(),
   button_style: z.enum(['rounded', 'square']).optional(),
   menu_layout: z.enum(['list', 'grid2', 'grid4', 'image_cards']).optional(),
+  image_card_description_lines: z.enum(['2', '3']).optional(),
 })
 
 type BrandingFormData = z.infer<typeof brandingSchema>
@@ -63,6 +64,7 @@ interface Restaurant {
   font_family?: string | null
   button_style?: 'rounded' | 'square' | null
   menu_layout?: 'list' | 'grid2' | 'grid4' | 'image_cards' | null
+  image_card_description_lines?: '2' | '3' | null
 }
 
 interface RestaurantBrandingProps {
@@ -108,6 +110,7 @@ export function RestaurantBranding({ restaurantId }: RestaurantBrandingProps) {
       font_family: restaurant?.font_family || 'Inter',
       button_style: restaurant?.button_style || 'rounded',
       menu_layout: restaurant?.menu_layout || 'grid4',
+      image_card_description_lines: restaurant?.image_card_description_lines || '2',
     },
   })
 
@@ -181,6 +184,7 @@ export function RestaurantBranding({ restaurantId }: RestaurantBrandingProps) {
         font_family: data.font_family || null,
         button_style: data.button_style || null,
         menu_layout: data.menu_layout || null,
+        image_card_description_lines: data.image_card_description_lines || null,
       }
 
       return apiRequest(`/api/restaurants/${restaurantId}`, {
@@ -824,6 +828,49 @@ export function RestaurantBranding({ restaurantId }: RestaurantBrandingProps) {
                       </FormItem>
                     )}
                   />
+
+                  {/* Image Card Description Lines - only shown when image_cards layout is selected */}
+                  {currentMenuLayout === 'image_cards' && (
+                    <FormField
+                      control={form.control}
+                      name="image_card_description_lines"
+                      render={({ field }) => (
+                        <FormItem className="space-y-3 pt-4 border-t">
+                          <FormLabel>Description Length</FormLabel>
+                          <FormControl>
+                            <RadioGroup
+                              onValueChange={field.onChange}
+                              value={field.value}
+                              className="flex flex-col space-y-2"
+                            >
+                              <div className="flex items-center space-x-3 space-y-0">
+                                <RadioGroupItem value="2" id="lines-2" />
+                                <Label htmlFor="lines-2" className="font-normal cursor-pointer">
+                                  <div>
+                                    <span className="font-medium">2 Lines</span>
+                                    <p className="text-xs text-muted-foreground">Compact cards, best for short descriptions</p>
+                                  </div>
+                                </Label>
+                              </div>
+                              <div className="flex items-center space-x-3 space-y-0">
+                                <RadioGroupItem value="3" id="lines-3" />
+                                <Label htmlFor="lines-3" className="font-normal cursor-pointer">
+                                  <div>
+                                    <span className="font-medium">3 Lines</span>
+                                    <p className="text-xs text-muted-foreground">More space for longer descriptions</p>
+                                  </div>
+                                </Label>
+                              </div>
+                            </RadioGroup>
+                          </FormControl>
+                          <FormDescription>
+                            How many lines of description to show on image cards
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
                 </div>
               </div>
 

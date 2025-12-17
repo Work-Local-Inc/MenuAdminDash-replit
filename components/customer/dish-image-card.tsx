@@ -12,14 +12,16 @@ interface DishImageCardProps {
   buttonStyle?: 'rounded' | 'square' | null;
   priceColor?: string | null;
   buttonColor?: string | null;
+  descriptionLines?: '2' | '3' | null;
 }
 
-export function DishImageCard({ dish, restaurantId, buttonStyle, priceColor, buttonColor }: DishImageCardProps) {
+export function DishImageCard({ dish, restaurantId, buttonStyle, priceColor, buttonColor, descriptionLines }: DishImageCardProps) {
   const buttonClassName = buttonStyle === 'square' 
     ? 'rounded-none' 
     : buttonStyle === 'rounded' 
     ? 'rounded-full' 
     : '';
+  const descriptionClampClass = descriptionLines === '3' ? 'line-clamp-3' : 'line-clamp-2';
   const [isModalOpen, setIsModalOpen] = useState(false);
   
   const getDisplayPrice = () => {
@@ -93,7 +95,7 @@ export function DishImageCard({ dish, restaurantId, buttonStyle, priceColor, but
             </span>
             {dish.description && dish.description.trim() !== '' && dish.description.trim() !== '-' && (
               <p 
-                className="text-xs text-muted-foreground line-clamp-2"
+                className={`text-xs text-muted-foreground ${descriptionClampClass}`}
                 data-testid={`text-dish-description-${dish.id}`}
               >
                 {dish.description}
