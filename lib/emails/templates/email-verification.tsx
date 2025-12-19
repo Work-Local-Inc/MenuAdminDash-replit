@@ -119,6 +119,8 @@ const brandHeader = {
 const logoImage = {
   width: '140px',
   height: 'auto',
+  margin: '0 auto',
+  display: 'block' as const,
 }
 
 const heroSection = {
