@@ -14,8 +14,8 @@ import {
   Column,
 } from '@react-email/components'
 
-const LOGO_URL = 'https://menu.ca/logo.png';
-const HERO_BG_URL = 'https://menu.ca/email-hero-bg.jpg';
+const LOGO_URL = 'https://menuv3.replit.app/email-assets/logo.png';
+const HERO_BG_URL = 'https://menuv3.replit.app/email-assets/hero-bg.jpg';
 
 type OrderStatus = 'confirmed' | 'preparing' | 'ready' | 'out_for_delivery' | 'delivered' | 'cancelled'
 
