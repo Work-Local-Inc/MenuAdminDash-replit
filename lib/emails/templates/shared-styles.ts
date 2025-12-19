@@ -1,6 +1,6 @@
 export const BRAND_RED = '#DC2626';
-export const LOGO_URL = 'https://menuv3.replit.app/email-assets/logo.png';
-export const HERO_BG_URL = 'https://menuv3.replit.app/email-assets/hero-bg.jpg';
+export const LOGO_URL = 'https://nthpbtdjhhnwfxqsxbvy.supabase.co/storage/v1/object/public/email-assets/logo.png';
+export const HERO_BG_URL = 'https://nthpbtdjhhnwfxqsxbvy.supabase.co/storage/v1/object/public/email-assets/hero-bg.jpg';
 
 export const brandHeader = {
   backgroundColor: '#ffffff',
