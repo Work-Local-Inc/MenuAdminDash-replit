@@ -7,10 +7,14 @@ import {
   Heading,
   Hr,
   Html,
+  Img,
   Preview,
   Section,
   Text,
 } from '@react-email/components'
+
+const LOGO_URL = 'https://menu.ca/logo.png';
+const HERO_BG_URL = 'https://menu.ca/email-hero-bg.jpg';
 
 interface WelcomeEmailProps {
   firstName: string
@@ -33,11 +37,11 @@ export default function WelcomeEmail({ firstName, email }: WelcomeEmailProps) {
       <Body style={main}>
         <Container style={container}>
           <Section style={brandHeader}>
-            <Text style={brandName}>Menu.ca</Text>
+            <Img src={LOGO_URL} alt="Menu.ca" style={logoImage} />
           </Section>
 
           <Section style={heroSection}>
-            <div style={welcomeIcon}>✓</div>
+            <div style={welcomeIcon}>&#10003;</div>
             <Heading style={h1}>Welcome to Menu.ca!</Heading>
             <Text style={heroText}>
               Thank you for creating an account. You're all set to enjoy a better ordering experience.
@@ -57,7 +61,7 @@ export default function WelcomeEmail({ firstName, email }: WelcomeEmailProps) {
 
             <div style={benefitsList}>
               <div style={benefitItem}>
-                <span style={checkmark}>✓</span>
+                <span style={checkmark}>&#10003;</span>
                 <div>
                   <Text style={benefitTitle}>Faster Checkout</Text>
                   <Text style={benefitDescription}>
@@ -67,7 +71,7 @@ export default function WelcomeEmail({ firstName, email }: WelcomeEmailProps) {
               </div>
 
               <div style={benefitItem}>
-                <span style={checkmark}>✓</span>
+                <span style={checkmark}>&#10003;</span>
                 <div>
                   <Text style={benefitTitle}>Order History & Re-ordering</Text>
                   <Text style={benefitDescription}>
@@ -77,7 +81,7 @@ export default function WelcomeEmail({ firstName, email }: WelcomeEmailProps) {
               </div>
 
               <div style={benefitItem}>
-                <span style={checkmark}>✓</span>
+                <span style={checkmark}>&#10003;</span>
                 <div>
                   <Text style={benefitTitle}>Track Your Deliveries</Text>
                   <Text style={benefitDescription}>
@@ -87,7 +91,7 @@ export default function WelcomeEmail({ firstName, email }: WelcomeEmailProps) {
               </div>
 
               <div style={benefitItem}>
-                <span style={checkmark}>✓</span>
+                <span style={checkmark}>&#10003;</span>
                 <div>
                   <Text style={benefitTitle}>Exclusive Deals</Text>
                   <Text style={benefitDescription}>
@@ -98,7 +102,7 @@ export default function WelcomeEmail({ firstName, email }: WelcomeEmailProps) {
             </div>
 
             <Section style={buttonContainer}>
-              <Button style={button} href={process.env.NEXT_PUBLIC_APP_URL || 'https://menu.ca'}>
+              <Button style={button} href="https://menu.ca">
                 Start Ordering
               </Button>
             </Section>
@@ -149,22 +153,22 @@ const container = {
 }
 
 const brandHeader = {
-  backgroundColor: 'hsl(222, 47%, 11%)',
-  padding: '16px 24px',
+  backgroundColor: '#ffffff',
+  padding: '20px 24px',
   textAlign: 'center' as const,
+  borderBottom: '1px solid #e5e7eb',
 }
 
-const brandName = {
-  color: '#ffffff',
-  fontSize: '20px',
-  fontWeight: 'bold',
-  margin: '0',
-  letterSpacing: '0.5px',
+const logoImage = {
+  width: '140px',
+  height: 'auto',
 }
 
 const heroSection = {
-  backgroundColor: 'hsl(221, 83%, 53%)',
-  padding: '40px 24px',
+  backgroundImage: `linear-gradient(rgba(220, 38, 38, 0.88), rgba(220, 38, 38, 0.88)), url(${HERO_BG_URL})`,
+  backgroundSize: 'cover',
+  backgroundPosition: 'center',
+  padding: '48px 24px',
   textAlign: 'center' as const,
 }
 
@@ -179,7 +183,7 @@ const welcomeIcon = {
   justifyContent: 'center',
   fontSize: '32px',
   fontWeight: 'bold',
-  color: 'hsl(142, 71%, 45%)',
+  color: '#16a34a',
 }
 
 const h1 = {
@@ -203,7 +207,7 @@ const section = {
 }
 
 const greetingStyle = {
-  color: 'hsl(222, 47%, 11%)',
+  color: '#1f2937',
   fontSize: '20px',
   fontWeight: '600',
   margin: '0 0 16px',
@@ -217,7 +221,7 @@ const paragraph = {
 }
 
 const h2 = {
-  color: 'hsl(222, 47%, 11%)',
+  color: '#1f2937',
   fontSize: '20px',
   fontWeight: '600',
   margin: '24px 0 16px',
@@ -235,7 +239,7 @@ const benefitItem = {
 }
 
 const checkmark = {
-  color: 'hsl(142, 71%, 45%)',
+  color: '#16a34a',
   fontSize: '24px',
   fontWeight: 'bold',
   lineHeight: '1',
@@ -244,7 +248,7 @@ const checkmark = {
 }
 
 const benefitTitle = {
-  color: 'hsl(222, 47%, 11%)',
+  color: '#1f2937',
   fontSize: '16px',
   fontWeight: '600',
   margin: '0 0 4px',
@@ -264,7 +268,7 @@ const buttonContainer = {
 }
 
 const button = {
-  backgroundColor: 'hsl(221, 83%, 53%)',
+  backgroundColor: '#DC2626',
   borderRadius: '6px',
   color: '#ffffff',
   fontSize: '16px',
@@ -296,7 +300,7 @@ const footer = {
 }
 
 const footerText = {
-  color: 'hsl(222, 47%, 11%)',
+  color: '#1f2937',
   fontSize: '16px',
   fontWeight: '600',
   margin: '0 0 8px',

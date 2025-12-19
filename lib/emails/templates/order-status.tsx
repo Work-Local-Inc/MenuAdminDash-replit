@@ -6,12 +6,16 @@ import {
   Heading,
   Hr,
   Html,
+  Img,
   Preview,
   Section,
   Text,
   Row,
   Column,
 } from '@react-email/components'
+
+const LOGO_URL = 'https://menu.ca/logo.png';
+const HERO_BG_URL = 'https://menu.ca/email-hero-bg.jpg';
 
 type OrderStatus = 'confirmed' | 'preparing' | 'ready' | 'out_for_delivery' | 'delivered' | 'cancelled'
 
@@ -24,13 +28,13 @@ interface OrderStatusEmailProps {
   deliveryAddress?: string
 }
 
-const statusConfig: Record<OrderStatus, { color: string; icon: string; title: string }> = {
-  confirmed: { color: 'hsl(221, 83%, 53%)', icon: '✓', title: 'Order Confirmed' },
-  preparing: { color: 'hsl(25, 95%, 53%)', icon: '👨‍🍳', title: 'Being Prepared' },
-  ready: { color: 'hsl(142, 71%, 45%)', icon: '✅', title: 'Ready for Pickup' },
-  out_for_delivery: { color: 'hsl(262, 83%, 58%)', icon: '🚗', title: 'Out for Delivery' },
-  delivered: { color: 'hsl(142, 71%, 45%)', icon: '🎉', title: 'Delivered!' },
-  cancelled: { color: 'hsl(0, 84%, 60%)', icon: '✕', title: 'Order Cancelled' },
+const statusConfig: Record<OrderStatus, { icon: string; title: string }> = {
+  confirmed: { icon: '&#10003;', title: 'Order Confirmed' },
+  preparing: { icon: '&#128104;&#8205;&#127859;', title: 'Being Prepared' },
+  ready: { icon: '&#10004;', title: 'Ready for Pickup' },
+  out_for_delivery: { icon: '&#128663;', title: 'Out for Delivery' },
+  delivered: { icon: '&#127881;', title: 'Delivered!' },
+  cancelled: { icon: '&#10005;', title: 'Order Cancelled' },
 }
 
 export default function OrderStatusEmail({
@@ -53,11 +57,11 @@ export default function OrderStatusEmail({
       <Body style={main}>
         <Container style={container}>
           <Section style={brandHeader}>
-            <Text style={brandName}>Menu.ca</Text>
+            <Img src={LOGO_URL} alt="Menu.ca" style={logoImage} />
           </Section>
 
-          <Section style={{ ...heroSection, backgroundColor: config.color }}>
-            <div style={statusIcon}>{config.icon}</div>
+          <Section style={heroSection}>
+            <div style={statusIcon} dangerouslySetInnerHTML={{ __html: config.icon }} />
             <Heading style={h1}>{config.title}</Heading>
             <Text style={heroText}>Order #{orderNumber}</Text>
           </Section>
@@ -143,21 +147,22 @@ const container = {
 }
 
 const brandHeader = {
-  backgroundColor: 'hsl(222, 47%, 11%)',
-  padding: '16px 24px',
+  backgroundColor: '#ffffff',
+  padding: '20px 24px',
   textAlign: 'center' as const,
+  borderBottom: '1px solid #e5e7eb',
 }
 
-const brandName = {
-  color: '#ffffff',
-  fontSize: '20px',
-  fontWeight: 'bold',
-  margin: '0',
-  letterSpacing: '0.5px',
+const logoImage = {
+  width: '140px',
+  height: 'auto',
 }
 
 const heroSection = {
-  padding: '40px 24px',
+  backgroundImage: `linear-gradient(rgba(220, 38, 38, 0.88), rgba(220, 38, 38, 0.88)), url(${HERO_BG_URL})`,
+  backgroundSize: 'cover',
+  backgroundPosition: 'center',
+  padding: '48px 24px',
   textAlign: 'center' as const,
 }
 
@@ -207,14 +212,14 @@ const orderLabel = {
 }
 
 const orderValue = {
-  color: 'hsl(222, 47%, 11%)',
+  color: '#1f2937',
   fontSize: '16px',
   fontWeight: '600',
   margin: '0',
 }
 
 const estimatedTimeStyle = {
-  color: 'hsl(142, 71%, 45%)',
+  color: '#16a34a',
   fontSize: '16px',
   fontWeight: '600',
   margin: '0',
@@ -313,7 +318,7 @@ const footer = {
 }
 
 const footerText = {
-  color: 'hsl(222, 47%, 11%)',
+  color: '#1f2937',
   fontSize: '14px',
   fontWeight: '500',
   margin: '0 0 8px',

@@ -6,12 +6,16 @@ import {
   Heading,
   Hr,
   Html,
+  Img,
   Preview,
   Section,
   Text,
   Row,
   Column,
 } from '@react-email/components'
+
+const LOGO_URL = 'https://menu.ca/logo.png';
+const HERO_BG_URL = 'https://menu.ca/email-hero-bg.jpg';
 
 interface OrderItem {
   dish_id: number
@@ -69,11 +73,11 @@ export default function OrderConfirmationEmail({
       <Body style={main}>
         <Container style={container}>
           <Section style={brandHeader}>
-            <Text style={brandName}>Menu.ca</Text>
+            <Img src={LOGO_URL} alt="Menu.ca" style={logoImage} />
           </Section>
 
           <Section style={heroSection}>
-            <div style={successIcon}>✓</div>
+            <div style={successIcon}>&#10003;</div>
             <Heading style={h1}>Order Confirmed!</Heading>
             <Text style={heroText}>
               Your order from <strong>{restaurantName}</strong> has been confirmed and is being prepared.
@@ -215,22 +219,22 @@ const container = {
 }
 
 const brandHeader = {
-  backgroundColor: 'hsl(222, 47%, 11%)',
-  padding: '16px 24px',
+  backgroundColor: '#ffffff',
+  padding: '20px 24px',
   textAlign: 'center' as const,
+  borderBottom: '1px solid #e5e7eb',
 }
 
-const brandName = {
-  color: '#ffffff',
-  fontSize: '20px',
-  fontWeight: 'bold',
-  margin: '0',
-  letterSpacing: '0.5px',
+const logoImage = {
+  width: '140px',
+  height: 'auto',
 }
 
 const heroSection = {
-  backgroundColor: 'hsl(221, 83%, 53%)',
-  padding: '40px 24px',
+  backgroundImage: `linear-gradient(rgba(220, 38, 38, 0.88), rgba(220, 38, 38, 0.88)), url(${HERO_BG_URL})`,
+  backgroundSize: 'cover',
+  backgroundPosition: 'center',
+  padding: '48px 24px',
   textAlign: 'center' as const,
 }
 
@@ -245,7 +249,7 @@ const successIcon = {
   justifyContent: 'center',
   fontSize: '32px',
   fontWeight: 'bold',
-  color: 'hsl(142, 71%, 45%)',
+  color: '#16a34a',
 }
 
 const h1 = {
@@ -282,7 +286,7 @@ const orderLabel = {
 }
 
 const orderNumberLarge = {
-  color: 'hsl(222, 47%, 11%)',
+  color: '#1f2937',
   fontSize: '28px',
   fontWeight: 'bold',
   margin: '0',
@@ -290,7 +294,7 @@ const orderNumberLarge = {
 }
 
 const estimatedTimeValue = {
-  color: 'hsl(142, 71%, 45%)',
+  color: '#16a34a',
   fontSize: '16px',
   fontWeight: '600',
   margin: '0',
@@ -301,7 +305,7 @@ const section = {
 }
 
 const h2 = {
-  color: 'hsl(222, 47%, 11%)',
+  color: '#1f2937',
   fontSize: '18px',
   fontWeight: '600',
   margin: '0 0 16px',
@@ -321,7 +325,7 @@ const itemName = {
 }
 
 const quantityBadge = {
-  backgroundColor: 'hsl(221, 83%, 53%)',
+  backgroundColor: '#DC2626',
   color: '#ffffff',
   padding: '2px 8px',
   borderRadius: '4px',
@@ -379,14 +383,14 @@ const totalDivider = {
 }
 
 const totalLabelBold = {
-  color: 'hsl(222, 47%, 11%)',
+  color: '#1f2937',
   fontSize: '18px',
   fontWeight: 'bold',
   margin: '0',
 }
 
 const totalValueBold = {
-  color: 'hsl(222, 47%, 11%)',
+  color: '#1f2937',
   fontSize: '18px',
   fontWeight: 'bold',
   margin: '0',
@@ -445,7 +449,7 @@ const footer = {
 }
 
 const footerText = {
-  color: 'hsl(222, 47%, 11%)',
+  color: '#1f2937',
   fontSize: '16px',
   fontWeight: '600',
   margin: '0 0 8px',

@@ -7,10 +7,14 @@ import {
   Heading,
   Hr,
   Html,
+  Img,
   Preview,
   Section,
   Text,
 } from '@react-email/components'
+
+const LOGO_URL = 'https://menu.ca/logo.png';
+const HERO_BG_URL = 'https://menu.ca/email-hero-bg.jpg';
 
 interface PasswordResetEmailProps {
   firstName: string
@@ -33,11 +37,11 @@ export default function PasswordResetEmail({
       <Body style={main}>
         <Container style={container}>
           <Section style={brandHeader}>
-            <Text style={brandName}>Menu.ca</Text>
+            <Img src={LOGO_URL} alt="Menu.ca" style={logoImage} />
           </Section>
 
           <Section style={heroSection}>
-            <div style={lockIcon}>🔒</div>
+            <div style={lockIcon}>&#128274;</div>
             <Heading style={h1}>Reset Your Password</Heading>
             <Text style={heroText}>
               We received a request to reset the password for your account.
@@ -64,9 +68,9 @@ export default function PasswordResetEmail({
             <div style={securityNote}>
               <Text style={securityTitle}>Security Tips:</Text>
               <Text style={securityText}>
-                • Never share your password with anyone<br />
-                • Use a unique password for Menu.ca<br />
-                • Enable two-factor authentication when available
+                Never share your password with anyone<br />
+                Use a unique password for Menu.ca<br />
+                Enable two-factor authentication when available
               </Text>
             </div>
           </Section>
@@ -110,22 +114,22 @@ const container = {
 }
 
 const brandHeader = {
-  backgroundColor: 'hsl(222, 47%, 11%)',
-  padding: '16px 24px',
+  backgroundColor: '#ffffff',
+  padding: '20px 24px',
   textAlign: 'center' as const,
+  borderBottom: '1px solid #e5e7eb',
 }
 
-const brandName = {
-  color: '#ffffff',
-  fontSize: '20px',
-  fontWeight: 'bold',
-  margin: '0',
-  letterSpacing: '0.5px',
+const logoImage = {
+  width: '140px',
+  height: 'auto',
 }
 
 const heroSection = {
-  backgroundColor: 'hsl(25, 95%, 53%)',
-  padding: '40px 24px',
+  backgroundImage: `linear-gradient(rgba(220, 38, 38, 0.88), rgba(220, 38, 38, 0.88)), url(${HERO_BG_URL})`,
+  backgroundSize: 'cover',
+  backgroundPosition: 'center',
+  padding: '48px 24px',
   textAlign: 'center' as const,
 }
 
@@ -162,7 +166,7 @@ const section = {
 }
 
 const greetingStyle = {
-  color: 'hsl(222, 47%, 11%)',
+  color: '#1f2937',
   fontSize: '20px',
   fontWeight: '600',
   margin: '0 0 16px',
@@ -181,7 +185,7 @@ const buttonContainer = {
 }
 
 const button = {
-  backgroundColor: 'hsl(221, 83%, 53%)',
+  backgroundColor: '#DC2626',
   borderRadius: '6px',
   color: '#ffffff',
   fontSize: '16px',
@@ -228,7 +232,7 @@ const helpText = {
 }
 
 const linkText = {
-  color: 'hsl(221, 83%, 53%)',
+  color: '#DC2626',
   fontSize: '12px',
   lineHeight: '18px',
   margin: '0',
@@ -244,7 +248,7 @@ const footer = {
 }
 
 const footerText = {
-  color: 'hsl(222, 47%, 11%)',
+  color: '#1f2937',
   fontSize: '14px',
   fontWeight: '500',
   margin: '0 0 8px',

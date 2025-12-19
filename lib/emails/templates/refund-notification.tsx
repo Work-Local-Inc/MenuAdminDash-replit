@@ -6,12 +6,16 @@ import {
   Heading,
   Hr,
   Html,
+  Img,
   Preview,
   Section,
   Text,
   Row,
   Column,
 } from '@react-email/components'
+
+const LOGO_URL = 'https://menu.ca/logo.png';
+const HERO_BG_URL = 'https://menu.ca/email-hero-bg.jpg';
 
 interface RefundNotificationEmailProps {
   firstName: string
@@ -44,11 +48,11 @@ export default function RefundNotificationEmail({
       <Body style={main}>
         <Container style={container}>
           <Section style={brandHeader}>
-            <Text style={brandName}>Menu.ca</Text>
+            <Img src={LOGO_URL} alt="Menu.ca" style={logoImage} />
           </Section>
 
           <Section style={heroSection}>
-            <div style={refundIcon}>💳</div>
+            <div style={refundIcon}>&#128179;</div>
             <Heading style={h1}>
               {refundType === 'full' ? 'Full Refund Processed' : 'Partial Refund Processed'}
             </Heading>
@@ -148,22 +152,22 @@ const container = {
 }
 
 const brandHeader = {
-  backgroundColor: 'hsl(222, 47%, 11%)',
-  padding: '16px 24px',
+  backgroundColor: '#ffffff',
+  padding: '20px 24px',
   textAlign: 'center' as const,
+  borderBottom: '1px solid #e5e7eb',
 }
 
-const brandName = {
-  color: '#ffffff',
-  fontSize: '20px',
-  fontWeight: 'bold',
-  margin: '0',
-  letterSpacing: '0.5px',
+const logoImage = {
+  width: '140px',
+  height: 'auto',
 }
 
 const heroSection = {
-  backgroundColor: 'hsl(142, 71%, 45%)',
-  padding: '40px 24px',
+  backgroundImage: `linear-gradient(rgba(220, 38, 38, 0.88), rgba(220, 38, 38, 0.88)), url(${HERO_BG_URL})`,
+  backgroundSize: 'cover',
+  backgroundPosition: 'center',
+  padding: '48px 24px',
   textAlign: 'center' as const,
 }
 
@@ -231,7 +235,7 @@ const section = {
 }
 
 const greetingStyle = {
-  color: 'hsl(222, 47%, 11%)',
+  color: '#1f2937',
   fontSize: '20px',
   fontWeight: '600',
   margin: '0 0 16px',
@@ -320,7 +324,7 @@ const footer = {
 }
 
 const footerText = {
-  color: 'hsl(222, 47%, 11%)',
+  color: '#1f2937',
   fontSize: '14px',
   fontWeight: '500',
   margin: '0 0 8px',
