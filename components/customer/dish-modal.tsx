@@ -139,7 +139,7 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
           setIsLoadingModifiers(false);
         });
     }
-  }, [isOpen, dish.id, dish.modifier_groups]);
+  }, [isOpen, dish]);
   
   useEffect(() => {
     if (isOpen) {
