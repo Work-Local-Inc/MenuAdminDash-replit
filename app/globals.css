@@ -221,29 +221,26 @@
 }
 
 /* Restaurant Banner Styles - AI Generated vs Admin Uploaded */
-@layer components {
-  .restaurant-banner {
-    position: relative;
-    overflow: hidden;
-  }
+.restaurant-banner {
+  position: relative !important;
+  overflow: hidden !important;
+}
 
-  /* Warm overlay for AI-generated banners to reduce "blue sheen" */
-  .restaurant-banner.ai-generated::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    /* Warm red-brown overlay */
-    background: rgba(180, 120, 80, 0.12);
-    pointer-events: none;
-    mix-blend-mode: multiply;
-    z-index: 10;
-  }
+/* Warm overlay for AI-generated banners to reduce "blue sheen" */
+.restaurant-banner.ai-generated::after {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  background: rgba(180, 120, 80, 0.25) !important;
+  pointer-events: none !important;
+  mix-blend-mode: multiply !important;
+  z-index: 10 !important;
+}
 
-  /* CSS filter approach for AI banners */
-  .restaurant-banner.ai-generated img {
-    filter: sepia(8%) saturate(90%) brightness(98%);
-  }
+/* CSS filter approach for AI banners - STRONGER for testing */
+.restaurant-banner.ai-generated img {
+  filter: sepia(15%) saturate(85%) brightness(95%) !important;
 }
