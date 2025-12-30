@@ -19,6 +19,7 @@ interface RestaurantRecord {
   id: number;
   name: string;
   banner_image_url: string | null;
+  banner_is_ai_generated: boolean | null;
   logo_url: string | null;
   logo_display_mode: 'icon_text' | 'full_logo' | null;
   show_order_online_badge: boolean | null;
@@ -43,6 +44,7 @@ const getRestaurant = async (restaurantId: number) => {
     id,
     name,
     banner_image_url,
+    banner_is_ai_generated,
     logo_url,
     logo_display_mode,
     primary_color,
@@ -81,7 +83,7 @@ const getRestaurant = async (restaurantId: number) => {
   if (error?.code === '42703' && error.message?.includes('image_card_description_lines')) {
     console.log('[Restaurant Page] image_card_description_lines column not found, retrying without it');
     const baseWithoutDescLines = `
-      id, name, banner_image_url, logo_url, logo_display_mode,
+      id, name, banner_image_url, banner_is_ai_generated, logo_url, logo_display_mode,
       primary_color, secondary_color, font_family, menu_layout, button_style,
       price_color, checkout_button_color,
       restaurant_delivery_areas(id, delivery_fee, delivery_min_order, is_active, estimated_delivery_minutes),

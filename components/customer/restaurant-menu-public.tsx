@@ -84,8 +84,9 @@ export default function RestaurantMenuPublic({
     <div className="min-h-screen bg-background">
       {/* Only show banner if restaurant has a custom banner image */}
       {/* Uber Eats style: taller hero on larger screens */}
+      {/* AI-generated banners get warm overlay via .ai-generated class */}
       {restaurant.banner_image_url && (
-        <div className="w-full h-32 sm:h-40 md:h-48 lg:h-56 xl:h-64 bg-muted relative overflow-hidden">
+        <div className={`restaurant-banner w-full h-32 sm:h-40 md:h-48 lg:h-56 xl:h-64 bg-muted ${restaurant.banner_is_ai_generated ? 'ai-generated' : ''}`}>
           <img
             src={restaurant.banner_image_url}
             alt={`${restaurant.name} banner`}
