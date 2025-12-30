@@ -113,31 +113,33 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
   useEffect(() => {
     if (isOpen && dish.id) {
       setIsLoadingModifiers(true);
-      console.log(`[DishModal] Fetching modifiers for dish ${dish.id}`);
+      console.log(`[DishModal] Loading modifiers for dish ${dish.id}`);
       
-      Promise.all([
-        fetch(`/api/customer/dishes/${dish.id}/modifiers`).then(res => {
-          console.log(`[DishModal] Simple modifiers response status: ${res.status}`);
-          return res.json();
-        }),
-        fetch(`/api/customer/dishes/${dish.id}/combo-modifiers`).then(res => {
+      // Use modifier_groups from dish prop (from RPC), filter by is_active
+      const dishModifierGroups = (dish.modifier_groups || []).map((group: any) => ({
+        ...group,
+        modifiers: (group.modifiers || []).filter((m: any) => m.is_active === true)
+      }));
+      console.log(`[DishModal] Simple modifiers from dish prop:`, dishModifierGroups.length, 'groups');
+      setModifierGroups(dishModifierGroups);
+      
+      // Fetch combo modifiers from API
+      fetch(`/api/customer/dishes/${dish.id}/combo-modifiers`)
+        .then(res => {
           console.log(`[DishModal] Combo modifiers response status: ${res.status}`);
           return res.json();
         })
-      ])
-        .then(([modifiersData, comboData]) => {
-          console.log(`[DishModal] Simple modifiers:`, modifiersData?.length || 0, 'groups');
+        .then(comboData => {
           console.log(`[DishModal] Combo modifiers:`, Array.isArray(comboData) ? comboData.length : 0, 'groups');
-          setModifierGroups(modifiersData || []);
           setComboGroups(Array.isArray(comboData) ? comboData : []);
           setIsLoadingModifiers(false);
         })
         .catch(err => {
-          console.error('[DishModal] Error loading modifiers:', err);
+          console.error('[DishModal] Error loading combo modifiers:', err);
           setIsLoadingModifiers(false);
         });
     }
-  }, [isOpen, dish.id]);
+  }, [isOpen, dish.id, dish.modifier_groups]);
   
   useEffect(() => {
     if (isOpen) {

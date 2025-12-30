@@ -97,10 +97,12 @@ export async function GET(request: NextRequest) {
           price,
           is_included,
           display_order,
-          deleted_at
+          deleted_at,
+          is_active
         `)
         .in('template_id', libraryTemplateIds)
         .is('deleted_at', null)
+        .eq('is_active', true)
         .order('display_order', { ascending: true }) as any)
       
       if (libModsError) {
@@ -203,9 +205,11 @@ export async function GET(request: NextRequest) {
             is_included,
             is_default,
             display_order,
-            deleted_at
+            deleted_at,
+            is_active
           `)
           .in('modifier_group_id', modifierGroupIds)
+          .eq('is_active', true)
           .order('display_order', { ascending: true })
         
         if (modifiersError) {
