@@ -16,13 +16,30 @@ export async function GET(
       );
     }
     
-    // First, find combo groups linked to this dish via dish_combo_groups junction table
+    // First, get the dish to check its legacy_v1_id
+    const { data: dishData, error: dishError } = await supabase
+      .schema('menuca_v3')
+      .from('dishes')
+      .select('id, legacy_v1_id, restaurant_id')
+      .eq('id', dishId)
+      .single();
+    
+    console.log(`[Combo Modifiers API] Dish data for ${dishId}:`, dishData);
+    
+    // Try finding combo groups with both the V3 dish ID and legacy_v1_id
+    const dishIdsToCheck = [dishId];
+    if (dishData?.legacy_v1_id && dishData.legacy_v1_id !== dishId) {
+      dishIdsToCheck.push(dishData.legacy_v1_id);
+    }
+    
+    // Find combo groups linked to this dish via dish_combo_groups junction table
     const { data: dishComboGroups, error: linkError } = await supabase
       .schema('menuca_v3')
       .from('dish_combo_groups')
-      .select('combo_group_id')
-      .eq('dish_id', dishId)
-      .eq('is_active', true);
+      .select('combo_group_id, dish_id, is_active')
+      .in('dish_id', dishIdsToCheck);
+    
+    console.log(`[Combo Modifiers API] dish_combo_groups for dish IDs ${dishIdsToCheck}:`, dishComboGroups);
     
     if (linkError) {
       throw linkError;

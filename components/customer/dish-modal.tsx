@@ -113,7 +113,7 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
   useEffect(() => {
     if (isOpen && dish.id) {
       setIsLoadingModifiers(true);
-      console.log(`[DishModal] Loading modifiers for dish ${dish.id}`);
+      console.log(`[DishModal] Loading modifiers for dish ${dish.id}, is_combo:`, dish.is_combo);
       
       // Use modifier_groups from dish prop (from RPC), filter by is_active
       const dishModifierGroups = (dish.modifier_groups || []).map((group: any) => ({
@@ -123,21 +123,55 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
       console.log(`[DishModal] Simple modifiers from dish prop:`, dishModifierGroups.length, 'groups');
       setModifierGroups(dishModifierGroups);
       
-      // Fetch combo modifiers from API
-      fetch(`/api/customer/dishes/${dish.id}/combo-modifiers`)
-        .then(res => {
-          console.log(`[DishModal] Combo modifiers response status: ${res.status}`);
-          return res.json();
-        })
-        .then(comboData => {
-          console.log(`[DishModal] Combo modifiers:`, Array.isArray(comboData) ? comboData.length : 0, 'groups');
-          setComboGroups(Array.isArray(comboData) ? comboData : []);
-          setIsLoadingModifiers(false);
-        })
-        .catch(err => {
-          console.error('[DishModal] Error loading combo modifiers:', err);
-          setIsLoadingModifiers(false);
-        });
+      // Use combo_groups from dish prop (from RPC) - already filtered by is_active in the RPC
+      const dishComboGroups = dish.combo_groups || [];
+      console.log(`[DishModal] Combo groups from dish prop:`, dishComboGroups.length, 'groups');
+      
+      // Transform combo_groups to match the expected ComboGroup interface
+      const transformedComboGroups = dishComboGroups.map((cg: any) => ({
+        id: cg.id,
+        name: cg.name,
+        description: cg.description || null,
+        combo_rules: cg.combo_rules || null,
+        combo_price: cg.combo_price || null,
+        pricing_rules: cg.pricing_rules || null,
+        display_order: cg.display_order || 0,
+        is_active: true,
+        is_available: true,
+        number_of_items: cg.number_of_items || 1,
+        display_header: cg.display_header || null,
+        has_special_section: cg.has_special_section || false,
+        dish_selections: cg.dish_selections || [],
+        sections: (cg.sections || []).map((section: any) => ({
+          id: section.id,
+          combo_group_id: cg.id,
+          section_type: section.section_type || null,
+          use_header: section.use_header || null,
+          display_order: section.display_order || 0,
+          free_items: section.free_items || 0,
+          min_selection: section.min_selection || 0,
+          max_selection: section.max_selection || 0,
+          is_active: section.is_active !== false,
+          modifier_groups: (section.modifier_groups || []).map((mg: any) => ({
+            id: mg.id,
+            combo_group_section_id: section.id,
+            name: mg.name,
+            type_code: mg.type_code || null,
+            is_selected: mg.is_selected || false,
+            modifiers: (mg.modifiers || []).map((mod: any) => ({
+              id: mod.id,
+              combo_modifier_group_id: mg.id,
+              name: mod.name,
+              display_order: mod.display_order || 0,
+              prices: mod.prices || [],
+              placements: mod.placements || ['whole']
+            }))
+          }))
+        }))
+      }));
+      
+      setComboGroups(transformedComboGroups);
+      setIsLoadingModifiers(false);
     }
   }, [isOpen, dish]);
   
