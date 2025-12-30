@@ -400,6 +400,21 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
   // Pizza topping keywords used for placement detection
   const toppingKeywords = ['topping', 'garniture', 'ingredient', 'add more', 'extra'];
   const defaultPlacements: PlacementType[] = ['whole', 'left', 'right'];
+  
+  // Items that should NEVER show pizza placement options (they don't go "on" the pizza)
+  const nonPlaceableKeywords = ['dip', 'sauce', 'drink', 'beverage', 'pop', 'juice', 'water', 'side', 'fries', 'coleslaw', 'poutine', 'bread', 'crust', 'ranch', 'garlic', 'cheese dip', 'marinara'];
+  
+  // Check if a modifier name indicates it shouldn't have placement options
+  const isNonPlaceableModifier = (modifierName: string): boolean => {
+    const name = (modifierName || '').toLowerCase();
+    return nonPlaceableKeywords.some(keyword => name.includes(keyword));
+  };
+  
+  // Check if a modifier group is a non-placeable type (dips, sauces, drinks, etc.)
+  const isNonPlaceableGroup = (groupName: string): boolean => {
+    const name = (groupName || '').toLowerCase();
+    return nonPlaceableKeywords.some(keyword => name.includes(keyword));
+  };
 
   // Check if a combo section should show pizza placements
   // Detect by section_type OR by common topping-related keywords in the header/names
@@ -904,7 +919,9 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
                         {group.modifiers.map((modifier) => {
                           const price = getModifierPrice(modifier);
                           const currentQty = modifierQuantities[modifier.id] || 0;
-                          const showPlacements = isSimpleModifierToppingGroup(group);
+                          // Skip placements for dips, sauces, drinks, etc. - they don't go "on" the pizza
+                          const isNonPlaceable = isNonPlaceableModifier(modifier.name) || isNonPlaceableGroup(group.name);
+                          const showPlacements = !isNonPlaceable && isSimpleModifierToppingGroup(group);
                           
                           // Calculate total quantity in group for max_selections check
                           const totalInGroup = Object.entries(modifierQuantities)
@@ -1155,9 +1172,11 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
                                         const selectionIndex = currentSelections.indexOf(modifier.id);
                                         const freeItems = section.free_items || 0;
                                         const isFreeSlot = isSelected && selectionIndex < freeItems;
-                                        // Use database placements if available, otherwise auto-enable for pizza toppings
-                                        const hasPlacements = (modifier.placements && modifier.placements.length > 0) || showPizzaPlacements;
-                                        const placements = (modifier.placements && modifier.placements.length > 0) ? modifier.placements : (showPizzaPlacements ? defaultPlacements : []);
+                                        // Skip placements for dips, sauces, drinks, etc. - they don't go "on" the pizza
+                                        const isNonPlaceable = isNonPlaceableModifier(modifier.name) || isNonPlaceableGroup(modifierGroup.name);
+                                        // For pizza toppings, always show all 3 placements (Left, Whole, Right)
+                                        const shouldShowPlacements = !isNonPlaceable && (showPizzaPlacements || (modifier.placements && modifier.placements.length > 0));
+                                        const placements = shouldShowPlacements ? defaultPlacements : [];
                                         const modifierKey = `${modifier.id}-${instanceIndex}`;
                                         
                                         return (
@@ -1181,7 +1200,7 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
                                                 </div>
                                               </Label>
                                             </div>
-                                            {isSelected && hasPlacements && (
+                                            {isSelected && shouldShowPlacements && (
                                               <PlacementSelector modifierId={modifier.id} placements={placements} />
                                             )}
                                           </div>
@@ -1221,9 +1240,11 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
                                         return modifierGroup.modifiers.map((modifier) => {
                                           const fullPrice = getComboModifierPrice(modifier);
                                           const currentQty = modifierQuantities[modifier.id] || 0;
-                                          // Use database placements if available, otherwise auto-enable for pizza toppings
-                                          const hasPlacements = (modifier.placements && modifier.placements.length > 0) || showPizzaPlacements;
-                                          const placements = (modifier.placements && modifier.placements.length > 0) ? modifier.placements : (showPizzaPlacements ? defaultPlacements : []);
+                                          // Skip placements for dips, sauces, drinks, etc. - they don't go "on" the pizza
+                                          const isNonPlaceable = isNonPlaceableModifier(modifier.name) || isNonPlaceableGroup(modifierGroup.name);
+                                          // For pizza toppings, always show all 3 placements (Left, Whole, Right)
+                                          const shouldShowPlacements = !isNonPlaceable && (showPizzaPlacements || (modifier.placements && modifier.placements.length > 0));
+                                          const placements = shouldShowPlacements ? defaultPlacements : [];
                                           const modifierKey = `${modifier.id}-${instanceIndex}`;
                                           
                                           // Get free/paid breakdown for this modifier
@@ -1290,7 +1311,7 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
                                                   )}
                                                 </div>
                                               </div>
-                                              {currentQty > 0 && hasPlacements && (
+                                              {currentQty > 0 && shouldShowPlacements && (
                                                 <PlacementSelector modifierId={modifier.id} placements={placements} />
                                               )}
                                             </div>
