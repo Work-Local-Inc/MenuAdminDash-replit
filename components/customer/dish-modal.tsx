@@ -399,7 +399,7 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
   
   // Pizza topping keywords used for placement detection
   const toppingKeywords = ['topping', 'garniture', 'ingredient', 'add more', 'extra'];
-  const defaultPlacements: PlacementType[] = ['whole', 'left', 'right'];
+  const defaultPlacements: PlacementType[] = ['left', 'whole', 'right'];
   
   // Items that should NEVER show pizza placement options (they don't go "on" the pizza)
   const nonPlaceableKeywords = ['dip', 'sauce', 'drink', 'beverage', 'pop', 'juice', 'water', 'side', 'fries', 'coleslaw', 'poutine', 'bread', 'crust', 'ranch', 'garlic', 'cheese dip', 'marinara'];
