@@ -103,6 +103,13 @@ export default function OrderConfirmationPage() {
     }
   }, [orderId, clearCart])
 
+  // Set dynamic browser tab title when order loads
+  useEffect(() => {
+    if (order?.restaurant?.name) {
+      document.title = `Order Confirmation - ${order.restaurant.name} | Menu.ca`
+    }
+  }, [order?.restaurant?.name])
+
   const loadOrderDetails = async () => {
     try {
       // Get token from URL for guest orders
@@ -599,17 +606,26 @@ export default function OrderConfirmationPage() {
                   </div>
                   <Separator />
                   <div className="flex justify-between text-lg font-bold">
-                    <span>Total Paid</span>
+                    <span>{isCashPayment ? 'Total Due' : 'Total Paid'}</span>
                     <span data-testid="text-total">${parseFloat(order.total_amount).toFixed(2)}</span>
                   </div>
                   <div className="pt-2">
-                    <Badge 
-                      variant="default" 
-                      className="w-full justify-center no-default-hover-elevate no-default-active-elevate"
-                      style={brandBadgeStyle}
-                    >
-                      Payment Confirmed
-                    </Badge>
+                    {isCashPayment ? (
+                      <Badge 
+                        variant="secondary" 
+                        className="w-full justify-center no-default-hover-elevate no-default-active-elevate bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200"
+                      >
+                        Payment Pending - {getPaymentMethodLabel(order.payment_method)}
+                      </Badge>
+                    ) : (
+                      <Badge 
+                        variant="default" 
+                        className="w-full justify-center no-default-hover-elevate no-default-active-elevate"
+                        style={brandBadgeStyle}
+                      >
+                        Payment Confirmed
+                      </Badge>
+                    )}
                   </div>
                 </CardContent>
               </Card>
