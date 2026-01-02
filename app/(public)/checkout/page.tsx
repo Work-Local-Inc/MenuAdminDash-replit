@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCartStore } from '@/lib/stores/cart-store'
 import { createClient } from '@/lib/supabase/client'
@@ -111,6 +111,13 @@ export default function CheckoutPage() {
   const isPickupOnly = serviceConfig && !serviceConfig.has_delivery_enabled && serviceConfig.pickup_enabled
   const isDeliveryOnly = serviceConfig && serviceConfig.has_delivery_enabled && !serviceConfig.pickup_enabled
   const effectiveOrderType = isPickupOnly ? 'pickup' : (isDeliveryOnly ? 'delivery' : orderType)
+
+  // Set dynamic page title
+  useEffect(() => {
+    document.title = restaurantName 
+      ? `Checkout - ${restaurantName} | Menu.ca` 
+      : 'Checkout | Menu.ca'
+  }, [restaurantName])
 
   // Debug: Log currentUser changes
   useEffect(() => {

@@ -309,7 +309,6 @@ export async function POST(request: NextRequest) {
         return parts.length > 0 ? parts.join(' | ') : null
       })(),
       stripe_payment_intent_id: cashOrderReference,
-      scheduled_time: parsedServiceTime.scheduledTime || null,
     }
 
     console.log('[Cash Order API] Creating order:', orderData)
