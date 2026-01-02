@@ -13,8 +13,11 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Menu.ca Admin Dashboard",
-  description: "Manage your restaurant ordering platform",
+  title: {
+    default: "Menu.ca",
+    template: "%s | Menu.ca",
+  },
+  description: "Order food from your favorite local restaurants",
 };
 
 import { Providers } from "@/components/providers";

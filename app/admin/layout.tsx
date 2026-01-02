@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect } from "react"
 import { AppSidebar } from "@/components/app-sidebar"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { UserDropdown } from "@/components/user-dropdown"
@@ -14,6 +15,11 @@ export default function AdminLayout({
   children: React.ReactNode
 }) {
   const pathname = usePathname()
+
+  // Set admin page title
+  useEffect(() => {
+    document.title = "Menu.ca Admin Dashboard"
+  }, [])
 
   // Generate breadcrumbs from pathname
   const breadcrumbs = pathname

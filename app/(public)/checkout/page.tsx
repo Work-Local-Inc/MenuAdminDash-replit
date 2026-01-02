@@ -103,6 +103,7 @@ export default function CheckoutPage() {
   const [schedulesLoading, setSchedulesLoading] = useState(false)
   const [isDeliveryBlocked, setIsDeliveryBlocked] = useState(false)
   const [isSubmittingCashOrder, setIsSubmittingCashOrder] = useState(false)
+  const [orderPlacedSuccessfully, setOrderPlacedSuccessfully] = useState(false) // Prevent empty cart redirect after order
   const [serviceConfig, setServiceConfig] = useState<{ has_delivery_enabled?: boolean; pickup_enabled?: boolean } | null>(null)
   const [serviceConfigLoading, setServiceConfigLoading] = useState(true) // Start as loading to prevent flash
   const [orderNotes, setOrderNotes] = useState('')
@@ -240,8 +241,8 @@ export default function CheckoutPage() {
   }
 
   useEffect(() => {
-    // Redirect if cart is empty
-    if (!loading && items.length === 0) {
+    // Redirect if cart is empty (but NOT if order was just placed successfully)
+    if (!loading && items.length === 0 && !orderPlacedSuccessfully) {
       toast({
         title: "Cart is empty",
         description: "Add items to your cart before checking out",
@@ -249,7 +250,7 @@ export default function CheckoutPage() {
       })
       router.push(restaurantSlug ? `/r/${restaurantSlug}` : '/')
     }
-  }, [items, loading, restaurantSlug, router, toast])
+  }, [items, loading, restaurantSlug, router, toast, orderPlacedSuccessfully])
 
   const subtotal = getSubtotal()
   const discount = getDiscount()
@@ -458,13 +459,16 @@ export default function CheckoutPage() {
         const data = await response.json()
         console.log('[Checkout] Cash order created:', data)
         
+        // Set flag BEFORE clearing cart to prevent empty cart redirect
+        setOrderPlacedSuccessfully(true)
+        
         // Clear cart and redirect to confirmation
         clearCart()
         toast({
           title: "Order Placed!",
-          description: `Your order has been placed successfully. Order #${data.orderId}`,
+          description: `Your order has been placed successfully. Order #${data.order_id}`,
         })
-        router.push(`/customer/orders/${data.orderId}/confirmation`)
+        router.push(`/customer/orders/${data.order_id}/confirmation`)
       } catch (error: any) {
         console.error('[Checkout] Cash order error:', error)
         toast({
@@ -486,8 +490,8 @@ export default function CheckoutPage() {
     )
   }
 
-  if (items.length === 0) {
-    return null // Will redirect
+  if (items.length === 0 && !orderPlacedSuccessfully) {
+    return null // Will redirect to restaurant menu
   }
 
   // Check minimum order
