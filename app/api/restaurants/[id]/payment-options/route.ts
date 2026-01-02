@@ -73,7 +73,13 @@ export async function POST(
       .from('restaurant_payment_options')
       .insert({
         restaurant_id: parseInt(params.id),
-        ...validatedData,
+        payment_type: validatedData.payment_type,
+        enabled: validatedData.enabled,
+        label_en: validatedData.label_en || null,
+        label_fr: validatedData.label_fr || null,
+        instructions_en: validatedData.instructions_en || null,
+        instructions_fr: validatedData.instructions_fr || null,
+        display_order: validatedData.display_order,
       })
       .select()
       .single()
@@ -113,7 +119,6 @@ export async function PUT(
       restaurant_id: restaurantId,
       payment_type: option.payment_type,
       enabled: option.enabled,
-      applies_to: option.applies_to,
       label_en: option.label_en || null,
       label_fr: option.label_fr || null,
       instructions_en: option.instructions_en || null,
