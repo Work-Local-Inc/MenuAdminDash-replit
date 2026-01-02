@@ -282,7 +282,11 @@ export async function POST(request: NextRequest) {
       }
     })
 
+    // Generate unique order number (same format as credit card orders)
+    const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
+
     const orderData = {
+      order_number: orderNumber,
       restaurant_id: restaurant.id,
       user_id: dbUserId,
       guest_email: !dbUserId ? (guest_email || null) : null,
