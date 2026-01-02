@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
       order_type
     })
 
-    const validPaymentTypes = ['cash', 'interac', 'credit_at_door', 'debit_at_door', 'credit_debit_at_door']
+    const validPaymentTypes = ['cash', 'interac', 'credit_at_door', 'debit_at_door', 'credit_or_debit_at_door']
     if (!validPaymentTypes.includes(payment_type)) {
       return NextResponse.json({ error: 'Invalid payment type for cash order' }, { status: 400 })
     }

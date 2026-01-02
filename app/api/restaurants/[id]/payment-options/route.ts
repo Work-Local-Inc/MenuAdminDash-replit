@@ -10,19 +10,14 @@ const PAYMENT_TYPES = [
   'interac',
   'credit_at_door',
   'debit_at_door',
-  'credit_debit_at_door'
+  'credit_or_debit_at_door'
 ] as const
-
-const APPLIES_TO = ['both', 'delivery', 'pickup'] as const
 
 const paymentOptionSchema = z.object({
   payment_type: z.enum(PAYMENT_TYPES),
   enabled: z.boolean().default(false),
-  applies_to: z.enum(APPLIES_TO).default('both'),
   label_en: z.string().nullable().optional(),
   label_fr: z.string().nullable().optional(),
-  instructions_en: z.string().nullable().optional(),
-  instructions_fr: z.string().nullable().optional(),
   display_order: z.number().default(0),
 })
 
@@ -48,7 +43,17 @@ export async function GET(
       throw error
     }
 
-    return NextResponse.json(data || [])
+    const transformedData = (data || []).map((row: any) => ({
+      id: row.id,
+      restaurant_id: row.restaurant_id,
+      payment_type: row.payment_method,
+      enabled: row.is_enabled,
+      label_en: row.english_label,
+      label_fr: row.french_label,
+      display_order: row.display_order,
+    }))
+
+    return NextResponse.json(transformedData)
   } catch (error: any) {
     console.error('[Payment Options GET] Error:', error)
     return NextResponse.json(
@@ -73,12 +78,10 @@ export async function POST(
       .from('restaurant_payment_options')
       .insert({
         restaurant_id: parseInt(params.id),
-        payment_type: validatedData.payment_type,
-        enabled: validatedData.enabled,
-        label_en: validatedData.label_en || null,
-        label_fr: validatedData.label_fr || null,
-        instructions_en: validatedData.instructions_en || null,
-        instructions_fr: validatedData.instructions_fr || null,
+        payment_method: validatedData.payment_type,
+        is_enabled: validatedData.enabled,
+        english_label: validatedData.label_en || null,
+        french_label: validatedData.label_fr || null,
         display_order: validatedData.display_order,
       })
       .select()
@@ -86,7 +89,15 @@ export async function POST(
 
     if (error) throw error
 
-    return NextResponse.json(data)
+    return NextResponse.json({
+      id: data.id,
+      restaurant_id: data.restaurant_id,
+      payment_type: data.payment_method,
+      enabled: data.is_enabled,
+      label_en: data.english_label,
+      label_fr: data.french_label,
+      display_order: data.display_order,
+    })
   } catch (error: any) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode })
@@ -117,26 +128,34 @@ export async function PUT(
 
     const upsertData = validatedData.map((option, index) => ({
       restaurant_id: restaurantId,
-      payment_type: option.payment_type,
-      enabled: option.enabled,
-      label_en: option.label_en || null,
-      label_fr: option.label_fr || null,
-      instructions_en: option.instructions_en || null,
-      instructions_fr: option.instructions_fr || null,
+      payment_method: option.payment_type,
+      is_enabled: option.enabled,
+      english_label: option.label_en || null,
+      french_label: option.label_fr || null,
       display_order: option.display_order ?? index,
     }))
 
     const { data, error } = await supabase
       .from('restaurant_payment_options')
       .upsert(upsertData, {
-        onConflict: 'restaurant_id,payment_type',
+        onConflict: 'restaurant_id,payment_method',
         ignoreDuplicates: false,
       })
       .select()
 
     if (error) throw error
 
-    return NextResponse.json(data)
+    const transformedData = (data || []).map((row: any) => ({
+      id: row.id,
+      restaurant_id: row.restaurant_id,
+      payment_type: row.payment_method,
+      enabled: row.is_enabled,
+      label_en: row.english_label,
+      label_fr: row.french_label,
+      display_order: row.display_order,
+    }))
+
+    return NextResponse.json(transformedData)
   } catch (error: any) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode })

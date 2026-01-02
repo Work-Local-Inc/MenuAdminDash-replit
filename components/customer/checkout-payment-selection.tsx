@@ -25,7 +25,7 @@ const PAYMENT_ICONS: Record<string, typeof CreditCard> = {
   interac: Smartphone,
   credit_at_door: CreditCard,
   debit_at_door: CreditCard,
-  credit_debit_at_door: CreditCard,
+  credit_or_debit_at_door: CreditCard,
 }
 
 const DEFAULT_LABELS: Record<string, string> = {
@@ -34,7 +34,7 @@ const DEFAULT_LABELS: Record<string, string> = {
   interac: 'Interac e-Transfer',
   credit_at_door: 'Credit Card at Door',
   debit_at_door: 'Debit Card at Door',
-  credit_debit_at_door: 'Credit or Debit at Door',
+  credit_or_debit_at_door: 'Credit or Debit at Door',
 }
 
 interface CheckoutPaymentSelectionProps {

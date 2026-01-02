@@ -36,7 +36,7 @@ const PAYMENT_OPTIONS = [
     description: 'Interac e-Transfer'
   },
   { 
-    type: 'credit_debit_at_door', 
+    type: 'credit_or_debit_at_door', 
     defaultLabel: 'Credit or Debit at Door',
     defaultLabelFr: 'Crédit ou débit à la porte',
     icon: CreditCard,
