@@ -283,11 +283,18 @@ export function PickupTimeSelector({ className, schedules = [], orderType = 'pic
       }
       setPickupTime({ type: 'asap' });
     } else {
+      // Switch to scheduled mode
       if (availableSlots.length > 0 && selectedSlotIndex < 0) {
+        // Auto-select first available slot
         setSelectedSlotIndex(0);
         setPickupTime({ type: 'scheduled', scheduledTime: availableSlots[0].dateTime.toISOString() });
       } else if (selectedSlot) {
+        // Use currently selected slot
         setPickupTime({ type: 'scheduled', scheduledTime: selectedSlot.dateTime.toISOString() });
+      } else {
+        // No slots available for current date - still switch to scheduled mode so the panel shows
+        // User can then select a different date to find available slots
+        setPickupTime({ type: 'scheduled' });
       }
     }
   };

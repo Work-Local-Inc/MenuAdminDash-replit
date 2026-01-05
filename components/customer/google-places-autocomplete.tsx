@@ -93,6 +93,7 @@ export function GooglePlacesAutocomplete({
       // Parse address components
       let streetNumber = ''
       let route = ''
+      let subpremise = ''
 
       components.forEach(component => {
         const types = component.types
@@ -103,7 +104,14 @@ export function GooglePlacesAutocomplete({
         if (types.includes('route')) {
           route = component.long_name
         }
+        if (types.includes('subpremise')) {
+          subpremise = component.long_name
+        }
         if (types.includes('locality')) {
+          addressData.city = component.long_name
+        }
+        // Some Canadian cities use sublocality instead of locality
+        if (types.includes('sublocality_level_1') && !addressData.city) {
           addressData.city = component.long_name
         }
         if (types.includes('administrative_area_level_1')) {
@@ -118,7 +126,20 @@ export function GooglePlacesAutocomplete({
       })
 
       // Combine street number and route
+      // If no street_number component but formatted_address has a number, try to extract it
+      if (!streetNumber && place.formatted_address) {
+        // Extract leading number from formatted address (e.g., "123 Main St, City, Province")
+        const match = place.formatted_address.match(/^(\d+)\s/)
+        if (match) {
+          streetNumber = match[1]
+          console.log('[Google Places] Extracted street number from formatted address:', streetNumber)
+        }
+      }
+      
       addressData.street_address = `${streetNumber} ${route}`.trim()
+      
+      // Log for debugging
+      console.log('[Google Places] Address components parsed:', { streetNumber, route, subpremise })
 
       console.log('[Google Places] Parsed address:', addressData)
 
