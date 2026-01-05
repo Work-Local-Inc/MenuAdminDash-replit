@@ -12,35 +12,25 @@ async function testEmail() {
   
   const adminSupabase = createAdminClient()
   
-  // Fetch a real restaurant with a logo
-  const { data: restaurants, error } = await adminSupabase
+  // Fetch Orchid Sushi specifically (going live with this restaurant)
+  const { data: orchidSushi, error } = await adminSupabase
     .from('restaurants')
     .select('id, name, logo_url')
-    .not('logo_url', 'is', null)
-    .limit(5) as { data: Restaurant[] | null; error: any }
+    .ilike('name', '%orchid%sushi%')
+    .limit(1)
+    .single() as { data: Restaurant | null; error: any }
   
-  if (error) {
-    console.error('Failed to fetch restaurants:', error)
-    process.exit(1)
-  }
-
-  console.log('\nAvailable restaurants with logos:')
-  restaurants?.forEach((r: Restaurant, i: number) => {
-    console.log(`  ${i + 1}. ${r.name} (ID: ${r.id})`)
-    console.log(`     Logo: ${r.logo_url?.substring(0, 60)}...`)
-  })
-
-  // Use the first restaurant with a logo, or fall back to any restaurant
-  let restaurant: Restaurant | null = restaurants?.[0] || null
+  let restaurant: Restaurant | null = orchidSushi
   
-  if (!restaurant) {
-    console.log('\nNo restaurants with logos found. Fetching any restaurant...')
-    const { data: anyRestaurant } = await adminSupabase
+  if (error || !restaurant) {
+    console.log('Orchid Sushi not found, searching for any restaurant with a logo...')
+    const { data: fallback } = await adminSupabase
       .from('restaurants')
       .select('id, name, logo_url')
+      .not('logo_url', 'is', null)
       .limit(1)
       .single() as { data: Restaurant | null }
-    restaurant = anyRestaurant
+    restaurant = fallback
   }
 
   if (!restaurant) {
