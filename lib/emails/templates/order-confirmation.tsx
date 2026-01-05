@@ -84,7 +84,11 @@ export default function OrderConfirmationEmail({
             <table cellPadding="0" cellSpacing="0" border={0} style={{ width: '100%' }}>
               <tr>
                 <td align="center">
-                  <div style={successIcon}>&#10003;</div>
+                  <table cellPadding="0" cellSpacing="0" border={0} style={successIconTable}>
+                    <tr>
+                      <td align="center" valign="middle" style={successIconCell}>&#10003;</td>
+                    </tr>
+                  </table>
                 </td>
               </tr>
             </table>
@@ -95,16 +99,18 @@ export default function OrderConfirmationEmail({
           </Section>
 
           <Section style={orderSummaryBox}>
-            <Row>
-              <Column>
-                <Text style={orderLabel}>Order Number</Text>
-                <Text style={orderNumberLarge}>#{orderNumber}</Text>
-              </Column>
-              <Column align="right">
-                <Text style={orderLabel}>Estimated Delivery</Text>
-                <Text style={estimatedTimeValue}>{estimatedDeliveryTime}</Text>
-              </Column>
-            </Row>
+            <table cellPadding="0" cellSpacing="0" border={0} style={{ width: '100%' }}>
+              <tr>
+                <td style={{ width: '55%', verticalAlign: 'top' }}>
+                  <Text style={orderLabel}>Order Number</Text>
+                  <Text style={orderNumberLarge}>#{orderNumber}</Text>
+                </td>
+                <td style={{ width: '45%', verticalAlign: 'top', textAlign: 'right' as const }}>
+                  <Text style={orderLabelRight}>Estimated Delivery</Text>
+                  <Text style={estimatedTimeValue}>{estimatedDeliveryTime}</Text>
+                </td>
+              </tr>
+            </table>
           </Section>
 
           <Section style={section}>
@@ -250,18 +256,23 @@ const heroSection = {
   textAlign: 'center' as const,
 }
 
-const successIcon = {
+const successIconTable = {
   backgroundColor: '#ffffff',
   borderRadius: '50%',
   width: '60px',
   height: '60px',
   margin: '0 auto 20px',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
+}
+
+const successIconCell = {
+  width: '60px',
+  height: '60px',
   fontSize: '32px',
-  fontWeight: 'bold',
+  fontWeight: 'bold' as const,
   color: '#16a34a',
+  textAlign: 'center' as const,
+  verticalAlign: 'middle' as const,
+  lineHeight: '60px',
 }
 
 const h1 = {
@@ -297,6 +308,16 @@ const orderLabel = {
   margin: '0 0 4px',
 }
 
+const orderLabelRight = {
+  color: '#6b7280',
+  fontSize: '12px',
+  fontWeight: '600',
+  textTransform: 'uppercase' as const,
+  letterSpacing: '0.5px',
+  margin: '0 0 4px',
+  textAlign: 'right' as const,
+}
+
 const orderNumberLarge = {
   color: '#1f2937',
   fontSize: '28px',
@@ -307,11 +328,11 @@ const orderNumberLarge = {
 
 const estimatedTimeValue = {
   color: '#16a34a',
-  fontSize: '15px',
+  fontSize: '16px',
   fontWeight: '600',
   margin: '0',
-  wordBreak: 'break-word' as const,
-  maxWidth: '150px',
+  textAlign: 'right' as const,
+  whiteSpace: 'nowrap' as const,
 }
 
 const section = {
