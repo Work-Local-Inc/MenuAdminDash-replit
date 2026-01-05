@@ -54,6 +54,7 @@ interface OrderConfirmationEmailProps {
 export default function OrderConfirmationEmail({
   orderNumber,
   restaurantName,
+  restaurantLogoUrl,
   items,
   deliveryAddress,
   subtotal,
@@ -63,6 +64,9 @@ export default function OrderConfirmationEmail({
   total,
   estimatedDeliveryTime = '45-60 minutes',
 }: OrderConfirmationEmailProps) {
+  const headerLogo = restaurantLogoUrl || LOGO_URL
+  const headerAlt = restaurantLogoUrl ? restaurantName : 'Menu.ca'
+  
   return (
     <Html>
       <Head>
@@ -73,11 +77,17 @@ export default function OrderConfirmationEmail({
       <Body style={main}>
         <Container style={container}>
           <Section style={brandHeader}>
-            <Img src={LOGO_URL} alt="Menu.ca" style={logoImage} />
+            <Img src={headerLogo} alt={headerAlt} style={logoImage} />
           </Section>
 
           <Section style={heroSection}>
-            <div style={successIcon}>&#10003;</div>
+            <table cellPadding="0" cellSpacing="0" border={0} style={{ width: '100%' }}>
+              <tr>
+                <td align="center">
+                  <div style={successIcon}>&#10003;</div>
+                </td>
+              </tr>
+            </table>
             <Heading style={h1}>Order Confirmed!</Heading>
             <Text style={heroText}>
               Your order from <strong>{restaurantName}</strong> has been confirmed and is being prepared.
@@ -297,9 +307,11 @@ const orderNumberLarge = {
 
 const estimatedTimeValue = {
   color: '#16a34a',
-  fontSize: '16px',
+  fontSize: '15px',
   fontWeight: '600',
   margin: '0',
+  wordBreak: 'break-word' as const,
+  maxWidth: '150px',
 }
 
 const section = {

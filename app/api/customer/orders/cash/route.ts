@@ -65,6 +65,7 @@ export async function POST(request: NextRequest) {
       .select(`
         id, 
         name,
+        logo_url,
         restaurant_delivery_areas(id, delivery_fee, delivery_min_order, is_active)
       `)
       .eq('id', restaurantId)
@@ -72,6 +73,7 @@ export async function POST(request: NextRequest) {
         data: { 
           id: number; 
           name: string;
+          logo_url: string | null;
           restaurant_delivery_areas: { id: number; delivery_fee: number | null; delivery_min_order: number | null; is_active: boolean }[]
         } | null; 
         error: any 
@@ -354,10 +356,26 @@ export async function POST(request: NextRequest) {
       console.warn('[Cash Order API] No customer email available - skipping confirmation email')
     } else if (email && delivery_address) {
       try {
+        // Calculate estimated time based on service_time
+        let estimatedTime = order_type === 'pickup' ? 'ASAP (Pickup)' : 'ASAP (Delivery)'
+        if (service_time?.type === 'scheduled' && service_time.scheduledTime) {
+          const scheduledDate = new Date(service_time.scheduledTime)
+          estimatedTime = `Scheduled for ${scheduledDate.toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric', 
+            year: 'numeric' 
+          })} at ${scheduledDate.toLocaleTimeString('en-US', { 
+            hour: 'numeric', 
+            minute: '2-digit',
+            hour12: true 
+          })}`
+        }
+
         await sendOrderConfirmationEmail({
           customerEmail: email,
           orderNumber: order.id.toString(),
           restaurantName: restaurant.name,
+          restaurantLogoUrl: restaurant.logo_url || undefined,
           items: validatedItems.map(i => ({
             dish_id: i.dish_id,
             name: i.dish_name,
@@ -368,8 +386,10 @@ export async function POST(request: NextRequest) {
           })),
           subtotal: serverSubtotal,
           tax: serverTax,
+          taxLabel: 'HST (13%)',
           deliveryFee: deliveryFee,
           total: serverTotal,
+          estimatedDeliveryTime: estimatedTime,
           deliveryAddress: {
             street: delivery_address.street_address || '',
             city: delivery_address.city || delivery_address.city_name || '',

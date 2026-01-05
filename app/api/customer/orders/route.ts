@@ -129,6 +129,7 @@ export async function POST(request: NextRequest) {
       .select(`
         id, 
         name,
+        logo_url,
         restaurant_delivery_areas(id, delivery_fee, delivery_min_order, is_active)
       `)
       .eq('id', restaurantId)
@@ -136,6 +137,7 @@ export async function POST(request: NextRequest) {
         data: { 
           id: number; 
           name: string;
+          logo_url: string | null;
           restaurant_delivery_areas: { id: number; delivery_fee: number | null; delivery_min_order: number | null; is_active: boolean }[]
         } | null; 
         error: any 
@@ -697,7 +699,7 @@ export async function POST(request: NextRequest) {
         await sendOrderConfirmationEmail({
           orderNumber: order.id.toString(),
           restaurantName: restaurant.name,
-          restaurantLogoUrl: undefined, // logo_url column doesn't exist in restaurants table
+          restaurantLogoUrl: restaurant.logo_url || undefined,
           items: validatedItems,
           deliveryAddress: delivery_address,
           subtotal: finalSubtotal,
