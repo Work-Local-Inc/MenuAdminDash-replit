@@ -51,6 +51,16 @@ interface OrderConfirmationEmailProps {
   estimatedDeliveryTime?: string
 }
 
+// Helper to check if logo is email-compatible (not WebP)
+function getEmailSafeLogo(logoUrl: string | undefined): string {
+  if (!logoUrl) return LOGO_URL
+  // WebP is not supported in many email clients (Gmail, Outlook) - fall back to Menu.ca logo
+  if (logoUrl.toLowerCase().endsWith('.webp')) {
+    return LOGO_URL
+  }
+  return logoUrl
+}
+
 export default function OrderConfirmationEmail({
   orderNumber,
   restaurantName,
@@ -64,8 +74,8 @@ export default function OrderConfirmationEmail({
   total,
   estimatedDeliveryTime = '45-60 minutes',
 }: OrderConfirmationEmailProps) {
-  const headerLogo = restaurantLogoUrl || LOGO_URL
-  const headerAlt = restaurantLogoUrl ? restaurantName : 'Menu.ca'
+  const headerLogo = getEmailSafeLogo(restaurantLogoUrl)
+  const headerAlt = headerLogo !== LOGO_URL ? restaurantName : 'Menu.ca'
   
   return (
     <Html>
@@ -98,14 +108,14 @@ export default function OrderConfirmationEmail({
             </Text>
           </Section>
 
-          <Section style={orderSummaryBox}>
-            <table cellPadding="0" cellSpacing="0" border={0} style={{ width: '100%' }}>
+          <Section style={orderSummarySection}>
+            <table cellPadding="0" cellSpacing="0" border={0} style={orderSummaryTable}>
               <tr>
-                <td style={{ width: '55%', verticalAlign: 'top' }}>
+                <td style={orderSummaryLeftCell}>
                   <Text style={orderLabel}>Order Number</Text>
                   <Text style={orderNumberLarge}>#{orderNumber}</Text>
                 </td>
-                <td style={{ width: '45%', verticalAlign: 'top', textAlign: 'right' as const }}>
+                <td style={orderSummaryRightCell}>
                   <Text style={orderLabelRight}>Estimated Delivery</Text>
                   <Text style={estimatedTimeValue}>{estimatedDeliveryTime}</Text>
                 </td>
@@ -291,12 +301,30 @@ const heroText = {
   opacity: '0.95',
 }
 
-const orderSummaryBox = {
-  backgroundColor: '#f9fafb',
+const orderSummarySection = {
   padding: '24px',
-  margin: '24px',
+}
+
+const orderSummaryTable = {
+  width: '100%',
+  backgroundColor: '#f9fafb',
   borderRadius: '8px',
   border: '1px solid #e5e7eb',
+  borderCollapse: 'separate' as const,
+  borderSpacing: '0',
+}
+
+const orderSummaryLeftCell = {
+  width: '55%',
+  verticalAlign: 'top' as const,
+  padding: '20px 12px 20px 20px',
+}
+
+const orderSummaryRightCell = {
+  width: '45%',
+  verticalAlign: 'top' as const,
+  textAlign: 'right' as const,
+  padding: '20px 20px 20px 12px',
 }
 
 const orderLabel = {
