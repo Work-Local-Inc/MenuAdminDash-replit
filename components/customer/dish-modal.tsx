@@ -1,7 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Minus, Circle } from 'lucide-react';
+import { Plus, Minus, Circle, ChevronDown, MessageSquare } from 'lucide-react';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import {
   Dialog,
   DialogContent,
@@ -1466,19 +1471,34 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
             </div>
           )}
           
-          <div>
-            <Label htmlFor="special-instructions" className="text-base font-semibold mb-3 block">
-              Special Instructions (Optional)
-            </Label>
-            <Textarea
-              id="special-instructions"
-              placeholder="e.g., No onions, extra sauce..."
-              value={specialInstructions}
-              onChange={(e) => setSpecialInstructions(e.target.value)}
-              rows={3}
-              data-testid="input-special-instructions"
-            />
-          </div>
+          <Collapsible>
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className="flex items-center justify-between w-full py-3 px-4 bg-muted/50 hover:bg-muted rounded-lg transition-colors text-left group"
+                data-testid="button-toggle-special-instructions"
+              >
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">
+                    Add Special Instructions
+                    <span className="text-muted-foreground font-normal ml-1">(Optional)</span>
+                  </span>
+                </div>
+                <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-3">
+              <Textarea
+                id="special-instructions"
+                placeholder="e.g., No onions, extra sauce..."
+                value={specialInstructions}
+                onChange={(e) => setSpecialInstructions(e.target.value)}
+                rows={3}
+                data-testid="input-special-instructions"
+              />
+            </CollapsibleContent>
+          </Collapsible>
           
           {/* Required modifiers message */}
           {!isLoadingModifiers && missingRequirements.length > 0 && (
