@@ -85,8 +85,12 @@ Preferred communication style: Simple, everyday language.
 ### Combo Section Ordering Fix (Jan 2026)
 **Status:** FIXED
 **Issue:** Combo group sections (crust type, toppings, dips) displayed in arbitrary order instead of following `display_order` from database.
-**Fix:** Added sort by `display_order` before rendering combo sections in `components/customer/dish-modal.tsx` line 1100.
-**Note:** The database RPC (`get_restaurant_menu`) already returns `display_order` values correctly - the frontend just wasn't sorting by them.
+**Fix:** 
+- Combo groups sorted by minimum section `display_order` with stable fallbacks (group display_order, then ID)
+- Sections within each combo group sorted by `display_order`
+- Transformation preserves null values instead of defaulting to 0
+**Location:** `components/customer/dish-modal.tsx` lines 999-1019 (group sort) and 1117 (section sort)
+**Note:** The database RPC (`get_restaurant_menu`) returns correct `display_order` values - the frontend now properly uses them for ordering.
 
 ### Checkout Performance Optimization (Jan 2026)
 **Status:** FIXED

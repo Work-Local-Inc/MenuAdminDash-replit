@@ -133,6 +133,7 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
       console.log(`[DishModal] Combo groups from dish prop:`, dishComboGroups.length, 'groups');
       
       // Transform combo_groups to match the expected ComboGroup interface
+      // Note: Preserve display_order as-is (don't default to 0) so sorting can use proper fallbacks
       const transformedComboGroups = dishComboGroups.map((cg: any) => ({
         id: cg.id,
         name: cg.name,
@@ -140,7 +141,7 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
         combo_rules: cg.combo_rules || null,
         combo_price: cg.combo_price || null,
         pricing_rules: cg.pricing_rules || null,
-        display_order: cg.display_order || 0,
+        display_order: cg.display_order ?? null,
         is_active: true,
         is_available: true,
         number_of_items: cg.number_of_items || 1,
@@ -152,7 +153,7 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
           combo_group_id: cg.id,
           section_type: section.section_type || null,
           use_header: section.use_header || null,
-          display_order: section.display_order || 0,
+          display_order: section.display_order ?? null,
           free_items: section.free_items || 0,
           min_selection: section.min_selection || 0,
           max_selection: section.max_selection || 0,
@@ -992,8 +993,28 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
 
           {comboGroups.length > 0 && (
             <div className="space-y-4">
-              {/* Sort combo groups by display_order */}
-              {[...comboGroups].sort((a, b) => (a.display_order || 0) - (b.display_order || 0)).map((comboGroup) => {
+              {/* Sort combo groups by minimum section display_order, with stable fallbacks */}
+              {[...comboGroups].sort((a, b) => {
+                // Get minimum section display_order for each combo group
+                const aMinSectionOrder = a.sections.length > 0 
+                  ? Math.min(...a.sections.map((s: any) => s.display_order ?? 999))
+                  : 999;
+                const bMinSectionOrder = b.sections.length > 0 
+                  ? Math.min(...b.sections.map((s: any) => s.display_order ?? 999))
+                  : 999;
+                // Primary: sort by minimum section display_order
+                if (aMinSectionOrder !== bMinSectionOrder) {
+                  return aMinSectionOrder - bMinSectionOrder;
+                }
+                // Secondary: fall back to combo group display_order
+                const aGroupOrder = a.display_order ?? 999;
+                const bGroupOrder = b.display_order ?? 999;
+                if (aGroupOrder !== bGroupOrder) {
+                  return aGroupOrder - bGroupOrder;
+                }
+                // Tertiary: stable sort by combo group ID
+                return a.id - b.id;
+              }).map((comboGroup) => {
                 const numberOfItems = comboGroup.number_of_items || 1;
                 const contextualLabels = getContextualLabels(comboGroup.display_header, numberOfItems);
                 
