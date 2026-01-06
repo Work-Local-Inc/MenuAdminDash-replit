@@ -80,21 +80,26 @@ Preferred communication style: Simple, everyday language.
 -   **Stripe**: Payment processing.
 -   **Google Places API**: Address autocomplete and verification.
 
-## Known Issues & Pending Fixes
+## Recent Changes
 
-### V2 Location Modifier Ordering (Jan 2026)
-**Status:** Pending database fix (Santiago coordinating)
-**Affected:** ~30 V2 migrated restaurants (e.g., Capri Pizza - 977)
-**Symptom:** Dips/sauces modifier groups display first instead of last
+### Combo Section Ordering Fix (Jan 2026)
+**Status:** FIXED
+**Issue:** Combo group sections (crust type, toppings, dips) displayed in arbitrary order instead of following `display_order` from database.
+**Fix:** Added sort by `display_order` before rendering combo sections in `components/customer/dish-modal.tsx` line 1100.
+**Note:** The database RPC (`get_restaurant_menu`) already returns `display_order` values correctly - the frontend just wasn't sorting by them.
 
-**Root Cause Analysis:**
-- V2 locations use `modifier_group_details` table for linked modifiers (not direct `modifier_groups.dish_id`)
-- Database has correct `display_order` values (Crust type=1, Dips=6)
-- The `get_restaurant_menu` RPC uses `json_agg`/`array_agg` WITHOUT `ORDER BY` clause
-- Postgres returns groups in arbitrary hash order, not by display_order
+### Checkout Performance Optimization (Jan 2026)
+**Status:** FIXED
+**Issue:** Checkout page took 10+ seconds to load due to sequential API calls.
+**Fix:** Changed to parallel data fetching using Promise.all in `app/(public)/checkout/page.tsx`, reducing load time to ~2-3 seconds.
 
-**Fix Required:** Modify `menuca_v3.get_restaurant_menu` to add `ORDER BY mgd.display_order` inside json_agg/array_agg that assembles modifier groups.
+### Cash Order Confirmation Fix (Jan 2026)
+**Status:** FIXED
+**Issue:** Guest cash orders showed "order not found" on confirmation page.
+**Fix:** 
+- API now returns security token in `app/api/customer/orders/cash/route.ts`
+- Checkout redirects to confirmation page with token parameter
 
-**Test Scripts:**
+## Test Scripts
 - `scripts/test-v3-modifier-order.ts` - Verify modifier ordering for any restaurant
 - `scripts/check-v2-modifier-source.ts` - Check data source tables for V2 restaurants

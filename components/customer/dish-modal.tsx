@@ -1094,7 +1094,7 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
                     
                     {/* Repeat regular modifier sections based on number_of_items */}
                     {Array.from({ length: numberOfItems }).map((_, instanceIndex) => (
-                      comboGroup.sections.map((section) => {
+                      [...comboGroup.sections].sort((a, b) => (a.display_order || 0) - (b.display_order || 0)).map((section) => {
                         const allModifiers = section.modifier_groups.flatMap(mg => mg.modifiers);
                         if (allModifiers.length === 0) return null;
                         
