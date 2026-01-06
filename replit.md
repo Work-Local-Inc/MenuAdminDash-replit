@@ -79,3 +79,22 @@ Preferred communication style: Simple, everyday language.
 -   **@hello-pangea/dnd**: Drag-and-drop reordering.
 -   **Stripe**: Payment processing.
 -   **Google Places API**: Address autocomplete and verification.
+
+## Known Issues & Pending Fixes
+
+### V2 Location Modifier Ordering (Jan 2026)
+**Status:** Pending database fix (Santiago coordinating)
+**Affected:** ~30 V2 migrated restaurants (e.g., Capri Pizza - 977)
+**Symptom:** Dips/sauces modifier groups display first instead of last
+
+**Root Cause Analysis:**
+- V2 locations use `modifier_group_details` table for linked modifiers (not direct `modifier_groups.dish_id`)
+- Database has correct `display_order` values (Crust type=1, Dips=6)
+- The `get_restaurant_menu` RPC uses `json_agg`/`array_agg` WITHOUT `ORDER BY` clause
+- Postgres returns groups in arbitrary hash order, not by display_order
+
+**Fix Required:** Modify `menuca_v3.get_restaurant_menu` to add `ORDER BY mgd.display_order` inside json_agg/array_agg that assembles modifier groups.
+
+**Test Scripts:**
+- `scripts/test-v3-modifier-order.ts` - Verify modifier ordering for any restaurant
+- `scripts/check-v2-modifier-source.ts` - Check data source tables for V2 restaurants
