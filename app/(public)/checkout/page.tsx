@@ -468,7 +468,11 @@ export default function CheckoutPage() {
           title: "Order Placed!",
           description: `Your order has been placed successfully. Order #${data.order_id}`,
         })
-        router.push(`/customer/orders/${data.order_id}/confirmation`)
+        // Include token for guest order confirmation access
+        const confirmationUrl = data.token 
+          ? `/customer/orders/${data.order_id}/confirmation?token=${data.token}`
+          : `/customer/orders/${data.order_id}/confirmation`
+        router.push(confirmationUrl)
       } catch (error: any) {
         console.error('[Checkout] Cash order error:', error)
         toast({

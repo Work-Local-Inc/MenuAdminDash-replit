@@ -417,7 +417,8 @@ export async function POST(request: NextRequest) {
       order_number: order.id.toString(),
       payment_status: 'pending',
       payment_method: payment_type,
-      total: serverTotal
+      total: serverTotal,
+      token: cashOrderReference  // Required for guest order confirmation page access
     })
 
   } catch (error: any) {
