@@ -130,36 +130,65 @@ export default function CheckoutPage() {
     console.log('[Checkout] ⭐ loading state changed:', loading)
   }, [loading])
   
-  // Fetch restaurant schedules and service config for time slot validation
+  // Combined data fetching - run all API calls in parallel for speed
   useEffect(() => {
-    const fetchRestaurantData = async () => {
-      if (!restaurantSlug) {
-        setServiceConfigLoading(false)
-        return
+    const fetchAllData = async () => {
+      console.log('[Checkout] Starting parallel data fetch...')
+      const startTime = Date.now()
+      
+      // Set loading states BEFORE fetching
+      if (restaurantSlug) {
+        setSchedulesLoading(true)
+        setServiceConfigLoading(true)
       }
       
-      setSchedulesLoading(true)
-      setServiceConfigLoading(true)
+      // Build list of fetch promises - always fetch profile
+      const profilePromise = fetch('/api/customer/profile', { credentials: 'include' })
+        .then(res => res.ok ? res.json() : { user: null })
+        .catch(() => ({ user: null }))
+      
+      // Fetch restaurant data only if we have a slug
+      let schedulesPromise: Promise<any> = Promise.resolve({ schedules: [] })
+      let restaurantPromise: Promise<any> = Promise.resolve(null)
+      
+      if (restaurantSlug) {
+        schedulesPromise = fetch(`/api/customer/restaurants/${restaurantSlug}/schedules`)
+          .then(res => res.ok ? res.json() : { schedules: [] })
+          .catch(() => ({ schedules: [] }))
+        
+        restaurantPromise = fetch(`/api/customer/restaurants/${restaurantSlug}`)
+          .then(res => res.ok ? res.json() : null)
+          .catch(() => null)
+      }
+      
       try {
-        // Fetch schedules
-        const schedulesResponse = await fetch(`/api/customer/restaurants/${restaurantSlug}/schedules`)
-        if (schedulesResponse.ok) {
-          const data = await schedulesResponse.json()
-          console.log('[Checkout] Schedules loaded:', data.schedules?.length || 0)
-          setSchedules(data.schedules || [])
+        // Run ALL fetches in parallel
+        const [profileData, schedulesData, restaurantData] = await Promise.all([
+          profilePromise,
+          schedulesPromise,
+          restaurantPromise
+        ])
+        
+        console.log('[Checkout] All data fetched in', Date.now() - startTime, 'ms')
+        
+        // Process profile
+        if (profileData?.user) {
+          console.log('[Checkout] User profile loaded:', profileData.user.id, profileData.user.email)
+          setCurrentUser(profileData.user)
         } else {
-          console.warn('[Checkout] Failed to fetch schedules, using defaults')
+          console.log('[Checkout] No user profile - Guest checkout mode')
+          setCurrentUser(null)
         }
         
-        // Fetch service config (delivery/pickup enabled flags)
-        const restaurantResponse = await fetch(`/api/customer/restaurants/${restaurantSlug}`)
-        console.log('[Checkout] Restaurant API response status:', restaurantResponse.status)
-        if (restaurantResponse.ok) {
-          const restaurantData = await restaurantResponse.json()
-          console.log('[Checkout] Restaurant data keys:', Object.keys(restaurantData))
-          console.log('[Checkout] delivery_and_pickup_configs raw:', restaurantData.delivery_and_pickup_configs)
+        // Process schedules (only if we fetched them)
+        if (restaurantSlug && schedulesData?.schedules) {
+          console.log('[Checkout] Schedules loaded:', schedulesData.schedules.length)
+          setSchedules(schedulesData.schedules)
+        }
+        
+        // Process restaurant config (only if we fetched it)
+        if (restaurantSlug && restaurantData) {
           const config = restaurantData.delivery_and_pickup_configs?.[0] || restaurantData.delivery_and_pickup_configs
-          console.log('[Checkout] Parsed config:', config)
           if (config) {
             console.log('[Checkout] ✅ Service config loaded:', { 
               has_delivery_enabled: config.has_delivery_enabled, 
@@ -172,73 +201,43 @@ export default function CheckoutPage() {
           } else {
             console.log('[Checkout] ⚠️ No service config found - delivery/pickup will default to enabled')
           }
-        } else {
-          console.warn('[Checkout] ⚠️ Restaurant API returned error:', restaurantResponse.status)
         }
       } catch (error) {
-        console.error('[Checkout] Error fetching restaurant data:', error)
+        console.error('[Checkout] Error fetching data:', error)
+        setCurrentUser(null)
       } finally {
+        setLoading(false)
         setSchedulesLoading(false)
         setServiceConfigLoading(false)
       }
     }
     
-    fetchRestaurantData()
-  }, [restaurantSlug])
-
-  useEffect(() => {
-    checkAuth()
+    fetchAllData()
     
-    // Listen for auth state changes
+    // Listen for auth state changes (separate from initial load)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('[Checkout] Auth state changed:', event, session?.user?.id)
       
       if (event === 'SIGNED_IN' && session?.user) {
-        // User just signed in - refresh user data
-        await checkAuth()
+        // User just signed in - refresh user data only
+        try {
+          const response = await fetch('/api/customer/profile', { credentials: 'include' })
+          if (response.ok) {
+            const { user: userData } = await response.json()
+            setCurrentUser(userData)
+          }
+        } catch (error) {
+          console.error('[Checkout] Auth refresh error:', error)
+        }
       } else if (event === 'SIGNED_OUT') {
-        // User signed out - clear user data
         setCurrentUser(null)
       }
     })
 
-    // Cleanup subscription on unmount
     return () => {
       subscription.unsubscribe()
     }
-  }, [])
-
-  const checkAuth = async () => {
-    try {
-      console.log('[Checkout] Starting auth check via API...')
-      
-      // Use API endpoint instead of direct query to bypass RLS issues
-      const response = await fetch('/api/customer/profile', {
-        credentials: 'include', // Include auth cookies
-      })
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch profile')
-      }
-      
-      const { user: userData } = await response.json()
-      
-      if (!userData) {
-        console.log('[Checkout] No user profile - Guest checkout mode')
-        setCurrentUser(null)
-      } else {
-        console.log('[Checkout] User profile loaded:', userData.id, userData.email, userData.first_name)
-        setCurrentUser(userData)
-      }
-    } catch (error: any) {
-      console.error('[Checkout] Auth check error:', error)
-      // Don't redirect on error - allow guest checkout
-      setCurrentUser(null)
-    } finally {
-      console.log('[Checkout] Setting loading to false')
-      setLoading(false)
-    }
-  }
+  }, [restaurantSlug])
 
   useEffect(() => {
     // Redirect if cart is empty (but NOT if order was just placed successfully)
