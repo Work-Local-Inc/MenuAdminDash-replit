@@ -82,6 +82,21 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### Subdomain Routing for Branded URLs (Jan 2026)
+**Status:** IMPLEMENTED
+**Purpose:** Support branded subdomain URLs like `orchidsushiottawa.menu.ca` in addition to path-based `/r/orchid-sushi-245`.
+**How it works:**
+- Middleware extracts subdomain from Host header
+- Looks up mapping in `lib/subdomain-mapping.ts`
+- Rewrites to `/r/[slug]` while preserving branded URL
+**Files:** `middleware.ts`, `lib/subdomain-mapping.ts`
+**Setup docs:** `docs/subdomain-setup.md`
+**DNS Flow:**
+1. Add subdomain to `SUBDOMAIN_MAPPINGS` in code
+2. Add custom domain in Replit deployment settings
+3. Update A record in 1984.is to point to Replit IP
+4. SSL auto-provisions
+
 ### Dish Availability Feature (Jan 2026)
 **Status:** IMPLEMENTED
 **Purpose:** Some dishes only show on specific days (e.g., "Monday Special" only visible on Mondays).

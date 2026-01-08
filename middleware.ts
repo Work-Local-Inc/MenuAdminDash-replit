@@ -1,8 +1,50 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { Database } from '@/types/supabase-database'
+import { extractSubdomain, getRestaurantBySubdomain } from '@/lib/subdomain-mapping'
 
 export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl
+  const rawHostname = request.headers.get('host') || ''
+  
+  // Strip port for consistent subdomain detection
+  const hostname = rawHostname.split(':')[0]
+  
+  // --- SUBDOMAIN ROUTING ---
+  const subdomain = extractSubdomain(hostname)
+  
+  if (subdomain) {
+    const mapping = getRestaurantBySubdomain(subdomain)
+    
+    if (mapping) {
+      // Block admin/login routes on branded subdomains - redirect to main domain
+      if (pathname.startsWith('/admin') || pathname === '/login') {
+        const url = new URL(`https://orders.menu.ca${pathname}`)
+        return NextResponse.redirect(url)
+      }
+      
+      // Rewrite root path to restaurant page
+      if (pathname === '/' || pathname === '') {
+        const url = request.nextUrl.clone()
+        url.pathname = `/r/${mapping.slug}`
+        return NextResponse.rewrite(url)
+      }
+      
+      // For other paths (/checkout, /cart, /customer/*)
+      // These use cart store (localStorage) for restaurant context
+      // Just continue - they will work once customer has visited the restaurant page
+      return NextResponse.next()
+    } else {
+      // Unknown subdomain - log it
+      console.log(`[Middleware] Unknown subdomain: ${subdomain}`)
+    }
+  }
+  
+  // --- ADMIN/AUTH ROUTES (for main domain only) ---
+  if (!pathname.startsWith('/admin') && pathname !== '/login') {
+    return NextResponse.next()
+  }
+  
   let supabaseResponse = NextResponse.next({
     request,
   })
@@ -34,13 +76,6 @@ export async function middleware(request: NextRequest) {
   // Refresh session if expired - required for Server Components
   const { data: { session } } = await supabase.auth.getSession()
 
-  // TEMPORARY: Bypass login for demo
-  // If accessing /admin routes without a session, redirect to login
-  // if (request.nextUrl.pathname.startsWith('/admin') && !session) {
-  //   const redirectUrl = new URL('/login', request.url)
-  //   return NextResponse.redirect(redirectUrl)
-  // }
-
   // If accessing /login with a valid session, redirect to dashboard
   if (request.nextUrl.pathname === '/login' && session) {
     const redirectUrl = new URL('/admin/dashboard', request.url)
@@ -51,5 +86,8 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/login'],
+  matcher: [
+    // Match all paths for subdomain routing
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
+  ],
 }
