@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { Database } from '@/types/supabase-database'
-import { extractSubdomain, getRestaurantBySubdomain } from '@/lib/subdomain-mapping'
+import { extractSubdomain, getRestaurantBySubdomainAsync } from '@/lib/subdomain-mapping'
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -14,7 +14,8 @@ export async function middleware(request: NextRequest) {
   const subdomain = extractSubdomain(hostname)
   
   if (subdomain) {
-    const mapping = getRestaurantBySubdomain(subdomain)
+    // Use async lookup to fetch from database (with caching)
+    const mapping = await getRestaurantBySubdomainAsync(subdomain)
     
     if (mapping) {
       // Block admin/login routes on branded subdomains - redirect to main domain

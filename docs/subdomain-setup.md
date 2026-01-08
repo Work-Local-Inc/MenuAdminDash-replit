@@ -103,15 +103,50 @@ For new subdomains:
 - Try incognito mode
 - Check with `dig newrestaurant.menu.ca` to verify A record
 
-## Batch Migration Script
+## Database-Backed Mappings (Recommended for 192+ Restaurants)
 
-For migrating 192 restaurants, consider creating a CSV with:
-- subdomain
-- slug
-- restaurantId
-- name
+Instead of editing code, you can add subdomains directly to the database.
 
-Then generate the `SUBDOMAIN_MAPPINGS` array programmatically.
+### Setup (One-Time)
+
+Run the migration SQL in Supabase SQL Editor:
+```bash
+# See docs/subdomain-database-migration.sql
+```
+
+This creates:
+- `menuca_v3.restaurant_subdomains` table
+- `get_subdomain_mapping()` RPC function
+- `get_all_subdomain_mappings()` RPC function
+
+### Adding New Subdomains (No Code Changes!)
+
+```sql
+INSERT INTO menuca_v3.restaurant_subdomains 
+(restaurant_id, subdomain, slug, name)
+VALUES 
+(999, 'newrestaurant', 'new-restaurant-999', 'New Restaurant');
+```
+
+The middleware will pick it up within 5 minutes (cache TTL).
+
+### Force Cache Refresh
+
+To immediately see new subdomains:
+```sql
+-- Just add/update the row, cache refreshes automatically
+```
+
+### Bulk Import for 192 Restaurants
+
+```sql
+INSERT INTO menuca_v3.restaurant_subdomains (restaurant_id, subdomain, slug, name)
+VALUES 
+(245, 'orchidsushiottawa', 'orchid-sushi-245', 'Orchid Sushi Ottawa'),
+(973, 'capitalbites', 'capital-bites-973', 'Capital Bites'),
+-- Add more rows...
+ON CONFLICT DO NOTHING;
+```
 
 ## Architecture Notes
 

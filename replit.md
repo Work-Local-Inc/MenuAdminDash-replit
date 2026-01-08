@@ -87,12 +87,18 @@ Preferred communication style: Simple, everyday language.
 **Purpose:** Support branded subdomain URLs like `orchidsushiottawa.menu.ca` in addition to path-based `/r/orchid-sushi-245`.
 **How it works:**
 - Middleware extracts subdomain from Host header
-- Looks up mapping in `lib/subdomain-mapping.ts`
+- Looks up mapping in `lib/subdomain-mapping.ts` (database-backed with cache)
 - Rewrites to `/r/[slug]` while preserving branded URL
 **Files:** `middleware.ts`, `lib/subdomain-mapping.ts`
 **Setup docs:** `docs/subdomain-setup.md`
+**Database Migration:** `docs/subdomain-database-migration.sql`
+**Adding New Subdomains (No Code Changes):**
+```sql
+INSERT INTO menuca_v3.restaurant_subdomains (restaurant_id, subdomain, slug, name)
+VALUES (999, 'newrestaurant', 'new-restaurant-999', 'New Restaurant');
+```
 **DNS Flow:**
-1. Add subdomain to `SUBDOMAIN_MAPPINGS` in code
+1. Add subdomain to database (or `STATIC_SUBDOMAIN_MAPPINGS` as fallback)
 2. Add custom domain in Replit deployment settings
 3. Update A record in 1984.is to point to Replit IP
 4. SSL auto-provisions
