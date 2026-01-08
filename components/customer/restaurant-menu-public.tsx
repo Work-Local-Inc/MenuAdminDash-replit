@@ -216,7 +216,9 @@ export default function RestaurantMenuPublic({
         <div className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
           <div className="container mx-auto px-3 sm:px-4">
             <div className="flex gap-2 py-2 sm:py-3 overflow-x-auto scrollbar-hide">
-              {courses.map((course) => (
+              {courses
+                .filter((course) => (course.dishes || []).filter(isDishVisible).length > 0)
+                .map((course) => (
                 <Button
                   key={course.id}
                   variant="ghost"
@@ -246,6 +248,11 @@ export default function RestaurantMenuPublic({
             {courses?.map((course) => {
               // Filter dishes by day-of-week availability (hidden_days)
               const courseDishes = (course.dishes || []).filter(isDishVisible)
+              
+              // Skip courses with no visible dishes
+              if (courseDishes.length === 0) {
+                return null
+              }
               // Map old layout values to new ones for backwards compatibility
               const rawLayout = restaurant.menu_layout
               // 'list' = compact list rows, 'grid2' = 2-column grid, 'grid4' = 4-column grid, 'image_cards' = large hero images
