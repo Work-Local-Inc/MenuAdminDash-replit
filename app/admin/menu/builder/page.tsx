@@ -66,6 +66,7 @@ import { ModifierGroupSection } from '@/components/admin/menu-builder/ModifierGr
 import { InlinePriceEditor } from '@/components/admin/menu-builder/InlinePriceEditor'
 import { DishModifierPanel } from '@/components/admin/menu-builder/DishModifierPanel'
 import { SizeVariantManager } from '@/components/admin/menu-builder/SizeVariantManager'
+import { DishAvailabilityEditor } from '@/components/admin/menu-builder/DishAvailabilityEditor'
 import RestaurantMenu from '@/components/customer/restaurant-menu'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useToast } from '@/hooks/use-toast'
@@ -1040,6 +1041,13 @@ export default function MenuBuilderPage() {
             {editingDish && (
               <div className="pt-4 border-t">
                 <SizeVariantManager dishId={editingDish.id} />
+              </div>
+            )}
+
+            {/* Day Availability - Only show when editing existing dish */}
+            {editingDish && (
+              <div className="pt-4 border-t">
+                <DishAvailabilityEditor dishId={editingDish.id} />
               </div>
             )}
 

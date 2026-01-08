@@ -82,6 +82,17 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### Dish Availability Feature (Jan 2026)
+**Status:** IMPLEMENTED
+**Purpose:** Some dishes only show on specific days (e.g., "Monday Special" only visible on Mondays).
+**Customer-side:** Dishes with `hidden_days` array are filtered using `isDishVisible()` in `restaurant-menu-public.tsx`.
+**Admin-side:** New `DishAvailabilityEditor` component in dish dialog (menu builder) with:
+- Day checkboxes (Sun-Sat)
+- Quick actions: "All Days", "Weekdays Only", "Weekends Only"
+- Auto-save with error recovery
+**Backend:** Uses Supabase RPC: `get_dish_availability`, `update_dish_availability`
+**Reference:** `attached_assets/dish-availability_1767885527094.md`
+
 ### Modifier Size Pricing Fix (Jan 2026)
 **Status:** FIXED
 **Issue:** Frontend used string matching (`size_variant === "Medium"`) for modifier prices, while backend uses `modifier_size_variant_id` (integer). This caused potential price mismatches.

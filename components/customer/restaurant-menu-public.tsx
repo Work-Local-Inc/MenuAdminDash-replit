@@ -12,6 +12,16 @@ import { PromoBanner } from './promo-banner'
 import { useCartStore } from '@/lib/stores/cart-store'
 import { resolveBrandingColors, MENUCA_RED } from '@/lib/utils'
 
+// Dish availability filter: hide dishes on specific days of the week
+// hidden_days: array of day numbers (0=Sunday, 1=Monday, ..., 6=Saturday)
+function isDishVisible(dish: any): boolean {
+  if (!dish.hidden_days || dish.hidden_days.length === 0) {
+    return true
+  }
+  const today = new Date().getDay() // 0 = Sunday, 6 = Saturday
+  return !dish.hidden_days.includes(today)
+}
+
 interface RestaurantMenuPublicProps {
   restaurant: any
   courses: any[]
@@ -234,7 +244,8 @@ export default function RestaurantMenuPublic({
         ) : (
           <div className="space-y-8">
             {courses?.map((course) => {
-              const courseDishes = course.dishes || []
+              // Filter dishes by day-of-week availability (hidden_days)
+              const courseDishes = (course.dishes || []).filter(isDishVisible)
               // Map old layout values to new ones for backwards compatibility
               const rawLayout = restaurant.menu_layout
               // 'list' = compact list rows, 'grid2' = 2-column grid, 'grid4' = 4-column grid, 'image_cards' = large hero images
