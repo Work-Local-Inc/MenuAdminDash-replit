@@ -219,16 +219,53 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
   const selectedSizeOption = sizeOptions.find((s: any) => s.name === selectedSize) || sizeOptions[0];
   const sizePrice = selectedSizeOption?.price || 0;
   
+  // Get the modifier_size_variant_id from the selected dish price for matching modifier prices
+  const getSelectedModifierSizeVariantId = (): number | null => {
+    if (!dish.prices || !Array.isArray(dish.prices)) return null;
+    const selectedDishPrice = dish.prices.find((p: any) => p.size_variant === selectedSize);
+    return selectedDishPrice?.modifier_size_variant_id ?? null;
+  };
+  
+  const selectedModifierSizeVariantId = getSelectedModifierSizeVariantId();
+  
+  // Price matching using modifier_size_variant_id (Santiago's V3 sizing logic)
+  // Fallback order: exact ID match → Standard (id: 1) → first price
   const getModifierPrice = (modifier: any): number => {
     if (!modifier.prices || modifier.prices.length === 0) return 0;
-    const priceForSize = modifier.prices.find((p: any) => p.size_variant === selectedSize);
-    return priceForSize?.price || modifier.prices[0]?.price || 0;
+    
+    const targetSizeId = selectedModifierSizeVariantId;
+    
+    // 1. Try exact match on modifier_size_variant_id
+    if (targetSizeId !== null) {
+      const exactMatch = modifier.prices.find((p: any) => p.modifier_size_variant_id === targetSizeId);
+      if (exactMatch) return exactMatch.price;
+    }
+    
+    // 2. Fallback to Standard (modifier_size_variant_id: 1)
+    const standardPrice = modifier.prices.find((p: any) => p.modifier_size_variant_id === 1);
+    if (standardPrice) return standardPrice.price;
+    
+    // 3. Ultimate fallback: first price
+    return modifier.prices[0]?.price || 0;
   };
 
   const getComboModifierPrice = (modifier: ComboModifier): number => {
     if (!modifier.prices || modifier.prices.length === 0) return 0;
-    const priceForSize = modifier.prices.find(p => p.size_variant === selectedSize);
-    return priceForSize?.price || modifier.prices[0]?.price || 0;
+    
+    const targetSizeId = selectedModifierSizeVariantId;
+    
+    // 1. Try exact match on modifier_size_variant_id
+    if (targetSizeId !== null) {
+      const exactMatch = modifier.prices.find((p: any) => p.modifier_size_variant_id === targetSizeId);
+      if (exactMatch) return exactMatch.price;
+    }
+    
+    // 2. Fallback to Standard (modifier_size_variant_id: 1)
+    const standardPrice = modifier.prices.find((p: any) => p.modifier_size_variant_id === 1);
+    if (standardPrice) return standardPrice.price;
+    
+    // 3. Ultimate fallback: first price
+    return modifier.prices[0]?.price || 0;
   };
 
   const handleModifierToggle = (group: ModifierGroupWithModifiers, modifierId: number, checked: boolean) => {
