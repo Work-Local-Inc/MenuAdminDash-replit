@@ -82,6 +82,16 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### Modifier Size Pricing Fix (Jan 2026)
+**Status:** FIXED
+**Issue:** Frontend used string matching (`size_variant === "Medium"`) for modifier prices, while backend uses `modifier_size_variant_id` (integer). This caused potential price mismatches.
+**Fix:** Updated `getModifierPrice()` and `getComboModifierPrice()` in `dish-modal.tsx` to match by `modifier_size_variant_id` with fallback order:
+1. Exact match on `modifier_size_variant_id`
+2. Fallback to Standard (id: 1)
+3. Ultimate fallback: first price
+**Location:** `components/customer/dish-modal.tsx` lines 225-272
+**Reference:** `attached_assets/sizing-logic_1767880263087.md`
+
 ### Combo Section Ordering Fix (Jan 2026)
 **Status:** FIXED
 **Issue:** Combo group sections (crust type, toppings, dips) displayed in arbitrary order instead of following `display_order` from database.
