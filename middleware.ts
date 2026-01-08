@@ -13,6 +13,9 @@ export async function middleware(request: NextRequest) {
   // --- SUBDOMAIN ROUTING ---
   const subdomain = extractSubdomain(hostname)
   
+  // Debug logging for production
+  console.log(`[Middleware] Host: ${rawHostname}, Hostname: ${hostname}, Subdomain: ${subdomain}, Path: ${pathname}`)
+  
   if (subdomain) {
     // Use async lookup to fetch from database (with caching)
     const mapping = await getRestaurantBySubdomainAsync(subdomain)
@@ -28,6 +31,7 @@ export async function middleware(request: NextRequest) {
       if (pathname === '/' || pathname === '') {
         const url = request.nextUrl.clone()
         url.pathname = `/r/${mapping.slug}`
+        console.log(`[Middleware] Rewriting ${subdomain} to ${url.pathname}`)
         return NextResponse.rewrite(url)
       }
       
