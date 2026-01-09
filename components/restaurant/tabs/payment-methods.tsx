@@ -11,7 +11,9 @@ import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/hooks/use-toast"
-import { CreditCard, Banknote, Smartphone, AlertCircle, Loader2, Save } from "lucide-react"
+import { CreditCard, Banknote, Smartphone, AlertCircle, Loader2, Save, AlertTriangle, CheckCircle } from "lucide-react"
+import { Switch } from "@/components/ui/switch"
+import { Badge } from "@/components/ui/badge"
 
 const PAYMENT_OPTIONS = [
   { 
@@ -77,10 +79,56 @@ interface RestaurantPaymentMethodsProps {
   restaurantId: string
 }
 
+interface ServiceConfig {
+  id: number
+  payment_mode: 'test' | 'live' | null
+}
+
 export function RestaurantPaymentMethods({ restaurantId }: RestaurantPaymentMethodsProps) {
   const { toast } = useToast()
   const [options, setOptions] = useState<PaymentOption[]>([])
   const [hasChanges, setHasChanges] = useState(false)
+
+  const { data: serviceConfig, isLoading: configLoading } = useQuery<ServiceConfig | null>({
+    queryKey: ['/api/restaurants', restaurantId, 'service-config'],
+    queryFn: async () => {
+      const res = await fetch(`/api/restaurants/${restaurantId}/service-config`)
+      if (!res.ok) return null
+      return res.json()
+    },
+  })
+
+  const updatePaymentMode = useMutation({
+    mutationFn: async (mode: 'test' | 'live') => {
+      const method = serviceConfig ? 'PATCH' : 'POST'
+      const url = serviceConfig 
+        ? `/api/restaurants/${restaurantId}/service-config/${serviceConfig.id}`
+        : `/api/restaurants/${restaurantId}/service-config`
+      
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payment_mode: mode }),
+      })
+      if (!res.ok) throw new Error(await res.text())
+      return res.json()
+    },
+    onSuccess: (_, mode) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/restaurants', restaurantId, 'service-config'] })
+      toast({ 
+        title: mode === 'live' ? "Live Payments Enabled" : "Test Mode Enabled",
+        description: mode === 'live' 
+          ? "This restaurant will now process real payments" 
+          : "This restaurant is now using test/sandbox payments"
+      })
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" })
+    },
+  })
+
+  const paymentMode = serviceConfig?.payment_mode ?? 'test'
+  const isLive = paymentMode === 'live'
 
   const { data: savedOptions = [], isLoading, error } = useQuery<PaymentOption[]>({
     queryKey: ['/api/restaurants', restaurantId, 'payment-options'],
@@ -207,27 +255,75 @@ export function RestaurantPaymentMethods({ restaurantId }: RestaurantPaymentMeth
   }
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between gap-4">
-        <div>
-          <CardTitle>Payment Options</CardTitle>
-          <CardDescription>
-            Choose which payment methods customers can use. Credit card payments are processed by Menu.ca.
-          </CardDescription>
-        </div>
-        <Button 
-          onClick={handleSave}
-          disabled={!hasChanges || updateMutation.isPending}
-          data-testid="button-save-payment-options"
-        >
-          {updateMutation.isPending ? (
-            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-          ) : (
-            <Save className="h-4 w-4 mr-2" />
-          )}
-          Update
-        </Button>
-      </CardHeader>
+    <div className="space-y-6">
+      <Card className={isLive ? "border-green-500 bg-green-500/5" : "border-amber-500 bg-amber-500/5"}>
+        <CardHeader>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              {isLive ? (
+                <CheckCircle className="h-6 w-6 text-green-500" />
+              ) : (
+                <AlertTriangle className="h-6 w-6 text-amber-500" />
+              )}
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  Payment Mode
+                  <Badge variant={isLive ? "default" : "secondary"} className={isLive ? "bg-green-500" : "bg-amber-500"}>
+                    {isLive ? "LIVE" : "TEST"}
+                  </Badge>
+                </CardTitle>
+                <CardDescription>
+                  {isLive 
+                    ? "Real payments are being processed. Customers will be charged."
+                    : "Test mode - no real charges. Use test card 4242 4242 4242 4242"}
+                </CardDescription>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className={`text-sm font-medium ${!isLive ? "text-amber-600" : "text-muted-foreground"}`}>Test</span>
+              <Switch
+                checked={isLive}
+                onCheckedChange={(checked) => updatePaymentMode.mutate(checked ? 'live' : 'test')}
+                disabled={updatePaymentMode.isPending || configLoading}
+                data-testid="switch-payment-mode"
+              />
+              <span className={`text-sm font-medium ${isLive ? "text-green-600" : "text-muted-foreground"}`}>Live</span>
+            </div>
+          </div>
+        </CardHeader>
+        {isLive && (
+          <CardContent className="pt-0">
+            <Alert className="border-green-500/50 bg-green-500/10">
+              <CheckCircle className="h-4 w-4 text-green-500" />
+              <AlertDescription className="text-green-700 dark:text-green-400">
+                This restaurant is accepting real payments. All credit card transactions will charge the customer.
+              </AlertDescription>
+            </Alert>
+          </CardContent>
+        )}
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-4">
+          <div>
+            <CardTitle>Payment Options</CardTitle>
+            <CardDescription>
+              Choose which payment methods customers can use. Credit card payments are processed by Menu.ca.
+            </CardDescription>
+          </div>
+          <Button 
+            onClick={handleSave}
+            disabled={!hasChanges || updateMutation.isPending}
+            data-testid="button-save-payment-options"
+          >
+            {updateMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : (
+              <Save className="h-4 w-4 mr-2" />
+            )}
+            Update
+          </Button>
+        </CardHeader>
       <CardContent>
         <div className="rounded-md border">
           <Table>
@@ -295,6 +391,7 @@ export function RestaurantPaymentMethods({ restaurantId }: RestaurantPaymentMeth
           </ul>
         </div>
       </CardContent>
-    </Card>
+      </Card>
+    </div>
   )
 }

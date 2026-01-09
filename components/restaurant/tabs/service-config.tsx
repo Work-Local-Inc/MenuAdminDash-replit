@@ -21,6 +21,7 @@ const configSchema = z.object({
   takeout_time_minutes: z.coerce.number().min(0).nullable(),
   twilio_call: z.boolean().nullable(),
   accepts_tips: z.boolean().nullable(),
+  payment_mode: z.enum(['test', 'live']).nullable(),
 })
 
 type ConfigFormValues = z.infer<typeof configSchema>
@@ -35,6 +36,7 @@ interface ServiceConfig {
   takeout_time_minutes: number | null
   twilio_call: boolean | null
   accepts_tips: boolean | null
+  payment_mode: 'test' | 'live' | null
   created_at: string
   updated_at: string | null
 }
@@ -65,6 +67,7 @@ export function RestaurantServiceConfig({ restaurantId }: RestaurantServiceConfi
       takeout_time_minutes: null,
       twilio_call: null,
       accepts_tips: null,
+      payment_mode: 'test',
     },
   })
 
@@ -77,6 +80,7 @@ export function RestaurantServiceConfig({ restaurantId }: RestaurantServiceConfi
         takeout_time_minutes: config.takeout_time_minutes,
         twilio_call: config.twilio_call,
         accepts_tips: config.accepts_tips,
+        payment_mode: config.payment_mode ?? 'test',
       })
     }
   }, [config, form])

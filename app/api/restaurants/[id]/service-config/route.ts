@@ -48,7 +48,8 @@ export async function POST(
       'distance_based_delivery_fee',
       'takeout_time_minutes',
       'twilio_call',
-      'accepts_tips'
+      'accepts_tips',
+      'payment_mode'
     ]
     
     for (const column of allowedColumns) {
