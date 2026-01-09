@@ -83,6 +83,38 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### Per-Restaurant Google Analytics 4 Tracking (Jan 2026)
+**Status:** IMPLEMENTED
+**Purpose:** Track customer behavior and conversions with per-restaurant GA4 measurement IDs.
+**Key Features:**
+- Per-restaurant GA measurement ID stored in `restaurant_analytics_configs` table
+- Dynamic GA script loading via `AnalyticsProvider` component
+- Full ecommerce event tracking: `add_to_cart`, `remove_from_cart`, `begin_checkout`, `add_payment_info`, `purchase`
+- Event queueing until gtag ready, with automatic flush
+- Analytics disabled gracefully when no measurement ID configured
+**Architecture:**
+1. Restaurant page fetches GA config server-side and passes to cart store
+2. Cart store persists `gaMeasurementId` across page navigations
+3. Checkout page uses stored ID or fetches client-side for direct entry
+4. `AnalyticsProvider` handles script loading, gtag initialization, and page view tracking
+**Files:**
+- `lib/analytics.ts` - Event tracking utilities
+- `components/providers/analytics-provider.tsx` - Dynamic script loading
+- `lib/stores/cart-store.ts` - GA ID persistence
+- `app/api/customer/restaurants/[slug]/analytics/route.ts` - API endpoint
+**Database Migration:** `docs/ga4-analytics-migration.sql`
+**Adding GA Tracking (No Code Changes):**
+```sql
+INSERT INTO menuca_v3.restaurant_analytics_configs (restaurant_id, ga_measurement_id)
+VALUES (1009, 'G-XXXXXXXXXX');
+```
+**Events Tracked:**
+- `page_view` - On each page navigation
+- `add_to_cart` / `remove_from_cart` - Cart modifications
+- `begin_checkout` - Checkout page entry
+- `add_payment_info` - Payment method selected
+- `purchase` - Order completed (cash or credit card)
+
 ### Per-Restaurant Payment Mode Toggle (Jan 2026)
 **Status:** IMPLEMENTED
 **Purpose:** Enable gradual production rollout by allowing each restaurant to independently switch between test and live Stripe payments.
