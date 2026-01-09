@@ -857,7 +857,7 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
             </DialogTitle>
           </DialogHeader>
           
-          {dish.description && (
+          {dish.description && dish.description.trim() !== '' && dish.description.trim() !== '-' && (
             <p className="text-muted-foreground" data-testid={`text-modal-description-${dish.id}`}>
               {dish.description}
             </p>
