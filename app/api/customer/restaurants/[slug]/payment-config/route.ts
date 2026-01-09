@@ -34,6 +34,14 @@ export async function GET(
     let publishableKey: string | undefined
     let keySource: string = ''
     
+    // Debug: Log all available Stripe keys at runtime
+    console.log('[PaymentConfig] DEBUG - Available keys:', {
+      NEXT_PUBLIC_STRIPE_PUBLIC_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY ? process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY.substring(0, 15) + '...' : 'NOT SET',
+      VITE_STRIPE_PUBLIC_KEY: process.env.VITE_STRIPE_PUBLIC_KEY ? process.env.VITE_STRIPE_PUBLIC_KEY.substring(0, 15) + '...' : 'NOT SET',
+      NEXT_PUBLIC_TESTING_VITE_STRIPE_PUBLIC_KEY: process.env.NEXT_PUBLIC_TESTING_VITE_STRIPE_PUBLIC_KEY ? process.env.NEXT_PUBLIC_TESTING_VITE_STRIPE_PUBLIC_KEY.substring(0, 15) + '...' : 'NOT SET',
+      TESTING_VITE_STRIPE_PUBLIC_KEY: process.env.TESTING_VITE_STRIPE_PUBLIC_KEY ? process.env.TESTING_VITE_STRIPE_PUBLIC_KEY.substring(0, 15) + '...' : 'NOT SET',
+    })
+    
     if (paymentMode === 'live') {
       // Use live publishable key for real payments
       publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY || process.env.VITE_STRIPE_PUBLIC_KEY
