@@ -20,7 +20,7 @@ import { OrderTypeSelector } from '@/components/customer/order-type-selector'
 import { Schedule } from '@/components/customer/pickup-time-selector'
 import { PromoCodeInput } from '@/components/customer/promo-code-input'
 import { useToast } from '@/hooks/use-toast'
-import { ShoppingCart, MapPin, CreditCard, ArrowLeft, LogIn, LogOut, User, ShoppingBag, Store, Wallet, Info } from 'lucide-react'
+import { ShoppingCart, MapPin, CreditCard, ArrowLeft, LogIn, LogOut, User, ShoppingBag, Store, Wallet, Info, AlertCircle } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import Link from 'next/link'
 
@@ -297,6 +297,16 @@ export default function CheckoutPage() {
   }
 
   const handleAddressConfirmed = async (address: DeliveryAddress) => {
+    // Check minimum order for delivery before proceeding
+    if (subtotal < minOrder) {
+      toast({
+        title: "Minimum order not met",
+        description: `Add $${(minOrder - subtotal).toFixed(2)} more for delivery, or switch to pickup`,
+        variant: "destructive",
+      })
+      return
+    }
+    
     setSelectedAddress(address)
     // Sync delivery_instructions from address form to orderNotes for API
     if (address.delivery_instructions) {
@@ -498,34 +508,9 @@ export default function CheckoutPage() {
     return null // Will redirect to restaurant menu
   }
 
-  // Check minimum order - only block if user has explicitly selected delivery AND is below minimum
-  // Pickup orders have no minimum, so we let users proceed to checkout first
-  const shouldBlockForMinimum = orderTypeSelected && effectiveOrderType === 'delivery' && subtotal < minOrder
-  if (shouldBlockForMinimum) {
-    return (
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <Card>
-          <CardHeader>
-            <CardTitle>Minimum Order Not Met</CardTitle>
-            <CardDescription>
-              The minimum order for delivery at {restaurantName} is ${minOrder.toFixed(2)}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground mb-4">
-              Your current subtotal is ${subtotal.toFixed(2)}. Please add ${(minOrder - subtotal).toFixed(2)} more to your order, or choose pickup instead.
-            </p>
-            <Button asChild data-testid="button-back-to-menu">
-              <Link href={`/r/${restaurantSlug}`}>
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Menu
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
+  // Compute minimum order violation for delivery (inline warning, not blocking redirect)
+  // Pickup orders have no minimum requirement
+  const isDeliveryMinViolation = effectiveOrderType === 'delivery' && subtotal < minOrder
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -596,6 +581,19 @@ export default function CheckoutPage() {
             <Store className="h-4 w-4 text-blue-600 dark:text-blue-400" />
             <AlertDescription className="text-blue-700 dark:text-blue-300">
               <span className="font-medium">Pickup Order</span> — This restaurant only offers pickup. Your order will be ready for collection at the restaurant.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Delivery Minimum Order Warning - Inline warning instead of blocking redirect */}
+        {isDeliveryMinViolation && (
+          <Alert className="mb-6 bg-amber-50 border-amber-200 dark:bg-amber-950 dark:border-amber-800">
+            <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            <AlertDescription className="text-amber-700 dark:text-amber-300">
+              <span className="font-medium">Minimum order for delivery is ${minOrder.toFixed(2)}</span> — Your subtotal is ${subtotal.toFixed(2)}. Add ${(minOrder - subtotal).toFixed(2)} more or switch to pickup (no minimum).
+              <Button asChild variant="link" className="h-auto p-0 ml-2 text-amber-700 dark:text-amber-300 underline">
+                <Link href={`/r/${restaurantSlug}`}>Add more items</Link>
+              </Button>
             </AlertDescription>
           </Alert>
         )}
