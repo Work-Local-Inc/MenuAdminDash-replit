@@ -69,6 +69,7 @@ export default function CheckoutPage() {
     getTotal, 
     minOrder,
     orderType,
+    orderTypeSelected,
     pickupTime,
     clearCart,
     appliedPromo
@@ -497,20 +498,22 @@ export default function CheckoutPage() {
     return null // Will redirect to restaurant menu
   }
 
-  // Check minimum order
-  if (subtotal < minOrder) {
+  // Check minimum order - only block if user has explicitly selected delivery AND is below minimum
+  // Pickup orders have no minimum, so we let users proceed to checkout first
+  const shouldBlockForMinimum = orderTypeSelected && effectiveOrderType === 'delivery' && subtotal < minOrder
+  if (shouldBlockForMinimum) {
     return (
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <Card>
           <CardHeader>
             <CardTitle>Minimum Order Not Met</CardTitle>
             <CardDescription>
-              The minimum order for {restaurantName} is ${minOrder.toFixed(2)}
+              The minimum order for delivery at {restaurantName} is ${minOrder.toFixed(2)}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-muted-foreground mb-4">
-              Your current subtotal is ${subtotal.toFixed(2)}. Please add ${(minOrder - subtotal).toFixed(2)} more to your order.
+              Your current subtotal is ${subtotal.toFixed(2)}. Please add ${(minOrder - subtotal).toFixed(2)} more to your order, or choose pickup instead.
             </p>
             <Button asChild data-testid="button-back-to-menu">
               <Link href={`/r/${restaurantSlug}`}>
