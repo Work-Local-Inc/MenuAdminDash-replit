@@ -54,6 +54,7 @@ interface CartStore {
   
   // Order type
   orderType: OrderType;
+  orderTypeSelected: boolean; // Has user explicitly chosen delivery/pickup?
   pickupTime: PickupTime;
   
   // Cart items
@@ -142,6 +143,7 @@ export const useCartStore = create<CartStore>()(
       deliveryFee: 0,
       minOrder: 0,
       orderType: 'delivery' as OrderType,
+      orderTypeSelected: false, // Not explicitly chosen yet
       pickupTime: { type: 'asap' } as PickupTime,
       items: [],
       appliedPromo: null,
@@ -216,9 +218,9 @@ export const useCartStore = create<CartStore>()(
         const currentType = get().orderType;
         if (currentType !== type) {
           // Reset to ASAP when switching order types
-          set({ orderType: type, pickupTime: { type: 'asap' } });
+          set({ orderType: type, orderTypeSelected: true, pickupTime: { type: 'asap' } });
         } else {
-          set({ orderType: type });
+          set({ orderType: type, orderTypeSelected: true });
         }
       },
       
@@ -305,6 +307,7 @@ export const useCartStore = create<CartStore>()(
           deliveryFee: 0,
           minOrder: 0,
           orderType: 'delivery',
+          orderTypeSelected: false,
           pickupTime: { type: 'asap' },
           items: [],
           appliedPromo: null,
@@ -360,7 +363,13 @@ export const useCartStore = create<CartStore>()(
       // Get effective delivery fee (0 for pickup orders)
       getEffectiveDeliveryFee: () => {
         const orderType = get().orderType;
+        const orderTypeSelected = get().orderTypeSelected;
         const promo = get().appliedPromo;
+        
+        // Don't show delivery fee until user has explicitly chosen delivery/pickup
+        if (!orderTypeSelected) {
+          return 0;
+        }
         
         // Free delivery promo
         if (promo?.type === 'delivery') {
