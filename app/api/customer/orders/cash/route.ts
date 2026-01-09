@@ -95,6 +95,8 @@ export async function POST(request: NextRequest) {
       .eq('restaurant_id', restaurant.id)
 
     if (dishesError || !dishesData) {
+      console.error('[Cash Order API] Dishes query error:', dishesError)
+      console.error('[Cash Order API] dishIds:', dishIds, 'restaurantId:', restaurant.id)
       return NextResponse.json({ error: 'Failed to validate dishes' }, { status: 500 })
     }
 
