@@ -53,6 +53,7 @@ Preferred communication style: Simple, everyday language.
 -   **ID Mapping**: Handles `combo_groups.restaurant_id` (V3 IDs) vs. `dishes.restaurant_id` (legacy_v1_id) via API.
 -   **Terminology**: "Template" in database translates to "modifier" or "modifier group" in UI/code.
 -   **Combo Modifier Hierarchy**: `combo_groups` → `combo_group_sections` → `combo_modifier_groups` → `combo_modifiers`.
+-   **Multilingual Database Architecture**: The `menuca_v3.dishes` table does NOT have a direct `name` column. Dish names are stored in translation/localization tables and joined via the `get_restaurant_menu` RPC function. **Order validation APIs must use this RPC** rather than direct table queries to access dish metadata including names.
 
 ## External Dependencies
 

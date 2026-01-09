@@ -89,22 +89,37 @@ export async function POST(request: NextRequest) {
       cart_items.flatMap((item: any) => item.modifiers?.map((mod: any) => mod.id) || [])
     ))
 
-    // Use RPC for reliable schema-aware dish validation
-    const { data: dishesData, error: dishesError } = await (adminSupabase as any)
+    // Validate dishes exist using the menu RPC (same source as customer-facing menu)
+    const { data: menuData, error: menuError } = await (adminSupabase as any)
       .schema('menuca_v3')
-      .rpc('validate_order_dishes', {
-        p_dish_ids: dishIds,
-        p_restaurant_id: restaurant.id
+      .rpc('get_restaurant_menu', {
+        p_restaurant_id: restaurant.id,
+        p_language_code: 'en'
       })
 
-    if (dishesError || !dishesData || dishesData.length === 0) {
-      console.error('[Cash Order API] Dishes validation error:', dishesError)
-      console.error('[Cash Order API] dishIds:', dishIds, 'restaurantId:', restaurant.id)
+    if (menuError) {
+      console.error('[Cash Order API] Menu fetch error:', menuError)
       return NextResponse.json({ error: 'Failed to validate dishes' }, { status: 500 })
     }
 
+    // Build a map of all valid dishes from the menu
     const dishMap = new Map<number, { id: number; restaurant_id: number; name: string }>()
-    dishesData.forEach((dish: any) => dishMap.set(dish.id, dish))
+    menuData?.courses?.forEach((course: any) => {
+      course.dishes?.forEach((dish: any) => {
+        dishMap.set(dish.id, {
+          id: dish.id,
+          restaurant_id: restaurant.id,
+          name: dish.name || 'Unknown'
+        })
+      })
+    })
+
+    // Validate all requested dishes exist in the menu
+    const missingDishes = dishIds.filter((id: number) => !dishMap.has(id))
+    if (missingDishes.length > 0) {
+      console.error('[Cash Order API] Dishes not found in menu:', missingDishes)
+      return NextResponse.json({ error: 'Some dishes are not available' }, { status: 400 })
+    }
 
     const { data: dishPricesData } = await (adminSupabase as any)
       .schema('menuca_v3')

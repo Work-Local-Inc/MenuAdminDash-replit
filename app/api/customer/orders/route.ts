@@ -240,22 +240,37 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No dishes found in cart' }, { status: 400 })
     }
 
-    const { data: dishesData, error: dishesError } = await (adminSupabase as any)
+    // Validate dishes exist using the menu RPC (same source as customer-facing menu)
+    const { data: menuData, error: menuError } = await (adminSupabase as any)
       .schema('menuca_v3')
-      .from('dishes')
-      .select('id, restaurant_id, name')
-      .in('id', dishIds)
-      .eq('restaurant_id', restaurant.id)
+      .rpc('get_restaurant_menu', {
+        p_restaurant_id: restaurant.id,
+        p_language_code: 'en'
+      })
 
-    if (dishesError) {
-      console.error('[Order API] Dish preload error:', dishesError)
+    if (menuError) {
+      console.error('[Order API] Menu fetch error:', menuError)
       return NextResponse.json({ error: 'Failed to validate dishes' }, { status: 500 })
     }
 
+    // Build a map of all valid dishes from the menu
     const dishMap = new Map<number, { id: number; restaurant_id: number; name: string }>()
-    dishesData?.forEach((dish: any) => {
-      dishMap.set(dish.id, dish)
+    menuData?.courses?.forEach((course: any) => {
+      course.dishes?.forEach((dish: any) => {
+        dishMap.set(dish.id, {
+          id: dish.id,
+          restaurant_id: restaurant.id,
+          name: dish.name || 'Unknown'
+        })
+      })
     })
+
+    // Validate all requested dishes exist in the menu
+    const missingDishes = dishIds.filter((id: number) => !dishMap.has(id))
+    if (missingDishes.length > 0) {
+      console.error('[Order API] Dishes not found in menu:', missingDishes)
+      return NextResponse.json({ error: 'Some dishes are not available' }, { status: 400 })
+    }
 
     const { data: dishPricesData, error: dishPricesError } = await (adminSupabase as any)
       .schema('menuca_v3')
