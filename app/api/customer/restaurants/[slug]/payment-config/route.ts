@@ -1,0 +1,62 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { extractIdFromSlug } from '@/lib/utils/slugify'
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { slug: string } }
+) {
+  try {
+    const { slug } = params
+    const restaurantId = extractIdFromSlug(slug)
+    
+    if (!restaurantId) {
+      return NextResponse.json({ error: 'Invalid restaurant slug' }, { status: 400 })
+    }
+    
+    const adminSupabase = createAdminClient() as any
+    
+    // Fetch restaurant's payment mode from service config
+    const { data: config, error } = await adminSupabase
+      .from('delivery_and_pickup_configs')
+      .select('payment_mode')
+      .eq('restaurant_id', restaurantId)
+      .maybeSingle()
+    
+    if (error) {
+      console.error('[PaymentConfig] Error fetching config:', error)
+    }
+    
+    // Default to test mode if not set
+    const paymentMode = config?.payment_mode || 'test'
+    
+    // Return the appropriate publishable key based on payment mode
+    let publishableKey: string | undefined
+    
+    if (paymentMode === 'live') {
+      // Use live publishable key for real payments
+      publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY || process.env.VITE_STRIPE_PUBLIC_KEY
+      console.log('[PaymentConfig] Restaurant', restaurantId, '- LIVE mode, key prefix:', publishableKey?.substring(0, 10))
+    } else {
+      // Use test publishable key for testing
+      publishableKey = process.env.NEXT_PUBLIC_TESTING_VITE_STRIPE_PUBLIC_KEY || process.env.TESTING_VITE_STRIPE_PUBLIC_KEY
+      console.log('[PaymentConfig] Restaurant', restaurantId, '- TEST mode, key prefix:', publishableKey?.substring(0, 10))
+    }
+    
+    if (!publishableKey) {
+      console.error('[PaymentConfig] Missing Stripe publishable key for mode:', paymentMode)
+      return NextResponse.json({ 
+        error: `Missing Stripe publishable key for ${paymentMode} mode` 
+      }, { status: 500 })
+    }
+    
+    return NextResponse.json({
+      paymentMode,
+      publishableKey,
+    })
+    
+  } catch (error) {
+    console.error('[PaymentConfig] Unexpected error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}

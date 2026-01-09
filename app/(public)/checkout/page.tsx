@@ -1,11 +1,11 @@
 "use client"
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCartStore } from '@/lib/stores/cart-store'
 import { createClient } from '@/lib/supabase/client'
 import { Elements } from '@stripe/react-stripe-js'
-import { loadStripe } from '@stripe/stripe-js'
+import { loadStripe, Stripe } from '@stripe/stripe-js'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
@@ -24,16 +24,8 @@ import { ShoppingCart, MapPin, CreditCard, ArrowLeft, LogIn, LogOut, User, Shopp
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import Link from 'next/link'
 
-// Use production Stripe key if available, fall back to test key
-const stripeKey = process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY || 
-                  process.env.NEXT_PUBLIC_TESTING_VITE_STRIPE_PUBLIC_KEY
-
-if (!stripeKey) {
-  throw new Error('Missing Stripe publishable key. Set NEXT_PUBLIC_STRIPE_PUBLIC_KEY or NEXT_PUBLIC_TESTING_VITE_STRIPE_PUBLIC_KEY in environment variables.')
-}
-
-console.log('[Checkout] Using Stripe publishable key:', stripeKey.substring(0, 10) + '...')
-const stripePromise = loadStripe(stripeKey)
+// Cache loaded Stripe instances by publishable key to avoid multiple loads
+const stripeCache = new Map<string, Promise<Stripe | null>>()
 
 interface DeliveryAddress {
   id?: number
@@ -108,6 +100,8 @@ export default function CheckoutPage() {
   const [serviceConfig, setServiceConfig] = useState<{ has_delivery_enabled?: boolean; pickup_enabled?: boolean } | null>(null)
   const [serviceConfigLoading, setServiceConfigLoading] = useState(true) // Start as loading to prevent flash
   const [orderNotes, setOrderNotes] = useState('')
+  const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null)
+  const [stripeLoading, setStripeLoading] = useState(true)
 
   // Derived checkout mode - determines if we're in pickup-only, delivery-only, or both mode
   const isPickupOnly = serviceConfig && !serviceConfig.has_delivery_enabled && serviceConfig.pickup_enabled
@@ -130,6 +124,56 @@ export default function CheckoutPage() {
   useEffect(() => {
     console.log('[Checkout] ⭐ loading state changed:', loading)
   }, [loading])
+  
+  // Fetch payment config and load Stripe dynamically based on restaurant's payment mode
+  useEffect(() => {
+    const loadStripeForRestaurant = async () => {
+      if (!restaurantSlug) {
+        console.log('[Checkout] No restaurant slug, skipping Stripe load')
+        return
+      }
+      
+      setStripeLoading(true)
+      
+      try {
+        console.log('[Checkout] Fetching payment config for:', restaurantSlug)
+        const response = await fetch(`/api/customer/restaurants/${restaurantSlug}/payment-config`)
+        
+        if (!response.ok) {
+          console.error('[Checkout] Failed to fetch payment config')
+          setStripeLoading(false)
+          return
+        }
+        
+        const { publishableKey, paymentMode } = await response.json()
+        console.log('[Checkout] Payment config received - mode:', paymentMode, 'key prefix:', publishableKey?.substring(0, 10))
+        
+        if (!publishableKey) {
+          console.error('[Checkout] No publishable key returned from payment config')
+          setStripeLoading(false)
+          return
+        }
+        
+        // Use cached Stripe instance or load new one
+        let promise = stripeCache.get(publishableKey)
+        if (!promise) {
+          console.log('[Checkout] Loading Stripe with key:', publishableKey.substring(0, 10) + '...')
+          promise = loadStripe(publishableKey)
+          stripeCache.set(publishableKey, promise)
+        } else {
+          console.log('[Checkout] Using cached Stripe instance')
+        }
+        
+        setStripePromise(promise)
+        setStripeLoading(false)
+      } catch (error) {
+        console.error('[Checkout] Error loading Stripe:', error)
+        setStripeLoading(false)
+      }
+    }
+    
+    loadStripeForRestaurant()
+  }, [restaurantSlug])
   
   // Combined data fetching - run all API calls in parallel for speed
   useEffect(() => {
@@ -838,7 +882,7 @@ export default function CheckoutPage() {
             )}
 
             {/* Step Content - Stripe Payment (only for credit card) */}
-            {step === 'payment' && clientSecret && selectedAddress && (
+            {step === 'payment' && clientSecret && selectedAddress && stripePromise && (
               <Elements stripe={stripePromise} options={{ clientSecret }}>
                 <CheckoutPaymentForm 
                   clientSecret={clientSecret}
@@ -851,6 +895,17 @@ export default function CheckoutPage() {
                   brandedButtonStyle={brandedButtonStyle}
                 />
               </Elements>
+            )}
+            {/* Show loading if Stripe not ready yet */}
+            {step === 'payment' && clientSecret && selectedAddress && !stripePromise && (
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin w-6 h-6 border-3 border-primary border-t-transparent rounded-full mr-3" />
+                    <span className="text-muted-foreground">Loading payment...</span>
+                  </div>
+                </CardContent>
+              </Card>
             )}
           </div>
 
