@@ -23,6 +23,8 @@ import { useToast } from '@/hooks/use-toast'
 import { ShoppingCart, MapPin, CreditCard, ArrowLeft, LogIn, LogOut, User, ShoppingBag, Store, Wallet, Info, AlertCircle } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import Link from 'next/link'
+import { trackBeginCheckout, trackAddPaymentInfo, trackPurchase } from '@/lib/analytics'
+import { AnalyticsProvider } from '@/components/providers/analytics-provider'
 
 // Cache loaded Stripe instances by publishable key to avoid multiple loads
 const stripeCache = new Map<string, Promise<Stripe | null>>()
@@ -54,6 +56,7 @@ export default function CheckoutPage() {
     restaurantSlug, 
     restaurantAddress,
     restaurantPrimaryColor,
+    gaMeasurementId,
     getSubtotal, 
     getDiscount,
     getEffectiveDeliveryFee, 
@@ -296,6 +299,36 @@ export default function CheckoutPage() {
     }
   }, [items, loading, restaurantSlug, router, toast, orderPlacedSuccessfully])
 
+  // Hydrate gaMeasurementId if missing (handles direct checkout entry from saved cart)
+  const { setGaMeasurementId } = useCartStore()
+  useEffect(() => {
+    if (!gaMeasurementId && restaurantSlug) {
+      fetch(`/api/customer/restaurants/${restaurantSlug}/analytics`)
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data?.ga_measurement_id) {
+            setGaMeasurementId(data.ga_measurement_id)
+          }
+        })
+        .catch(() => {})
+    }
+  }, [gaMeasurementId, restaurantSlug, setGaMeasurementId])
+
+  // Track begin_checkout event when checkout page loads with items and GA is ready
+  const hasTrackedBeginCheckout = useRef(false)
+  useEffect(() => {
+    if (!loading && items.length > 0 && gaMeasurementId && !hasTrackedBeginCheckout.current) {
+      hasTrackedBeginCheckout.current = true
+      const cartItems = items.map(item => ({
+        id: item.dishId,
+        name: item.dishName,
+        price: item.sizePrice,
+        quantity: item.quantity
+      }))
+      trackBeginCheckout(cartItems, getTotal())
+    }
+  }, [loading, items, gaMeasurementId])
+
   const subtotal = getSubtotal()
   const discount = getDiscount()
   const effectiveDeliveryFee = getEffectiveDeliveryFee()
@@ -430,6 +463,9 @@ export default function CheckoutPage() {
   const handlePaymentMethodSelected = async (paymentMethod: string) => {
     console.log('[Checkout] Payment method selected:', paymentMethod)
     setSelectedPaymentMethod(paymentMethod)
+    
+    // Track payment method selection for GA
+    trackAddPaymentInfo(paymentMethod, getTotal())
 
     if (paymentMethod === 'credit_card') {
       // Credit card: Create payment intent and go to Stripe payment form
@@ -513,6 +549,15 @@ export default function CheckoutPage() {
         const data = await response.json()
         console.log('[Checkout] Cash order created:', data)
         
+        // Track purchase event for GA before clearing cart
+        const cartItems = items.map(item => ({
+          id: item.dishId,
+          name: item.dishName,
+          price: item.sizePrice,
+          quantity: item.quantity
+        }))
+        trackPurchase(String(data.order_id), getTotal(), cartItems, getTax(), getEffectiveDeliveryFee())
+        
         // Set flag BEFORE clearing cart to prevent empty cart redirect
         setOrderPlacedSuccessfully(true)
         
@@ -557,6 +602,7 @@ export default function CheckoutPage() {
   const isDeliveryMinViolation = effectiveOrderType === 'delivery' && subtotal < minOrder
 
   return (
+    <AnalyticsProvider measurementId={gaMeasurementId}>
     <div className="min-h-screen bg-muted/30">
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         {/* Header */}
@@ -1004,5 +1050,6 @@ export default function CheckoutPage() {
         onSuccess={handleSignInSuccess}
       />
     </div>
+    </AnalyticsProvider>
   )
 }

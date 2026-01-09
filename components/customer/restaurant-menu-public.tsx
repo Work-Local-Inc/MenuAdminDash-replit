@@ -27,6 +27,7 @@ interface RestaurantMenuPublicProps {
   courses: any[]
   hasMenu?: boolean
   slug?: string // Actual URL slug from the page
+  gaMeasurementId?: string | null // For GA tracking on checkout
 }
 
 export default function RestaurantMenuPublic({
@@ -34,6 +35,7 @@ export default function RestaurantMenuPublic({
   courses,
   hasMenu = true,
   slug: urlSlug,
+  gaMeasurementId,
 }: RestaurantMenuPublicProps) {
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -80,8 +82,8 @@ export default function RestaurantMenuPublic({
       : undefined
 
     // Use the restaurantSlug which prefers urlSlug if provided
-    setRestaurant(restaurant.id, restaurant.name, restaurantSlug, deliveryFee, minOrder, address, brandColors.primary)
-  }, [restaurant.id, restaurant.name, restaurant.restaurant_delivery_areas, serviceConfig, setRestaurant, streetAddress, postalCode, brandColors.primary, restaurantSlug])
+    setRestaurant(restaurant.id, restaurant.name, restaurantSlug, deliveryFee, minOrder, address, brandColors.primary, gaMeasurementId)
+  }, [restaurant.id, restaurant.name, restaurant.restaurant_delivery_areas, serviceConfig, setRestaurant, streetAddress, postalCode, brandColors.primary, restaurantSlug, gaMeasurementId])
 
   const scrollToCategory = (courseId: string) => {
     const element = document.getElementById(`category-${courseId}`)

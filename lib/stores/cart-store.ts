@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import { trackAddToCart, trackRemoveFromCart } from '@/lib/analytics';
 
 export type OrderType = 'delivery' | 'pickup';
 
@@ -49,6 +50,7 @@ interface CartStore {
   restaurantSlug: string | null;
   restaurantAddress: string | null; // For pickup display
   restaurantPrimaryColor: string | null; // For branded checkout
+  gaMeasurementId: string | null; // For GA tracking on checkout
   deliveryFee: number;
   minOrder: number;
   
@@ -64,7 +66,8 @@ interface CartStore {
   appliedPromo: AppliedPromo | null;
   
   // Actions
-  setRestaurant: (id: number, name: string, slug: string, deliveryFee: number, minOrder: number, address?: string, primaryColor?: string) => void;
+  setRestaurant: (id: number, name: string, slug: string, deliveryFee: number, minOrder: number, address?: string, primaryColor?: string, gaMeasurementId?: string | null) => void;
+  setGaMeasurementId: (id: string | null) => void;
   setRestaurantAddress: (address: string) => void;
   setDeliveryFee: (fee: number) => void;
   setMinOrder: (minOrder: number) => void;
@@ -140,6 +143,7 @@ export const useCartStore = create<CartStore>()(
       restaurantSlug: null,
       restaurantAddress: null,
       restaurantPrimaryColor: null,
+      gaMeasurementId: null,
       deliveryFee: 0,
       minOrder: 0,
       orderType: 'delivery' as OrderType,
@@ -149,7 +153,7 @@ export const useCartStore = create<CartStore>()(
       appliedPromo: null,
       
       // Set restaurant info
-      setRestaurant: (id, name, slug, deliveryFee, minOrder, address, primaryColor) => {
+      setRestaurant: (id, name, slug, deliveryFee, minOrder, address, primaryColor, gaMeasurementId) => {
         const currentRestaurantId = get().restaurantId;
         
         // If switching to a different restaurant with items in cart, confirm clear
@@ -175,6 +179,7 @@ export const useCartStore = create<CartStore>()(
             restaurantSlug: slug,
             restaurantAddress: address || null,
             restaurantPrimaryColor: primaryColor || null,
+            gaMeasurementId: gaMeasurementId ?? null,
             deliveryFee,
             minOrder,
             orderType: 'delivery',
@@ -190,10 +195,16 @@ export const useCartStore = create<CartStore>()(
             restaurantSlug: slug,
             restaurantAddress: address || get().restaurantAddress,
             restaurantPrimaryColor: primaryColor ?? null,
+            gaMeasurementId: gaMeasurementId ?? get().gaMeasurementId,
             deliveryFee,
             minOrder,
           });
         }
+      },
+      
+      // Set GA measurement ID
+      setGaMeasurementId: (id) => {
+        set({ gaMeasurementId: id });
       },
       
       // Set restaurant address for pickup display
@@ -268,10 +279,17 @@ export const useCartStore = create<CartStore>()(
           // New item, add to cart
           set({ items: [...items, newItem] });
         }
+        
+        // Track add to cart event for GA
+        trackAddToCart(item.dishId, item.dishName, item.sizePrice, item.quantity);
       },
       
       // Remove item from cart
       removeItem: (itemId) => {
+        const itemToRemove = get().items.find(item => item.id === itemId);
+        if (itemToRemove) {
+          trackRemoveFromCart(itemToRemove.dishId, itemToRemove.dishName, itemToRemove.sizePrice, itemToRemove.quantity);
+        }
         set({ items: get().items.filter(item => item.id !== itemId) });
       },
       
@@ -304,6 +322,7 @@ export const useCartStore = create<CartStore>()(
           restaurantName: null,
           restaurantSlug: null,
           restaurantAddress: null,
+          gaMeasurementId: null,
           deliveryFee: 0,
           minOrder: 0,
           orderType: 'delivery',

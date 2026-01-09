@@ -2,8 +2,10 @@ import { notFound, redirect } from 'next/navigation';
 import { Metadata } from 'next';
 import { unstable_noStore as noStore } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { extractIdFromSlug, createRestaurantSlug } from '@/lib/utils/slugify';
 import RestaurantMenu from '@/components/customer/restaurant-menu-public';
+import { AnalyticsProvider } from '@/components/providers/analytics-provider';
 import type { RestaurantMenuResponse } from '@/lib/types/menu';
 import { hexToHSL, hasCustomBranding } from '@/lib/utils';
 
@@ -107,6 +109,26 @@ const getRestaurant = async (restaurantId: number) => {
   return data;
 };
 
+const getAnalyticsConfig = async (restaurantId: number): Promise<string | null> => {
+  try {
+    const adminClient = createAdminClient();
+    const { data, error } = await (adminClient as any)
+      .schema('menuca_v3')
+      .from('restaurant_analytics_configs')
+      .select('ga_measurement_id, is_enabled')
+      .eq('restaurant_id', restaurantId)
+      .eq('is_enabled', true)
+      .single();
+    
+    if (error || !data) {
+      return null;
+    }
+    return data.ga_measurement_id || null;
+  } catch {
+    return null;
+  }
+};
+
 export async function generateMetadata({ params }: RestaurantPageProps): Promise<Metadata> {
   const restaurantId = extractIdFromSlug(params.slug);
   
@@ -178,6 +200,9 @@ export default async function RestaurantPage({ params }: RestaurantPageProps) {
   
   console.log('[Restaurant Page] About to render RestaurantMenu component with courses:', courses.length);
   
+  // Fetch analytics config (non-blocking, returns null if not configured)
+  const gaMeasurementId = await getAnalyticsConfig(restaurantId);
+  
   // Build dynamic branding styles - use default warm color if restaurant has no custom color
   const effectivePrimaryColor = restaurant.primary_color || DEFAULT_PRIMARY_COLOR;
   const primaryColorHSL = hexToHSL(effectivePrimaryColor);
@@ -198,8 +223,10 @@ export default async function RestaurantPage({ params }: RestaurantPageProps) {
   } as React.CSSProperties;
   
   return (
-    <div style={dynamicStyle}>
-      <RestaurantMenu restaurant={restaurant} courses={courses} slug={params.slug} />
-    </div>
+    <AnalyticsProvider measurementId={gaMeasurementId}>
+      <div style={dynamicStyle}>
+        <RestaurantMenu restaurant={restaurant} courses={courses} slug={params.slug} gaMeasurementId={gaMeasurementId} />
+      </div>
+    </AnalyticsProvider>
   );
 }

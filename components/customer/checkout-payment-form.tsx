@@ -14,6 +14,7 @@ import { CardScannerModal } from '@/components/customer/card-scanner-modal'
 import { isMobileDevice, hasCamera } from '@/lib/utils/device'
 import { ScannedCardData } from '@/lib/utils/card-scanner'
 import { ArrowLeft, CreditCard, Camera, Shield, MapPin, ShoppingBag } from 'lucide-react'
+import { trackPurchase } from '@/lib/analytics'
 
 // Order confirmation block that shows either pickup location or delivery address
 function OrderConfirmationBlock({ deliveryAddress }: { deliveryAddress: DeliveryAddress }) {
@@ -90,7 +91,7 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
   const elements = useElements()
   const router = useRouter()
   const { toast } = useToast()
-  const { clearCart, restaurantSlug, restaurantPrimaryColor } = useCartStore()
+  const { clearCart, restaurantSlug, restaurantPrimaryColor, items, getTotal, getTax, getEffectiveDeliveryFee } = useCartStore()
   
   // Use passed style or create from store
   const buttonStyle = brandedButtonStyle || (restaurantPrimaryColor 
@@ -219,6 +220,16 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
         }
 
         const order = await orderResponse.json()
+
+        // Track purchase event for GA before redirect
+        const currentItems = useCartStore.getState().items
+        const cartItems = currentItems.map(item => ({
+          id: item.dishId,
+          name: item.dishName,
+          price: item.sizePrice,
+          quantity: item.quantity
+        }))
+        trackPurchase(String(order.id), getTotal(), cartItems, getTax(), getEffectiveDeliveryFee())
 
         // Build confirmation URL with payment intent as secure token for guest orders
         const confirmationUrl = deliveryAddress.email
