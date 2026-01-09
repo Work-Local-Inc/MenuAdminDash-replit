@@ -82,6 +82,24 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### Per-Restaurant Payment Mode Toggle (Jan 2026)
+**Status:** IMPLEMENTED
+**Purpose:** Enable gradual production rollout by allowing each restaurant to independently switch between test and live Stripe payments.
+**Key Features:**
+- Payment mode toggle in admin Payment Methods tab with clear test/live indicators
+- Visual warnings when switching to live mode
+- Fallback mechanism in orders API to try both test and live keys if needed
+- Payment mode stored in `payment_mode` field of `delivery_and_pickup_configs` table
+**How it works:**
+1. Admin sets payment mode via toggle in restaurant settings
+2. `create-payment-intent` API uses restaurant's configured mode
+3. `orders` API retrieves payment intents using configured mode, with fallback to alternate mode
+4. Payment mode is stored in payment intent metadata for reference
+**Files:** `components/restaurant/tabs/payment-methods.tsx`, `app/api/customer/create-payment-intent/route.ts`, `app/api/customer/orders/route.ts`, `app/api/restaurants/[id]/service-config/route.ts`
+**Database Migration:** `docs/payment-mode-migration.sql`
+**Default:** All restaurants default to test mode for safety
+**Security:** Stripe API keys stored only in Replit secrets, never in database
+
 ### Subdomain Routing for Branded URLs (Jan 2026)
 **Status:** IMPLEMENTED
 **Purpose:** Support branded subdomain URLs like `orchidsushiottawa.menu.ca` in addition to path-based `/r/orchid-sushi-245`.
