@@ -89,15 +89,16 @@ export async function POST(request: NextRequest) {
       cart_items.flatMap((item: any) => item.modifiers?.map((mod: any) => mod.id) || [])
     ))
 
+    // Use RPC for reliable schema-aware dish validation
     const { data: dishesData, error: dishesError } = await (adminSupabase as any)
       .schema('menuca_v3')
-      .from('dishes')
-      .select('id, restaurant_id, name')
-      .in('id', dishIds)
-      .eq('restaurant_id', restaurant.id)
+      .rpc('validate_order_dishes', {
+        p_dish_ids: dishIds,
+        p_restaurant_id: restaurant.id
+      })
 
-    if (dishesError || !dishesData) {
-      console.error('[Cash Order API] Dishes query error:', dishesError)
+    if (dishesError || !dishesData || dishesData.length === 0) {
+      console.error('[Cash Order API] Dishes validation error:', dishesError)
       console.error('[Cash Order API] dishIds:', dishIds, 'restaurantId:', restaurant.id)
       return NextResponse.json({ error: 'Failed to validate dishes' }, { status: 500 })
     }
