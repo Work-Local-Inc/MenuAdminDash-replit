@@ -28,12 +28,23 @@ interface DeliveryAddress {
   delivery_instructions?: string
 }
 
+interface PickupLocation {
+  name: string
+  address: string
+  city: string
+  province: string
+  postal_code: string
+  phone?: string
+}
+
 interface OrderConfirmationData {
   orderNumber: string
   restaurantName: string
   restaurantLogoUrl?: string
   items: OrderItem[]
-  deliveryAddress: DeliveryAddress
+  orderType: 'delivery' | 'pickup'
+  deliveryAddress?: DeliveryAddress
+  pickupLocation?: PickupLocation
   subtotal: number
   deliveryFee: number
   tax: number
@@ -157,6 +168,9 @@ async function sendEmailWithRetry<T>(
 
 function generateOrderConfirmationPlainText(data: OrderConfirmationData): string {
   const lines: string[] = []
+  const isPickup = data.orderType === 'pickup'
+  const timeLabel = isPickup ? 'Estimated Ready' : 'Estimated Delivery'
+  const defaultTime = isPickup ? '15-25 minutes' : '45-60 minutes'
   
   lines.push('========================================')
   lines.push('         MENU.CA ORDER CONFIRMATION')
@@ -170,7 +184,7 @@ function generateOrderConfirmationPlainText(data: OrderConfirmationData): string
   lines.push('ORDER DETAILS')
   lines.push('----------------------------------------')
   lines.push(`Order Number: #${data.orderNumber}`)
-  lines.push(`Estimated Delivery: ${data.estimatedDeliveryTime || '45-60 minutes'}`)
+  lines.push(`${timeLabel}: ${data.estimatedDeliveryTime || defaultTime}`)
   lines.push('')
   lines.push('----------------------------------------')
   lines.push('ITEMS ORDERED')
@@ -195,15 +209,27 @@ function generateOrderConfirmationPlainText(data: OrderConfirmationData): string
   lines.push(`TOTAL PAID:      $${data.total.toFixed(2)}`)
   lines.push('')
   lines.push('----------------------------------------')
-  lines.push('DELIVERY ADDRESS')
-  lines.push('----------------------------------------')
-  lines.push(data.deliveryAddress.street)
-  lines.push(`${data.deliveryAddress.city}, ${data.deliveryAddress.province} ${data.deliveryAddress.postal_code}`)
   
-  if (data.deliveryAddress.delivery_instructions) {
-    lines.push('')
-    lines.push('Delivery Instructions:')
-    lines.push(data.deliveryAddress.delivery_instructions)
+  if (isPickup && data.pickupLocation) {
+    lines.push('PICKUP LOCATION')
+    lines.push('----------------------------------------')
+    lines.push(data.pickupLocation.name)
+    lines.push(data.pickupLocation.address)
+    lines.push(`${data.pickupLocation.city}, ${data.pickupLocation.province} ${data.pickupLocation.postal_code}`)
+    if (data.pickupLocation.phone) {
+      lines.push(`Tel: ${data.pickupLocation.phone}`)
+    }
+  } else if (data.deliveryAddress) {
+    lines.push('DELIVERY ADDRESS')
+    lines.push('----------------------------------------')
+    lines.push(data.deliveryAddress.street)
+    lines.push(`${data.deliveryAddress.city}, ${data.deliveryAddress.province} ${data.deliveryAddress.postal_code}`)
+    
+    if (data.deliveryAddress.delivery_instructions) {
+      lines.push('')
+      lines.push('Delivery Instructions:')
+      lines.push(data.deliveryAddress.delivery_instructions)
+    }
   }
   
   lines.push('')

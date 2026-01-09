@@ -67,7 +67,8 @@ export async function POST(request: NextRequest) {
         id, 
         name,
         logo_url,
-        restaurant_delivery_areas(id, delivery_fee, delivery_min_order, is_active)
+        restaurant_delivery_areas(id, delivery_fee, delivery_min_order, is_active),
+        restaurant_locations(street_address, city_name, province, postal_code, phone)
       `)
       .eq('id', restaurantId)
       .single() as { 
@@ -75,7 +76,8 @@ export async function POST(request: NextRequest) {
           id: number; 
           name: string;
           logo_url: string | null;
-          restaurant_delivery_areas: { id: number; delivery_fee: number | null; delivery_min_order: number | null; is_active: boolean }[]
+          restaurant_delivery_areas: { id: number; delivery_fee: number | null; delivery_min_order: number | null; is_active: boolean }[];
+          restaurant_locations: { street_address: string; city_name: string; province: string; postal_code: string; phone: string | null }[]
         } | null; 
         error: any 
       }
@@ -84,7 +86,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Restaurant not found' }, { status: 404 })
     }
 
-    const dishIds = Array.from(new Set(cart_items.map((item: any) => item.dishId)))
+    const dishIds: number[] = Array.from(new Set(cart_items.map((item: any) => item.dishId as number)))
     const modifierIds = Array.from(new Set(
       cart_items.flatMap((item: any) => item.modifiers?.map((mod: any) => mod.id) || [])
     ))
@@ -397,11 +399,15 @@ export async function POST(request: NextRequest) {
           })}`
         }
 
+        // Get restaurant location for pickup orders
+        const restaurantLocation = restaurant.restaurant_locations?.[0]
+        
         await sendOrderConfirmationEmail({
           customerEmail: email,
           orderNumber: order.id.toString(),
           restaurantName: restaurant.name,
           restaurantLogoUrl: restaurant.logo_url || undefined,
+          orderType: order_type as 'delivery' | 'pickup',
           items: validatedItems.map(i => ({
             dish_id: i.dish_id,
             name: i.dish_name,
@@ -416,13 +422,24 @@ export async function POST(request: NextRequest) {
           deliveryFee: deliveryFee,
           total: serverTotal,
           estimatedDeliveryTime: estimatedTime,
-          deliveryAddress: {
-            street: delivery_address.street_address || '',
-            city: delivery_address.city || delivery_address.city_name || '',
-            province: delivery_address.province || 'ON',
-            postal_code: delivery_address.postal_code || '',
-            delivery_instructions: delivery_address.delivery_instructions,
-          },
+          ...(order_type === 'pickup' && restaurantLocation ? {
+            pickupLocation: {
+              name: restaurant.name,
+              address: restaurantLocation.street_address || '',
+              city: restaurantLocation.city_name || '',
+              province: restaurantLocation.province || 'ON',
+              postal_code: restaurantLocation.postal_code || '',
+              phone: restaurantLocation.phone || undefined,
+            }
+          } : {
+            deliveryAddress: {
+              street: delivery_address.street_address || '',
+              city: delivery_address.city || delivery_address.city_name || '',
+              province: delivery_address.province || 'ON',
+              postal_code: delivery_address.postal_code || '',
+              delivery_instructions: delivery_address.delivery_instructions,
+            }
+          }),
         })
         console.log('[Cash Order API] ✅ Order confirmation email sent successfully to:', email)
       } catch (emailError: any) {

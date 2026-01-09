@@ -36,12 +36,21 @@ interface OrderConfirmationEmailProps {
   restaurantName: string
   restaurantLogoUrl?: string
   items: OrderItem[]
-  deliveryAddress: {
+  orderType: 'delivery' | 'pickup'
+  deliveryAddress?: {
     street: string
     city: string
     province: string
     postal_code: string
     delivery_instructions?: string
+  }
+  pickupLocation?: {
+    name: string
+    address: string
+    city: string
+    province: string
+    postal_code: string
+    phone?: string
   }
   subtotal: number
   deliveryFee: number
@@ -66,14 +75,20 @@ export default function OrderConfirmationEmail({
   restaurantName,
   restaurantLogoUrl,
   items,
+  orderType,
   deliveryAddress,
+  pickupLocation,
   subtotal,
   deliveryFee,
   tax,
   taxLabel = 'Tax',
   total,
-  estimatedDeliveryTime = '45-60 minutes',
+  estimatedDeliveryTime,
 }: OrderConfirmationEmailProps) {
+  const isPickup = orderType === 'pickup'
+  const timeLabel = isPickup ? 'Estimated Ready' : 'Estimated Delivery'
+  const defaultTime = isPickup ? '15-25 minutes' : '45-60 minutes'
+  const displayTime = estimatedDeliveryTime || defaultTime
   const headerLogo = getEmailSafeLogo(restaurantLogoUrl)
   const headerAlt = headerLogo !== LOGO_URL ? restaurantName : 'Menu.ca'
   
@@ -83,7 +98,7 @@ export default function OrderConfirmationEmail({
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="x-apple-disable-message-reformatting" />
       </Head>
-      <Preview>Your order #{orderNumber} from {restaurantName} has been confirmed! Estimated delivery: {estimatedDeliveryTime}</Preview>
+      <Preview>{`Your order #${orderNumber} from ${restaurantName} has been confirmed! ${isPickup ? 'Ready for pickup' : 'Estimated delivery'}: ${displayTime}`}</Preview>
       <Body style={main}>
         <Container style={container}>
           <Section style={brandHeader}>
@@ -116,8 +131,8 @@ export default function OrderConfirmationEmail({
                   <Text style={orderNumberLarge}>#{orderNumber}</Text>
                 </td>
                 <td style={orderSummaryRightCell}>
-                  <Text style={orderLabelRight}>Estimated Delivery</Text>
-                  <Text style={estimatedTimeValue}>{estimatedDeliveryTime}</Text>
+                  <Text style={orderLabelRight}>{timeLabel}</Text>
+                  <Text style={estimatedTimeValue}>{displayTime}</Text>
                 </td>
               </tr>
             </table>
@@ -191,19 +206,34 @@ export default function OrderConfirmationEmail({
 
           <Section style={section}>
             <Heading as="h2" style={h2}>
-              Delivery Address
+              {isPickup ? 'Pickup Location' : 'Delivery Address'}
             </Heading>
             <div style={addressBox}>
-              <Text style={address}>
-                {deliveryAddress.street}<br />
-                {deliveryAddress.city}, {deliveryAddress.province} {deliveryAddress.postal_code}
-              </Text>
-              {deliveryAddress.delivery_instructions && (
-                <div style={instructionsBox}>
-                  <Text style={instructionsLabel}>Delivery Instructions:</Text>
-                  <Text style={instructions}>{deliveryAddress.delivery_instructions}</Text>
-                </div>
-              )}
+              {isPickup && pickupLocation ? (
+                <>
+                  <Text style={addressBold}>{pickupLocation.name}</Text>
+                  <Text style={address}>
+                    {pickupLocation.address}<br />
+                    {pickupLocation.city}, {pickupLocation.province} {pickupLocation.postal_code}
+                  </Text>
+                  {pickupLocation.phone && (
+                    <Text style={phoneText}>Tel: {pickupLocation.phone}</Text>
+                  )}
+                </>
+              ) : deliveryAddress ? (
+                <>
+                  <Text style={address}>
+                    {deliveryAddress.street}<br />
+                    {deliveryAddress.city}, {deliveryAddress.province} {deliveryAddress.postal_code}
+                  </Text>
+                  {deliveryAddress.delivery_instructions && (
+                    <div style={instructionsBox}>
+                      <Text style={instructionsLabel}>Delivery Instructions:</Text>
+                      <Text style={instructions}>{deliveryAddress.delivery_instructions}</Text>
+                    </div>
+                  )}
+                </>
+              ) : null}
             </div>
           </Section>
 
@@ -472,6 +502,20 @@ const address = {
   fontSize: '14px',
   lineHeight: '22px',
   margin: '0',
+}
+
+const addressBold = {
+  color: '#1f2937',
+  fontSize: '16px',
+  fontWeight: '600',
+  lineHeight: '24px',
+  margin: '0 0 4px',
+}
+
+const phoneText = {
+  color: '#6b7280',
+  fontSize: '14px',
+  margin: '8px 0 0',
 }
 
 const instructionsBox = {

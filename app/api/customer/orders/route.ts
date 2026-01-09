@@ -209,7 +209,8 @@ export async function POST(request: NextRequest) {
         id, 
         name,
         logo_url,
-        restaurant_delivery_areas(id, delivery_fee, delivery_min_order, is_active)
+        restaurant_delivery_areas(id, delivery_fee, delivery_min_order, is_active),
+        restaurant_locations(street_address, city_name, province, postal_code, phone)
       `)
       .eq('id', restaurantId)
       .single() as { 
@@ -217,7 +218,8 @@ export async function POST(request: NextRequest) {
           id: number; 
           name: string;
           logo_url: string | null;
-          restaurant_delivery_areas: { id: number; delivery_fee: number | null; delivery_min_order: number | null; is_active: boolean }[]
+          restaurant_delivery_areas: { id: number; delivery_fee: number | null; delivery_min_order: number | null; is_active: boolean }[];
+          restaurant_locations: { street_address: string; city_name: string; province: string; postal_code: string; phone: string | null }[]
         } | null; 
         error: any 
       }
@@ -231,7 +233,7 @@ export async function POST(request: NextRequest) {
     console.log('[Order API] Found restaurant:', restaurant.id, restaurant.name)
 
     // Preload dishes, prices, and modifiers to avoid per-item round trips
-    const dishIds = Array.from(new Set(cart_items.map((item: any) => item.dishId)))
+    const dishIds: number[] = Array.from(new Set(cart_items.map((item: any) => item.dishId as number)))
     const modifierIds = Array.from(new Set(
       cart_items.flatMap((item: any) => item.modifiers?.map((mod: any) => mod.id) || [])
     ))
@@ -803,18 +805,33 @@ export async function POST(request: NextRequest) {
           estimatedTime = orderType === 'pickup' ? 'ASAP (Pickup)' : 'ASAP (Delivery)'
         }
         
+        // Get restaurant location for pickup orders
+        const restaurantLocation = restaurant.restaurant_locations?.[0]
+        
         await sendOrderConfirmationEmail({
           orderNumber: order.id.toString(),
           restaurantName: restaurant.name,
           restaurantLogoUrl: restaurant.logo_url || undefined,
+          orderType: orderType as 'delivery' | 'pickup',
           items: validatedItems,
-          deliveryAddress: delivery_address,
           subtotal: finalSubtotal,
           deliveryFee: finalDeliveryFee,
           tax: finalTax,
           total: finalTotal,
           customerEmail,
           estimatedDeliveryTime: estimatedTime,
+          ...(orderType === 'pickup' && restaurantLocation ? {
+            pickupLocation: {
+              name: restaurant.name,
+              address: restaurantLocation.street_address || '',
+              city: restaurantLocation.city_name || '',
+              province: restaurantLocation.province || 'ON',
+              postal_code: restaurantLocation.postal_code || '',
+              phone: restaurantLocation.phone || undefined,
+            }
+          } : {
+            deliveryAddress: delivery_address
+          }),
         })
         console.log('[Order API] ✅ Order confirmation email sent successfully to:', customerEmail)
       } catch (emailError: any) {
