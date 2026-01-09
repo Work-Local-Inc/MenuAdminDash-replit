@@ -60,7 +60,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid restaurant identifier' }, { status: 400 })
     }
 
-    const { data: restaurant, error: restaurantError } = await adminSupabase
+    const { data: restaurant, error: restaurantError } = await (adminSupabase as any)
+      .schema('menuca_v3')
       .from('restaurants')
       .select(`
         id, 
@@ -83,25 +84,45 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Restaurant not found' }, { status: 404 })
     }
 
+    console.log('[Cash Order API] Found restaurant:', restaurant.id, restaurant.name)
+
     const dishIds = Array.from(new Set(cart_items.map((item: any) => item.dishId)))
     const modifierIds = Array.from(new Set(
       cart_items.flatMap((item: any) => item.modifiers?.map((mod: any) => mod.id) || [])
     ))
 
-    const { data: dishesData, error: dishesError } = await adminSupabase
+    console.log('[Cash Order API] Validating dishes:', { dishIds, restaurantId: restaurant.id })
+
+    // Debug: Query dishes without restaurant filter first
+    const { data: allDishesCheck } = await (adminSupabase as any)
+      .schema('menuca_v3')
+      .from('dishes')
+      .select('id, restaurant_id, name')
+      .in('id', dishIds)
+    
+    if (allDishesCheck) {
+      console.log('[Cash Order API] Dishes found (no restaurant filter):', allDishesCheck.map((d: any) => ({ id: d.id, restaurant_id: d.restaurant_id, name: d.name })))
+    }
+
+    const { data: dishesData, error: dishesError } = await (adminSupabase as any)
+      .schema('menuca_v3')
       .from('dishes')
       .select('id, restaurant_id, name')
       .in('id', dishIds)
       .eq('restaurant_id', restaurant.id)
 
-    if (dishesError || !dishesData) {
+    console.log('[Cash Order API] Dishes found (with restaurant filter):', dishesData?.length || 0, dishesData)
+
+    if (dishesError || !dishesData || dishesData.length === 0) {
+      console.error('[Cash Order API] Dish validation failed - error:', dishesError, 'data:', dishesData)
       return NextResponse.json({ error: 'Failed to validate dishes' }, { status: 500 })
     }
 
     const dishMap = new Map<number, { id: number; restaurant_id: number; name: string }>()
     dishesData.forEach((dish: any) => dishMap.set(dish.id, dish))
 
-    const { data: dishPricesData } = await adminSupabase
+    const { data: dishPricesData } = await (adminSupabase as any)
+      .schema('menuca_v3')
       .from('dish_prices')
       .select('dish_id, size_variant, price')
       .in('dish_id', dishIds)
@@ -123,7 +144,8 @@ export async function POST(request: NextRequest) {
     
     if (modifierIds.length > 0) {
       // Load simple modifier prices
-      const { data: simpleModifierPricesData } = await adminSupabase
+      const { data: simpleModifierPricesData } = await (adminSupabase as any)
+        .schema('menuca_v3')
         .from('dish_modifier_prices')
         .select('dish_modifier_id, dish_id, price')
         .in('dish_modifier_id', modifierIds)
@@ -140,7 +162,8 @@ export async function POST(request: NextRequest) {
       
       if (potentialComboIds.length > 0) {
         // Load combo modifier prices from separate table (combo_modifiers doesn't have price column)
-        const { data: comboPricesData } = await adminSupabase
+        const { data: comboPricesData } = await (adminSupabase as any)
+          .schema('menuca_v3')
           .from('combo_modifier_prices')
           .select('combo_modifier_id, price')
           .in('combo_modifier_id', potentialComboIds)
@@ -238,7 +261,8 @@ export async function POST(request: NextRequest) {
     // If delivery_address.name is empty but user_id exists, look up the user's name
     let customerName = delivery_address?.name
     if (!customerName && dbUserId) {
-      const { data: userData } = await adminSupabase
+      const { data: userData } = await (adminSupabase as any)
+        .schema('menuca_v3')
         .from('users')
         .select('first_name, last_name, email')
         .eq('id', dbUserId)
@@ -319,7 +343,8 @@ export async function POST(request: NextRequest) {
 
     console.log('[Cash Order API] Creating order:', orderData)
 
-    const { data: order, error: orderError } = await (adminSupabase
+    const { data: order, error: orderError } = await ((adminSupabase as any)
+      .schema('menuca_v3')
       .from('orders')
       .insert(orderData as any)
       .select()
@@ -341,7 +366,8 @@ export async function POST(request: NextRequest) {
       modifiers: item.modifiers.length > 0 ? JSON.stringify(item.modifiers) : null
     }))
 
-    const { error: itemsError } = await adminSupabase
+    const { error: itemsError } = await (adminSupabase as any)
+      .schema('menuca_v3')
       .from('order_items')
       .insert(orderItems as any)
 
