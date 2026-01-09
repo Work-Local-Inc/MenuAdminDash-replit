@@ -29,7 +29,8 @@ async function getRestaurantPaymentMode(restaurantId: number): Promise<'test' | 
   try {
     const adminSupabase = createAdminClient() as any
     
-    const { data: config } = await adminSupabase
+    const { data: config } = await (adminSupabase as any)
+      .schema('menuca_v3')
       .from('delivery_and_pickup_configs')
       .select('payment_mode')
       .eq('restaurant_id', restaurantId)
@@ -166,7 +167,8 @@ export async function POST(request: NextRequest) {
     }
 
     // SECURITY: Check if this payment intent was already used (prevent replay attacks)
-    const { data: existingOrder } = await adminSupabase
+    const { data: existingOrder } = await (adminSupabase as any)
+      .schema('menuca_v3')
       .from('orders')
       .select('id')
       .eq('stripe_payment_intent_id', payment_intent_id)
@@ -200,7 +202,8 @@ export async function POST(request: NextRequest) {
     // Get restaurant with delivery areas for delivery fee
     // Note: Using restaurant_delivery_areas table (same as admin UI), not restaurant_delivery_zones
     console.log('[Order API] Looking for restaurant ID:', restaurantId)
-    const { data: restaurant, error: restaurantError } = await adminSupabase
+    const { data: restaurant, error: restaurantError } = await (adminSupabase as any)
+      .schema('menuca_v3')
       .from('restaurants')
       .select(`
         id, 
@@ -237,7 +240,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No dishes found in cart' }, { status: 400 })
     }
 
-    const { data: dishesData, error: dishesError } = await adminSupabase
+    const { data: dishesData, error: dishesError } = await (adminSupabase as any)
+      .schema('menuca_v3')
       .from('dishes')
       .select('id, restaurant_id, name')
       .in('id', dishIds)
@@ -253,7 +257,8 @@ export async function POST(request: NextRequest) {
       dishMap.set(dish.id, dish)
     })
 
-    const { data: dishPricesData, error: dishPricesError } = await adminSupabase
+    const { data: dishPricesData, error: dishPricesError } = await (adminSupabase as any)
+      .schema('menuca_v3')
       .from('dish_prices')
       .select('dish_id, size_variant, price')
       .in('dish_id', dishIds)
@@ -288,7 +293,8 @@ export async function POST(request: NextRequest) {
 
     if (modifierIds.length > 0) {
       // First, try to load as simple modifiers
-      const { data: simpleModifiersData, error: simpleModifiersError } = await adminSupabase
+      const { data: simpleModifiersData, error: simpleModifiersError } = await (adminSupabase as any)
+        .schema('menuca_v3')
         .from('dish_modifiers')
         .select(`
           id,
@@ -312,7 +318,8 @@ export async function POST(request: NextRequest) {
       // Load simple modifier prices
       const simpleModIds = simpleModifiersData?.map((m: any) => m.id) || []
       if (simpleModIds.length > 0) {
-        const { data: simpleModifierPricesData, error: simpleModifierPricesError } = await adminSupabase
+        const { data: simpleModifierPricesData, error: simpleModifierPricesError } = await (adminSupabase as any)
+          .schema('menuca_v3')
           .from('dish_modifier_prices')
           .select('dish_modifier_id, dish_id, price')
           .in('dish_modifier_id', simpleModIds)
@@ -336,7 +343,8 @@ export async function POST(request: NextRequest) {
         console.log('[Order API] Looking for combo modifiers:', notFoundIds)
         
         // Load combo modifiers (note: prices are in separate combo_modifier_prices table)
-        const { data: comboModifiersData, error: comboModifiersError } = await adminSupabase
+        const { data: comboModifiersData, error: comboModifiersError } = await (adminSupabase as any)
+          .schema('menuca_v3')
           .from('combo_modifiers')
           .select(`
             id,
@@ -355,7 +363,8 @@ export async function POST(request: NextRequest) {
         })
 
         // Load combo modifier prices from separate table
-        const { data: comboPricesData, error: comboPricesError } = await adminSupabase
+        const { data: comboPricesData, error: comboPricesError } = await (adminSupabase as any)
+          .schema('menuca_v3')
           .from('combo_modifier_prices')
           .select('combo_modifier_id, price, size_variant')
           .in('combo_modifier_id', notFoundIds)
@@ -374,7 +383,8 @@ export async function POST(request: NextRequest) {
         })
 
         // Load dish -> combo_group links to validate that combo modifiers belong to this dish
-        const { data: dishComboLinks, error: dishComboLinksError } = await adminSupabase
+        const { data: dishComboLinks, error: dishComboLinksError } = await (adminSupabase as any)
+          .schema('menuca_v3')
           .from('dish_combo_groups')
           .select('dish_id, combo_group_id')
           .in('dish_id', dishIds)
@@ -396,7 +406,8 @@ export async function POST(request: NextRequest) {
         // to validate the full path from combo modifier to dish
         const comboModGroupIds = comboModifiersData?.map((m: any) => m.combo_modifier_group_id) || []
         if (comboModGroupIds.length > 0) {
-          const { data: comboModGroups, error: comboModGroupsError } = await adminSupabase
+          const { data: comboModGroups, error: comboModGroupsError } = await (adminSupabase as any)
+            .schema('menuca_v3')
             .from('combo_modifier_groups')
             .select('id, combo_group_section_id')
             .in('id', comboModGroupIds)
@@ -404,7 +415,8 @@ export async function POST(request: NextRequest) {
           if (!comboModGroupsError && comboModGroups) {
             const sectionIds = comboModGroups.map((g: any) => g.combo_group_section_id)
             
-            const { data: sections, error: sectionsError } = await adminSupabase
+            const { data: sections, error: sectionsError } = await (adminSupabase as any)
+              .schema('menuca_v3')
               .from('combo_group_sections')
               .select('id, combo_group_id')
               .in('id', sectionIds)
@@ -638,7 +650,8 @@ export async function POST(request: NextRequest) {
     // If delivery_address.name is empty but user_id exists, look up the user's name
     let customerName = delivery_address?.name
     if (!customerName && user_id) {
-      const { data: userData } = await adminSupabase
+      const { data: userData } = await (adminSupabase as any)
+        .schema('menuca_v3')
         .from('users')
         .select('first_name, last_name, email')
         .eq('id', user_id)
@@ -689,7 +702,8 @@ export async function POST(request: NextRequest) {
       has_delivery_address: !!orderData.delivery_address
     })
 
-    const { data: order, error: orderError } = await adminSupabase
+    const { data: order, error: orderError } = await (adminSupabase as any)
+      .schema('menuca_v3')
       .from('orders')
       .insert(orderData as any)
       .select()
@@ -721,7 +735,8 @@ export async function POST(request: NextRequest) {
     console.log('[Order API] ✅ Order created successfully:', order.id)
 
     // Create payment transaction record
-    await adminSupabase
+    await (adminSupabase as any)
+      .schema('menuca_v3')
       .from('payment_transactions')
       .insert({
         order_id: order.id,
@@ -737,7 +752,8 @@ export async function POST(request: NextRequest) {
       } as any)
 
     // Create initial order status
-    await adminSupabase
+    await (adminSupabase as any)
+      .schema('menuca_v3')
       .from('order_status_history')
       .insert({
         order_id: order.id,
@@ -817,8 +833,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Fetch user's orders
+    // Fetch user's orders - use schema for the regular client too
     const { data: orders, error } = await supabase
+      .schema('menuca_v3')
       .from('orders')
       .select(`
         *,
