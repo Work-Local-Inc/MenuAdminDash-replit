@@ -31,28 +31,21 @@ export async function GET(
     const paymentMode = config?.payment_mode || 'test'
     
     // Return the appropriate publishable key based on payment mode
+    // SIMPLIFIED: Direct env var access, no fallback chains
     let publishableKey: string | undefined
     let keySource: string = ''
     
-    // Debug: Log all available Stripe keys at runtime
-    console.log('[PaymentConfig] DEBUG - Available keys:', {
-      NEXT_PUBLIC_STRIPE_PUBLIC_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY ? process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY.substring(0, 15) + '...' : 'NOT SET',
-      VITE_STRIPE_PUBLIC_KEY: process.env.VITE_STRIPE_PUBLIC_KEY ? process.env.VITE_STRIPE_PUBLIC_KEY.substring(0, 15) + '...' : 'NOT SET',
-      NEXT_PUBLIC_TESTING_VITE_STRIPE_PUBLIC_KEY: process.env.NEXT_PUBLIC_TESTING_VITE_STRIPE_PUBLIC_KEY ? process.env.NEXT_PUBLIC_TESTING_VITE_STRIPE_PUBLIC_KEY.substring(0, 15) + '...' : 'NOT SET',
-      TESTING_VITE_STRIPE_PUBLIC_KEY: process.env.TESTING_VITE_STRIPE_PUBLIC_KEY ? process.env.TESTING_VITE_STRIPE_PUBLIC_KEY.substring(0, 15) + '...' : 'NOT SET',
-    })
-    
     if (paymentMode === 'live') {
-      // Use live publishable key for real payments
-      publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY || process.env.VITE_STRIPE_PUBLIC_KEY
-      keySource = process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY ? 'NEXT_PUBLIC_STRIPE_PUBLIC_KEY' : 'VITE_STRIPE_PUBLIC_KEY'
+      // For LIVE mode: Use VITE_STRIPE_PUBLIC_KEY (should be pk_live_...)
+      publishableKey = process.env.VITE_STRIPE_PUBLIC_KEY
+      keySource = 'VITE_STRIPE_PUBLIC_KEY'
     } else {
-      // Use test publishable key for testing
-      publishableKey = process.env.NEXT_PUBLIC_TESTING_VITE_STRIPE_PUBLIC_KEY || process.env.TESTING_VITE_STRIPE_PUBLIC_KEY
-      keySource = process.env.NEXT_PUBLIC_TESTING_VITE_STRIPE_PUBLIC_KEY ? 'NEXT_PUBLIC_TESTING_VITE_STRIPE_PUBLIC_KEY' : 'TESTING_VITE_STRIPE_PUBLIC_KEY'
+      // For TEST mode: Use NEXT_PUBLIC_TESTING_VITE_STRIPE_PUBLIC_KEY (should be pk_test_...)
+      publishableKey = process.env.NEXT_PUBLIC_TESTING_VITE_STRIPE_PUBLIC_KEY
+      keySource = 'NEXT_PUBLIC_TESTING_VITE_STRIPE_PUBLIC_KEY'
     }
     
-    console.log(`[PaymentConfig] Restaurant ${restaurantId} - Mode: ${paymentMode}, Source: ${keySource}, Key prefix: ${publishableKey?.substring(0, 15)}`)
+    console.log(`[PaymentConfig] Restaurant ${restaurantId} - Mode: ${paymentMode}, Source: ${keySource}, Key: ${publishableKey?.substring(0, 20) || 'NOT SET'}`)
     
     if (!publishableKey) {
       console.error('[PaymentConfig] Missing Stripe publishable key for mode:', paymentMode)
