@@ -86,13 +86,54 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Name required for order (e.g., "Order for John")' }, { status: 400 })
     }
 
-    // Get restaurant's payment mode to use the correct Stripe keys
+    // Retrieve payment intent with proper mode detection
+    // Strategy: Try test mode first (most common), then live mode if not found
+    let paymentIntent: Stripe.PaymentIntent | null = null
+    let stripe: Stripe
+    let usedPaymentMode: 'test' | 'live' = 'test'
+    
+    // First attempt: Use restaurant's configured payment mode if available
     const paymentRestaurantId = requestRestaurantSlug ? extractIdFromSlug(requestRestaurantSlug) : null
-    const paymentMode = paymentRestaurantId ? await getRestaurantPaymentMode(paymentRestaurantId) : 'test'
-    const stripe = getStripe(paymentMode)
+    const configuredPaymentMode = paymentRestaurantId ? await getRestaurantPaymentMode(paymentRestaurantId) : 'test'
+    
+    try {
+      stripe = getStripe(configuredPaymentMode)
+      paymentIntent = await stripe.paymentIntents.retrieve(payment_intent_id)
+      usedPaymentMode = configuredPaymentMode
+      console.log(`[Order API] Payment intent retrieved with ${configuredPaymentMode} key`)
+    } catch (error: any) {
+      // If first attempt fails and we used test mode, try live mode
+      // This handles cases where restaurant_slug is missing or mode changed
+      if (configuredPaymentMode === 'test' && error.code === 'resource_missing') {
+        console.log('[Order API] Payment intent not found with test key, trying live key...')
+        try {
+          stripe = getStripe('live')
+          paymentIntent = await stripe.paymentIntents.retrieve(payment_intent_id)
+          usedPaymentMode = 'live'
+          console.log('[Order API] Payment intent retrieved with live key')
+        } catch (liveError: any) {
+          console.error('[Order API] Payment intent not found with either key')
+          throw error // Throw original error
+        }
+      } else if (configuredPaymentMode === 'live' && error.code === 'resource_missing') {
+        console.log('[Order API] Payment intent not found with live key, trying test key...')
+        try {
+          stripe = getStripe('test')
+          paymentIntent = await stripe.paymentIntents.retrieve(payment_intent_id)
+          usedPaymentMode = 'test'
+          console.log('[Order API] Payment intent retrieved with test key')
+        } catch (testError: any) {
+          console.error('[Order API] Payment intent not found with either key')
+          throw error // Throw original error
+        }
+      } else {
+        throw error
+      }
+    }
 
-    // Verify payment intent
-    const paymentIntent = await stripe.paymentIntents.retrieve(payment_intent_id)
+    if (!paymentIntent) {
+      return NextResponse.json({ error: 'Payment intent not found' }, { status: 404 })
+    }
     
     // SECURITY: Verify payment belongs to this user/guest
     const expectedUserId = user_id ? String(user_id) : 'guest'
