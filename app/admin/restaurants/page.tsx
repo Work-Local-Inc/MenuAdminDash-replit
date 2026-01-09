@@ -28,7 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Search, Filter, MoreVertical, Plus, Download, Edit, Trash2, Copy, ExternalLink, CheckCircle2 } from "lucide-react"
+import { Search, Filter, MoreVertical, Plus, Download, Edit, Trash2, Copy, ExternalLink, CheckCircle2, ChevronDown, ChevronUp } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { formatCurrency } from "@/lib/utils"
@@ -48,6 +48,7 @@ export default function RestaurantsPage() {
   const [cityFilter, setCityFilter] = useState("All")
   const [statusFilter, setStatusFilter] = useState("active")
   const [verifiedFilter, setVerifiedFilter] = useState("All")
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
 
   const { data: restaurants = [], isLoading } = useRestaurants({
     province: provinceFilter !== "All" ? provinceFilter : undefined,
@@ -123,63 +124,92 @@ export default function RestaurantsPage() {
         </CardHeader>
         <CardContent>
           {/* Filters */}
-          <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Search restaurants..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                  data-testid="input-search-restaurants"
-                />
+          <div className="mb-6 space-y-4">
+            {/* Main filter row - search, status, and actions */}
+            <div className="flex flex-col gap-4 md:flex-row md:items-center">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Search restaurants by name or ID..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                    data-testid="input-search-restaurants"
+                  />
+                </div>
               </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full md:w-[140px]" data-testid="select-status">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {statuses.map(status => (
+                    <SelectItem key={status} value={status}>{status}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                className="gap-1"
+                data-testid="button-toggle-advanced"
+              >
+                <Filter className="h-4 w-4" />
+                More Filters
+                {showAdvancedFilters ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </Button>
+              <Button variant="outline" onClick={exportToCSV} data-testid="button-export">
+                <Download className="mr-2 h-4 w-4" />
+                Export
+              </Button>
             </div>
-            <Select value={provinceFilter} onValueChange={setProvinceFilter}>
-              <SelectTrigger className="w-full md:w-[180px]" data-testid="select-province">
-                <SelectValue placeholder="Province" />
-              </SelectTrigger>
-              <SelectContent>
-                {provinces.map(province => (
-                  <SelectItem key={province} value={province}>{province}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={cityFilter} onValueChange={setCityFilter}>
-              <SelectTrigger className="w-full md:w-[180px]" data-testid="select-city">
-                <SelectValue placeholder="City" />
-              </SelectTrigger>
-              <SelectContent>
-                {cities.map(city => (
-                  <SelectItem key={city} value={city}>{city}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full md:w-[180px]" data-testid="select-status">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                {statuses.map(status => (
-                  <SelectItem key={status} value={status}>{status}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={verifiedFilter} onValueChange={setVerifiedFilter}>
-              <SelectTrigger className="w-full md:w-[180px]" data-testid="select-verified">
-                <SelectValue placeholder="Verified" />
-              </SelectTrigger>
-              <SelectContent>
-                {verifiedOptions.map(option => (
-                  <SelectItem key={option} value={option}>{option}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button variant="outline" onClick={exportToCSV} data-testid="button-export">
-              <Download className="mr-2 h-4 w-4" />
-              Export
-            </Button>
+
+            {/* Advanced filters - hidden by default */}
+            {showAdvancedFilters && (
+              <div className="flex flex-wrap gap-4 rounded-md border bg-muted/30 p-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Province:</span>
+                  <Select value={provinceFilter} onValueChange={setProvinceFilter}>
+                    <SelectTrigger className="w-[120px]" data-testid="select-province">
+                      <SelectValue placeholder="Province" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {provinces.map(province => (
+                        <SelectItem key={province} value={province}>{province}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">City:</span>
+                  <Select value={cityFilter} onValueChange={setCityFilter}>
+                    <SelectTrigger className="w-[140px]" data-testid="select-city">
+                      <SelectValue placeholder="City" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {cities.map(city => (
+                        <SelectItem key={city} value={city}>{city}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Verified:</span>
+                  <Select value={verifiedFilter} onValueChange={setVerifiedFilter}>
+                    <SelectTrigger className="w-[140px]" data-testid="select-verified">
+                      <SelectValue placeholder="Verified" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {verifiedOptions.map(option => (
+                        <SelectItem key={option} value={option}>{option}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Bulk Actions */}
