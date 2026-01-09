@@ -1,25 +1,58 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { extractIdFromSlug } from '@/lib/utils/slugify'
 
-// Initialize Stripe lazily to avoid module-level errors in production
-function getStripe() {
-  // Prioritize test key for testing with 4242 cards
-  const stripeSecretKey = process.env.TESTING_STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY
+// Get Stripe instance based on payment mode (test or live)
+function getStripe(paymentMode: 'test' | 'live' = 'test') {
+  let stripeSecretKey: string | undefined
   
-  console.log('[Stripe] Using key prefix:', stripeSecretKey ? stripeSecretKey.substring(0, 10) + '...' : 'NONE')
+  if (paymentMode === 'live') {
+    // Use LIVE Stripe keys for real payments
+    stripeSecretKey = process.env.STRIPE_SECRET_KEY
+    console.log('[Stripe] Using LIVE key prefix:', stripeSecretKey ? stripeSecretKey.substring(0, 10) + '...' : 'NOT SET')
+  } else {
+    // Use TEST Stripe keys for testing
+    stripeSecretKey = process.env.TESTING_STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY
+    console.log('[Stripe] Using TEST key prefix:', stripeSecretKey ? stripeSecretKey.substring(0, 10) + '...' : 'NOT SET')
+  }
   
   if (!stripeSecretKey) {
-    throw new Error('Missing required Stripe secret key - check TESTING_STRIPE_SECRET_KEY or STRIPE_SECRET_KEY')
+    throw new Error(`Missing required Stripe secret key for ${paymentMode} mode`)
   }
   
   return new Stripe(stripeSecretKey, {})
 }
 
+// Get restaurant's payment mode from service config
+async function getRestaurantPaymentMode(restaurantSlug: string): Promise<'test' | 'live'> {
+  try {
+    const adminSupabase = createAdminClient() as any
+    const restaurantId = extractIdFromSlug(restaurantSlug)
+    
+    if (!restaurantId) {
+      console.log('[PaymentMode] Could not extract restaurant ID from slug:', restaurantSlug)
+      return 'test'
+    }
+    
+    const { data: config } = await adminSupabase
+      .from('delivery_and_pickup_configs')
+      .select('payment_mode')
+      .eq('restaurant_id', restaurantId)
+      .maybeSingle()
+    
+    const mode = config?.payment_mode || 'test'
+    console.log(`[PaymentMode] Restaurant ${restaurantId} payment mode: ${mode}`)
+    return mode
+  } catch (error) {
+    console.error('[PaymentMode] Error fetching payment mode:', error)
+    return 'test' // Default to test mode on error
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
-    // Initialize Stripe inside the request handler
-    const stripe = getStripe()
     const supabase = await createClient() as any
     
     // Check authentication (optional - support guest checkout)
@@ -27,6 +60,11 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const { amount, metadata, user_id, guest_email, shipping_address } = body
+    
+    // Get restaurant's payment mode and initialize Stripe with appropriate keys
+    const restaurantSlug = metadata?.restaurant_slug || ''
+    const paymentMode = await getRestaurantPaymentMode(restaurantSlug)
+    const stripe = getStripe(paymentMode)
 
     if (!amount || amount <= 0) {
       return NextResponse.json({ error: 'Invalid amount' }, { status: 400 })
@@ -109,6 +147,7 @@ export async function POST(request: NextRequest) {
         user_id: user_id ? String(user_id) : 'guest',
         guest_email: guest_email || undefined,
         country: 'CA', // Explicitly mark as Canadian transaction
+        payment_mode: paymentMode, // Store payment mode for reference
         ...metadata,
       },
       automatic_payment_methods: {

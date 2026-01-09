@@ -194,6 +194,7 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
           delivery_address: deliveryAddress,
           guest_email: deliveryAddress.email, // Required for guest checkout
           user_id: userId, // Include user_id to match payment intent metadata
+          restaurant_slug: restaurantSlug, // Include for payment mode lookup
           cart_items: items.map(item => ({
             dishId: item.dishId,
             size: item.size,

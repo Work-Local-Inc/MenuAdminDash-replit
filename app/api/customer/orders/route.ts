@@ -5,15 +5,44 @@ import { extractIdFromSlug } from '@/lib/utils/slugify'
 import Stripe from 'stripe'
 import { sendOrderConfirmationEmail } from '@/lib/emails/service'
 
-// Use TEST Stripe keys to match the create-payment-intent endpoint
-// Both endpoints must use the same Stripe account/keys
-const stripeSecretKey = process.env.TESTING_STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY
-
-if (!stripeSecretKey) {
-  throw new Error('Missing required Stripe secret key')
+// Get Stripe instance based on payment mode (test or live)
+function getStripe(paymentMode: 'test' | 'live' = 'test') {
+  let stripeSecretKey: string | undefined
+  
+  if (paymentMode === 'live') {
+    stripeSecretKey = process.env.STRIPE_SECRET_KEY
+    console.log('[Stripe Orders] Using LIVE key')
+  } else {
+    stripeSecretKey = process.env.TESTING_STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY
+    console.log('[Stripe Orders] Using TEST key')
+  }
+  
+  if (!stripeSecretKey) {
+    throw new Error(`Missing required Stripe secret key for ${paymentMode} mode`)
+  }
+  
+  return new Stripe(stripeSecretKey, {})
 }
 
-const stripe = new Stripe(stripeSecretKey, {})
+// Get restaurant's payment mode from service config
+async function getRestaurantPaymentMode(restaurantId: number): Promise<'test' | 'live'> {
+  try {
+    const adminSupabase = createAdminClient() as any
+    
+    const { data: config } = await adminSupabase
+      .from('delivery_and_pickup_configs')
+      .select('payment_mode')
+      .eq('restaurant_id', restaurantId)
+      .maybeSingle()
+    
+    const mode = config?.payment_mode || 'test'
+    console.log(`[PaymentMode] Restaurant ${restaurantId} payment mode: ${mode}`)
+    return mode
+  } catch (error) {
+    console.error('[PaymentMode] Error fetching payment mode:', error)
+    return 'test'
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,13 +54,14 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
 
     const body = await request.json()
-    const { payment_intent_id, delivery_address, cart_items, user_id, guest_email } = body
+    const { payment_intent_id, delivery_address, cart_items, user_id, guest_email, restaurant_slug: requestRestaurantSlug } = body
 
     console.log('[Order API] Request:', { 
       payment_intent_id: payment_intent_id?.substring(0, 20) + '...', 
       has_user: !!user,
       guest_email,
-      cart_items_count: cart_items?.length 
+      cart_items_count: cart_items?.length,
+      restaurant_slug: requestRestaurantSlug
     })
 
     if (!payment_intent_id) {
@@ -55,6 +85,11 @@ export async function POST(request: NextRequest) {
       console.error('[Order API] Guest checkout missing name')
       return NextResponse.json({ error: 'Name required for order (e.g., "Order for John")' }, { status: 400 })
     }
+
+    // Get restaurant's payment mode to use the correct Stripe keys
+    const paymentRestaurantId = requestRestaurantSlug ? extractIdFromSlug(requestRestaurantSlug) : null
+    const paymentMode = paymentRestaurantId ? await getRestaurantPaymentMode(paymentRestaurantId) : 'test'
+    const stripe = getStripe(paymentMode)
 
     // Verify payment intent
     const paymentIntent = await stripe.paymentIntents.retrieve(payment_intent_id)
