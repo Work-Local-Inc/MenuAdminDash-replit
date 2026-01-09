@@ -7,19 +7,22 @@ import { extractIdFromSlug } from '@/lib/utils/slugify'
 // Get Stripe instance based on payment mode (test or live)
 function getStripe(paymentMode: 'test' | 'live' = 'test') {
   let stripeSecretKey: string | undefined
+  let keySource: string = ''
   
   if (paymentMode === 'live') {
     // Use LIVE Stripe keys for real payments
     stripeSecretKey = process.env.STRIPE_SECRET_KEY
-    console.log('[Stripe] Using LIVE key prefix:', stripeSecretKey ? stripeSecretKey.substring(0, 10) + '...' : 'NOT SET')
+    keySource = 'STRIPE_SECRET_KEY'
   } else {
-    // Use TEST Stripe keys for testing
-    stripeSecretKey = process.env.TESTING_STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY
-    console.log('[Stripe] Using TEST key prefix:', stripeSecretKey ? stripeSecretKey.substring(0, 10) + '...' : 'NOT SET')
+    // Use TEST Stripe keys for testing - NO FALLBACK to live key
+    stripeSecretKey = process.env.TESTING_STRIPE_SECRET_KEY
+    keySource = 'TESTING_STRIPE_SECRET_KEY'
   }
   
+  console.log(`[Stripe] Mode: ${paymentMode}, Source: ${keySource}, Key prefix: ${stripeSecretKey ? stripeSecretKey.substring(0, 12) + '...' : 'NOT SET'}`)
+  
   if (!stripeSecretKey) {
-    throw new Error(`Missing required Stripe secret key for ${paymentMode} mode`)
+    throw new Error(`Missing required Stripe secret key for ${paymentMode} mode (${keySource})`)
   }
   
   return new Stripe(stripeSecretKey, {})

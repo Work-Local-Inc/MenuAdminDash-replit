@@ -32,16 +32,19 @@ export async function GET(
     
     // Return the appropriate publishable key based on payment mode
     let publishableKey: string | undefined
+    let keySource: string = ''
     
     if (paymentMode === 'live') {
       // Use live publishable key for real payments
       publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY || process.env.VITE_STRIPE_PUBLIC_KEY
-      console.log('[PaymentConfig] Restaurant', restaurantId, '- LIVE mode, key prefix:', publishableKey?.substring(0, 10))
+      keySource = process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY ? 'NEXT_PUBLIC_STRIPE_PUBLIC_KEY' : 'VITE_STRIPE_PUBLIC_KEY'
     } else {
       // Use test publishable key for testing
       publishableKey = process.env.NEXT_PUBLIC_TESTING_VITE_STRIPE_PUBLIC_KEY || process.env.TESTING_VITE_STRIPE_PUBLIC_KEY
-      console.log('[PaymentConfig] Restaurant', restaurantId, '- TEST mode, key prefix:', publishableKey?.substring(0, 10))
+      keySource = process.env.NEXT_PUBLIC_TESTING_VITE_STRIPE_PUBLIC_KEY ? 'NEXT_PUBLIC_TESTING_VITE_STRIPE_PUBLIC_KEY' : 'TESTING_VITE_STRIPE_PUBLIC_KEY'
     }
+    
+    console.log(`[PaymentConfig] Restaurant ${restaurantId} - Mode: ${paymentMode}, Source: ${keySource}, Key prefix: ${publishableKey?.substring(0, 15)}`)
     
     if (!publishableKey) {
       console.error('[PaymentConfig] Missing Stripe publishable key for mode:', paymentMode)
