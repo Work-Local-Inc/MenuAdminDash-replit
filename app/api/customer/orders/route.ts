@@ -210,7 +210,7 @@ export async function POST(request: NextRequest) {
         name,
         logo_url,
         restaurant_delivery_areas(id, delivery_fee, delivery_min_order, is_active),
-        restaurant_locations(street_address, city_name, province, postal_code, phone)
+        restaurant_locations(street_address, postal_code, phone)
       `)
       .eq('id', restaurantId)
       .single() as { 
@@ -219,7 +219,7 @@ export async function POST(request: NextRequest) {
           name: string;
           logo_url: string | null;
           restaurant_delivery_areas: { id: number; delivery_fee: number | null; delivery_min_order: number | null; is_active: boolean }[];
-          restaurant_locations: { street_address: string; city_name: string; province: string; postal_code: string; phone: string | null }[]
+          restaurant_locations: { street_address: string; postal_code: string; phone: string | null }[]
         } | null; 
         error: any 
       }
@@ -824,8 +824,8 @@ export async function POST(request: NextRequest) {
             pickupLocation: {
               name: restaurant.name,
               address: restaurantLocation.street_address || '',
-              city: restaurantLocation.city_name || '',
-              province: restaurantLocation.province || 'ON',
+              city: '',
+              province: 'ON',
               postal_code: restaurantLocation.postal_code || '',
               phone: restaurantLocation.phone || undefined,
             }
