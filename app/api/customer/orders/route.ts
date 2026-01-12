@@ -309,27 +309,58 @@ export async function POST(request: NextRequest) {
     let dishComboGroupLinks = new Map<number, Set<number>>() // dish_id -> set of combo_group_ids
 
     if (modifierIds.length > 0) {
-      // First, try to load as simple modifiers
+      // First, try to load as simple modifiers (from dish_modifiers table)
+      // Query dish_modifiers directly without FK join (no FK relationship in PostgREST cache)
       const { data: simpleModifiersData, error: simpleModifiersError } = await (adminSupabase as any)
         .schema('menuca_v3')
         .from('dish_modifiers')
         .select(`
           id,
           name,
-          modifier_group:modifier_groups!inner(
-            id,
-            dish_id
-          )
+          modifier_group_id
         `)
         .in('id', modifierIds)
+        .is('deleted_at', null)
 
       if (simpleModifiersError) {
         console.error('[Order API] Simple modifier preload error:', simpleModifiersError)
         return NextResponse.json({ error: 'Failed to load modifiers' }, { status: 500 })
       }
 
+      // Get modifier groups to map group_id -> dish_id for validation
+      const modifierGroupIds = Array.from(new Set(
+        (simpleModifiersData || []).map((m: any) => m.modifier_group_id).filter(Boolean)
+      ))
+      
+      let modifierGroupToDish = new Map<number, number>()
+      if (modifierGroupIds.length > 0) {
+        const { data: modifierGroupsData, error: modifierGroupsError } = await (adminSupabase as any)
+          .schema('menuca_v3')
+          .from('modifier_groups')
+          .select('id, dish_id')
+          .in('id', modifierGroupIds)
+          .is('deleted_at', null)
+        
+        if (modifierGroupsError) {
+          console.error('[Order API] Modifier groups preload error:', modifierGroupsError)
+          return NextResponse.json({ error: 'Failed to load modifier groups' }, { status: 500 })
+        }
+        
+        modifierGroupsData?.forEach((g: any) => {
+          modifierGroupToDish.set(g.id, g.dish_id)
+        })
+      }
+
       simpleModifiersData?.forEach((mod: any) => {
-        simpleModifierMap.set(mod.id, mod)
+        const dish_id = modifierGroupToDish.get(mod.modifier_group_id)
+        simpleModifierMap.set(mod.id, {
+          id: mod.id,
+          name: mod.name,
+          modifier_group: {
+            id: mod.modifier_group_id,
+            dish_id: dish_id || 0
+          }
+        })
       })
 
       // Load simple modifier prices
@@ -487,12 +518,20 @@ export async function POST(request: NextRequest) {
         }, { status: 400 })
       }
 
-      const priceKey = `${item.dishId}-${item.size}`
-      const dishPrice = dishPriceMap.get(priceKey)
+      // Normalize size variant: "Regular" or empty string from frontend maps to null in database
+      const normalizedSize = (item.size === 'Regular' || item.size === '' || item.size === undefined) ? null : item.size
+      const priceKey = `${item.dishId}-${normalizedSize}`
+      let dishPrice = dishPriceMap.get(priceKey)
+      
+      // Fallback: If exact size not found, try with null (base price)
+      if (!dishPrice && normalizedSize !== null) {
+        dishPrice = dishPriceMap.get(`${item.dishId}-null`)
+        console.log(`[Order API] Size "${item.size}" not found, falling back to base price`)
+      }
 
       if (!dishPrice) {
         const availableSizes = dishPriceOptions.get(item.dishId) || []
-        console.error(`[Order API] Price not found for dish ${item.dishId}, size_variant: "${item.size}"`)
+        console.error(`[Order API] Price not found for dish ${item.dishId}, size_variant: "${item.size}" (normalized: "${normalizedSize}")`)
         console.error('[Order API] Available size_variants:', availableSizes)
         return NextResponse.json({ 
           error: `Invalid dish price: dish ${item.dishId}, size "${item.size}" not found. Available sizes: ${JSON.stringify(availableSizes)}` 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { adminSupabase } from '@/lib/supabase/admin'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function GET(
   request: NextRequest,
@@ -19,6 +19,7 @@ export async function GET(
       return NextResponse.json({ ga_measurement_id: null })
     }
 
+    const adminSupabase = createAdminClient()
     const { data, error } = await (adminSupabase as any)
       .schema('menuca_v3')
       .from('restaurant_analytics_configs')

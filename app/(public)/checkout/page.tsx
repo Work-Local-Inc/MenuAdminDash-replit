@@ -105,6 +105,9 @@ export default function CheckoutPage() {
   const [orderNotes, setOrderNotes] = useState('')
   const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null)
   const [stripeLoading, setStripeLoading] = useState(true)
+  
+  // Ref to prevent double payment intent creation (React Strict Mode causes double renders)
+  const paymentIntentCreatingRef = useRef(false)
 
   // Derived checkout mode - determines if we're in pickup-only, delivery-only, or both mode
   const isPickupOnly = serviceConfig && !serviceConfig.has_delivery_enabled && serviceConfig.pickup_enabled
@@ -364,6 +367,7 @@ export default function CheckoutPage() {
       console.log('[Checkout] Clearing existing payment intent - user signed in')
       setClientSecret('')
       setSelectedPaymentMethod('')
+      paymentIntentCreatingRef.current = false // Reset so new payment intent can be created
       setStep('address') // Go back to address to recreate payment intent with new user
     }
     
@@ -469,6 +473,13 @@ export default function CheckoutPage() {
 
     if (paymentMethod === 'credit_card') {
       // Credit card: Create payment intent and go to Stripe payment form
+      // Guard against duplicate payment intent creation (React Strict Mode, double-clicks, etc.)
+      if (paymentIntentCreatingRef.current) {
+        console.log('[Checkout] Payment intent creation already in progress, skipping duplicate call')
+        return
+      }
+      
+      paymentIntentCreatingRef.current = true
       console.log('[Checkout] Creating payment intent for credit card')
       try {
         const response = await fetch('/api/customer/create-payment-intent', {
@@ -498,6 +509,8 @@ export default function CheckoutPage() {
         setClientSecret(data.clientSecret)
         setStep('payment')
       } catch (error: any) {
+        // Reset ref so user can retry
+        paymentIntentCreatingRef.current = false
         toast({
           title: "Error",
           description: error.message || "Failed to initialize payment",
@@ -928,8 +941,9 @@ export default function CheckoutPage() {
             )}
 
             {/* Step Content - Stripe Payment (only for credit card) */}
+            {/* Key by clientSecret to force remount when payment intent changes, avoiding Stripe's "immutable clientSecret" warning */}
             {step === 'payment' && clientSecret && selectedAddress && stripePromise && (
-              <Elements stripe={stripePromise} options={{ clientSecret }}>
+              <Elements key={clientSecret} stripe={stripePromise} options={{ clientSecret }}>
                 <CheckoutPaymentForm 
                   clientSecret={clientSecret}
                   deliveryAddress={selectedAddress}
@@ -937,6 +951,7 @@ export default function CheckoutPage() {
                   onBack={() => {
                     setStep('payment-method')
                     setClientSecret('')
+                    paymentIntentCreatingRef.current = false // Reset so new payment intent can be created
                   }}
                   brandedButtonStyle={brandedButtonStyle}
                 />
