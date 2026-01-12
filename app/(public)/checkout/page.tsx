@@ -17,7 +17,7 @@ import { CheckoutPaymentForm } from '@/components/customer/checkout-payment-form
 import { CheckoutPaymentSelection } from '@/components/customer/checkout-payment-selection'
 import { CheckoutSignInModal } from '@/components/customer/checkout-signin-modal'
 import { OrderTypeSelector } from '@/components/customer/order-type-selector'
-import { Schedule } from '@/components/customer/pickup-time-selector'
+import { Schedule } from '@/components/customer/schedule-time-picker'
 import { PromoCodeInput } from '@/components/customer/promo-code-input'
 import { useToast } from '@/hooks/use-toast'
 import { ShoppingCart, MapPin, CreditCard, ArrowLeft, LogIn, LogOut, User, ShoppingBag, Store, Wallet, Info, AlertCircle } from 'lucide-react'
@@ -511,7 +511,7 @@ export default function CheckoutPage() {
       
       try {
         // Format cart items as required by API
-        const cartItems = items.map(item => ({
+        const orderCartItems = items.map(item => ({
           dishId: item.dishId,
           quantity: item.quantity,
           size: item.size,
@@ -529,7 +529,7 @@ export default function CheckoutPage() {
           body: JSON.stringify({
             payment_type: paymentMethod,
             delivery_address: selectedAddress,
-            cart_items: cartItems,
+            cart_items: orderCartItems,
             user_id: currentUser?.id ? String(currentUser.id) : undefined,
             guest_email: selectedAddress?.email,
             restaurant_slug: restaurantSlug,
@@ -550,13 +550,13 @@ export default function CheckoutPage() {
         console.log('[Checkout] Cash order created:', data)
         
         // Track purchase event for GA before clearing cart
-        const cartItems = items.map(item => ({
+        const gaCartItems = items.map(item => ({
           id: item.dishId,
           name: item.dishName,
           price: item.sizePrice,
           quantity: item.quantity
         }))
-        trackPurchase(String(data.order_id), getTotal(), cartItems, getTax(), getEffectiveDeliveryFee())
+        trackPurchase(String(data.order_id), getTotal(), gaCartItems, getTax(), getEffectiveDeliveryFee())
         
         // Set flag BEFORE clearing cart to prevent empty cart redirect
         setOrderPlacedSuccessfully(true)

@@ -115,6 +115,29 @@ VALUES (1009, 'G-XXXXXXXXXX');
 - `add_payment_info` - Payment method selected
 - `purchase` - Order completed (cash or credit card)
 
+### Improved Scheduled Ordering UX (Jan 2026)
+**Status:** IMPLEMENTED
+**Purpose:** Streamline the scheduling experience with a combined day/time picker, more realistic advance booking window, and finer time granularity.
+**Key Changes:**
+1. **Combined Day/Time Picker**: Replaced two-step dropdown flow (select day, then select time) with a single modal showing horizontal day tabs and scrollable time slot list
+2. **Reduced Advance Booking**: Changed from 7 days to 3 days advance booking (more realistic for takeout orders)
+3. **Finer Time Intervals**: Changed from 30-minute to 15-minute time slots
+**UX Flow:**
+1. User clicks "Schedule" button on checkout page
+2. Modal opens with horizontal day tabs (Today, Tomorrow, Day 3)
+3. Time slots display as "11:00 AM - 11:30 AM" with radio button selection
+4. User taps day tab, then selects a time slot
+5. Confirm button saves selection and closes modal
+**Technical Details:**
+- New component: `components/customer/schedule-time-picker.tsx`
+- Constants: `SLOT_INTERVAL_MINUTES = 15`, `MAX_ADVANCE_DAYS = 3`
+- Cart state unchanged: `pickupTime.scheduledTime` remains ISO string
+- Downstream systems (orders API, receipts, emails) unaffected
+**Files:**
+- `components/customer/schedule-time-picker.tsx` - New unified picker component
+- `components/customer/order-type-selector.tsx` - Updated to use new picker
+**Old Component:** `components/customer/pickup-time-selector.tsx` (deprecated, can be removed)
+
 ### Per-Restaurant Payment Mode Toggle (Jan 2026)
 **Status:** IMPLEMENTED
 **Purpose:** Enable gradual production rollout by allowing each restaurant to independently switch between test and live Stripe payments.

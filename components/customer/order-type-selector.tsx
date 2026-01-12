@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { format, getDay, setHours, setMinutes } from 'date-fns'
-import { PickupTimeSelector, Schedule } from './pickup-time-selector'
+import { ScheduleTimePicker, Schedule } from './schedule-time-picker'
 
 interface ServiceConfig {
   has_delivery_enabled?: boolean
@@ -248,7 +248,7 @@ export function OrderTypeSelector({ className, schedules = [], onDeliveryBlocked
       
       {/* Time Selector - Always show, pass service status so it can disable ASAP when closed */}
       <Separator className="my-4" />
-      <PickupTimeSelector 
+      <ScheduleTimePicker 
         schedules={schedules} 
         orderType={effectiveOrderType}
         brandedColor={brandedColor}
