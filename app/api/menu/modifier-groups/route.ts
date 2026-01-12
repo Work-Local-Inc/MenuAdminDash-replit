@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
     }
     
     const groupIds = modifierGroups.map((g: any) => g.id)
-    console.log('[MODIFIER GROUPS] Found modifier groups:', groupIds.length)
+    console.log('[MODIFIER GROUPS] Found modifier groups:', groupIds.length, 'IDs:', groupIds)
     
     // Step 2: Get all dish_modifiers for these groups
     // dish_modifiers has: id, modifier_group_id, name, is_default, is_included, display_order
@@ -76,6 +76,8 @@ export async function GET(request: NextRequest) {
       .order('display_order', { ascending: true })
     
     if (modifiersError) throw modifiersError
+    
+    console.log('[MODIFIER GROUPS] Found modifiers:', modifiers?.length || 0)
     
     // Step 3: Get prices for the modifiers
     const modifierIds = (modifiers || []).map((m: any) => m.id)
