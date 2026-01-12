@@ -66,11 +66,11 @@ export async function GET(request: NextRequest) {
     console.log('[MODIFIER GROUPS] Found modifier groups:', groupIds.length, 'IDs:', groupIds)
     
     // Step 2: Get all modifiers for these groups
-    // modifiers table has: id, modifier_group_id, name_en, name_fr, is_active, is_default, display_order
+    // modifiers table has: id, modifier_group_id, name_en, name_fr, is_active, display_order
     const { data: modifiers, error: modifiersError } = await supabase
       .schema('menuca_v3')
       .from('modifiers')
-      .select('id, modifier_group_id, name_en, name_fr, display_order, is_default, is_active')
+      .select('id, modifier_group_id, name_en, name_fr, display_order, is_active')
       .in('modifier_group_id', groupIds)
       .is('deleted_at', null)
       .order('display_order', { ascending: true })
@@ -112,7 +112,6 @@ export async function GET(request: NextRequest) {
         name_fr: m.name_fr,
         price: basePrice?.price || 0,
         is_active: m.is_active ?? true,
-        is_default: m.is_default || false,
         display_order: m.display_order
       })
     })
