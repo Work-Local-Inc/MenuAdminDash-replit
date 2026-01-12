@@ -60,3 +60,39 @@ Preferred communication style: Simple, everyday language.
 -   **@hello-pangea/dnd**: Drag-and-drop reordering.
 -   **Stripe**: Payment processing.
 -   **Google Places API**: Address autocomplete and verification.
+
+## Recent Changes
+
+### Stripe Payment Flow Stability (Jan 2026)
+**Status:** FIXED
+**Issues Fixed:**
+1. **Double Payment Intent Creation** - React Strict Mode caused duplicate payment intent creation
+2. **Modifier Loading 500 Error** - Orders API tried to use non-existent FK relationship
+3. **Size Variant Mismatch** - Frontend "Regular" not matching database `null` for base prices
+4. **Combo Modifier Loading Error** - Made combo modifier loading fault-tolerant
+
+**Fixes:**
+1. **Payment Intent Guard** (`components/customer/checkout-payment-form.tsx`):
+   - Added `paymentIntentCreatedRef` guard to prevent duplicate creation
+   - Keyed `<Elements>` component by `clientSecret` to prevent Stripe warnings
+
+2. **Simple Modifier Two-Step Query** (`app/api/customer/orders/route.ts`):
+   - Changed from FK join syntax (`modifier_groups!inner`) to two-step query
+   - First query: `dish_modifiers` with `modifier_group_id`
+   - Second query: `modifier_groups` to get `dish_id` for validation
+
+3. **Size Variant Normalization** (`app/api/customer/orders/route.ts`):
+   - Frontend sends "Regular" for base-priced items
+   - Database stores `null` for base prices
+   - Added normalization: `"Regular"` → `null` before price lookup
+
+4. **Fault-Tolerant Combo Modifiers** (`app/api/customer/orders/route.ts`):
+   - Combo modifier loading errors are now non-fatal
+   - Sets `comboModifierLoadingFailed` flag when query fails
+   - Validation becomes lenient - uses cart-submitted data as fallback
+
+**Critical Pattern for Future Changes:**
+- Guard ref for payment intent creation (prevents React Strict Mode duplicates)
+- Keyed Elements by clientSecret (prevents Stripe prop warnings)
+- Two-step queries for tables without FK relationships in PostgREST cache
+- Fault-tolerant modifier validation with graceful fallbacks

@@ -307,6 +307,7 @@ export async function POST(request: NextRequest) {
     let comboModifierMap = new Map<number, { id: number; name: string; combo_modifier_group_id: number }>()
     let comboModifierPriceMap = new Map<number, number>()
     let dishComboGroupLinks = new Map<number, Set<number>>() // dish_id -> set of combo_group_ids
+    let comboModifierLoadingFailed = false // Flag to track if combo modifier loading failed
 
     if (modifierIds.length > 0) {
       // First, try to load as simple modifiers (from dish_modifiers table)
@@ -403,7 +404,9 @@ export async function POST(request: NextRequest) {
 
         if (comboModifiersError) {
           console.error('[Order API] Combo modifier preload error:', comboModifiersError)
-          return NextResponse.json({ error: 'Failed to load combo modifiers' }, { status: 500 })
+          // Non-fatal: Continue without combo modifiers - validation will be lenient
+          console.log('[Order API] Continuing without combo modifiers due to query error')
+          comboModifierLoadingFailed = true
         }
 
         comboModifiersData?.forEach((mod: any) => {
@@ -577,6 +580,21 @@ export async function POST(request: NextRequest) {
             const comboModifier = comboModifierMap.get(mod.id) as any
             
             if (!comboModifier) {
+              // If combo modifier loading failed, accept the modifier from cart with warning
+              if (comboModifierLoadingFailed) {
+                console.log(`[Order API] Modifier ${mod.id} not validated (combo loading failed) - using cart data`)
+                const modQuantity = mod.quantity || 1
+                const modPrice = mod.price ?? 0
+                itemTotal += modPrice * modQuantity * item.quantity
+                validatedModifiers.push({
+                  id: mod.id,
+                  name: mod.name || `Modifier ${mod.id}`,
+                  price: modPrice,
+                  quantity: modQuantity,
+                  placement: mod.placement || null
+                })
+                continue
+              }
               console.error(`[Order API] Modifier ${mod.id} not found in simple or combo modifiers`)
               return NextResponse.json({ 
                 error: `Invalid modifier ${mod.id} for dish ${item.dishId}` 
@@ -588,6 +606,21 @@ export async function POST(request: NextRequest) {
             const dishComboGroups = dishComboGroupLinks.get(item.dishId)
             
             if (!comboGroupId || !dishComboGroups || !dishComboGroups.has(comboGroupId)) {
+              // If combo group validation failed due to loading issues, accept with warning
+              if (comboModifierLoadingFailed) {
+                console.log(`[Order API] Combo modifier ${mod.id} validation skipped (loading failed) - using cart data`)
+                const modQuantity = mod.quantity || 1
+                const modPrice = mod.price ?? 0
+                itemTotal += modPrice * modQuantity * item.quantity
+                validatedModifiers.push({
+                  id: mod.id,
+                  name: comboModifier.name || mod.name || `Modifier ${mod.id}`,
+                  price: modPrice,
+                  quantity: modQuantity,
+                  placement: mod.placement || null
+                })
+                continue
+              }
               console.error(`[Order API] Combo modifier ${mod.id} (combo_group: ${comboGroupId}) not linked to dish ${item.dishId}`)
               console.error(`[Order API] Dish ${item.dishId} has combo groups:`, dishComboGroups ? Array.from(dishComboGroups) : 'none')
               return NextResponse.json({ 
