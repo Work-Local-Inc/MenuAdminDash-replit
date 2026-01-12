@@ -46,29 +46,19 @@ export async function GET(request: NextRequest) {
     const restaurantIdNum = parseInt(restaurantId, 10)
     console.log('[MODIFIER GROUPS] Fetching groups for restaurant:', restaurantIdNum)
     
-    // Get restaurant's legacy_v1_id (dishes use legacy_v1_id as restaurant_id)
-    const { data: restaurant } = await supabase
-      .schema('menuca_v3')
-      .from('restaurants')
-      .select('id, legacy_v1_id')
-      .eq('id', restaurantIdNum)
-      .single()
-    
-    const effectiveRestaurantId = restaurant?.legacy_v1_id || restaurantIdNum
-    console.log('[MODIFIER GROUPS] Using effective restaurant ID:', effectiveRestaurantId)
-    
     // Step 1: Get all dishes for this restaurant
+    // Dishes use the restaurant_id as passed directly
     const { data: dishes, error: dishesError } = await supabase
       .schema('menuca_v3')
       .from('dishes')
       .select('id')
-      .eq('restaurant_id', effectiveRestaurantId)
+      .eq('restaurant_id', restaurantIdNum)
       .is('deleted_at', null)
     
     if (dishesError) throw dishesError
     
     if (!dishes || dishes.length === 0) {
-      console.log('[MODIFIER GROUPS API] No dishes found for restaurant')
+      console.log('[MODIFIER GROUPS API] No dishes found for restaurant', restaurantIdNum)
       return NextResponse.json([])
     }
     
@@ -76,9 +66,10 @@ export async function GET(request: NextRequest) {
     console.log('[MODIFIER GROUPS] Found dishes:', dishIds.length)
     
     // Step 2: Get all modifier groups attached to these dishes
+    // Table is dish_modifier_groups (not modifier_groups)
     const { data: modifierGroups, error: groupsError } = await supabase
       .schema('menuca_v3')
-      .from('modifier_groups')
+      .from('dish_modifier_groups')
       .select('id, dish_id, name, is_required, min_selections, max_selections, display_order, created_at')
       .in('dish_id', dishIds)
       .is('deleted_at', null)
