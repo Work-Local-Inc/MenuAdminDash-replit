@@ -65,12 +65,12 @@ export async function GET(request: NextRequest) {
     const groupIds = modifierGroups.map((g: any) => g.id)
     console.log('[MODIFIER GROUPS] Found modifier groups:', groupIds.length, 'IDs:', groupIds)
     
-    // Step 2: Get all dish_modifiers for these groups
-    // dish_modifiers has: id, modifier_group_id, name, is_default, is_included, display_order
+    // Step 2: Get all modifiers for these groups
+    // modifiers table has: id, modifier_group_id, name_en, name_fr, is_active, is_default, display_order
     const { data: modifiers, error: modifiersError } = await supabase
       .schema('menuca_v3')
-      .from('dish_modifiers')
-      .select('id, modifier_group_id, name, display_order, is_default, is_included')
+      .from('modifiers')
+      .select('id, modifier_group_id, name_en, name_fr, display_order, is_default, is_active')
       .in('modifier_group_id', groupIds)
       .is('deleted_at', null)
       .order('display_order', { ascending: true })
@@ -79,16 +79,16 @@ export async function GET(request: NextRequest) {
     
     console.log('[MODIFIER GROUPS] Found modifiers:', modifiers?.length || 0)
     
-    // Step 3: Get prices for the modifiers
+    // Step 3: Get prices for the modifiers from modifier_prices table
     const modifierIds = (modifiers || []).map((m: any) => m.id)
     let modifierPrices: any[] = []
     
     if (modifierIds.length > 0) {
       const { data: pricesData, error: pricesError } = await supabase
         .schema('menuca_v3')
-        .from('dish_modifier_prices')
-        .select('id, dish_modifier_id, price, size_variant')
-        .in('dish_modifier_id', modifierIds)
+        .from('modifier_prices')
+        .select('id, modifier_id, price, modifier_size_variant_id')
+        .in('modifier_id', modifierIds)
       
       if (!pricesError) {
         modifierPrices = pricesData || []
@@ -101,15 +101,17 @@ export async function GET(request: NextRequest) {
       if (!modifiersByGroup[m.modifier_group_id]) {
         modifiersByGroup[m.modifier_group_id] = []
       }
-      // Get base price (null size_variant) for this modifier
+      // Get base price (null/1 modifier_size_variant_id) for this modifier
       const basePrice = modifierPrices.find(
-        (p: any) => p.dish_modifier_id === m.id && !p.size_variant
+        (p: any) => p.modifier_id === m.id && (!p.modifier_size_variant_id || p.modifier_size_variant_id === 1)
       )
       modifiersByGroup[m.modifier_group_id].push({
         id: m.id,
-        name: m.name,
+        name: m.name_en,
+        name_en: m.name_en,
+        name_fr: m.name_fr,
         price: basePrice?.price || 0,
-        is_included: m.is_included || false,
+        is_active: m.is_active ?? true,
         is_default: m.is_default || false,
         display_order: m.display_order
       })
