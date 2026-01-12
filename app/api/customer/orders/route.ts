@@ -559,10 +559,16 @@ export async function POST(request: NextRequest) {
           const simpleModifier = simpleModifierMap.get(mod.id)
           
           if (simpleModifier) {
-            // Note: In the new schema, modifiers are linked to modifier_groups which can be
-            // linked to multiple dishes via dish_modifier_group_links. We still validate
-            // the modifier exists and get its price from the server.
-            // The dish_id validation is less strict now since modifier_groups can be shared.
+            // Validate modifier: Check if modifier_group has a dish_id association
+            // If dish_id is set (not null/0), verify it matches the ordered dish
+            // If dish_id is null/0, this is a library/shared modifier group - allow it
+            const associatedDishId = simpleModifier.modifier_group.dish_id
+            if (associatedDishId && associatedDishId !== 0 && associatedDishId !== item.dishId) {
+              console.error(`[Order API] Simple modifier ${mod.id} belongs to dish ${associatedDishId}, not ${item.dishId}`)
+              return NextResponse.json({ 
+                error: `Invalid modifier ${mod.id} for dish ${item.dishId}` 
+              }, { status: 400 })
+            }
             
             // Get server-side price (modifiers now have dish-independent pricing)
             const modPrice = simpleModifierPriceMap.get(mod.id) ?? 0
