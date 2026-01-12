@@ -116,15 +116,13 @@ function generateTimeSlotsForWindow(window: TimeWindow, date: Date, minPickupTim
   
   while (isBefore(current, closeDateTime) || current.getTime() === closeDateTime.getTime()) {
     if (!isBefore(current, openDateTime)) {
-      const endTime = addMinutes(current, SLOT_INTERVAL_MINUTES);
       const timeStr = format(current, 'HH:mm');
-      const displayStart = format(current, 'h:mm a');
-      const displayEnd = format(endTime, 'h:mm a');
+      const displayTime = format(current, 'h:mm a');
       
       slots.push({
         time: timeStr,
         dateTime: new Date(current),
-        displayLabel: `${displayStart} - ${displayEnd}`,
+        displayLabel: displayTime,
       });
     }
     current = addMinutes(current, SLOT_INTERVAL_MINUTES);
