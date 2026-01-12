@@ -244,14 +244,8 @@ export function ScheduleTimePicker({
   
   const isCurrentDayClosed = !hasNoSchedules && windowsForDay.length === 0;
   
-  useEffect(() => {
-    if (isServiceClosed && pickupTime.type === 'asap') {
-      setIsModalOpen(true);
-      if (timeSlots.length > 0) {
-        setSelectedSlot(timeSlots[0]);
-      }
-    }
-  }, [isServiceClosed, timeSlots.length, pickupTime.type]);
+  // Note: Removed auto-open modal behavior when service is closed
+  // Modal now only opens when user explicitly clicks "Schedule" button
   
   useEffect(() => {
     if (pickupTime.type === 'scheduled' && pickupTime.scheduledTime) {
