@@ -46,57 +46,38 @@ export async function GET(request: NextRequest) {
     const restaurantIdNum = parseInt(restaurantId, 10)
     console.log('[MODIFIER GROUPS] Fetching groups for restaurant:', restaurantIdNum)
     
-    // Step 1: Get all dishes for this restaurant
-    // Dishes use the restaurant_id as passed directly
-    const { data: dishes, error: dishesError } = await supabase
-      .schema('menuca_v3')
-      .from('dishes')
-      .select('id')
-      .eq('restaurant_id', restaurantIdNum)
-      .is('deleted_at', null)
-    
-    if (dishesError) throw dishesError
-    
-    if (!dishes || dishes.length === 0) {
-      console.log('[MODIFIER GROUPS API] No dishes found for restaurant', restaurantIdNum)
-      return NextResponse.json([])
-    }
-    
-    const dishIds = dishes.map((d: any) => d.id)
-    console.log('[MODIFIER GROUPS] Found dishes:', dishIds.length)
-    
-    // Step 2: Get all modifier groups attached to these dishes
-    // Table is dish_modifier_groups (not modifier_groups)
+    // Step 1: Get all modifier groups for this restaurant directly
+    // modifier_groups table has: id, restaurant_id, name_en, name_fr, category
     const { data: modifierGroups, error: groupsError } = await supabase
       .schema('menuca_v3')
-      .from('dish_modifier_groups')
-      .select('id, dish_id, name, is_required, min_selections, max_selections, display_order, created_at')
-      .in('dish_id', dishIds)
+      .from('modifier_groups')
+      .select('id, restaurant_id, name_en, name_fr, category, created_at')
+      .eq('restaurant_id', restaurantIdNum)
       .is('deleted_at', null)
-      .order('display_order', { ascending: true })
     
     if (groupsError) throw groupsError
     
     if (!modifierGroups || modifierGroups.length === 0) {
-      console.log('[MODIFIER GROUPS API] No modifier groups found')
+      console.log('[MODIFIER GROUPS API] No modifier groups found for restaurant', restaurantIdNum)
       return NextResponse.json([])
     }
     
     const groupIds = modifierGroups.map((g: any) => g.id)
     console.log('[MODIFIER GROUPS] Found modifier groups:', groupIds.length)
     
-    // Step 3: Get all modifiers for these groups (with prices)
+    // Step 2: Get all dish_modifiers for these groups
+    // dish_modifiers has: id, modifier_group_id, name, is_default, is_included, display_order
     const { data: modifiers, error: modifiersError } = await supabase
       .schema('menuca_v3')
       .from('dish_modifiers')
-      .select('id, modifier_group_id, name, display_order, is_active')
+      .select('id, modifier_group_id, name, display_order, is_default, is_included')
       .in('modifier_group_id', groupIds)
       .is('deleted_at', null)
       .order('display_order', { ascending: true })
     
     if (modifiersError) throw modifiersError
     
-    // Step 4: Get prices for the modifiers
+    // Step 3: Get prices for the modifiers
     const modifierIds = (modifiers || []).map((m: any) => m.id)
     let modifierPrices: any[] = []
     
@@ -126,45 +107,23 @@ export async function GET(request: NextRequest) {
         id: m.id,
         name: m.name,
         price: basePrice?.price || 0,
-        is_included: false,
-        display_order: m.display_order,
-        is_active: m.is_active
+        is_included: m.is_included || false,
+        is_default: m.is_default || false,
+        display_order: m.display_order
       })
     })
     
-    // Deduplicate modifier groups by name (same name = same logical group)
-    const groupsByName: Record<string, any> = {}
-    modifierGroups.forEach((g: any) => {
-      const groupName = g.name
-      if (!groupsByName[groupName]) {
-        groupsByName[groupName] = {
-          id: g.id,
-          name: g.name,
-          is_required: g.is_required || false,
-          min_selections: g.min_selections || 0,
-          max_selections: g.max_selections || 10,
-          display_order: g.display_order || 0,
-          created_at: g.created_at,
-          modifiers: modifiersByGroup[g.id] || [],
-          linked_dish_count: 1
-        }
-      } else {
-        // Same name group - increment linked dish count
-        groupsByName[groupName].linked_dish_count++
-        // Merge modifiers if they have unique names
-        const existingModifierNames = new Set(
-          groupsByName[groupName].modifiers.map((m: any) => m.name)
-        )
-        const newModifiers = (modifiersByGroup[g.id] || []).filter(
-          (m: any) => !existingModifierNames.has(m.name)
-        )
-        groupsByName[groupName].modifiers.push(...newModifiers)
-      }
-    })
-    
-    const result = Object.values(groupsByName).sort(
-      (a: any, b: any) => a.display_order - b.display_order
-    )
+    // Build response with modifier groups
+    // modifier_groups has: id, restaurant_id, name_en, name_fr, category
+    const result = modifierGroups.map((g: any) => ({
+      id: g.id,
+      name: g.name_en,
+      name_en: g.name_en,
+      name_fr: g.name_fr,
+      category: g.category,
+      created_at: g.created_at,
+      modifiers: modifiersByGroup[g.id] || []
+    }))
 
     console.log(`[MODIFIER GROUPS API] Returning ${result.length} modifier groups for restaurant ${restaurantId}`)
 
