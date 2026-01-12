@@ -139,27 +139,29 @@ export async function POST(request: NextRequest) {
       })
     })
 
-    // Maps for simple modifiers (from dish_modifiers table)
-    let simpleModifierPriceMap = new Map<string, number>()
+    // Maps for simple modifiers (from modifiers/modifier_prices tables - NOT the empty dish_modifiers table)
+    let simpleModifierPriceMap = new Map<number, number>()
     // Maps for combo modifiers (from combo_modifiers table)
     let comboModifierPriceMap = new Map<number, number>()
     
     if (modifierIds.length > 0) {
-      // Load simple modifier prices
+      // Load simple modifier prices from modifier_prices table (NOT dish_modifier_prices which is empty)
       const { data: simpleModifierPricesData } = await (adminSupabase as any)
         .schema('menuca_v3')
-        .from('dish_modifier_prices')
-        .select('dish_modifier_id, dish_id, price')
-        .in('dish_modifier_id', modifierIds)
-        .eq('is_active', true)
+        .from('modifier_prices')
+        .select('modifier_id, price, modifier_size_variant_id')
+        .in('modifier_id', modifierIds)
 
       simpleModifierPricesData?.forEach((priceRow: any) => {
-        const key = `${priceRow.dish_modifier_id}-${priceRow.dish_id}`
-        simpleModifierPriceMap.set(key, parseFloat(priceRow.price))
+        // Store base prices (null/1 modifier_size_variant_id)
+        const isBasePrice = !priceRow.modifier_size_variant_id || priceRow.modifier_size_variant_id === 1
+        if (isBasePrice) {
+          simpleModifierPriceMap.set(priceRow.modifier_id, parseFloat(priceRow.price))
+        }
       })
 
       // Also check combo modifiers for any IDs not found in simple modifiers
-      const simpleModIds = new Set(simpleModifierPricesData?.map((p: any) => p.dish_modifier_id) || [])
+      const simpleModIds = new Set(simpleModifierPricesData?.map((p: any) => p.modifier_id) || [])
       const potentialComboIds = (modifierIds as number[]).filter(id => !simpleModIds.has(id))
       
       if (potentialComboIds.length > 0) {
@@ -203,9 +205,8 @@ export async function POST(request: NextRequest) {
 
       if (item.modifiers && item.modifiers.length > 0) {
         for (const mod of item.modifiers) {
-          // First check simple modifier price
-          const modKey = `${mod.id}-${item.dishId}`
-          let modPrice: number = simpleModifierPriceMap.get(modKey) ?? -1
+          // First check simple modifier price (now keyed by modifier_id only)
+          let modPrice: number = simpleModifierPriceMap.get(mod.id) ?? -1
           
           // If not found in simple modifiers, check combo modifiers
           if (modPrice < 0) {

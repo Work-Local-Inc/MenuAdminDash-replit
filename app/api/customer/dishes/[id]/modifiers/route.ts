@@ -43,40 +43,42 @@ export async function GET(
     
     const modifierGroupIds = modifierGroups.map((g: any) => g.id);
     
-    // Fetch modifiers separately - filter by is_active
+    // Fetch modifiers from modifiers table (NOT the empty dish_modifiers table)
     const { data: modifiers, error: modifiersError } = await supabase
       .schema('menuca_v3')
-      .from('dish_modifiers' as any)
+      .from('modifiers' as any)
       .select(`
         id,
         modifier_group_id,
-        name,
+        name_en,
+        name_fr,
         display_order,
         is_active
       `)
       .in('modifier_group_id', modifierGroupIds)
       .eq('is_active', true)
+      .is('deleted_at', null)
       .order('display_order', { ascending: true });
     
     if (modifiersError) {
       throw modifiersError;
     }
     
-    // Fetch modifier prices
+    // Fetch modifier prices from modifier_prices table (NOT the empty dish_modifier_prices table)
     const modifierIds = (modifiers || []).map((m: any) => m.id);
     let prices: any[] = [];
     
     if (modifierIds.length > 0) {
       const { data: pricesData, error: pricesError } = await supabase
         .schema('menuca_v3')
-        .from('dish_modifier_prices' as any)
+        .from('modifier_prices' as any)
         .select(`
           id,
-          dish_modifier_id,
-          size_variant,
+          modifier_id,
+          modifier_size_variant_id,
           price
         `)
-        .in('dish_modifier_id', modifierIds);
+        .in('modifier_id', modifierIds);
       
       if (pricesError) {
         console.log('[Customer Modifiers] Prices query error:', pricesError);
@@ -88,11 +90,11 @@ export async function GET(
     // Group prices by modifier id
     const pricesByModifier: Record<number, any[]> = {};
     prices.forEach((p: any) => {
-      if (!pricesByModifier[p.dish_modifier_id]) {
-        pricesByModifier[p.dish_modifier_id] = [];
+      if (!pricesByModifier[p.modifier_id]) {
+        pricesByModifier[p.modifier_id] = [];
       }
-      pricesByModifier[p.dish_modifier_id].push({
-        size_variant: p.size_variant,
+      pricesByModifier[p.modifier_id].push({
+        size_variant: p.modifier_size_variant_id === 1 || !p.modifier_size_variant_id ? null : `Size ${p.modifier_size_variant_id}`,
         price: p.price
       });
     });
@@ -105,7 +107,9 @@ export async function GET(
       }
       modifiersByGroup[m.modifier_group_id].push({
         id: m.id,
-        name: m.name,
+        name: m.name_en || m.name_fr,
+        name_en: m.name_en,
+        name_fr: m.name_fr,
         display_order: m.display_order,
         prices: pricesByModifier[m.id] || []
       });

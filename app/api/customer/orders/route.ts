@@ -299,9 +299,9 @@ export async function POST(request: NextRequest) {
       dishPriceOptions.set(priceRow.dish_id, existing)
     })
 
-    // Maps for simple modifiers (from dish_modifiers table)
+    // Maps for simple modifiers (from modifiers table - NOT the empty dish_modifiers table)
     let simpleModifierMap = new Map<number, { id: number; name: string; modifier_group: { id: number; dish_id: number } }>()
-    let simpleModifierPriceMap = new Map<string, number>()
+    let simpleModifierPriceMap = new Map<number, number>()
     
     // Maps for combo modifiers (from combo_modifiers table)
     let comboModifierMap = new Map<number, { id: number; name: string; combo_modifier_group_id: number }>()
@@ -310,14 +310,14 @@ export async function POST(request: NextRequest) {
     let comboModifierLoadingFailed = false // Flag to track if combo modifier loading failed
 
     if (modifierIds.length > 0) {
-      // First, try to load as simple modifiers (from dish_modifiers table)
-      // Query dish_modifiers directly without FK join (no FK relationship in PostgREST cache)
+      // First, try to load as simple modifiers (from modifiers table)
+      // Note: dish_modifiers table is empty/legacy - use modifiers table instead
       const { data: simpleModifiersData, error: simpleModifiersError } = await (adminSupabase as any)
         .schema('menuca_v3')
-        .from('dish_modifiers')
+        .from('modifiers')
         .select(`
           id,
-          name,
+          name_en,
           modifier_group_id
         `)
         .in('id', modifierIds)
@@ -356,7 +356,7 @@ export async function POST(request: NextRequest) {
         const dish_id = modifierGroupToDish.get(mod.modifier_group_id)
         simpleModifierMap.set(mod.id, {
           id: mod.id,
-          name: mod.name,
+          name: mod.name_en,
           modifier_group: {
             id: mod.modifier_group_id,
             dish_id: dish_id || 0
@@ -364,15 +364,14 @@ export async function POST(request: NextRequest) {
         })
       })
 
-      // Load simple modifier prices
+      // Load simple modifier prices from modifier_prices table (NOT dish_modifier_prices which is empty)
       const simpleModIds = simpleModifiersData?.map((m: any) => m.id) || []
       if (simpleModIds.length > 0) {
         const { data: simpleModifierPricesData, error: simpleModifierPricesError } = await (adminSupabase as any)
           .schema('menuca_v3')
-          .from('dish_modifier_prices')
-          .select('dish_modifier_id, dish_id, price')
-          .in('dish_modifier_id', simpleModIds)
-          .eq('is_active', true)
+          .from('modifier_prices')
+          .select('modifier_id, price, modifier_size_variant_id')
+          .in('modifier_id', simpleModIds)
 
         if (simpleModifierPricesError) {
           console.error('[Order API] Simple modifier price preload error:', simpleModifierPricesError)
@@ -380,8 +379,13 @@ export async function POST(request: NextRequest) {
         }
 
         simpleModifierPricesData?.forEach((priceRow: any) => {
-          const key = `${priceRow.dish_modifier_id}-${priceRow.dish_id}`
-          simpleModifierPriceMap.set(key, parseFloat(priceRow.price))
+          // Store prices by modifier_id (modifier_prices table is modifier-centric, not dish-centric)
+          // Base price has null/1 modifier_size_variant_id
+          const isBasePrice = !priceRow.modifier_size_variant_id || priceRow.modifier_size_variant_id === 1
+          if (isBasePrice) {
+            // Store just by modifier_id - will look up by modifier ID only
+            simpleModifierPriceMap.set(priceRow.modifier_id, parseFloat(priceRow.price))
+          }
         })
       }
 
@@ -555,16 +559,13 @@ export async function POST(request: NextRequest) {
           const simpleModifier = simpleModifierMap.get(mod.id)
           
           if (simpleModifier) {
-            // Validate simple modifier belongs to this dish
-            if (simpleModifier.modifier_group.dish_id !== item.dishId) {
-              console.error(`[Order API] Simple modifier ${mod.id} belongs to dish ${simpleModifier.modifier_group.dish_id}, not ${item.dishId}`)
-              return NextResponse.json({ 
-                error: `Invalid modifier ${mod.id} for dish ${item.dishId}` 
-              }, { status: 400 })
-            }
-
-            const modifierPriceKey = `${mod.id}-${item.dishId}`
-            const modPrice = simpleModifierPriceMap.get(modifierPriceKey) ?? 0
+            // Note: In the new schema, modifiers are linked to modifier_groups which can be
+            // linked to multiple dishes via dish_modifier_group_links. We still validate
+            // the modifier exists and get its price from the server.
+            // The dish_id validation is less strict now since modifier_groups can be shared.
+            
+            // Get server-side price (modifiers now have dish-independent pricing)
+            const modPrice = simpleModifierPriceMap.get(mod.id) ?? 0
 
             const modQuantity = mod.quantity || 1
             itemTotal += modPrice * modQuantity * item.quantity

@@ -96,3 +96,30 @@ Preferred communication style: Simple, everyday language.
 - Keyed Elements by clientSecret (prevents Stripe prop warnings)
 - Two-step queries for tables without FK relationships in PostgREST cache
 - Fault-tolerant modifier validation with graceful fallbacks
+
+### Modifier Table Schema Fix (Jan 2026)
+**Status:** FIXED
+**Issue:** Multiple APIs were querying empty legacy tables (`dish_modifiers`, `dish_modifier_prices`) instead of the correct tables with actual data.
+
+**CRITICAL Schema Info - Do NOT Use These Tables:**
+| Table | Status | Notes |
+|-------|--------|-------|
+| `dish_modifiers` | **EMPTY/LEGACY** | Do NOT use - no data |
+| `dish_modifier_prices` | **EMPTY/LEGACY** | Do NOT use - no data |
+
+**Use These Tables Instead:**
+| Table | Records | Columns |
+|-------|---------|---------|
+| `modifiers` | 68,881+ | `id`, `modifier_group_id`, `name_en`, `name_fr`, `is_active`, `display_order` |
+| `modifier_prices` | Has data | `id`, `modifier_id`, `price`, `modifier_size_variant_id` |
+| `modifier_groups` | 2,871+ | `id`, `restaurant_id`, `name_en`, `name_fr`, `category` |
+
+**Files Fixed:**
+- `app/api/menu/modifier-groups/route.ts` - Admin modifier groups library
+- `app/api/customer/orders/route.ts` - Customer card payments
+- `app/api/customer/orders/cash/route.ts` - Customer cash payments
+- `app/api/customer/dishes/[id]/modifiers/route.ts` - Customer dish modifiers endpoint
+
+**Key Pattern:**
+- Simple modifiers: `modifiers` table → `modifier_prices` table (keyed by `modifier_id`)
+- Combo modifiers: `combo_modifiers` table → `combo_modifier_prices` table (separate system)
