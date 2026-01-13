@@ -76,10 +76,11 @@ Preferred communication style: Simple, everyday language.
    - Added `paymentIntentCreatedRef` guard to prevent duplicate creation
    - Keyed `<Elements>` component by `clientSecret` to prevent Stripe warnings
 
-2. **Simple Modifier Two-Step Query** (`app/api/customer/orders/route.ts`):
-   - Changed from FK join syntax (`modifier_groups!inner`) to two-step query
-   - First query: `dish_modifiers` with `modifier_group_id`
-   - Second query: `modifier_groups` to get `dish_id` for validation
+2. **Dish-to-Modifier Index** (`app/api/customer/orders/route.ts`):
+   - Builds `dishModifierIndex: Map<dishId, Set<modifierId>>` from menu RPC data
+   - Validates modifiers using `dishModifierIndex.get(dishId)?.has(modifierId)`
+   - Correctly handles SHARED modifier groups (same group attached to multiple dishes)
+   - CRITICAL: Do NOT use `modifier_groups.dish_id` - column doesn't exist!
 
 3. **Size Variant Normalization** (`app/api/customer/orders/route.ts`):
    - Frontend sends "Regular" for base-priced items
@@ -96,6 +97,7 @@ Preferred communication style: Simple, everyday language.
 - Keyed Elements by clientSecret (prevents Stripe prop warnings)
 - Two-step queries for tables without FK relationships in PostgREST cache
 - Fault-tolerant modifier validation with graceful fallbacks
+- Use `dishModifierIndex` from menu data for modifier validation (NOT direct table queries)
 
 ### Menu Caching Implementation (Jan 2026)
 **Status:** COMPLETE

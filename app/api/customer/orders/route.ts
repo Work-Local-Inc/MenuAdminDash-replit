@@ -299,8 +299,9 @@ export async function POST(request: NextRequest) {
       dishPriceOptions.set(priceRow.dish_id, existing)
     })
 
-    // Maps for simple modifiers - built from menu data (modifier_groups don't have dish_id column)
-    let simpleModifierMap = new Map<number, { id: number; name: string; modifier_group: { id: number; dish_id: number } }>()
+    // Maps for simple modifiers - built from menu data
+    // Note: No dish_id in modifier_group - validation uses dishModifierIndex instead
+    let simpleModifierMap = new Map<number, { id: number; name: string; modifier_group: { id: number } }>()
     let simpleModifierPriceMap = new Map<number, number>()
     
     // Maps for combo modifiers (from combo_modifiers table)
@@ -309,19 +310,25 @@ export async function POST(request: NextRequest) {
     let dishComboGroupLinks = new Map<number, Set<number>>() // dish_id -> set of combo_group_ids
     let comboModifierLoadingFailed = false // Flag to track if combo modifier loading failed
 
-    // Build modifier-to-dish mapping from menu data (not direct table query - modifier_groups has no dish_id column)
-    // The menu RPC function handles the relationship properly
-    const modifierGroupToDish = new Map<number, number>()
+    // Build dish-to-modifiers index from menu data 
+    // Key insight: modifier groups can be SHARED across multiple dishes, so we need to build
+    // a complete index of which modifiers are valid for each dish
+    // Format: dishId -> Set<modifierId>
+    const dishModifierIndex = new Map<number, Set<number>>()
     const modifierIdToInfo = new Map<number, { name: string; modifier_group_id: number }>()
     
     menuData?.courses?.forEach((course: any) => {
       course.dishes?.forEach((dish: any) => {
+        // Initialize the set for this dish
+        if (!dishModifierIndex.has(dish.id)) {
+          dishModifierIndex.set(dish.id, new Set<number>())
+        }
+        const dishModifiers = dishModifierIndex.get(dish.id)!
+        
         dish.modifier_groups?.forEach((mg: any) => {
-          // Map modifier_group_id to dish_id
-          modifierGroupToDish.set(mg.id, dish.id)
-          
-          // Map each modifier to its info
+          // Add each modifier to this dish's valid modifier set
           mg.modifiers?.forEach((mod: any) => {
+            dishModifiers.add(mod.id)
             modifierIdToInfo.set(mod.id, {
               name: mod.name,
               modifier_group_id: mg.id
@@ -333,16 +340,15 @@ export async function POST(request: NextRequest) {
 
     if (modifierIds.length > 0) {
       // Build simpleModifierMap from the menu data we already have
+      // Note: We no longer need dish_id in the modifier map - validation uses dishModifierIndex directly
       (modifierIds as number[]).forEach((modId: number) => {
         const modInfo = modifierIdToInfo.get(modId)
         if (modInfo) {
-          const dish_id = modifierGroupToDish.get(modInfo.modifier_group_id) || 0
           simpleModifierMap.set(modId, {
             id: modId,
             name: modInfo.name,
             modifier_group: {
-              id: modInfo.modifier_group_id,
-              dish_id: dish_id
+              id: modInfo.modifier_group_id
             }
           })
         }
@@ -544,12 +550,12 @@ export async function POST(request: NextRequest) {
           const simpleModifier = simpleModifierMap.get(mod.id)
           
           if (simpleModifier) {
-            // Validate modifier: Check if modifier_group has a dish_id association
-            // If dish_id is set (not null/0), verify it matches the ordered dish
-            // If dish_id is null/0, this is a library/shared modifier group - allow it
-            const associatedDishId = simpleModifier.modifier_group.dish_id
-            if (associatedDishId && associatedDishId !== 0 && associatedDishId !== item.dishId) {
-              console.error(`[Order API] Simple modifier ${mod.id} belongs to dish ${associatedDishId}, not ${item.dishId}`)
+            // Validate modifier belongs to this dish using the dishModifierIndex
+            // This correctly handles shared modifier groups across multiple dishes
+            const validModifiersForDish = dishModifierIndex.get(item.dishId)
+            if (!validModifiersForDish || !validModifiersForDish.has(mod.id)) {
+              console.error(`[Order API] Simple modifier ${mod.id} not valid for dish ${item.dishId}`)
+              console.error(`[Order API] Valid modifiers for dish ${item.dishId}:`, validModifiersForDish ? Array.from(validModifiersForDish) : 'none')
               return NextResponse.json({ 
                 error: `Invalid modifier ${mod.id} for dish ${item.dishId}` 
               }, { status: 400 })
