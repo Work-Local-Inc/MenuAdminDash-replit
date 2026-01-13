@@ -8,6 +8,9 @@ import { AuthError } from '@/lib/errors'
 export const maxDuration = 60 // seconds
 export const dynamic = 'force-dynamic'
 
+// Log immediately when module loads
+console.log('[Storage Upload] Route module loaded')
+
 // Whitelist of allowed storage buckets
 const ALLOWED_BUCKETS = ['restaurant-logos', 'restaurant-images', 'dish-images']
 
@@ -32,15 +35,19 @@ function sanitizeFilename(filename: string): string {
 }
 
 export async function POST(request: NextRequest) {
-  console.log('[Storage Upload] Starting upload request')
+  console.log('[Storage Upload] ========== NEW UPLOAD REQUEST ==========')
+  console.log('[Storage Upload] Request URL:', request.url)
+  console.log('[Storage Upload] Content-Type:', request.headers.get('content-type'))
   
   try {
     // Verify auth first
     console.log('[Storage Upload] Verifying admin auth...')
     await verifyAdminAuth(request)
-    console.log('[Storage Upload] Auth verified')
+    console.log('[Storage Upload] Auth verified successfully')
     
+    console.log('[Storage Upload] Creating Supabase admin client...')
     const supabase = createAdminClient() as any
+    console.log('[Storage Upload] Supabase client created')
     
     // Parse form data
     console.log('[Storage Upload] Parsing form data...')
@@ -122,15 +129,47 @@ export async function POST(request: NextRequest) {
 
     // Upload to Supabase Storage
     console.log('[Storage Upload] Uploading to Supabase storage...', { bucket, path: sanitizedPath })
-    const { data, error } = await supabase.storage
-      .from(bucket)
-      .upload(sanitizedPath, buffer, {
-        contentType: file.type,
-        upsert: true,
-      })
+    
+    let data, error
+    try {
+      const result = await supabase.storage
+        .from(bucket)
+        .upload(sanitizedPath, buffer, {
+          contentType: file.type,
+          upsert: true,
+        })
+      data = result.data
+      error = result.error
+    } catch (storageError: any) {
+      console.error('[Storage Upload] Storage service error:', storageError)
+      return NextResponse.json(
+        { error: `Storage service unavailable: ${storageError.message || 'Connection failed'}` },
+        { status: 503 }
+      )
+    }
 
     if (error) {
-      console.error('[Storage Upload] Supabase upload error:', error)
+      console.error('[Storage Upload] Supabase upload error:', {
+        message: error.message,
+        statusCode: error.statusCode,
+        error: error
+      })
+      
+      // Check for specific error types
+      if (error.message?.includes('Bucket not found') || error.message?.includes('not found')) {
+        return NextResponse.json(
+          { error: `Storage bucket '${bucket}' not found. Please ensure it exists in Supabase Storage.` },
+          { status: 404 }
+        )
+      }
+      
+      if (error.statusCode === 403 || error.message?.includes('permission') || error.message?.includes('Policy')) {
+        return NextResponse.json(
+          { error: `Permission denied for bucket '${bucket}'. Check storage policies.` },
+          { status: 403 }
+        )
+      }
+      
       throw error
     }
     
