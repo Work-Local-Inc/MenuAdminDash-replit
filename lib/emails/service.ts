@@ -324,14 +324,19 @@ export async function sendOrderConfirmationEmail(data: OrderConfirmationData): P
       customerEmail,
       itemCount: data.items.length,
       total: data.total,
+      fromEmail: FROM_EMAIL,
     })
 
     const plainTextContent = generateOrderConfirmationPlainText(data)
 
+    const fromAddress = data.restaurantName 
+      ? `${data.restaurantName} <${FROM_EMAIL.includes('<') ? FROM_EMAIL.match(/<(.+)>/)?.[1] || FROM_EMAIL : FROM_EMAIL}>`
+      : FROM_EMAIL
+
     await sendEmailWithRetry(
       async () => {
         return await resend.emails.send({
-          from: FROM_EMAIL,
+          from: fromAddress,
           to: customerEmail,
           subject: `Order Confirmation #${data.orderNumber} - ${data.restaurantName}`,
           react: OrderConfirmationEmail(templateProps),
