@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { extractIdFromSlug } from '@/lib/utils/slugify'
 import { sendOrderConfirmationEmail } from '@/lib/emails/service'
+import { fetchMenuForCustomer } from '@/lib/supabase/menu'
 import crypto from 'crypto'
 
 export async function POST(request: NextRequest) {
@@ -91,13 +92,12 @@ export async function POST(request: NextRequest) {
       cart_items.flatMap((item: any) => item.modifiers?.map((mod: any) => mod.id) || [])
     ))
 
-    // Validate dishes exist using the menu RPC (same source as customer-facing menu)
-    const { data: menuData, error: menuError } = await (adminSupabase as any)
-      .schema('menuca_v3')
-      .rpc('get_restaurant_menu', {
-        p_restaurant_id: restaurant.id,
-        p_language_code: 'en'
-      })
+    // Validate dishes exist using the cached menu RPC (same source as customer-facing menu)
+    const { data: menuData, error: menuError } = await fetchMenuForCustomer(
+      adminSupabase,
+      restaurant.id,
+      'en'
+    )
 
     if (menuError) {
       console.error('[Cash Order API] Menu fetch error:', menuError)

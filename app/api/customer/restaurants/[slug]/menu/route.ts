@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { extractIdFromSlug } from '@/lib/utils/slugify';
+import { fetchMenuForCustomer, validateLanguageCode } from '@/lib/supabase/menu';
 
 export async function GET(
   request: NextRequest,
@@ -19,14 +20,14 @@ export async function GET(
       );
     }
     
-    const language = request.nextUrl.searchParams.get('language') || 'en';
+    const rawLanguage = request.nextUrl.searchParams.get('language') || 'en';
+    const language = validateLanguageCode(rawLanguage);
     
-    const { data, error } = await supabase
-      .schema('menuca_v3')
-      .rpc('get_restaurant_menu', {
-        p_restaurant_id: restaurantId,
-        p_language_code: language
-      });
+    const { data, error } = await fetchMenuForCustomer(
+      supabase,
+      restaurantId,
+      language
+    );
     
     if (error) {
       throw error;

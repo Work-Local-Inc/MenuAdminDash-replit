@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { extractIdFromSlug } from '@/lib/utils/slugify'
 import Stripe from 'stripe'
 import { sendOrderConfirmationEmail } from '@/lib/emails/service'
+import { fetchMenuForCustomer } from '@/lib/supabase/menu'
 
 // Get Stripe instance based on payment mode (test or live)
 function getStripe(paymentMode: 'test' | 'live' = 'test') {
@@ -242,13 +243,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No dishes found in cart' }, { status: 400 })
     }
 
-    // Validate dishes exist using the menu RPC (same source as customer-facing menu)
-    const { data: menuData, error: menuError } = await (adminSupabase as any)
-      .schema('menuca_v3')
-      .rpc('get_restaurant_menu', {
-        p_restaurant_id: restaurant.id,
-        p_language_code: 'en'
-      })
+    // Validate dishes exist using the cached menu RPC (same source as customer-facing menu)
+    const { data: menuData, error: menuError } = await fetchMenuForCustomer(
+      adminSupabase,
+      restaurant.id,
+      'en'
+    )
 
     if (menuError) {
       console.error('[Order API] Menu fetch error:', menuError)

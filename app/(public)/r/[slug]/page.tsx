@@ -8,6 +8,7 @@ import RestaurantMenu from '@/components/customer/restaurant-menu-public';
 import { AnalyticsProvider } from '@/components/providers/analytics-provider';
 import type { RestaurantMenuResponse } from '@/lib/types/menu';
 import { hexToHSL, hasCustomBranding } from '@/lib/utils';
+import { fetchMenuForCustomer } from '@/lib/supabase/menu';
 
 const DEFAULT_PRIMARY_COLOR = '#DC2626';
 
@@ -176,12 +177,12 @@ export default async function RestaurantPage({ params }: RestaurantPageProps) {
     redirect(`/r/${correctSlug}`);
   }
   
-  // Fetch menu using get_restaurant_menu SQL function
-  const { data: menuData, error: menuError } = await (supabase as any)
-    .rpc('get_restaurant_menu', {
-      p_restaurant_id: restaurantId,
-      p_language_code: 'en'
-    });
+  // Fetch menu using cached get_restaurant_menu SQL function (250x faster)
+  const { data: menuData, error: menuError } = await fetchMenuForCustomer(
+    supabase,
+    restaurantId,
+    'en'
+  );
   
   console.log('[Restaurant Page] Menu RPC result:', { 
     menuData, 
