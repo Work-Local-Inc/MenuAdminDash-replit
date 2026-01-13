@@ -145,14 +145,20 @@ const { data, error } = await fetchMenuForAdmin(supabase, restaurantId, 'en')
 |-------|---------|---------|
 | `modifiers` | 68,881+ | `id`, `modifier_group_id`, `name_en`, `name_fr`, `is_active`, `display_order` |
 | `modifier_prices` | Has data | `id`, `modifier_id`, `price`, `modifier_size_variant_id` |
-| `modifier_groups` | 2,871+ | `id`, `restaurant_id`, `name_en`, `name_fr`, `category` |
+| `modifier_groups` | 2,871+ | `id`, `restaurant_id`, `name_en`, `name_fr`, `category` - **NO dish_id column!** |
+
+**CRITICAL: modifier_groups has NO dish_id column!**
+- The relationship between dishes and modifier_groups is handled by the `get_restaurant_menu` RPC function
+- To get dish-to-modifier-group mapping, use the menu data (dishes have modifier_groups nested inside)
+- DO NOT query `modifier_groups.dish_id` - it doesn't exist and will cause 500 errors
 
 **Files Fixed:**
 - `app/api/menu/modifier-groups/route.ts` - Admin modifier groups library
-- `app/api/customer/orders/route.ts` - Customer card payments
+- `app/api/customer/orders/route.ts` - Customer card payments (uses menu data for modifier validation)
 - `app/api/customer/orders/cash/route.ts` - Customer cash payments
 - `app/api/customer/dishes/[id]/modifiers/route.ts` - Customer dish modifiers endpoint
 
 **Key Pattern:**
 - Simple modifiers: `modifiers` table → `modifier_prices` table (keyed by `modifier_id`)
 - Combo modifiers: `combo_modifiers` table → `combo_modifier_prices` table (separate system)
+- Dish-to-modifier-group mapping: Use menu RPC data, NOT direct table queries

@@ -299,7 +299,7 @@ export async function POST(request: NextRequest) {
       dishPriceOptions.set(priceRow.dish_id, existing)
     })
 
-    // Maps for simple modifiers (from modifiers table - NOT the empty dish_modifiers table)
+    // Maps for simple modifiers - built from menu data (modifier_groups don't have dish_id column)
     let simpleModifierMap = new Map<number, { id: number; name: string; modifier_group: { id: number; dish_id: number } }>()
     let simpleModifierPriceMap = new Map<number, number>()
     
@@ -309,63 +309,48 @@ export async function POST(request: NextRequest) {
     let dishComboGroupLinks = new Map<number, Set<number>>() // dish_id -> set of combo_group_ids
     let comboModifierLoadingFailed = false // Flag to track if combo modifier loading failed
 
+    // Build modifier-to-dish mapping from menu data (not direct table query - modifier_groups has no dish_id column)
+    // The menu RPC function handles the relationship properly
+    const modifierGroupToDish = new Map<number, number>()
+    const modifierIdToInfo = new Map<number, { name: string; modifier_group_id: number }>()
+    
+    menuData?.courses?.forEach((course: any) => {
+      course.dishes?.forEach((dish: any) => {
+        dish.modifier_groups?.forEach((mg: any) => {
+          // Map modifier_group_id to dish_id
+          modifierGroupToDish.set(mg.id, dish.id)
+          
+          // Map each modifier to its info
+          mg.modifiers?.forEach((mod: any) => {
+            modifierIdToInfo.set(mod.id, {
+              name: mod.name,
+              modifier_group_id: mg.id
+            })
+          })
+        })
+      })
+    })
+
     if (modifierIds.length > 0) {
-      // First, try to load as simple modifiers (from modifiers table)
-      // Note: dish_modifiers table is empty/legacy - use modifiers table instead
-      const { data: simpleModifiersData, error: simpleModifiersError } = await (adminSupabase as any)
-        .schema('menuca_v3')
-        .from('modifiers')
-        .select(`
-          id,
-          name_en,
-          modifier_group_id
-        `)
-        .in('id', modifierIds)
-        .is('deleted_at', null)
-
-      if (simpleModifiersError) {
-        console.error('[Order API] Simple modifier preload error:', simpleModifiersError)
-        return NextResponse.json({ error: 'Failed to load modifiers' }, { status: 500 })
-      }
-
-      // Get modifier groups to map group_id -> dish_id for validation
-      const modifierGroupIds = Array.from(new Set(
-        (simpleModifiersData || []).map((m: any) => m.modifier_group_id).filter(Boolean)
-      ))
-      
-      let modifierGroupToDish = new Map<number, number>()
-      if (modifierGroupIds.length > 0) {
-        const { data: modifierGroupsData, error: modifierGroupsError } = await (adminSupabase as any)
-          .schema('menuca_v3')
-          .from('modifier_groups')
-          .select('id, dish_id')
-          .in('id', modifierGroupIds)
-          .is('deleted_at', null)
-        
-        if (modifierGroupsError) {
-          console.error('[Order API] Modifier groups preload error:', modifierGroupsError)
-          return NextResponse.json({ error: 'Failed to load modifier groups' }, { status: 500 })
+      // Build simpleModifierMap from the menu data we already have
+      (modifierIds as number[]).forEach((modId: number) => {
+        const modInfo = modifierIdToInfo.get(modId)
+        if (modInfo) {
+          const dish_id = modifierGroupToDish.get(modInfo.modifier_group_id) || 0
+          simpleModifierMap.set(modId, {
+            id: modId,
+            name: modInfo.name,
+            modifier_group: {
+              id: modInfo.modifier_group_id,
+              dish_id: dish_id
+            }
+          })
         }
-        
-        modifierGroupsData?.forEach((g: any) => {
-          modifierGroupToDish.set(g.id, g.dish_id)
-        })
-      }
-
-      simpleModifiersData?.forEach((mod: any) => {
-        const dish_id = modifierGroupToDish.get(mod.modifier_group_id)
-        simpleModifierMap.set(mod.id, {
-          id: mod.id,
-          name: mod.name_en,
-          modifier_group: {
-            id: mod.modifier_group_id,
-            dish_id: dish_id || 0
-          }
-        })
       })
 
       // Load simple modifier prices from modifier_prices table (NOT dish_modifier_prices which is empty)
-      const simpleModIds = simpleModifiersData?.map((m: any) => m.id) || []
+      // Get IDs of modifiers we found in the menu data
+      const simpleModIds = Array.from(simpleModifierMap.keys())
       if (simpleModIds.length > 0) {
         const { data: simpleModifierPricesData, error: simpleModifierPricesError } = await (adminSupabase as any)
           .schema('menuca_v3')
