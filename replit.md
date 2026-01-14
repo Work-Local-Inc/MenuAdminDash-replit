@@ -164,3 +164,45 @@ const { data, error } = await fetchMenuForAdmin(supabase, restaurantId, 'en')
 - Simple modifiers: `modifiers` table → `modifier_prices` table (keyed by `modifier_id`)
 - Combo modifiers: `combo_modifiers` table → `combo_modifier_prices` table (separate system)
 - Dish-to-modifier-group mapping: Use menu RPC data, NOT direct table queries
+
+### Combo Group Dish Selections Frontend Integration (Jan 2026)
+**Status:** COMPLETE
+**Issue:** RPC function update removed special combo group dish selections (combos where customers choose dishes from menu, e.g., "Pick any 2 pizzas").
+
+**What Changed:**
+1. `get_restaurant_menu` RPC now returns `dish_selections` array inside combo_groups
+2. Cache rebuild required for affected restaurants (68 restaurants)
+3. Frontend updated to detect dish_selections without requiring `has_special_section` flag
+
+**Data Structure:**
+```json
+{
+  "combo_groups": [{
+    "id": 2022,
+    "name": "1 Large Pizza from Menu",
+    "number_of_items": 1,
+    "display_header": "Choose your pizza",
+    "dish_selections": [
+      { "id": 25, "dish_id": 132351, "dish_display_name": "Cheese Pizza Large", "dish_name": "Cheese Pizza" },
+      { "id": 26, "dish_id": 132352, "dish_display_name": "Pepperoni Pizza Large", "dish_name": "Pepperoni Pizza" }
+    ],
+    "sections": [...]
+  }]
+}
+```
+
+**Frontend Logic (`components/customer/dish-modal.tsx`):**
+- Check for `dish_selections.length > 0` (not `has_special_section` flag)
+- State tracked in `specialDishSelections` record: `{${comboGroupId}-${selectionIndex}: dishSelectionId}`
+- Display uses RadioGroup organized by course name
+- Validation requires selections for each `number_of_items` slot
+
+**Cache Rebuild Command:**
+```sql
+SELECT menuca_v3.rebuild_menu_cache(restaurant_id::bigint);
+```
+
+**Testing Restaurants:**
+- Restaurant 735 (Amicci Pizza) - Pizza combos with 12 options each
+- Restaurant 680 (Milano) - Sandwich combos
+- Restaurant 83 (Season's Pizza) - 2-for-1 pizza deals

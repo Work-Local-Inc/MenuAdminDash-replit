@@ -146,7 +146,8 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
         is_available: true,
         number_of_items: cg.number_of_items || 1,
         display_header: cg.display_header || null,
-        has_special_section: cg.has_special_section || false,
+        // Infer has_special_section from dish_selections presence
+        has_special_section: cg.has_special_section || (cg.dish_selections && cg.dish_selections.length > 0),
         dish_selections: cg.dish_selections || [],
         sections: (cg.sections || []).map((section: any) => ({
           id: section.id,
@@ -702,8 +703,8 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
       const numberOfItems = comboGroup.number_of_items || 1;
       const contextualLabels = getContextualLabels(comboGroup.display_header, numberOfItems);
       
-      // Check special dish selections if has_special_section is true
-      if (comboGroup.has_special_section && comboGroup.dish_selections && comboGroup.dish_selections.length > 0) {
+      // Check special dish selections if dish_selections exist (regardless of has_special_section flag)
+      if (comboGroup.dish_selections && comboGroup.dish_selections.length > 0) {
         for (let instanceIndex = 0; instanceIndex < numberOfItems; instanceIndex++) {
           const key = `${comboGroup.id}-${instanceIndex}`;
           const hasSelection = specialDishSelections[key] !== undefined;
@@ -1057,8 +1058,8 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
                 
                 return (
                   <div key={comboGroup.id} className="space-y-4">
-                    {/* Special dish selection UI for combos with has_special_section=true */}
-                    {comboGroup.has_special_section && comboGroup.dish_selections && comboGroup.dish_selections.length > 0 && (
+                    {/* Special dish selection UI for combos with dish_selections */}
+                    {comboGroup.dish_selections && comboGroup.dish_selections.length > 0 && (
                       Array.from({ length: numberOfItems }).map((_, instanceIndex) => {
                         const key = `${comboGroup.id}-${instanceIndex}`;
                         const selectedDishId = specialDishSelections[key];
