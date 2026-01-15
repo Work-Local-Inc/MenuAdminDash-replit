@@ -91,8 +91,12 @@ export default function RestaurantMenuPublic({
       try {
         const response = await fetch(`/api/customer/restaurants/${restaurantSlug}/tax`)
         if (response.ok) {
-          const taxConfig = await response.json()
-          setTaxConfig(taxConfig)
+          const data = await response.json()
+          // API returns { province_id, province_code, province_name, total_rate, tax_components }
+          // Cart store expects just the array of tax components
+          if (data.tax_components && Array.isArray(data.tax_components)) {
+            setTaxConfig(data.tax_components)
+          }
         }
       } catch (error) {
         console.error('[Restaurant] Error fetching tax config:', error)

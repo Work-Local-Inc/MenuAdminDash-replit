@@ -17,11 +17,15 @@ export async function GET(
     
     const supabase = createAdminClient() as any
     
+    console.log('[Tax API] Fetching tax info for restaurant:', restaurantId)
+    
     const { data: taxInfo, error } = await supabase
       .from('restaurant_tax_info')
       .select('*')
       .eq('restaurant_id', restaurantId)
       .maybeSingle()
+    
+    console.log('[Tax API] Query result:', { taxInfo, error, restaurantId })
     
     if (error) {
       console.error('[Tax API] Error fetching tax info:', error)
@@ -35,6 +39,7 @@ export async function GET(
     }
     
     if (!taxInfo) {
+      console.log('[Tax API] No tax info found for restaurant, returning Ontario HST default')
       return NextResponse.json({
         province_id: 1,
         province_code: 'ON',
@@ -44,12 +49,14 @@ export async function GET(
       })
     }
     
+    // Map database field names to expected API format
+    // View uses 'taxes' and 'total_tax_rate', API expects 'tax_components' and 'total_rate'
     return NextResponse.json({
       province_id: taxInfo.province_id,
-      province_code: taxInfo.province_code,
+      province_code: taxInfo.province_code?.trim(),
       province_name: taxInfo.province_name,
-      total_rate: taxInfo.total_rate,
-      tax_components: taxInfo.tax_components
+      total_rate: taxInfo.total_tax_rate,
+      tax_components: taxInfo.taxes || []
     })
   } catch (error: any) {
     console.error('[Tax API] Error:', error)
