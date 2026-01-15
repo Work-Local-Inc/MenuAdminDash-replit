@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { extractIdFromSlug } from '@/lib/utils/slugify'
 import { sendOrderConfirmationEmail } from '@/lib/emails/service'
 import { fetchMenuForCustomer } from '@/lib/supabase/menu'
+import { TaxConfig, TaxLineItem, calculateTaxes, getTotalTax } from '@/lib/types/tax'
 import crypto from 'crypto'
 
 export async function POST(request: NextRequest) {
@@ -245,8 +246,34 @@ export async function POST(request: NextRequest) {
     const finalOrderType = order_type === 'pickup' ? 'takeout' : 'delivery'
     const activeArea = restaurant.restaurant_delivery_areas?.find((a: any) => a.is_active)
     const deliveryFee = finalOrderType === 'delivery' ? (activeArea?.delivery_fee || 0) : 0
-    const taxRate = 0.13
-    const serverTax = (serverSubtotal + deliveryFee) * taxRate
+    
+    // Fetch restaurant's tax configuration from restaurant_tax_info view
+    let taxConfig: TaxConfig[] = [{ type: 'HST', rate: 0.13 }] // Default: Ontario HST
+    let taxProvinceId: number | null = null
+    
+    try {
+      const { data: taxInfo } = await (adminSupabase as any)
+        .schema('menuca_v3')
+        .from('restaurant_tax_info')
+        .select('province_id, taxes')
+        .eq('restaurant_id', restaurant.id)
+        .maybeSingle() as { data: { province_id: number; taxes: TaxConfig[] } | null }
+      
+      if (taxInfo?.taxes && taxInfo.taxes.length > 0) {
+        taxConfig = taxInfo.taxes
+        taxProvinceId = taxInfo.province_id
+        console.log('[Cash Order API] Tax config for restaurant:', { restaurantId: restaurant.id, taxConfig, provinceId: taxProvinceId })
+      } else {
+        console.log('[Cash Order API] No tax config found, using default Ontario HST 13%')
+      }
+    } catch (taxError) {
+      console.warn('[Cash Order API] Error fetching tax config, using default:', taxError)
+    }
+    
+    // Calculate itemized tax breakdown
+    const taxableAmount = serverSubtotal + deliveryFee
+    const taxBreakdown: TaxLineItem[] = calculateTaxes(taxableAmount, taxConfig)
+    const serverTax = getTotalTax(taxBreakdown)
     const serverTotal = serverSubtotal + deliveryFee + serverTax
 
     let parsedServiceTime: { type: string; scheduledTime?: string } = { type: 'asap' }
@@ -329,6 +356,8 @@ export async function POST(request: NextRequest) {
       payment_method: payment_type,
       subtotal: serverSubtotal.toFixed(2),
       tax_amount: serverTax.toFixed(2),
+      tax_breakdown: taxBreakdown, // Itemized tax breakdown for multi-tax provinces (e.g., Quebec TPS + TVQ)
+      tax_province_id: taxProvinceId, // Province ID for tax audit trail
       delivery_fee: deliveryFee.toFixed(2),
       total_amount: serverTotal.toFixed(2),
       delivery_address: delivery_address ? JSON.stringify({ ...delivery_address, service_time: parsedServiceTime }) : null,
@@ -419,7 +448,7 @@ export async function POST(request: NextRequest) {
           })),
           subtotal: serverSubtotal,
           tax: serverTax,
-          taxLabel: 'HST (13%)',
+          taxBreakdown: taxBreakdown,
           deliveryFee: deliveryFee,
           total: serverTotal,
           estimatedDeliveryTime: estimatedTime,

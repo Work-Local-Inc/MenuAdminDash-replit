@@ -37,6 +37,12 @@ interface PickupLocation {
   phone?: string
 }
 
+interface TaxLine {
+  type: string
+  rate: number
+  amount: number
+}
+
 interface OrderConfirmationData {
   orderNumber: string
   restaurantName: string
@@ -49,6 +55,7 @@ interface OrderConfirmationData {
   deliveryFee: number
   tax: number
   taxLabel?: string
+  taxBreakdown?: TaxLine[]
   total: number
   estimatedDeliveryTime?: string
   customerEmail: string
@@ -204,7 +211,14 @@ function generateOrderConfirmationPlainText(data: OrderConfirmationData): string
   lines.push('----------------------------------------')
   lines.push(`Subtotal:        $${data.subtotal.toFixed(2)}`)
   lines.push(`Delivery Fee:    $${data.deliveryFee.toFixed(2)}`)
-  lines.push(`${data.taxLabel || 'Tax'}:   $${data.tax.toFixed(2)}`)
+  if (data.taxBreakdown && data.taxBreakdown.length > 0) {
+    data.taxBreakdown.forEach(taxItem => {
+      const rateStr = taxItem.rate === 0.09975 ? '9.975%' : `${(taxItem.rate * 100).toFixed(0)}%`
+      lines.push(`${taxItem.type} (${rateStr}): $${taxItem.amount.toFixed(2)}`)
+    })
+  } else {
+    lines.push(`${data.taxLabel || 'Tax'}:   $${data.tax.toFixed(2)}`)
+  }
   lines.push('----------------------------------------')
   lines.push(`TOTAL PAID:      $${data.total.toFixed(2)}`)
   lines.push('')

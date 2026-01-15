@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { trackAddToCart, trackRemoveFromCart } from '@/lib/analytics';
+import { TaxConfig, TaxLineItem, calculateTaxes, getTotalTax, getTaxLabel } from '@/lib/types/tax';
 
 export type OrderType = 'delivery' | 'pickup';
 
@@ -65,6 +66,9 @@ interface CartStore {
   // Promo code
   appliedPromo: AppliedPromo | null;
   
+  // Tax configuration (fetched per restaurant)
+  taxConfig: TaxConfig[];
+  
   // Actions
   setRestaurant: (id: number, name: string, slug: string, deliveryFee: number, minOrder: number, address?: string, primaryColor?: string, gaMeasurementId?: string | null) => void;
   setGaMeasurementId: (id: string | null) => void;
@@ -82,11 +86,15 @@ interface CartStore {
   applyPromo: (promo: AppliedPromo) => void;
   clearPromo: () => void;
   
+  // Tax config actions
+  setTaxConfig: (config: TaxConfig[]) => void;
+  
   // Computed values
   getItemCount: () => number;
   getSubtotal: () => number;
   getDiscount: () => number; // Discount amount from promo
-  getTax: () => number; // 13% HST (Ontario)
+  getTax: () => number; // Total tax amount
+  getTaxBreakdown: () => TaxLineItem[]; // Itemized tax breakdown (e.g., TPS + TVQ for Quebec)
   getTotal: () => number;
   getEffectiveDeliveryFee: () => number; // Returns 0 for pickup
 }
@@ -151,6 +159,7 @@ export const useCartStore = create<CartStore>()(
       pickupTime: { type: 'asap' } as PickupTime,
       items: [],
       appliedPromo: null,
+      taxConfig: [{ type: 'HST', rate: 0.13 }] as TaxConfig[], // Default: Ontario HST 13%
       
       // Set restaurant info
       setRestaurant: (id, name, slug, deliveryFee, minOrder, address, primaryColor, gaMeasurementId) => {
@@ -343,6 +352,11 @@ export const useCartStore = create<CartStore>()(
         set({ appliedPromo: null });
       },
       
+      // Set tax config (called when restaurant is loaded)
+      setTaxConfig: (config: TaxConfig[]) => {
+        set({ taxConfig: config.length > 0 ? config : [{ type: 'HST', rate: 0.13 }] });
+      },
+      
       // Get total item count
       getItemCount: () => {
         return get().items.reduce((count, item) => count + item.quantity, 0);
@@ -398,17 +412,25 @@ export const useCartStore = create<CartStore>()(
         return orderType === 'pickup' ? 0 : get().deliveryFee;
       },
       
-      // Get tax (13% HST Ontario) - calculated after discount
-      getTax: () => {
+      // Get itemized tax breakdown - calculated after discount
+      getTaxBreakdown: () => {
         const subtotal = get().getSubtotal();
         const discount = get().getDiscount();
         const effectiveDeliveryFee = get().getEffectiveDeliveryFee();
         const promo = get().appliedPromo;
+        const taxConfig = get().taxConfig;
         
         // Don't include delivery discount in tax calc if it's a delivery promo
         const taxableDiscount = promo?.type === 'delivery' ? 0 : discount;
+        const taxableAmount = Math.max(0, subtotal - taxableDiscount + effectiveDeliveryFee);
         
-        return Math.max(0, (subtotal - taxableDiscount + effectiveDeliveryFee) * 0.13);
+        return calculateTaxes(taxableAmount, taxConfig);
+      },
+      
+      // Get total tax amount - sum of all tax lines
+      getTax: () => {
+        const taxBreakdown = get().getTaxBreakdown();
+        return getTotalTax(taxBreakdown);
       },
       
       // Get total (subtotal + delivery fee - discount + tax)

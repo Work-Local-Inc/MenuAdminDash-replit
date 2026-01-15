@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useCartStore } from '@/lib/stores/cart-store';
+import { getTaxLabel } from '@/lib/types/tax';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -20,7 +21,7 @@ interface CartDrawerProps {
 }
 
 export function CartDrawer({ isOpen, onClose, restaurant, buttonStyle }: CartDrawerProps) {
-  const { items, updateQuantity, removeItem, clearCart, appliedPromo, clearPromo, getDiscount, getEffectiveDeliveryFee, orderType } = useCartStore();
+  const { items, updateQuantity, removeItem, clearCart, appliedPromo, clearPromo, getDiscount, getEffectiveDeliveryFee, getTaxBreakdown, getTax, orderType } = useCartStore();
   
   // Helper function to get button branding class - only applies to non-icon buttons
   const getButtonClassName = (isIcon: boolean = false) => {
@@ -33,15 +34,14 @@ export function CartDrawer({ isOpen, onClose, restaurant, buttonStyle }: CartDra
       : '';
   };
   
-  const HST_RATE = 0.13;
-  
   // Calculate totals - all prices are in dollars
   // Only include delivery fee if user has explicitly selected delivery
   const effectiveDeliveryFee = getEffectiveDeliveryFee();
   const subtotal = items.reduce((sum, item) => sum + item.subtotal, 0);
   const discount = getDiscount();
   const discountedSubtotal = Math.max(0, subtotal - discount);
-  const tax = (discountedSubtotal + effectiveDeliveryFee) * HST_RATE;
+  const taxBreakdown = getTaxBreakdown();
+  const tax = getTax();
   const total = discountedSubtotal + effectiveDeliveryFee + tax;
   
   return (
@@ -238,10 +238,12 @@ export function CartDrawer({ isOpen, onClose, restaurant, buttonStyle }: CartDra
                   </div>
                 )}
                 
-                <div className="flex justify-between text-sm">
-                  <span>Tax (HST 13%)</span>
-                  <span data-testid="text-tax">${Number(tax).toFixed(2)}</span>
-                </div>
+                {taxBreakdown.map((taxItem, index) => (
+                  <div key={index} className="flex justify-between text-sm">
+                    <span>{getTaxLabel(taxItem.type, taxItem.rate)}</span>
+                    <span data-testid={`text-tax-${taxItem.type.toLowerCase()}`}>${Number(taxItem.amount).toFixed(2)}</span>
+                  </div>
+                ))}
                 
                 <Separator />
                 

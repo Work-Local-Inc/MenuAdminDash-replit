@@ -31,6 +31,12 @@ interface OrderItem {
   }>
 }
 
+interface TaxLine {
+  type: string
+  rate: number
+  amount: number
+}
+
 interface OrderConfirmationEmailProps {
   orderNumber: string
   restaurantName: string
@@ -56,6 +62,7 @@ interface OrderConfirmationEmailProps {
   deliveryFee: number
   tax: number
   taxLabel?: string
+  taxBreakdown?: TaxLine[]
   total: number
   estimatedDeliveryTime?: string
 }
@@ -82,6 +89,7 @@ export default function OrderConfirmationEmail({
   deliveryFee,
   tax,
   taxLabel = 'Tax',
+  taxBreakdown,
   total,
   estimatedDeliveryTime,
 }: OrderConfirmationEmailProps) {
@@ -183,14 +191,29 @@ export default function OrderConfirmationEmail({
                 <Text style={totalValue}>${deliveryFee.toFixed(2)}</Text>
               </Column>
             </Row>
-            <Row style={totalRow}>
-              <Column>
-                <Text style={totalLabel}>{taxLabel}</Text>
-              </Column>
-              <Column align="right">
-                <Text style={totalValue}>${tax.toFixed(2)}</Text>
-              </Column>
-            </Row>
+            {taxBreakdown && taxBreakdown.length > 0 ? (
+              taxBreakdown.map((taxItem, index) => (
+                <Row key={index} style={totalRow}>
+                  <Column>
+                    <Text style={totalLabel}>
+                      {taxItem.type} ({taxItem.rate === 0.09975 ? '9.975%' : `${(taxItem.rate * 100).toFixed(0)}%`})
+                    </Text>
+                  </Column>
+                  <Column align="right">
+                    <Text style={totalValue}>${taxItem.amount.toFixed(2)}</Text>
+                  </Column>
+                </Row>
+              ))
+            ) : (
+              <Row style={totalRow}>
+                <Column>
+                  <Text style={totalLabel}>{taxLabel}</Text>
+                </Column>
+                <Column align="right">
+                  <Text style={totalValue}>${tax.toFixed(2)}</Text>
+                </Column>
+              </Row>
+            )}
             <Hr style={totalDivider} />
             <Row style={totalRow}>
               <Column>

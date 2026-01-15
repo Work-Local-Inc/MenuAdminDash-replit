@@ -5,6 +5,7 @@ import { extractIdFromSlug } from '@/lib/utils/slugify'
 import Stripe from 'stripe'
 import { sendOrderConfirmationEmail } from '@/lib/emails/service'
 import { fetchMenuForCustomer } from '@/lib/supabase/menu'
+import { TaxConfig, TaxLineItem, calculateTaxes, getTotalTax } from '@/lib/types/tax'
 
 // Get Stripe instance based on payment mode (test or live)
 function getStripe(paymentMode: 'test' | 'live' = 'test') {
@@ -669,7 +670,33 @@ export async function POST(request: NextRequest) {
       deliveryFee = activeArea?.delivery_fee ?? 0
     }
     
-    const tax = (serverSubtotal + deliveryFee) * 0.13 // 13% HST
+    // Fetch restaurant's tax configuration from restaurant_tax_info view
+    let taxConfig: TaxConfig[] = [{ type: 'HST', rate: 0.13 }] // Default: Ontario HST
+    let taxProvinceId: number | null = null
+    
+    try {
+      const { data: taxInfo } = await (adminSupabase as any)
+        .schema('menuca_v3')
+        .from('restaurant_tax_info')
+        .select('province_id, taxes')
+        .eq('restaurant_id', restaurant.id)
+        .maybeSingle() as { data: { province_id: number; taxes: TaxConfig[] } | null }
+      
+      if (taxInfo?.taxes && taxInfo.taxes.length > 0) {
+        taxConfig = taxInfo.taxes
+        taxProvinceId = taxInfo.province_id
+        console.log('[Order API] Tax config for restaurant:', { restaurantId: restaurant.id, taxConfig, provinceId: taxProvinceId })
+      } else {
+        console.log('[Order API] No tax config found, using default Ontario HST 13%')
+      }
+    } catch (taxError) {
+      console.warn('[Order API] Error fetching tax config, using default:', taxError)
+    }
+    
+    // Calculate itemized tax breakdown
+    const taxableAmount = serverSubtotal + deliveryFee
+    const taxBreakdown: TaxLineItem[] = calculateTaxes(taxableAmount, taxConfig)
+    const tax = getTotalTax(taxBreakdown)
     const serverTotal = serverSubtotal + deliveryFee + tax
 
     // Get actual paid amount from Stripe (source of truth - payment already succeeded)
@@ -770,6 +797,8 @@ export async function POST(request: NextRequest) {
       subtotal: finalSubtotal,
       delivery_fee: finalDeliveryFee,
       tax_amount: finalTax,
+      tax_breakdown: taxBreakdown, // Itemized tax breakdown for multi-tax provinces (e.g., Quebec TPS + TVQ)
+      tax_province_id: taxProvinceId, // Province ID for tax audit trail
       items: validatedItems,
       delivery_address: enrichedDeliveryAddress,
       special_instructions: specialInstructions, // Order notes for kitchen/printer
@@ -887,6 +916,7 @@ export async function POST(request: NextRequest) {
           subtotal: finalSubtotal,
           deliveryFee: finalDeliveryFee,
           tax: finalTax,
+          taxBreakdown: taxBreakdown,
           total: finalTotal,
           customerEmail,
           estimatedDeliveryTime: estimatedTime,

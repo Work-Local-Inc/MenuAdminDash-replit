@@ -59,6 +59,12 @@ interface Restaurant {
   primary_color?: string | null
 }
 
+interface TaxLineItem {
+  type: string
+  rate: number
+  amount: number
+}
+
 interface Order {
   id: number
   user_id: number | null
@@ -74,6 +80,7 @@ interface Order {
   subtotal: string
   delivery_fee: string
   tax_amount: string
+  tax_breakdown?: TaxLineItem[] | null
   items: OrderItem[]
   delivery_address: DeliveryAddress
   delivery_instructions: string | null
@@ -600,10 +607,23 @@ export default function OrderConfirmationPage() {
                       {isPickup ? 'Free' : `$${parseFloat(order.delivery_fee).toFixed(2)}`}
                     </span>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">HST (13%)</span>
-                    <span data-testid="text-tax">${parseFloat(order.tax_amount).toFixed(2)}</span>
-                  </div>
+                  {order.tax_breakdown && order.tax_breakdown.length > 0 ? (
+                    order.tax_breakdown.map((taxItem, index) => (
+                      <div key={index} className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">
+                          {taxItem.type} ({taxItem.rate === 0.09975 ? '9.975%' : `${(taxItem.rate * 100).toFixed(0)}%`})
+                        </span>
+                        <span data-testid={`text-tax-${taxItem.type.toLowerCase()}`}>
+                          ${Number(taxItem.amount).toFixed(2)}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">HST (13%)</span>
+                      <span data-testid="text-tax">${parseFloat(order.tax_amount).toFixed(2)}</span>
+                    </div>
+                  )}
                   <Separator />
                   <div className="flex justify-between text-lg font-bold">
                     <span>{isCashPayment ? 'Total Due' : 'Total Paid'}</span>
