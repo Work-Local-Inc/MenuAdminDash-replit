@@ -45,6 +45,7 @@ export default function RestaurantMenuPublic({
   )
   const cartTotal = useCartStore((state) => state.getTotal())
   const setRestaurant = useCartStore((state) => state.setRestaurant)
+  const setTaxConfig = useCartStore((state) => state.setTaxConfig)
 
   // Resolve branding colors - treats legacy grays/blacks as "unset" and returns Menu.ca red
   const brandColors = resolveBrandingColors(restaurant)
@@ -84,6 +85,24 @@ export default function RestaurantMenuPublic({
     // Use the restaurantSlug which prefers urlSlug if provided
     setRestaurant(restaurant.id, restaurant.name, restaurantSlug, deliveryFee, minOrder, address, brandColors.primary, gaMeasurementId)
   }, [restaurant.id, restaurant.name, restaurant.restaurant_delivery_areas, serviceConfig, setRestaurant, streetAddress, postalCode, brandColors.primary, restaurantSlug, gaMeasurementId])
+
+  useEffect(() => {
+    const fetchTaxConfig = async () => {
+      try {
+        const response = await fetch(`/api/customer/restaurants/${restaurantSlug}/tax`)
+        if (response.ok) {
+          const taxConfig = await response.json()
+          setTaxConfig(taxConfig)
+        }
+      } catch (error) {
+        console.error('[Restaurant] Error fetching tax config:', error)
+      }
+    }
+    
+    if (restaurantSlug) {
+      fetchTaxConfig()
+    }
+  }, [restaurantSlug, setTaxConfig])
 
   const scrollToCategory = (courseId: string) => {
     const element = document.getElementById(`category-${courseId}`)
