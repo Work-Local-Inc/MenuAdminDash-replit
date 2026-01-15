@@ -206,3 +206,49 @@ SELECT menuca_v3.rebuild_menu_cache(restaurant_id::bigint);
 - Restaurant 735 (Amicci Pizza) - Pizza combos with 12 options each
 - Restaurant 680 (Milano) - Sandwich combos
 - Restaurant 83 (Season's Pizza) - 2-for-1 pizza deals
+
+### Provincial Tax System (Jan 2026)
+**Status:** COMPLETE
+**Feature:** Dynamic provincial tax calculation replacing hardcoded 13% HST with per-restaurant rates.
+
+**Database Schema:**
+- `province_tax_config` table - Province tax rates (Ontario HST 13%, Quebec TPS 5% + TVQ 9.975%)
+- `restaurant_tax_info` view - Joins restaurants with province tax config
+- `orders.tax_breakdown` (JSONB) - Stores itemized tax lines per order
+- `orders.tax_province_id` (integer) - Province ID for the order
+
+**TypeScript Types (`lib/types/tax.ts`):**
+```typescript
+interface TaxConfig {
+  province_id: number
+  province_code: string
+  province_name: string
+  total_rate: number
+  tax_components: Array<{ type: string; rate: number }>
+}
+
+interface TaxLineItem {
+  type: string
+  rate: number
+  amount: number
+}
+```
+
+**Key Files:**
+- `lib/types/tax.ts` - Tax types and helper functions (calculateTaxes, getTotalTax, formatTaxRate, getTaxLabel)
+- `lib/stores/cart-store.ts` - taxConfig state, setTaxConfig(), getTaxBreakdown()
+- `components/customer/cart-drawer.tsx` - Displays multiple tax lines
+- `app/api/customer/orders/route.ts` - Card payments with tax breakdown
+- `app/api/customer/orders/cash/route.ts` - Cash payments with tax breakdown
+- `app/(public)/customer/orders/[id]/confirmation/page.tsx` - Confirmation page tax display
+- `lib/emails/service.ts` - Email service with taxBreakdown support
+- `lib/emails/templates/order-confirmation.tsx` - Email template with multiple tax lines
+
+**Tax Calculation Flow:**
+1. Cart store fetches restaurant tax info from `/api/customer/restaurants/[slug]/tax`
+2. Cart store calculates breakdown using `calculateTaxes(subtotal, deliveryFee, taxConfig)`
+3. Order APIs fetch tax info from `restaurant_tax_info` view
+4. Order APIs store `tax_breakdown` JSONB and `tax_province_id` in orders table
+5. Confirmation page and emails display itemized taxes
+
+**Defaults:** Ontario HST 13% if no tax config found for restaurant
