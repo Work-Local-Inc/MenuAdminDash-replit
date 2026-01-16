@@ -331,21 +331,6 @@ export default function CheckoutPage() {
     }
   }, [gaMeasurementId, restaurantSlug, setGaMeasurementId])
 
-  // Track begin_checkout event when checkout page loads with items and GA is ready
-  const hasTrackedBeginCheckout = useRef(false)
-  useEffect(() => {
-    if (!loading && items.length > 0 && gaMeasurementId && !hasTrackedBeginCheckout.current) {
-      hasTrackedBeginCheckout.current = true
-      const cartItems = items.map(item => ({
-        id: item.dishId,
-        name: item.dishName,
-        price: item.sizePrice,
-        quantity: item.quantity
-      }))
-      trackBeginCheckout(cartItems, getTotal())
-    }
-  }, [loading, items, gaMeasurementId])
-
   const subtotal = getSubtotal()
   const discount = getDiscount()
   const effectiveDeliveryFee = getEffectiveDeliveryFee()
@@ -366,6 +351,21 @@ export default function CheckoutPage() {
   
   // Total including commission (for display and payment)
   const total = baseTotal + commission
+
+  // Track begin_checkout event when checkout page loads with items and GA is ready
+  const hasTrackedBeginCheckout = useRef(false)
+  useEffect(() => {
+    if (!loading && items.length > 0 && gaMeasurementId && !hasTrackedBeginCheckout.current && total > 0) {
+      hasTrackedBeginCheckout.current = true
+      const cartItems = items.map(item => ({
+        id: item.dishId,
+        name: item.dishName,
+        price: item.sizePrice,
+        quantity: item.quantity
+      }))
+      trackBeginCheckout(cartItems, total)
+    }
+  }, [loading, items, gaMeasurementId, total])
 
   const handleSignOut = async () => {
     try {
@@ -498,7 +498,7 @@ export default function CheckoutPage() {
     setSelectedPaymentMethod(paymentMethod)
     
     // Track payment method selection for GA
-    trackAddPaymentInfo(paymentMethod, getTotal())
+    trackAddPaymentInfo(paymentMethod, total)
 
     if (paymentMethod === 'credit_card') {
       // Credit card: Create payment intent and go to Stripe payment form
@@ -515,8 +515,8 @@ export default function CheckoutPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            amount: total,
-            subtotal: subtotal, // Include subtotal for 'net' commission calculation
+            amount: baseTotal, // Send base total without commission - server will add commission
+            subtotal: subtotal - discount, // Include net subtotal for 'net' commission calculation
             user_id: currentUser?.id ? String(currentUser.id) : undefined,
             guest_email: selectedAddress?.email,
             metadata: {
@@ -599,7 +599,7 @@ export default function CheckoutPage() {
           price: item.sizePrice,
           quantity: item.quantity
         }))
-        trackPurchase(String(data.order_id), getTotal(), gaCartItems, getTax(), getEffectiveDeliveryFee())
+        trackPurchase(String(data.order_id), total, gaCartItems, getTax(), getEffectiveDeliveryFee())
         
         // Set flag BEFORE clearing cart to prevent empty cart redirect
         setOrderPlacedSuccessfully(true)
