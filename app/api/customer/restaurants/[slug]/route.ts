@@ -55,7 +55,10 @@ export async function GET(
         delivery_and_pickup_configs (
           id,
           has_delivery_enabled,
-          pickup_enabled
+          pickup_enabled,
+          commission_enabled,
+          commission_rate,
+          commission_base
         )
       `)
       .eq('id', restaurantId)

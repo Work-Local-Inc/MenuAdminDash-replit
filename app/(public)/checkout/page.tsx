@@ -102,7 +102,13 @@ export default function CheckoutPage() {
   const [isDeliveryBlocked, setIsDeliveryBlocked] = useState(false)
   const [isSubmittingCashOrder, setIsSubmittingCashOrder] = useState(false)
   const [orderPlacedSuccessfully, setOrderPlacedSuccessfully] = useState(false) // Prevent empty cart redirect after order
-  const [serviceConfig, setServiceConfig] = useState<{ has_delivery_enabled?: boolean; pickup_enabled?: boolean } | null>(null)
+  const [serviceConfig, setServiceConfig] = useState<{ 
+    has_delivery_enabled?: boolean; 
+    pickup_enabled?: boolean;
+    commission_enabled?: boolean;
+    commission_rate?: number;
+    commission_base?: string;
+  } | null>(null)
   const [serviceConfigLoading, setServiceConfigLoading] = useState(true) // Start as loading to prevent flash
   const [orderNotes, setOrderNotes] = useState('')
   const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null)
@@ -245,11 +251,17 @@ export default function CheckoutPage() {
           if (config) {
             console.log('[Checkout] ✅ Service config loaded:', { 
               has_delivery_enabled: config.has_delivery_enabled, 
-              pickup_enabled: config.pickup_enabled 
+              pickup_enabled: config.pickup_enabled,
+              commission_enabled: config.commission_enabled,
+              commission_rate: config.commission_rate,
+              commission_base: config.commission_base
             })
             setServiceConfig({
               has_delivery_enabled: config.has_delivery_enabled,
-              pickup_enabled: config.pickup_enabled
+              pickup_enabled: config.pickup_enabled,
+              commission_enabled: config.commission_enabled,
+              commission_rate: config.commission_rate,
+              commission_base: config.commission_base
             })
           } else {
             console.log('[Checkout] ⚠️ No service config found - delivery/pickup will default to enabled')
@@ -338,7 +350,22 @@ export default function CheckoutPage() {
   const discount = getDiscount()
   const effectiveDeliveryFee = getEffectiveDeliveryFee()
   const tax = getTax()
-  const total = getTotal()
+  const baseTotal = getTotal()
+  
+  // Calculate commission (same formula as server-side)
+  const commission = useMemo(() => {
+    if (!serviceConfig?.commission_enabled || !serviceConfig?.commission_rate) {
+      return 0
+    }
+    const rate = Number(serviceConfig.commission_rate) / 100
+    const base = serviceConfig.commission_base === 'net' 
+      ? (subtotal - discount) // Net: commission on subtotal after discounts
+      : baseTotal // Gross: commission on total (subtotal + delivery + tax)
+    return Math.round(base * rate * 100) / 100 // Round to 2 decimal places
+  }, [serviceConfig, subtotal, discount, baseTotal])
+  
+  // Total including commission (for display and payment)
+  const total = baseTotal + commission
 
   const handleSignOut = async () => {
     try {
