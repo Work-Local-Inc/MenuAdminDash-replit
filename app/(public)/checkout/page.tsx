@@ -25,6 +25,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import Link from 'next/link'
 import { trackBeginCheckout, trackAddPaymentInfo, trackPurchase } from '@/lib/analytics'
 import { AnalyticsProvider } from '@/components/providers/analytics-provider'
+import { getTaxLabel } from '@/lib/types/tax'
 
 // Cache loaded Stripe instances by publishable key to avoid multiple loads
 const stripeCache = new Map<string, Promise<Stripe | null>>()
@@ -60,7 +61,8 @@ export default function CheckoutPage() {
     getSubtotal, 
     getDiscount,
     getEffectiveDeliveryFee, 
-    getTax, 
+    getTax,
+    getTaxBreakdown,
     getTotal, 
     minOrder,
     orderType,
@@ -1042,10 +1044,12 @@ export default function CheckoutPage() {
                       <span data-testid="text-delivery-fee">No fee</span>
                     </div>
                   )}
-                  <div className="flex justify-between">
-                    <span>Tax (HST 13%)</span>
-                    <span data-testid="text-tax">${tax.toFixed(2)}</span>
-                  </div>
+                  {getTaxBreakdown().map((taxItem, index) => (
+                    <div key={index} className="flex justify-between">
+                      <span>{getTaxLabel(taxItem.type, taxItem.rate)}</span>
+                      <span data-testid={`text-tax-${taxItem.type.toLowerCase()}`}>${taxItem.amount.toFixed(2)}</span>
+                    </div>
+                  ))}
                   <Separator />
                   <div className="flex justify-between text-lg font-bold">
                     <span>Total</span>
