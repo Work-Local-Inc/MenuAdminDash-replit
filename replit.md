@@ -99,6 +99,12 @@ Preferred communication style: Simple, everyday language.
 - Card payments: Subtotal is validated (must be positive, not exceed total) before use in 'net' calculation
 - If invalid subtotal detected, falls back to 'gross' calculation (charges on total amount)
 
+**Display Integration:**
+- Checkout page fetches commission config from restaurant API
+- Commission is calculated client-side using same formula as server
+- Commission is included in displayed Total (no separate line item)
+- Payment intent sends baseTotal; server adds commission to prevent double-counting
+
 **Known Limitations:**
 - Card payment 'net' commission relies on client-supplied subtotal (validated but not server-recomputed)
 - Recommendation: Use 'gross' mode for most accurate commission until full server-side cart validation is added to payment intent API
