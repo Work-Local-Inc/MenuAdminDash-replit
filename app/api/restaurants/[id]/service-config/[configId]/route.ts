@@ -21,7 +21,10 @@ export async function PATCH(
       'takeout_time_minutes',
       'twilio_call',
       'accepts_tips',
-      'payment_mode'
+      'payment_mode',
+      'commission_enabled',
+      'commission_rate',
+      'commission_base'
     ]
     
     for (const column of allowedColumns) {
