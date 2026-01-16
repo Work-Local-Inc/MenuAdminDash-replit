@@ -309,19 +309,27 @@ export async function POST(request: NextRequest) {
     const serverTax = getTotalTax(taxBreakdown)
     const baseTotal = serverSubtotal + deliveryFee + serverTax
     
-    // Fetch and calculate commission
+    // Fetch and calculate commission based on gross vs net setting
+    // Gross: commission on total (subtotal + delivery + tax)
+    // Net: commission on subtotal only (excludes delivery fee and tax)
     const commissionConfig = await getRestaurantCommissionConfig(adminSupabase, restaurant.id)
-    const commissionAmount = commissionConfig.enabled && commissionConfig.rate > 0
-      ? Math.round(baseTotal * (commissionConfig.rate / 100) * 100) / 100
-      : 0
+    let commissionAmount = 0
+    if (commissionConfig.enabled && commissionConfig.rate > 0) {
+      const commissionBase = commissionConfig.base === 'net' 
+        ? serverSubtotal  // Net: subtotal only
+        : baseTotal       // Gross: subtotal + delivery + tax
+      commissionAmount = Math.round(commissionBase * (commissionConfig.rate / 100) * 100) / 100
+    }
     
     // Add commission to total (commission is hidden from customer)
     const serverTotal = baseTotal + commissionAmount
     
     console.log('[Cash Order API] Commission calculation:', {
+      serverSubtotal,
       baseTotal,
       commissionEnabled: commissionConfig.enabled,
       commissionRate: commissionConfig.rate,
+      commissionBase: commissionConfig.base,
       commissionAmount,
       serverTotal
     })

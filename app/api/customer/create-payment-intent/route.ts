@@ -79,36 +79,54 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
 
     const body = await request.json()
-    const { amount, metadata, user_id, guest_email, shipping_address } = body
+    const { amount, subtotal, metadata, user_id, guest_email, shipping_address } = body
+    
+    // Basic validation
+    if (!amount || amount <= 0) {
+      return NextResponse.json({ error: 'Invalid amount' }, { status: 400 })
+    }
+    
+    // Validate subtotal is reasonable (must be positive and not exceed total)
+    // This prevents commission manipulation through invalid subtotal values
+    const validatedSubtotal = subtotal && typeof subtotal === 'number' && subtotal > 0 && subtotal <= amount
+      ? subtotal
+      : null
+    
+    if (subtotal && !validatedSubtotal) {
+      console.warn('[Payment Intent] Invalid subtotal rejected:', { subtotal, amount })
+    }
     
     // Get restaurant's service config (payment mode + commission)
     const restaurantSlug = metadata?.restaurant_slug || ''
     const { paymentMode, commission } = await getRestaurantServiceConfig(restaurantSlug)
     const stripe = getStripe(paymentMode)
     
-    // Calculate commission if enabled (as percentage of total amount for security)
-    // NOTE: Commission is calculated on the full payment amount to prevent manipulation
-    // The gross/net distinction affects what base is used:
-    // - Both use the same amount (subtotal + tax + delivery) for security
-    // - The only difference is semantic for reporting purposes
-    const commissionAmount = commission.enabled && commission.rate > 0
-      ? Math.round(amount * (commission.rate / 100) * 100) / 100
-      : 0
+    // Calculate commission based on gross vs net setting
+    // Gross: commission on total amount (subtotal + delivery + tax)
+    // Net: commission on subtotal only (excludes delivery fee and tax)
+    // NOTE: For 'net' mode, if subtotal is invalid/missing, we fall back to 'gross' (full amount)
+    // This ensures commission is always charged correctly even if client manipulation is attempted
+    let commissionAmount = 0
+    if (commission.enabled && commission.rate > 0) {
+      const commissionBase = commission.base === 'net' && validatedSubtotal 
+        ? validatedSubtotal   // Net: validated subtotal only
+        : amount              // Gross: total amount (or fallback if subtotal invalid)
+      commissionAmount = Math.round(commissionBase * (commission.rate / 100) * 100) / 100
+    }
     
     // Add commission to the total amount
     const totalWithCommission = amount + commissionAmount
     
     console.log('[Payment Intent] Commission calculation:', {
       baseAmount: amount,
+      clientSubtotal: subtotal || 'not provided',
+      validatedSubtotal: validatedSubtotal || 'fell back to gross',
+      commissionBase: commission.base,
       commissionEnabled: commission.enabled,
       commissionRate: commission.rate,
       commissionAmount,
       totalWithCommission
     })
-
-    if (!amount || amount <= 0) {
-      return NextResponse.json({ error: 'Invalid amount' }, { status: 400 })
-    }
 
     // For guests, require email
     if (!user && !guest_email) {

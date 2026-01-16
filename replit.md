@@ -26,6 +26,7 @@ Preferred communication style: Simple, everyday language.
     -   **Advanced Modifier System**: True linking system for global modifier groups with inheritance, automatic propagation, and a modifier-first workflow for bulk management of simple and combo modifiers.
     -   **Size & Price Variants**: Integrated management within dish editing.
     -   **Dish Availability**: Allows dishes to be visible only on specific days.
+    -   **Combo Group Dish Selections**: `get_restaurant_menu` RPC returns `dish_selections` array within combo groups, enabling customers to choose dishes from a menu within a combo.
 -   **Franchise Management**: Hierarchical system for linking restaurants and performing bulk updates.
 -   **Categorization System**: Cuisine and tag-based discovery for restaurants.
 -   **Customer Ordering System**:
@@ -38,12 +39,15 @@ Preferred communication style: Simple, everyday language.
     -   **Enhanced Order Customization**: Per-item special instructions, modifier quantity steppers, combo modifier free items, and consolidation of duplicate modifiers.
 -   **Subdomain Routing**: Supports branded subdomain URLs (e.g., `restaurant.menu.ca`).
 -   **Payment Mode Toggle**: Allows per-restaurant switching between test and live Stripe payments for controlled rollout.
+-   **Provincial Tax System**: Dynamic provincial tax calculation with per-restaurant rates, replacing hardcoded values. Stores itemized tax lines per order.
+-   **Per-Restaurant Commission System**: Configurable commission fee per restaurant (percentage-based, gross or net), calculated server-side and added to order total for internal reporting, hidden from customers.
 
 ### Technical Implementations
 -   **ID Mapping**: Handles `combo_groups.restaurant_id` (V3 IDs) vs. `dishes.restaurant_id` (legacy_v1_id) via API.
 -   **Terminology**: "Template" in the database translates to "modifier" or "modifier group" in the UI/code.
 -   **Multilingual Database Architecture**: Dish names are stored in bilingual columns (`name_en`, `name_fr`), with the `get_restaurant_menu` RPC function using COALESCE for localization. Order validation APIs must use this RPC for dish metadata.
--   **Performance Optimization**: Parallel data fetching for critical pages like checkout.
+-   **Performance Optimization**: Parallel data fetching for critical pages like checkout. Menu caching implemented for 250x faster loads, with auto-invalidation and manual rebuild options.
+-   **Modifier Table Schema**: Critical distinction between legacy/empty tables (`dish_modifiers`, `dish_modifier_prices`) and active tables (`modifiers`, `modifier_prices`, `modifier_groups`). `modifier_groups` has NO `dish_id` column; the relationship is handled by the `get_restaurant_menu` RPC.
 
 ## External Dependencies
 
@@ -61,194 +65,43 @@ Preferred communication style: Simple, everyday language.
 -   **Stripe**: Payment processing.
 -   **Google Places API**: Address autocomplete and verification.
 
-## Recent Changes
+## Recent Implementations
 
-### Stripe Payment Flow Stability (Jan 2026)
-**Status:** FIXED
-**Issues Fixed:**
-1. **Double Payment Intent Creation** - React Strict Mode caused duplicate payment intent creation
-2. **Modifier Loading 500 Error** - Orders API tried to use non-existent FK relationship
-3. **Size Variant Mismatch** - Frontend "Regular" not matching database `null` for base prices
-4. **Combo Modifier Loading Error** - Made combo modifier loading fault-tolerant
-
-**Fixes:**
-1. **Payment Intent Guard** (`components/customer/checkout-payment-form.tsx`):
-   - Added `paymentIntentCreatedRef` guard to prevent duplicate creation
-   - Keyed `<Elements>` component by `clientSecret` to prevent Stripe warnings
-
-2. **Dish-to-Modifier Index** (`app/api/customer/orders/route.ts`):
-   - Builds `dishModifierIndex: Map<dishId, Set<modifierId>>` from menu RPC data
-   - Validates modifiers using `dishModifierIndex.get(dishId)?.has(modifierId)`
-   - Correctly handles SHARED modifier groups (same group attached to multiple dishes)
-   - CRITICAL: Do NOT use `modifier_groups.dish_id` - column doesn't exist!
-
-3. **Size Variant Normalization** (`app/api/customer/orders/route.ts`):
-   - Frontend sends "Regular" for base-priced items
-   - Database stores `null` for base prices
-   - Added normalization: `"Regular"` → `null` before price lookup
-
-4. **Fault-Tolerant Combo Modifiers** (`app/api/customer/orders/route.ts`):
-   - Combo modifier loading errors are now non-fatal
-   - Sets `comboModifierLoadingFailed` flag when query fails
-   - Validation becomes lenient - uses cart-submitted data as fallback
-
-**Critical Pattern for Future Changes:**
-- Guard ref for payment intent creation (prevents React Strict Mode duplicates)
-- Keyed Elements by clientSecret (prevents Stripe prop warnings)
-- Two-step queries for tables without FK relationships in PostgREST cache
-- Fault-tolerant modifier validation with graceful fallbacks
-- Use `dishModifierIndex` from menu data for modifier validation (NOT direct table queries)
-
-### Menu Caching Implementation (Jan 2026)
+### Per-Restaurant Commission System (Jan 2026)
 **Status:** COMPLETE
-**Performance Improvement:** 250x faster menu loads (~500ms → ~2ms)
+**Feature:** Configurable commission fee per restaurant, calculated server-side and added to order total.
 
-**Changes:**
-1. Created shared utility `lib/supabase/menu.ts` for all menu fetching
-2. All customer-facing routes now use `get_restaurant_menu_cached()` instead of `get_restaurant_menu()`
-3. Language validation ensures only 'en' or 'fr' are passed (prevents exceptions)
-4. New `p_active_items_only` parameter filters inactive dishes/modifiers
+**Database Schema (menuca_v3):**
+- `delivery_and_pickup_configs.commission_enabled` (boolean) - Toggle to enable/disable commission
+- `delivery_and_pickup_configs.commission_rate` (numeric) - Percentage rate (e.g., 8 for 8%)
+- `delivery_and_pickup_configs.commission_base` (text) - 'gross' or 'net' calculation base
+- `orders.commission_amount` (numeric) - Commission charged on each order (for reporting)
 
-**Updated Files:**
-- `lib/supabase/menu.ts` - New shared menu fetch utility
-- `app/(public)/r/[slug]/page.tsx` - Customer restaurant page
-- `app/api/customer/restaurants/[slug]/menu/route.ts` - Customer menu API
-- `app/api/customer/orders/route.ts` - Card payment validation
-- `app/api/customer/orders/cash/route.ts` - Cash payment validation
-
-**Usage:**
-```typescript
-import { fetchMenuForCustomer, fetchMenuForAdmin } from '@/lib/supabase/menu'
-
-// Customer-facing (cached, active items only)
-const { data, error } = await fetchMenuForCustomer(supabase, restaurantId, 'en')
-
-// Admin (uncached, includes inactive items)
-const { data, error } = await fetchMenuForAdmin(supabase, restaurantId, 'en')
-```
-
-**Cache Details:**
-- Auto-invalidated when menu-related tables change (courses, dishes, modifiers, etc.)
-- Manual rebuild: `SELECT menuca_v3.rebuild_menu_cache(restaurant_id::bigint)`
-- Bilingual size variants: English uses "Small", "Standard", French uses "Petite", "Standard"
-
-### Modifier Table Schema Fix (Jan 2026)
-**Status:** FIXED
-**Issue:** Multiple APIs were querying empty legacy tables (`dish_modifiers`, `dish_modifier_prices`) instead of the correct tables with actual data.
-
-**CRITICAL Schema Info - Do NOT Use These Tables:**
-| Table | Status | Notes |
-|-------|--------|-------|
-| `dish_modifiers` | **EMPTY/LEGACY** | Do NOT use - no data |
-| `dish_modifier_prices` | **EMPTY/LEGACY** | Do NOT use - no data |
-
-**Use These Tables Instead:**
-| Table | Records | Columns |
-|-------|---------|---------|
-| `modifiers` | 68,881+ | `id`, `modifier_group_id`, `name_en`, `name_fr`, `is_active`, `display_order` |
-| `modifier_prices` | Has data | `id`, `modifier_id`, `price`, `modifier_size_variant_id` |
-| `modifier_groups` | 2,871+ | `id`, `restaurant_id`, `name_en`, `name_fr`, `category` - **NO dish_id column!** |
-
-**CRITICAL: modifier_groups has NO dish_id column!**
-- The relationship between dishes and modifier_groups is handled by the `get_restaurant_menu` RPC function
-- To get dish-to-modifier-group mapping, use the menu data (dishes have modifier_groups nested inside)
-- DO NOT query `modifier_groups.dish_id` - it doesn't exist and will cause 500 errors
-
-**Files Fixed:**
-- `app/api/menu/modifier-groups/route.ts` - Admin modifier groups library
-- `app/api/customer/orders/route.ts` - Customer card payments (uses menu data for modifier validation)
-- `app/api/customer/orders/cash/route.ts` - Customer cash payments
-- `app/api/customer/dishes/[id]/modifiers/route.ts` - Customer dish modifiers endpoint
-
-**Key Pattern:**
-- Simple modifiers: `modifiers` table → `modifier_prices` table (keyed by `modifier_id`)
-- Combo modifiers: `combo_modifiers` table → `combo_modifier_prices` table (separate system)
-- Dish-to-modifier-group mapping: Use menu RPC data, NOT direct table queries
-
-### Combo Group Dish Selections Frontend Integration (Jan 2026)
-**Status:** COMPLETE
-**Issue:** RPC function update removed special combo group dish selections (combos where customers choose dishes from menu, e.g., "Pick any 2 pizzas").
-
-**What Changed:**
-1. `get_restaurant_menu` RPC now returns `dish_selections` array inside combo_groups
-2. Cache rebuild required for affected restaurants (68 restaurants)
-3. Frontend updated to detect dish_selections without requiring `has_special_section` flag
-
-**Data Structure:**
-```json
-{
-  "combo_groups": [{
-    "id": 2022,
-    "name": "1 Large Pizza from Menu",
-    "number_of_items": 1,
-    "display_header": "Choose your pizza",
-    "dish_selections": [
-      { "id": 25, "dish_id": 132351, "dish_display_name": "Cheese Pizza Large", "dish_name": "Cheese Pizza" },
-      { "id": 26, "dish_id": 132352, "dish_display_name": "Pepperoni Pizza Large", "dish_name": "Pepperoni Pizza" }
-    ],
-    "sections": [...]
-  }]
-}
-```
-
-**Frontend Logic (`components/customer/dish-modal.tsx`):**
-- Check for `dish_selections.length > 0` (not `has_special_section` flag)
-- State tracked in `specialDishSelections` record: `{${comboGroupId}-${selectionIndex}: dishSelectionId}`
-- Display uses RadioGroup organized by course name
-- Validation requires selections for each `number_of_items` slot
-
-**Cache Rebuild Command:**
-```sql
-SELECT menuca_v3.rebuild_menu_cache(restaurant_id::bigint);
-```
-
-**Testing Restaurants:**
-- Restaurant 735 (Amicci Pizza) - Pizza combos with 12 options each
-- Restaurant 680 (Milano) - Sandwich combos
-- Restaurant 83 (Season's Pizza) - 2-for-1 pizza deals
-
-### Provincial Tax System (Jan 2026)
-**Status:** COMPLETE
-**Feature:** Dynamic provincial tax calculation replacing hardcoded 13% HST with per-restaurant rates.
-
-**Database Schema:**
-- `province_tax_config` table - Province tax rates (Ontario HST 13%, Quebec TPS 5% + TVQ 9.975%)
-- `restaurant_tax_info` view - Joins restaurants with province tax config
-- `orders.tax_breakdown` (JSONB) - Stores itemized tax lines per order
-- `orders.tax_province_id` (integer) - Province ID for the order
-
-**TypeScript Types (`lib/types/tax.ts`):**
-```typescript
-interface TaxConfig {
-  province_id: number
-  province_code: string
-  province_name: string
-  total_rate: number
-  tax_components: Array<{ type: string; rate: number }>
-}
-
-interface TaxLineItem {
-  type: string
-  rate: number
-  amount: number
-}
-```
+**Commission Calculation:**
+- **Gross**: Commission on total (subtotal + delivery fee + tax)
+- **Net**: Commission on subtotal only (excludes delivery fee and tax)
+- Commission is calculated server-side to prevent client manipulation
+- Commission is hidden from customers (not displayed in cart, checkout, receipts, or emails)
+- Commission is stored on each order for internal reporting
 
 **Key Files:**
-- `lib/types/tax.ts` - Tax types and helper functions (calculateTaxes, getTotalTax, formatTaxRate, getTaxLabel)
-- `lib/stores/cart-store.ts` - taxConfig state, setTaxConfig(), getTaxBreakdown()
-- `components/customer/cart-drawer.tsx` - Displays multiple tax lines
-- `app/api/customer/orders/route.ts` - Card payments with tax breakdown
-- `app/api/customer/orders/cash/route.ts` - Cash payments with tax breakdown
-- `app/(public)/customer/orders/[id]/confirmation/page.tsx` - Confirmation page tax display
-- `lib/emails/service.ts` - Email service with taxBreakdown support
-- `lib/emails/templates/order-confirmation.tsx` - Email template with multiple tax lines
+- `components/restaurant/tabs/service-config.tsx` - Admin UI (toggle, percentage input, gross/net radio)
+- `app/api/restaurants/[id]/service-config/route.ts` - Admin GET API
+- `app/api/restaurants/[id]/service-config/[configId]/route.ts` - Admin PATCH API (requires admin auth)
+- `app/api/customer/create-payment-intent/route.ts` - Card payments: adds commission to Stripe charge
+- `app/api/customer/orders/route.ts` - Card orders: extracts commission from payment intent metadata
+- `app/api/customer/orders/cash/route.ts` - Cash orders: calculates commission server-side
 
-**Tax Calculation Flow:**
-1. Cart store fetches restaurant tax info from `/api/customer/restaurants/[slug]/tax`
-2. Cart store calculates breakdown using `calculateTaxes(subtotal, deliveryFee, taxConfig)`
-3. Order APIs fetch tax info from `restaurant_tax_info` view
-4. Order APIs store `tax_breakdown` JSONB and `tax_province_id` in orders table
-5. Confirmation page and emails display itemized taxes
+**Security:**
+- Commission calculated server-side (percentage of validated totals)
+- Admin auth required to modify commission settings
+- Commission amount stored in Stripe payment intent metadata for audit trail
+- Card payments: Subtotal is validated (must be positive, not exceed total) before use in 'net' calculation
+- If invalid subtotal detected, falls back to 'gross' calculation (charges on total amount)
 
-**Defaults:** Ontario HST 13% if no tax config found for restaurant
+**Known Limitations:**
+- Card payment 'net' commission relies on client-supplied subtotal (validated but not server-recomputed)
+- Recommendation: Use 'gross' mode for most accurate commission until full server-side cart validation is added to payment intent API
+- Cash orders have fully server-side commission calculation with no client trust
+
+**Future Enhancement:** Add server-side cart validation in create-payment-intent API to eliminate client subtotal reliance

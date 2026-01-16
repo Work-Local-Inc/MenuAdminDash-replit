@@ -489,6 +489,7 @@ export default function CheckoutPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             amount: total,
+            subtotal: subtotal, // Include subtotal for 'net' commission calculation
             user_id: currentUser?.id ? String(currentUser.id) : undefined,
             guest_email: selectedAddress?.email,
             metadata: {

@@ -8,6 +8,9 @@ export async function PATCH(
   { params }: { params: { id: string; configId: string } }
 ) {
   try {
+    // Verify admin authentication before allowing config changes
+    await verifyAdminAuth(request)
+    
     const supabase = createAdminClient() as any
     const body = await request.json()
     
@@ -59,6 +62,9 @@ export async function DELETE(
   { params }: { params: { id: string; configId: string } }
 ) {
   try {
+    // Verify admin authentication before allowing config deletion
+    await verifyAdminAuth(request)
+    
     const supabase = createAdminClient() as any
     
     const { error } = await supabase
