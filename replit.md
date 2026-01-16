@@ -45,6 +45,9 @@ Preferred communication style: Simple, everyday language.
 ### Technical Implementations
 -   **ID Mapping**: Handles `combo_groups.restaurant_id` (V3 IDs) vs. `dishes.restaurant_id` (legacy_v1_id) via API.
 -   **Terminology**: "Template" in the database translates to "modifier" or "modifier group" in the UI/code.
+-   **Contact Information Storage (Jan 2026)**: The `restaurant_contacts` table no longer exists. Contact info is now split:
+    -   `admin_users` + `admin_user_restaurants` → Owner/manager private contact for internal system communication
+    -   `restaurant_locations` → Public contact (phone, email) for customer-facing purposes
 -   **Multilingual Database Architecture**: Dish names are stored in bilingual columns (`name_en`, `name_fr`), with the `get_restaurant_menu` RPC function using COALESCE for localization. Order validation APIs must use this RPC for dish metadata.
 -   **Performance Optimization**: Parallel data fetching for critical pages like checkout. Menu caching implemented for 250x faster loads, with auto-invalidation and manual rebuild options.
 -   **Modifier Table Schema**: Critical distinction between legacy/empty tables (`dish_modifiers`, `dish_modifier_prices`) and active tables (`modifiers`, `modifier_prices`, `modifier_groups`). `modifier_groups` has NO `dish_id` column; the relationship is handled by the `get_restaurant_menu` RPC.

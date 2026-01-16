@@ -26,10 +26,20 @@ export async function GET(request: NextRequest) {
       .eq('restaurant_id', sampleId)
       .limit(3)
     
-    // Test 4: Query contacts for same restaurant
+    // Test 4: Query admin users linked to same restaurant
     const { data: contacts, error: conError } = await supabase
-      .from('restaurant_contacts')
-      .select('*')
+      .schema('menuca_v3')
+      .from('admin_user_restaurants')
+      .select(`
+        id,
+        role,
+        admin_user:admin_users (
+          id,
+          email,
+          first_name,
+          last_name
+        )
+      `)
       .eq('restaurant_id', sampleId)
       .limit(3)
     
@@ -46,7 +56,8 @@ export async function GET(request: NextRequest) {
       .select('*', { count: 'exact', head: true })
     
     const { count: totalContacts } = await supabase
-      .from('restaurant_contacts')
+      .schema('menuca_v3')
+      .from('admin_user_restaurants')
       .select('*', { count: 'exact', head: true })
     
     const { count: totalSchedules } = await supabase
