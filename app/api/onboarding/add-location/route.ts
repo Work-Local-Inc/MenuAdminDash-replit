@@ -88,22 +88,8 @@ export async function POST(request: NextRequest) {
       result = data;
     }
 
-    // Also update restaurant_contacts if phone/email provided
-    if (validatedData.phone || validatedData.email) {
-      const { error: contactError } = await supabase
-        .from('restaurant_contacts')
-        .upsert({
-          restaurant_id: validatedData.restaurant_id,
-          phone: validatedData.phone || null,
-          email: validatedData.email || null,
-        }, {
-          onConflict: 'restaurant_id'
-        });
-      
-      if (contactError) {
-        console.error('Contact upsert error (non-fatal):', contactError);
-      }
-    }
+    // Note: Phone/email are now stored in restaurant_locations (public contact)
+    // No need to update restaurant_contacts as that table no longer exists
 
     return NextResponse.json({
       success: true,

@@ -10,18 +10,81 @@ export async function GET(
   try {
     await verifyAdminAuth(request)
     const supabase = createAdminClient() as any
+    const restaurantId = parseInt(params.id)
     
-    const { data, error } = await supabase
+    // Fetch admin users linked to this restaurant (private contacts for internal use)
+    const { data: adminContacts, error: adminError } = await supabase
       .schema('menuca_v3')
-      .from('restaurant_contacts')
-      .select('*')
-      .eq('restaurant_id', parseInt(params.id))
-      .is('deleted_at', null)
-      .order('contact_priority', { ascending: true })
+      .from('admin_user_restaurants')
+      .select(`
+        id,
+        role,
+        admin_user:admin_users (
+          id,
+          email,
+          first_name,
+          last_name
+        )
+      `)
+      .eq('restaurant_id', restaurantId)
     
-    if (error) throw error
+    if (adminError) {
+      console.error('[Contacts API] Admin users query error:', adminError)
+    }
     
-    return NextResponse.json(data || [])
+    // Fetch public contact info from restaurant_locations
+    const { data: locationContacts, error: locationError } = await supabase
+      .schema('menuca_v3')
+      .from('restaurant_locations')
+      .select('id, phone, email, is_primary')
+      .eq('restaurant_id', restaurantId)
+      .eq('is_active', true)
+      .order('is_primary', { ascending: false })
+    
+    if (locationError) {
+      console.error('[Contacts API] Locations query error:', locationError)
+    }
+    
+    // Combine both sources into a unified response
+    const contacts = []
+    
+    // Add admin users as contacts (owner/manager)
+    if (adminContacts) {
+      for (const ac of adminContacts) {
+        if (ac.admin_user) {
+          contacts.push({
+            id: ac.id,
+            type: 'admin',
+            role: ac.role || 'Owner',
+            first_name: ac.admin_user.first_name,
+            last_name: ac.admin_user.last_name,
+            email: ac.admin_user.email,
+            phone: null, // Admin users don't have phone in this table
+            is_primary: true
+          })
+        }
+      }
+    }
+    
+    // Add location contacts (public)
+    if (locationContacts) {
+      for (const lc of locationContacts) {
+        if (lc.phone || lc.email) {
+          contacts.push({
+            id: lc.id,
+            type: 'location',
+            role: 'Restaurant',
+            first_name: null,
+            last_name: null,
+            email: lc.email,
+            phone: lc.phone,
+            is_primary: lc.is_primary
+          })
+        }
+      }
+    }
+    
+    return NextResponse.json(contacts)
   } catch (error: any) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode })
