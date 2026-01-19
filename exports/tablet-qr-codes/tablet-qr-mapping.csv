@@ -1,27 +1,180 @@
 restaurant_id,restaurant_name,slug,device_uuid,qr_filename
+7,"Imilio's Pizzeria",imilios-pizzeria-7,7c43fde7-cab0-4305-8963-11f2d6aa53e1,Imilios_Pizzeria_7.png
+8,"Lucky Star Chinese Food",lucky-star-chinese-food-8,9e21cef0-dee4-4b9c-a51d-3599b5828323,Lucky_Star_Chinese_Food_8.png
+12,"Mama Rosa",mama-rosa-12,1278b991-8f08-490d-a87b-bf43a567e4be,Mama_Rosa_12.png
+13,"Papa Joe's Pizza - Downtown",papa-joes-pizza-downtown-13,2df0db7e-20cd-4820-bcd2-1ac2ef8aef8f,Papa_Joes_Pizza_-_Downtown_13.png
+15,"New Mee Fung Restaurant",new-mee-fung-restaurant-15,3fae9536-e80d-4e92-abdd-330797cd8f81,New_Mee_Fung_Restaurant_15.png
+22,"House of Lasagna",house-of-lasagna-22,e7bf880b-7afb-4b42-ba5a-522dfa6a6ec3,House_of_Lasagna_22.png
+28,"Eastview Pizza",eastview-pizza-28,6e06e683-5eaa-44e1-a657-1aea7eef4fd8,Eastview_Pizza_28.png
+31,"Milano",milano-31,aae269bd-7cc2-46f1-b803-980c9175996d,Milano_31.png
+44,"Kiki Lebanese Pineview Pizza",kiki-lebanese-pineview-pizza-44,1e86b1e6-4b10-454d-8a45-28327c66da3c,Kiki_Lebanese_Pineview_Pizza_44.png
+45,"Bobbie's Pizza & Subs",bobbies-pizza-subs-45,e093733e-3d2a-4bb6-9705-2cf70f4b707f,Bobbies_Pizza_Subs_45.png
+47,"Mr Mozzarella - Nepean",mr-mozzarella-nepean-47,2d01593c-c384-4867-a8b9-0bed19c93a0e,Mr_Mozzarella_-_Nepean_47.png
+48,"Merivale Pizza & Wings",merivale-pizza-wings-48,56fdb04e-f0ae-4974-be3d-c47f58e01268,Merivale_Pizza_Wings_48.png
+55,"Milano",milano-55,c7c57238-1024-4fe6-815d-e0f3ec3c8abb,Milano_55.png
+57,"Milano",milano-57,e093b66e-c75a-4dac-a50a-2fa9993fde02,Milano_57.png
+59,"Milano",milano-59,efc8ddad-1a3e-449e-bf0c-43d2459db4da,Milano_59.png
+62,"Vanier Pizza & Subs",vanier-pizza-subs-62,67f23e20-0a9d-4f2f-aadb-8decbc43edf0,Vanier_Pizza_Subs_62.png
+65,"Number One Chinese Take Out",number-one-chinese-take-out-65,6ccb0612-7d5d-4b49-9ef1-5f723b756b13,Number_One_Chinese_Take_Out_65.png
+69,"Aylmer BBQ",aylmer-bbq-69,c6396c85-58cd-4906-a20e-a185afaab67e,Aylmer_BBQ_69.png
+70,"Papa Pizza - Hull",papa-pizza-hull-70,40466cfe-c6f0-430d-9a88-5f25f6067cf9,Papa_Pizza_-_Hull_70.png
+72,"Cathay Restaurants",cathay-restaurants-72,1a063aa7-30c2-42ec-89d2-13cd1b4b4eac,Cathay_Restaurants_72.png
+75,"Milano",milano-75,4751b11e-6d3f-40be-af17-82bc6d108d9c,Milano_75.png
+77,"Lorenzo's Pizzeria - Vanier",lorenzos-pizzeria-vanier-77,084c8297-d19f-4ccd-95e7-f8c656c805d8,Lorenzos_Pizzeria_-_Vanier_77.png
+83,"Season's Pizza",seasons-pizza-83,88901b12-8161-4c5f-af22-02d4e0614fd8,Seasons_Pizza_83.png
+84,"The Original Georgie's",the-original-georgies-84,f4066f07-60d0-4c7d-ad90-ba15188a3b62,The_Original_Georgies_84.png
+87,"Champa Thai Cuisine",champa-thai-food-87,48bb2782-3242-4317-9f96-a78cbec0008a,Champa_Thai_Cuisine_87.png
+88,"Milano",milano-88,dfc79abc-1248-43da-8a51-1fbc33adeaae,Milano_88.png
+89,"Milano",milano-89,04bef097-f2fa-4e83-9e0f-663a612890e9,Milano_89.png
+90,"Milano",milano-90,7e53db6f-f83c-4a01-a3ab-292eaf42a000,Milano_90.png
+91,"Milano",milano-91,909eb351-add3-4bd5-a147-32e7a6dd5e94,Milano_91.png
+92,"Milano",milano-92,39f9f7a8-29aa-4a6b-ae4e-69ed118103d0,Milano_92.png
+93,"Milano",milano-93,690f0829-8441-4f33-83e6-c991c6df21ae,Milano_93.png
+95,"Milano",milano-95,5907b54d-422e-4613-bd60-fa7f879aed4c,Milano_95.png
+97,"Milano",milano-97,30788033-5a0f-4fa2-9ce8-2817a3acf8d9,Milano_97.png
+105,"Ginkgo Garden",ginkgo-garden-105,93958b14-8df8-4f28-b905-87b55d43e072,Ginkgo_Garden_105.png
+106,"Restaurant Le Choix",restaurant-le-choix-106,5bd4b4c8-51bf-46e6-accf-d2951aa902ce,Restaurant_Le_Choix_106.png
+109,"Restaurant Chez Gerry",restaurant-chez-gerry-109,1c0133a6-fa4e-4d74-a00d-c1496c699ad7,Restaurant_Chez_Gerry_109.png
+118,"Mano City Pizza",mano-city-pizza-118,e06ba745-827c-43a1-850f-29395f8fb252,Mano_City_Pizza_118.png
+119,"Hung Mein",hung-mein-119,f80d0e7c-4a1d-4fea-9e84-780ed0d82356,Hung_Mein_119.png
+123,"Milano",milano-123,11ce2c00-6eb2-4fb8-bd1b-14618c793355,Milano_123.png
+124,"Carlo's Pizza",carlos-pizza-124,c109a9a3-2c1d-4c23-8fcc-03aa167e1c67,Carlos_Pizza_124.png
+126,"Milano",milano-126,4375d033-b8e4-41e6-a403-c6a7f0b163ed,Milano_126.png
+131,"Centertown Donair & Pizza",centertown-donair-pizza-131,94f13cff-a63d-41d1-8732-a57fb3fade1f,Centertown_Donair_Pizza_131.png
+133,"Riverside Pizzeria",riverside-pizzeria-133,6a69f75a-cd17-46d0-84a6-06e61c527221,Riverside_Pizzeria_133.png
+139,"Pizza Bravo",pizza-bravo-139,ff4281fd-2c43-4439-8be1-fc627bfe1dde,Pizza_Bravo_139.png
+143,"Tony's Pizza",tonys-pizza-143,db89ab96-8b63-4419-9e65-42036adea749,Tonys_Pizza_143.png
+147,"Pho Dau Bo Restaurant - Kitchener",pho-dau-bo-restaurant-kitchener-147,1ee78eeb-0f91-4d34-adc3-72e42c693445,Pho_Dau_Bo_Restaurant_-_Kitchener_147.png
+160,"Hong Kong Chinese Food Takeout",hong-kong-chinese-food-takeout-160,543caa67-b3f0-4992-a9d1-ef9fa19eebab,Hong_Kong_Chinese_Food_Takeout_160.png
+174,"Lucky King Take Out",lucky-king-take-out-174,62e1a44f-678d-4442-a7b8-31dbd3144f42,Lucky_King_Take_Out_174.png
+180,"Indian Punjabi Clay Oven",indian-punjabi-clay-oven-180,1bcea047-8bd8-49f5-b02a-ca98148d4a4f,Indian_Punjabi_Clay_Oven_180.png
+190,"Milano",milano-190,85385a4c-b729-47d1-9b6c-6029ef185402,Milano_190.png
+196,"Colonnade Pizza",colonnade-pizza-196,cc69c8bf-edee-4bd5-ba14-f6313fdce339,Colonnade_Pizza_196.png
+199,"Pho Bo Ga King - Somerset",pho-bo-ga-king-somerset-199,42cbbcf9-d483-45ef-a898-52b2e9603e54,Pho_Bo_Ga_King_-_Somerset_199.png
 205,"Mont Liban Bakery & Shawarma",mont-liban-bakery-shawarma-205,1e2ee8bb-73ed-4201-8754-8a9ee8dc8fa1,Mont_Liban_Bakery_Shawarma_205.png
+211,"Erman Pizza",erman-pizza-211,523d780d-1eb3-40a4-a234-954cd7bd50e4,Erman_Pizza_211.png
+234,"New Mukut Restaurant Indian Cuisine",new-mukut-restaurant-indian-cuisine-234,4b481efc-4ebe-417a-8468-993cc84c867a,New_Mukut_Restaurant_Indian_Cuisine_234.png
+241,"Beneci Pizza",beneci-pizza-241,b40598d5-5a51-4ae8-937e-6bd0d37a0bad,Beneci_Pizza_241.png
+245,"Orchid Sushi",orchid-sushi-245,ef9828ab-b80d-4ae1-a68a-7d966bce02db,Orchid_Sushi_245.png
+265,"Milano",milano-265,ad064da9-0a22-426a-93d6-d3d275d0edf7,Milano_265.png
+267,"Lucky Fortune",lucky-fortune-267,cc7b0623-5865-4655-b4dd-f22295f99cdd,Lucky_Fortune_267.png
+269,"Shaan Tandoori",shaan-tandoori-269,539c595c-1813-460b-b352-23f1497f973b,Shaan_Tandoori_269.png
+328,"JN Pizza",jn-pizza-328,336359da-53f3-4ee2-8e5e-d8546599c61f,JN_Pizza_328.png
+349,"Milano",milano-349,0fb88c08-0ee0-4def-be41-3692a04d62dd,Milano_349.png
+350,"Milano",milano-350,32345084-08e9-4d04-90b1-3955ab2d8501,Milano_350.png
+367,"Xtreme Pizza",xtreme-pizza-367,270ffa07-0382-4444-bf82-2803dde0b0d2,Xtreme_Pizza_367.png
+376,"Sachi Sushi",sachi-sushi-376,d206269d-3a4f-498d-b2a6-7138c342ff53,Sachi_Sushi_376.png
 437,"Papa Joe's Fried Chicken - Downtown",papa-joes-fried-chicken-downtown-437,2e9a8f78-9922-4d17-b251-75490244100a,Papa_Joes_Fried_Chicken_-_Downtown_437.png
+479,"iCook Pho You",icook-pho-you-479,3ad96dfe-3ea0-4f13-8bb0-1a439db732f0,iCook_Pho_You_479.png
+491,"Light of India",light-of-india-491,9d871e42-bf89-4b71-a40c-123b71dbcdbf,Light_of_India_491.png
+497,"Rangoli",rangoli-497,9fb4f820-a368-4f21-95bf-2929bbf5518a,Rangoli_497.png
+502,"New Hong Kong",new-hong-kong-502,d47d2523-e9a2-46cb-9498-bb7822076746,New_Hong_Kong_502.png
+507,"Pizza Lovers Hunt Club",pizza-lovers-hunt-club-507,96969c59-9c6e-423c-afbf-545ff3838365,Pizza_Lovers_Hunt_Club_507.png
+511,"Egg Roll Factory",egg-roll-factory-511,3ac0c41a-2d68-46b7-b87f-b5ff935fec74,Egg_Roll_Factory_511.png
+515,"Napolis",napolis-515,31155242-29fa-466d-90bd-5f4d710be1e0,Napolis_515.png
+519,"HaNoi Pho",hanoi-pho-519,4a295c3c-8798-4b8d-bd60-e69da4bd4b3d,HaNoi_Pho_519.png
+521,"Palermo Pizzeria",palermo-pizzeria-521,4013e23b-141d-4bf0-98a4-ec705935678b,Palermo_Pizzeria_521.png
 540,"Papa Grecque des Flandres",papa-grecque-des-flandres-540,f703627e-d937-428d-961d-dfea82ea64a0,Papa_Grecque_des_Flandres_540.png
+561,"Aahar The Taste of India",aahar-the-taste-of-india-561,70f22b32-c45e-44a7-9924-9647ad295862,Aahar_The_Taste_of_India_561.png
+562,"Pizza des Hautes Plaines",pizza-des-hautes-plaines-562,a34dba90-2071-4c8b-a01e-7132a503ac35,Pizza_des_Hautes_Plaines_562.png
+565,"Milano",milano-565,ed3c139f-fccf-4e44-8b37-ede709a6e577,Milano_565.png
+569,"Milano",milano-569,01ec4dd4-a1de-43c5-b890-711947e313b6,Milano_569.png
+584,"Crispy's",crispys-584,133f04d9-d1e3-41a4-b004-5dea72e589a1,Crispys_584.png
+586,"Milano",milano-586,a25214df-9ac4-4e38-ad6f-6cdd01dffe8b,Milano_586.png
+593,"Milano",milano-593,8d50c290-6d09-4ae2-bada-88128b3b9fd1,Milano_593.png
+595,"Supreme Pizzeria",supreme-pizzeria-595,54fa1473-b382-400f-8630-ceddcdc0f6bf,Supreme_Pizzeria_595.png
+596,"Sushi Fleury",sushi-fleury-596,d01403c2-0aa1-47b2-8e3e-d657c7eb2d17,Sushi_Fleury_596.png
+601,"Milano",milano-601,3118f584-e615-4a99-bc41-a8d91054eb6b,Milano_601.png
+602,"Papa Pizza Cantley",papa-pizza-cantley-602,6adad4b2-874b-488a-b5d2-f328c8f5264a,Papa_Pizza_Cantley_602.png
+607,"Aroy Thai",aroy-thai-607,1de5132b-38b9-4b3a-88bf-fe2eb9a3f045,Aroy_Thai_607.png
 614,"Marina Pizza des Flandres ",marina-pizza-des-flandres--614,d8a10d90-8d0f-4e54-a42d-426372cd6e5d,Marina_Pizza_des_Flandres__614.png
 616,"Papa Grecque Maloney ",papa-grecque-maloney--616,f21a9600-6a49-4b33-a900-d3bdd116a467,Papa_Grecque_Maloney__616.png
+624,"Milano",milano-624,3d49a61e-2c2c-4764-ad01-36fcc83a365b,Milano_624.png
+630,"Asia Garden Ottawa",asia-garden-ottawa-630,111ce52c-bdf9-4a52-a56a-722c3ff722f7,Asia_Garden_Ottawa_630.png
+636,"Joes Family Pizzeria",joes-family-pizzeria-636,b3446630-af38-4348-9443-ef5a1570559f,Joes_Family_Pizzeria_636.png
+638,"Digby's Restaurant",digbys-restaurant-638,c8fc0660-2173-49eb-9fba-ee26b860ba47,Digbys_Restaurant_638.png
+641,"China Moon",china-moon-641,a414b2c8-2a8e-4f6e-ad61-8a6c926efc11,China_Moon_641.png
+644,"Mozza Pizza Hull",mozza-pizza-hull-644,83850516-4a09-4918-99af-c4aae3c716c7,Mozza_Pizza_Hull_644.png
+646,"JC Royal Thai Cuisine",jc-royal-thai-cuisine-646,f5aed283-f164-4190-84e2-43532d687f72,JC_Royal_Thai_Cuisine_646.png
+651,"Milano",milano-651,f25277fa-75b7-444d-ad1d-19b55148631d,Milano_651.png
+660,"Milano",milano-660,51237e89-8829-48d1-88d1-6c9625d9da2b,Milano_660.png
+680,"Milano",milano-680,3ae1acd1-39b0-412c-980b-4d6d2ecc82b8,Milano_680.png
+681,"Oka's Hull",okas-hull-681,c84b8023-d9de-405c-ac7f-b1becc984ffb,Okas_Hull_681.png
 696,"Pizza Maisonneuve",pizza-maisonneuve-696,ba4b96b5-4687-4bee-9120-981e78d11e01,Pizza_Maisonneuve_696.png
+701,"Milano",milano-701,e7741fdf-69ef-4cba-b5fe-55c6399ea43e,Milano_701.png
+711,"Supreme Pizzeria",supreme-pizzeria-711,f765e98a-b2e6-48e1-9d0d-45949bee5c9a,Supreme_Pizzeria_711.png
+712,"Patate Lou Lou",patate-lou-lou-712,f936dec2-94c8-48c4-92a9-0f83b80d7904,Patate_Lou_Lou_712.png
+714,"Ogilvie Pizza",ogilvie-pizza-714,9ab0f465-b343-4904-8ad0-7e6c57fb304f,Ogilvie_Pizza_714.png
 715,"La Poutinerie Ogilvie",la-poutinerie-ogilvie-715,bb466afc-c797-4330-b419-f1f780076f42,La_Poutinerie_Ogilvie_715.png
 716,"PizzaRama",pizzarama-716,eb759b47-9aed-4c15-8595-6f405541c911,PizzaRama_716.png
+721,"La Maison Pho",la-maison-pho-721,b59e2ea3-2db0-41c5-bbbc-3a356db025f1,La_Maison_Pho_721.png
+726,"Pizza Joanna",pizza-joanna-726,26cb3dfc-e8b5-4775-90c3-5d8d133cb810,Pizza_Joanna_726.png
 727,"La Maison du Burger",la-maison-du-burger-727,d267ed1b-19f6-49d1-a7ca-4ed6d29e6dc3,La_Maison_du_Burger_727.png
+730,"Friendly Restaurant and Pizzeria",friendly-restaurant-and-pizzeria-730,e99a40fd-4749-43f7-8a55-84f3349f01e6,Friendly_Restaurant_and_Pizzeria_730.png
+735,"Amicci Pizza",amicci-pizza-735,ea50c04d-3604-4393-90a8-b7d918108230,Amicci_Pizza_735.png
+736,"Greber Pizza et Shawarma",greber-pizza-et-shawarma-736,023bff89-f3d5-482c-9beb-195008b4c2d9,Greber_Pizza_et_Shawarma_736.png
+745,"Sala Thai",sala-thai-745,0225b268-ebe5-4c67-ab9a-dfe888bd6c94,Sala_Thai_745.png
+749,"Milano",milano-749,dcb7d88b-19cf-487f-844f-ad875c2ad684,Milano_749.png
+751,"Milano",milano-751,fcc3e359-d7ac-4892-bd11-d1d4525cb9a6,Milano_751.png
+756,"Little Gyros Greek Grill",little-gyros-greek-grill-756,ac0ed556-9583-4c8b-bf8f-0bdeb2333614,Little_Gyros_Greek_Grill_756.png
+783,"Colonnade Pizza",colonnade-pizza-783,a6c1eeb3-cfe6-49be-a827-027284506602,Colonnade_Pizza_783.png
+784,"Colonnade Pizza",colonnade-pizza-784,4e106e76-5a46-4c9c-9f30-bd793f7ba8fb,Colonnade_Pizza_784.png
+785,"Colonnade Pizza",colonnade-pizza-785,b1bf6115-12be-4fa1-8a07-6dffa511ff4d,Colonnade_Pizza_785.png
 789,"Poutinerie Quï¿½becurds Hull",poutinerie-qubecurds-hull-789,37546ee1-33d7-4693-8d88-6a6523f44209,Poutinerie_Qubecurds_Hull_789.png
 790,"Nachos Loco Hull",nachos-loco-hull-790,9fc62a20-4aed-4b35-9eb4-f30d1a4052ec,Nachos_Loco_Hull_790.png
+792,"Dumpling Bowl",dumpling-bowl-792,562139c9-7ada-4d3c-8fbd-7be23f7a07a0,Dumpling_Bowl_792.png
+795,"Papa Pizza Chem. de Masson",papa-pizza-chem-de-masson-795,06ba7d1a-3298-4d72-b1d3-223472c81d7d,Papa_Pizza_Chem_de_Masson_795.png
 797,"Papa Burger",papa-burger-797,48336ef9-4146-49ec-9112-15a8e213a2a0,Papa_Burger_797.png
+798,"Kabylie Pizza",kabylie-pizza-798,06856059-defd-4360-b18f-e330c4e249a8,Kabylie_Pizza_798.png
 801,"Nachos Loco Gatineau",nachos-loco-gatineau-801,3a8498a1-e45c-42be-bf1f-1c18e50be9eb,Nachos_Loco_Gatineau_801.png
+806,"Crispy's Bank Street",crispys-bank-street-806,3513b90e-a6e7-4311-9e83-03f16a663229,Crispys_Bank_Street_806.png
+807,"Oh My Grill",oh-my-grill-807,dd95a4d1-9cf2-470e-9db3-b988b5924f29,Oh_My_Grill_807.png
 810,"Papa Grecque Cantley",papa-grecque-cantley-810,2ec7b948-ecdf-4805-9aaa-259bf746d269,Papa_Grecque_Cantley_810.png
+815,"Golden Center Pizza",golden-center-pizza-815,29523cbf-c409-4d56-a197-88a26f84c1c6,Golden_Center_Pizza_815.png
+816,"Dï¿½panneur Gï¿½nï¿½reux",dpanneur-gnreux-816,0910d86d-6363-40c1-b22e-9f9c45cfbfec,Dpanneur_Gnreux_816.png
+818,"Milano",milano-818,26f7e816-13cd-43dc-a7bb-932616c86413,Milano_818.png
+819,"Milano",milano-819,3a3ef821-ad25-4fc0-aa57-5c220af08795,Milano_819.png
 820,"Vieux Hull Pizza",vieux-hull-pizza-820,fe836711-94df-4555-b05b-e37e53046e39,Vieux_Hull_Pizza_820.png
+821,"Milano",milano-821,e0f4ac60-f8dc-49a2-b6f8-2cf24b90980c,Milano_821.png
 822,"Papa Burger Maloney",papa-burger-maloney-822,3468d483-7344-4c67-a868-696bb280a8e7,Papa_Burger_Maloney_822.png
+824,"Prima Pizza",prima-pizza-824,410b3d2d-b0bd-4853-97a1-e27fc41f2aaf,Prima_Pizza_824.png
+825,"La Nawab",la-nawab-v2-825,a57d9ae7-a25b-4ece-9818-1bff25f16632,La_Nawab_825.png
+829,"Pizzalicious",pizzalicious-829,e3fd757e-7315-4569-8031-6a6d95eae08c,Pizzalicious_829.png
+833,"All Out Burger",all-out-burger-833,059a012b-15ed-41a1-b88d-5ac9dfc3f6a5,All_Out_Burger_833.png
+835,"Milano",milano-835,a03c9a8a-82b5-4e3e-87a7-370630dc4a42,Milano_835.png
 836,"Souvlaki Souvlaki",souvlaki-souvlaki-836,af63eab9-a93a-4995-9f2e-00df697b2db1,Souvlaki_Souvlaki_836.png
+837,"Milano",milano-837,be0ed4b0-e8e3-429e-bc33-7e2c928a9bc8,Milano_837.png
+840,"Milano",milano-840,98aae36c-c09f-491f-aeb4-4378efe86fdf,Milano_840.png
+841,"All Out Burger",all-out-burger-841,b993a689-1d82-49fc-9063-04dd2aec883c,All_Out_Burger_841.png
+842,"Milano",milano-842,de140d94-2941-4623-ae80-c4e7df0da74e,Milano_842.png
 845,"Mykonos Greek Grill",mykonos-greek-grill-845,8945445a-ad79-4849-a917-8a2007c62e8d,Mykonos_Greek_Grill_845.png
 846,"Mykonos Greek Grill",mykonos-greek-grill-846,08f64f41-7d3f-4300-8496-9d350107dfbb,Mykonos_Greek_Grill_846.png
+847,"Sushiyana",sushiyana-847,8196734e-d692-4039-86e0-ee28fa9b551d,Sushiyana_847.png
+924,"All Out Burger Bank St.",all-out-burger-bank-st-924,935f1824-59c8-4164-b940-d6a500f3863d,All_Out_Burger_Bank_St_924.png
 941,"Ting's Kitchen",tings-kitchen-941,b537df78-c390-437a-8f6a-2112ebc4b468,Tings_Kitchen_941.png
 943,"Charm Thai Cuisine",nana-thai-cuisine-943,2b6e1b33-d8ac-48eb-82c3-be6c85c237c2,Charm_Thai_Cuisine_943.png
 948,"All Out Burger Gladstone",all-out-burger-gladstone-948,7fbac859-bbd6-443f-8563-eab544ec57c2,All_Out_Burger_Gladstone_948.png
 949,"All Out Burger Montreal Rd",all-out-burger-montreal-rd-949,be4b8570-76c7-4136-b5b6-f0b5b5f79e70,All_Out_Burger_Montreal_Rd_949.png
+950,"Kirkwood Pizza",kirkwood-pizza-950,d219903c-6594-4414-9a21-5f7fa66aaa9e,Kirkwood_Pizza_950.png
+952,"River Pizza",river-pizza-952,9d7b674a-d9de-4473-8df6-7f205c4244cd,River_Pizza_952.png
+954,"Wandee Thai",wandee-thai-954,0e6282f0-d834-4dd7-90bb-56ac6d53f1a1,Wandee_Thai_954.png
+957,"Cosenza",cosenza-957,bb546367-4a9a-478d-9acb-d2ba7f3d7447,Cosenza_957.png
+960,"Cuisine Bombay Indienne",cuisine-bombay-indienne-960,872ef779-429f-4fa7-970e-29fe0dd771ae,Cuisine_Bombay_Indienne_960.png
+961,"Chicco Shawarma Cantley",chicco-shawarma-cantley-961,72589832-5abd-4881-9eee-2e310cc23289,Chicco_Shawarma_Cantley_961.png
+963,"Chicco Pizza Shawarma Anger",chicco-pizza-shawarma-anger-963,883ad3c0-98fd-4eaf-8441-8d751c248d97,Chicco_Pizza_Shawarma_Anger_963.png
+964,"Chicco Pizza Maloney",chicco-pizza-maloney-964,e3fbafe8-7636-47e8-a61b-1bfb8a9214ff,Chicco_Pizza_Maloney_964.png
+965,"Chicco Shawarma Maloney",chicco-shawarma-maloney-965,738c54ef-77a6-42d9-87de-f3bf98e028c0,Chicco_Shawarma_Maloney_965.png
+966,"Chicco Pizza de l�Hopital",chicco-pizza-de-lhopital-966,26130b3c-63bb-41a2-ba64-f0c867cdc30d,Chicco_Pizza_de_lHopital_966.png
+967,"Chicco Pizza St-Louis",chicco-pizza-st-louis-967,625e8c63-c6f9-46ca-afd6-74ad562f3d17,Chicco_Pizza_St-Louis_967.png
+971,"Little Gyros Greek Grill",little-gyros-greek-grill-971,e5b3b7b3-efe2-4c04-8768-0a4bc2d49bb9,Little_Gyros_Greek_Grill_971.png
+973,"Capital Bites",capital-bites-973,56c19cdd-f1ef-4407-8a25-3b73b11207d2,Capital_Bites_973.png
+974,"Pachino Pizza",pachino-pizza-974,58e02c38-8eca-4cee-93de-10b8c3537d15,Pachino_Pizza_974.png
+976,"Pizza Marie",pizza-marie-976,d279c3f0-5838-42f8-beb2-0140c6dfba4b,Pizza_Marie_976.png
+977,"Capri Pizza",capri-pizza-977,9f253c7b-c8b9-4520-8041-cb5c6dfbb16a,Capri_Pizza_977.png
+981,"Al-s Drive In",al-s-drive-in-981,8e433536-fa9b-4c79-9fb5-8c7085751a88,Al-s_Drive_In_981.png
+984,"La Famiglia on the Danforth",la-famiglia-on-the-danforth-984,ed557d4d-3f6c-4b99-bd31-7486434db2b0,La_Famiglia_on_the_Danforth_984.png
+985,"Yorgo's - Nepean",yorgos-nepean-985,65c745e0-7b1b-4390-bfcc-a5c65f8f1d65,Yorgos_-_Nepean_985.png
+1009,"Econo Pizza",econo-pizza-1009,006fe8aa-eec7-465c-bb8d-9180d3a2c910,Econo_Pizza_1009.png
 1010,"Lemongrass Thai Cuisine",lemongrass-thai-cuisine-1010,3a7343b0-1b0f-46b2-a55e-0183a969a9a0,Lemongrass_Thai_Cuisine_1010.png
 1011,"Mozza Pizza Gatineau",mozza-pizza-gatineau-1011,aa4a75e2-6ef9-4a6f-a988-fbf3507d0f1e,Mozza_Pizza_Gatineau_1011.png
 1012,"Papa Pizza Des Flandres",papa-pizza-des-flandres-1012,592b789f-3b33-4b31-920f-595e02861682,Papa_Pizza_Des_Flandres_1012.png
@@ -31,3 +184,4 @@ restaurant_id,restaurant_name,slug,device_uuid,qr_filename
 1016,"Roulas Grecque et Pizza",roulas-grecque-et-pizza-1016,05e19fb8-dc09-41c1-94c4-96811b35d017,Roulas_Grecque_et_Pizza_1016.png
 1017,"Sushi Express Chambly",sushi-express-chambly-1017,e7ffb212-7fa3-4312-9fcb-ec600e4812de,Sushi_Express_Chambly_1017.png
 1020,"Sushi Presse",sushi-presse,b7a8e9c8-fb52-45cc-abf1-2d0368b3c45b,Sushi_Presse_1020.png
+1021,"JJ's Shawarma",jjs-shawarma-1021,99a20bed-788c-4d07-a048-b3a0e15d670a,JJs_Shawarma_1021.png

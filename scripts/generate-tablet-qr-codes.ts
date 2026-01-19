@@ -40,12 +40,13 @@ function sanitizeFilename(name: string): string {
 }
 
 async function main() {
-  console.log('🚀 Starting bulk QR code generation for tablet onboarding...\n')
+  console.log('🚀 Starting bulk QR code generation for ALL restaurants...\n')
 
   const outputDir = path.join(process.cwd(), 'exports', 'tablet-qr-codes')
-  if (!fs.existsSync(outputDir)) {
-    fs.mkdirSync(outputDir, { recursive: true })
+  if (fs.existsSync(outputDir)) {
+    fs.rmSync(outputDir, { recursive: true })
   }
+  fs.mkdirSync(outputDir, { recursive: true })
 
   console.log('📁 Fetching all active restaurants...')
   const { data: restaurants, error: restaurantsError } = await supabase
@@ -64,59 +65,79 @@ async function main() {
   console.log('📱 Fetching existing devices...')
   const { data: existingDevices, error: devicesError } = await supabase
     .from('devices')
-    .select('restaurant_id')
-    .eq('is_active', true)
+    .select('id, uuid, restaurant_id')
 
   if (devicesError) {
     console.error('❌ Failed to fetch devices:', devicesError)
     process.exit(1)
   }
 
-  const restaurantsWithDevices = new Set(existingDevices?.map(d => d.restaurant_id) || [])
-  console.log(`✅ Found ${restaurantsWithDevices.size} restaurants already have devices\n`)
-
-  const restaurantsNeedingDevices = restaurants?.filter(r => !restaurantsWithDevices.has(r.id)) || []
-  console.log(`🎯 ${restaurantsNeedingDevices.length} restaurants need devices\n`)
-
-  if (restaurantsNeedingDevices.length === 0) {
-    console.log('✨ All restaurants already have devices. Nothing to do!')
-    process.exit(0)
+  const devicesByRestaurant = new Map<number, { id: number; uuid: string }>()
+  for (const d of existingDevices || []) {
+    if (d.restaurant_id) {
+      devicesByRestaurant.set(d.restaurant_id, { id: d.id, uuid: d.uuid })
+    }
   }
+  console.log(`✅ Found ${devicesByRestaurant.size} existing devices\n`)
 
   const csvRows: string[] = ['restaurant_id,restaurant_name,slug,device_uuid,qr_filename']
   let successCount = 0
   let errorCount = 0
 
-  for (const restaurant of restaurantsNeedingDevices) {
+  for (const restaurant of restaurants || []) {
     try {
       console.log(`Processing: ${restaurant.name} (ID: ${restaurant.id})...`)
 
-      const deviceUuid = randomUUID()
-      const deviceKey = generateDeviceKey()
-      const deviceKeyHash = await hashDeviceKey(deviceKey)
+      const existingDevice = devicesByRestaurant.get(restaurant.id)
+      let deviceUuid: string
+      let deviceKey: string
 
-      const { data: device, error: deviceError } = await supabase
-        .from('devices')
-        .insert({
-          uuid: deviceUuid,
-          device_name: `Tablet - ${restaurant.name}`,
-          device_key_hash: deviceKeyHash,
-          restaurant_id: restaurant.id,
-          has_printing_support: true,
-          is_active: true,
-          firmware_version: 1,
-          software_version: 1,
-          is_desynced: false,
-          is_v2_device: false,
-          allows_config_edit: true,
-        })
-        .select('id, uuid')
-        .single()
+      if (existingDevice) {
+        deviceUuid = existingDevice.uuid
+        deviceKey = generateDeviceKey()
+        const deviceKeyHash = await hashDeviceKey(deviceKey)
 
-      if (deviceError) {
-        console.error(`  ❌ Failed to create device: ${deviceError.message}`)
-        errorCount++
-        continue
+        const { error: updateError } = await supabase
+          .from('devices')
+          .update({
+            device_key_hash: deviceKeyHash,
+            is_active: true,
+          })
+          .eq('id', existingDevice.id)
+
+        if (updateError) {
+          console.error(`  ❌ Failed to update device: ${updateError.message}`)
+          errorCount++
+          continue
+        }
+        console.log(`  🔄 Regenerated key for existing device`)
+      } else {
+        deviceUuid = randomUUID()
+        deviceKey = generateDeviceKey()
+        const deviceKeyHash = await hashDeviceKey(deviceKey)
+
+        const { error: deviceError } = await supabase
+          .from('devices')
+          .insert({
+            uuid: deviceUuid,
+            device_name: `Tablet - ${restaurant.name}`,
+            device_key_hash: deviceKeyHash,
+            restaurant_id: restaurant.id,
+            has_printing_support: true,
+            is_active: true,
+            firmware_version: 1,
+            software_version: 1,
+            is_desynced: false,
+            is_v2_device: false,
+            allows_config_edit: true,
+          })
+
+        if (deviceError) {
+          console.error(`  ❌ Failed to create device: ${deviceError.message}`)
+          errorCount++
+          continue
+        }
+        console.log(`  ✨ Created new device`)
       }
 
       const qrCodeData = generateQRCodeData(deviceUuid, deviceKey)
@@ -133,7 +154,7 @@ async function main() {
       const escapedName = restaurant.name.replace(/"/g, '""')
       csvRows.push(`${restaurant.id},"${escapedName}",${restaurant.slug || ''},${deviceUuid},${qrFilename}`)
 
-      console.log(`  ✅ Created device and QR code: ${qrFilename}`)
+      console.log(`  ✅ QR code saved: ${qrFilename}`)
       successCount++
     } catch (err: any) {
       console.error(`  ❌ Error processing ${restaurant.name}: ${err.message}`)
@@ -147,7 +168,7 @@ async function main() {
   console.log('\n' + '='.repeat(60))
   console.log('📊 SUMMARY')
   console.log('='.repeat(60))
-  console.log(`✅ Successfully created: ${successCount} devices`)
+  console.log(`✅ Successfully processed: ${successCount} restaurants`)
   console.log(`❌ Errors: ${errorCount}`)
   console.log(`📁 QR codes saved to: ${outputDir}`)
   console.log(`📄 CSV mapping file: ${csvPath}`)
