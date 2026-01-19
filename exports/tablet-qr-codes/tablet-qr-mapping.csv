@@ -1,0 +1,33 @@
+restaurant_id,restaurant_name,slug,device_uuid,qr_filename
+205,"Mont Liban Bakery & Shawarma",mont-liban-bakery-shawarma-205,1e2ee8bb-73ed-4201-8754-8a9ee8dc8fa1,Mont_Liban_Bakery_Shawarma_205.png
+437,"Papa Joe's Fried Chicken - Downtown",papa-joes-fried-chicken-downtown-437,2e9a8f78-9922-4d17-b251-75490244100a,Papa_Joes_Fried_Chicken_-_Downtown_437.png
+540,"Papa Grecque des Flandres",papa-grecque-des-flandres-540,f703627e-d937-428d-961d-dfea82ea64a0,Papa_Grecque_des_Flandres_540.png
+614,"Marina Pizza des Flandres ",marina-pizza-des-flandres--614,d8a10d90-8d0f-4e54-a42d-426372cd6e5d,Marina_Pizza_des_Flandres__614.png
+616,"Papa Grecque Maloney ",papa-grecque-maloney--616,f21a9600-6a49-4b33-a900-d3bdd116a467,Papa_Grecque_Maloney__616.png
+696,"Pizza Maisonneuve",pizza-maisonneuve-696,ba4b96b5-4687-4bee-9120-981e78d11e01,Pizza_Maisonneuve_696.png
+715,"La Poutinerie Ogilvie",la-poutinerie-ogilvie-715,bb466afc-c797-4330-b419-f1f780076f42,La_Poutinerie_Ogilvie_715.png
+716,"PizzaRama",pizzarama-716,eb759b47-9aed-4c15-8595-6f405541c911,PizzaRama_716.png
+727,"La Maison du Burger",la-maison-du-burger-727,d267ed1b-19f6-49d1-a7ca-4ed6d29e6dc3,La_Maison_du_Burger_727.png
+789,"Poutinerie Quï¿½becurds Hull",poutinerie-qubecurds-hull-789,37546ee1-33d7-4693-8d88-6a6523f44209,Poutinerie_Qubecurds_Hull_789.png
+790,"Nachos Loco Hull",nachos-loco-hull-790,9fc62a20-4aed-4b35-9eb4-f30d1a4052ec,Nachos_Loco_Hull_790.png
+797,"Papa Burger",papa-burger-797,48336ef9-4146-49ec-9112-15a8e213a2a0,Papa_Burger_797.png
+801,"Nachos Loco Gatineau",nachos-loco-gatineau-801,3a8498a1-e45c-42be-bf1f-1c18e50be9eb,Nachos_Loco_Gatineau_801.png
+810,"Papa Grecque Cantley",papa-grecque-cantley-810,2ec7b948-ecdf-4805-9aaa-259bf746d269,Papa_Grecque_Cantley_810.png
+820,"Vieux Hull Pizza",vieux-hull-pizza-820,fe836711-94df-4555-b05b-e37e53046e39,Vieux_Hull_Pizza_820.png
+822,"Papa Burger Maloney",papa-burger-maloney-822,3468d483-7344-4c67-a868-696bb280a8e7,Papa_Burger_Maloney_822.png
+836,"Souvlaki Souvlaki",souvlaki-souvlaki-836,af63eab9-a93a-4995-9f2e-00df697b2db1,Souvlaki_Souvlaki_836.png
+845,"Mykonos Greek Grill",mykonos-greek-grill-845,8945445a-ad79-4849-a917-8a2007c62e8d,Mykonos_Greek_Grill_845.png
+846,"Mykonos Greek Grill",mykonos-greek-grill-846,08f64f41-7d3f-4300-8496-9d350107dfbb,Mykonos_Greek_Grill_846.png
+941,"Ting's Kitchen",tings-kitchen-941,b537df78-c390-437a-8f6a-2112ebc4b468,Tings_Kitchen_941.png
+943,"Charm Thai Cuisine",nana-thai-cuisine-943,2b6e1b33-d8ac-48eb-82c3-be6c85c237c2,Charm_Thai_Cuisine_943.png
+948,"All Out Burger Gladstone",all-out-burger-gladstone-948,7fbac859-bbd6-443f-8563-eab544ec57c2,All_Out_Burger_Gladstone_948.png
+949,"All Out Burger Montreal Rd",all-out-burger-montreal-rd-949,be4b8570-76c7-4136-b5b6-f0b5b5f79e70,All_Out_Burger_Montreal_Rd_949.png
+1010,"Lemongrass Thai Cuisine",lemongrass-thai-cuisine-1010,3a7343b0-1b0f-46b2-a55e-0183a969a9a0,Lemongrass_Thai_Cuisine_1010.png
+1011,"Mozza Pizza Gatineau",mozza-pizza-gatineau-1011,aa4a75e2-6ef9-4a6f-a988-fbf3507d0f1e,Mozza_Pizza_Gatineau_1011.png
+1012,"Papa Pizza Des Flandres",papa-pizza-des-flandres-1012,592b789f-3b33-4b31-920f-595e02861682,Papa_Pizza_Des_Flandres_1012.png
+1013,"Papa Pizza Maloney",papa-pizza-maloney-1013,a2e2edc4-d11c-44a8-bc09-f92f1b114932,Papa_Pizza_Maloney_1013.png
+1014,"Papa Pizza Val-Des-Monts",papa-pizza-val-des-monts-1014,6b38068a-d2b1-4f4f-8f31-e8189fce002a,Papa_Pizza_Val-Des-Monts_1014.png
+1015,"Poutinerie Québecurds Gatineau",poutinerie-quebecurds-gatineau-1015,2672149c-f36a-48db-9098-a39ebe279e5c,Poutinerie_Qubecurds_Gatineau_1015.png
+1016,"Roulas Grecque et Pizza",roulas-grecque-et-pizza-1016,05e19fb8-dc09-41c1-94c4-96811b35d017,Roulas_Grecque_et_Pizza_1016.png
+1017,"Sushi Express Chambly",sushi-express-chambly-1017,e7ffb212-7fa3-4312-9fcb-ec600e4812de,Sushi_Express_Chambly_1017.png
+1020,"Sushi Presse",sushi-presse,b7a8e9c8-fb52-45cc-abf1-2d0368b3c45b,Sushi_Presse_1020.png
