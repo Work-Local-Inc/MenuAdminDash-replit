@@ -1174,58 +1174,189 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
                       })
                     )}
                     
-                    {/* Repeat regular modifier sections based on number_of_items */}
-                    {Array.from({ length: numberOfItems }).map((_, instanceIndex) => (
-                      [...comboGroup.sections].sort((a, b) => (a.display_order || 0) - (b.display_order || 0)).map((section) => {
-                        const allModifiers = section.modifier_groups.flatMap(mg => mg.modifiers);
-                        if (allModifiers.length === 0) return null;
-                        
-                        // Check if this section should show pizza placements
-                        const showPizzaPlacements = isPizzaToppingSection(section);
-
-                        return (
-                          <div 
-                            key={`${section.id}-${instanceIndex}`} 
-                            className="border rounded-lg p-4 bg-muted/30 space-y-3" 
-                            data-testid={`combo-section-${section.id}-${instanceIndex}`}
-                          >
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="flex-1">
-                                {/* Show contextual label for repeated sections */}
-                                {numberOfItems > 1 && (
-                                  <span className="text-sm font-medium text-muted-foreground block mb-1">
-                                    {contextualLabels[instanceIndex]}
-                                  </span>
-                                )}
-                                {section.use_header && (
-                                  <Label className="text-base font-semibold block">
-                                    {section.use_header}
-                                  </Label>
-                                )}
-                                <div className="flex items-center gap-2 mt-1">
-                                  {section.min_selection > 0 ? (
-                                    <Badge variant="destructive" className="text-xs">Required</Badge>
-                                  ) : (
-                                    <span className="text-xs text-muted-foreground">Optional</span>
-                                  )}
-                                  {section.free_items > 0 && (
-                                    <span className="text-xs text-muted-foreground">
-                                      • {section.free_items} free
-                                    </span>
-                                  )}
-                                  {section.max_selection > 0 && (
-                                    <span className="text-xs text-muted-foreground">
-                                      • {section.max_selection === 1 ? 'Choose 1' : `Max ${section.max_selection}`}
-                                    </span>
-                                  )}
+                    {/* Shared sections (like drinks) - render only once */}
+                    {(() => {
+                      // Determine which sections are shared vs per-item
+                      // Drinks sections are shared (select X drinks for entire combo)
+                      // Extras/toppings sections are per-item (each item can have its own)
+                      const sharedSectionTypes = ['drinks', 'drink', 'beverage', 'beverages'];
+                      const sortedSections = [...comboGroup.sections].sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+                      const sharedSections = sortedSections.filter(s => sharedSectionTypes.includes((s.section_type || '').toLowerCase()));
+                      const perItemSections = sortedSections.filter(s => !sharedSectionTypes.includes((s.section_type || '').toLowerCase()));
+                      
+                      return (
+                        <>
+                          {/* Render shared sections once (like drinks) */}
+                          {sharedSections.map((section) => {
+                            const allModifiers = section.modifier_groups.flatMap(mg => mg.modifiers);
+                            if (allModifiers.length === 0) return null;
+                            const instanceIndex = 0; // Shared sections use instance 0
+                            
+                            return (
+                              <div 
+                                key={`${section.id}-shared`} 
+                                className="border rounded-lg p-4 bg-muted/30 space-y-3" 
+                                data-testid={`combo-section-${section.id}-shared`}
+                              >
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex-1">
+                                    {section.use_header && (
+                                      <Label className="text-base font-semibold block">
+                                        {section.use_header}
+                                      </Label>
+                                    )}
+                                    <div className="flex items-center gap-2 mt-1">
+                                      {section.min_selection > 0 ? (
+                                        <Badge variant="destructive" className="text-xs">Required</Badge>
+                                      ) : (
+                                        <span className="text-xs text-muted-foreground">Optional</span>
+                                      )}
+                                      {section.free_items > 0 && (
+                                        <span className="text-xs text-muted-foreground">
+                                          • {section.free_items} free
+                                        </span>
+                                      )}
+                                      {section.max_selection > 0 && (
+                                        <span className="text-xs text-muted-foreground">
+                                          • {section.max_selection === 1 ? 'Choose 1' : `Select ${section.max_selection}`}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
                                 </div>
-                              </div>
-                            </div>
 
-                            {section.modifier_groups.map((modifierGroup) => {
-                              const sectionKey = getComboSectionKey(section.id, modifierGroup.id, instanceIndex);
-                              const currentSelections = comboSelections[sectionKey] || [];
-                              const isMaxSelections = section.max_selection > 0 && currentSelections.length >= section.max_selection;
+                                {section.modifier_groups.map((modifierGroup) => {
+                                  const sectionKey = getComboSectionKey(section.id, modifierGroup.id, instanceIndex);
+                                  const currentSelections = comboSelections[sectionKey] || [];
+                                  const isMaxSelections = section.max_selection > 0 && currentSelections.length >= section.max_selection;
+
+                                  return (
+                                    <div key={`${modifierGroup.id}-shared`} className="space-y-2">
+                                      {modifierGroup.name && section.modifier_groups.length > 1 && (
+                                        <Label className="text-sm font-medium text-muted-foreground block">
+                                          {modifierGroup.name}
+                                        </Label>
+                                      )}
+
+                                      {/* Stepper controls for drinks */}
+                                      <div className="grid grid-cols-1 gap-2">
+                                        {modifierGroup.modifiers.map((modifier) => {
+                                          const fullPrice = getComboModifierPrice(modifier);
+                                          const currentQty = modifierQuantities[modifier.id] || 0;
+                                          const isNonPlaceable = isNonPlaceableModifier(modifier.name) || isNonPlaceableGroup(modifierGroup.name);
+                                          
+                                          // Calculate total selections for max check
+                                          const totalSelected = Object.values(modifierQuantities)
+                                            .reduce((sum, qty) => sum + qty, 0);
+                                          const canAddMore = section.max_selection === 0 || totalSelected < section.max_selection;
+                                          
+                                          return (
+                                            <div key={modifier.id} className="flex items-center justify-between py-1">
+                                              <div className="flex-1 min-w-0">
+                                                <span className="text-sm font-medium">{modifier.name}</span>
+                                                {fullPrice > 0 && (
+                                                  <span className="text-xs text-muted-foreground ml-1">
+                                                    +${fullPrice.toFixed(2)} each
+                                                  </span>
+                                                )}
+                                              </div>
+                                              <div className="flex items-center gap-2 ml-2">
+                                                <Button
+                                                  type="button"
+                                                  size="icon"
+                                                  variant="outline"
+                                                  className="h-7 w-7"
+                                                  onClick={() => handleComboModifierQuantityChange(section, modifierGroup, modifier, -1, instanceIndex)}
+                                                  disabled={currentQty === 0}
+                                                  data-testid={`btn-decrease-${modifier.id}`}
+                                                >
+                                                  <Minus className="h-3 w-3" />
+                                                </Button>
+                                                <span className="w-6 text-center text-sm font-medium" data-testid={`qty-${modifier.id}`}>
+                                                  {currentQty}
+                                                </span>
+                                                <Button
+                                                  type="button"
+                                                  size="icon"
+                                                  variant="outline"
+                                                  className="h-7 w-7"
+                                                  onClick={() => handleComboModifierQuantityChange(section, modifierGroup, modifier, 1, instanceIndex)}
+                                                  disabled={!canAddMore}
+                                                  data-testid={`btn-increase-${modifier.id}`}
+                                                >
+                                                  <Plus className="h-3 w-3" />
+                                                </Button>
+                                              </div>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                      
+                                      {/* Selection count indicator */}
+                                      {section.max_selection > 0 && (
+                                        <div className="text-xs text-muted-foreground text-right">
+                                          Selected: {Object.values(modifierQuantities).reduce((sum, qty) => sum + qty, 0)} / {section.max_selection}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            );
+                          })}
+                          
+                          {/* Render per-item sections (like extras) for each item */}
+                          {Array.from({ length: numberOfItems }).map((_, instanceIndex) => (
+                            perItemSections.map((section) => {
+                              const allModifiers = section.modifier_groups.flatMap(mg => mg.modifiers);
+                              if (allModifiers.length === 0) return null;
+                              
+                              // Check if this section should show pizza placements
+                              const showPizzaPlacements = isPizzaToppingSection(section);
+
+                              return (
+                                <div 
+                                  key={`${section.id}-${instanceIndex}`} 
+                                  className="border rounded-lg p-4 bg-muted/30 space-y-3" 
+                                  data-testid={`combo-section-${section.id}-${instanceIndex}`}
+                                >
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="flex-1">
+                                      {/* Show contextual label for repeated sections */}
+                                      {numberOfItems > 1 && (
+                                        <span className="text-sm font-medium text-muted-foreground block mb-1">
+                                          {contextualLabels[instanceIndex]}
+                                        </span>
+                                      )}
+                                      {section.use_header && (
+                                        <Label className="text-base font-semibold block">
+                                          {section.use_header}
+                                        </Label>
+                                      )}
+                                      <div className="flex items-center gap-2 mt-1">
+                                        {section.min_selection > 0 ? (
+                                          <Badge variant="destructive" className="text-xs">Required</Badge>
+                                        ) : (
+                                          <span className="text-xs text-muted-foreground">Optional</span>
+                                        )}
+                                        {section.free_items > 0 && (
+                                          <span className="text-xs text-muted-foreground">
+                                            • {section.free_items} free
+                                          </span>
+                                        )}
+                                        {section.max_selection > 0 && (
+                                          <span className="text-xs text-muted-foreground">
+                                            • {section.max_selection === 1 ? 'Choose 1' : `Max ${section.max_selection}`}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {section.modifier_groups.map((modifierGroup) => {
+                                    const sectionKey = getComboSectionKey(section.id, modifierGroup.id, instanceIndex);
+                                    const currentSelections = comboSelections[sectionKey] || [];
+                                    const isMaxSelections = section.max_selection > 0 && currentSelections.length >= section.max_selection;
 
                               return (
                                 <div key={`${modifierGroup.id}-${instanceIndex}`} className="space-y-2">
