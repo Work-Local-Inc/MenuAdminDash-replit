@@ -93,6 +93,7 @@ const menuItems = [
     title: "Users",
     icon: Users,
     items: [
+      { title: "Customer Users", url: "/admin/users/customers" },
       { title: "All Admin Users", url: "/admin/users/admin-users" },
       { title: "Add Admin User", url: "/admin/users/admin-users/create" },
       { title: "Roles & Permissions", url: "/admin/users/roles" },
