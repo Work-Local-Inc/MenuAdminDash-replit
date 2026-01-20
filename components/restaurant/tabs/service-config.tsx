@@ -11,8 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { useToast } from "@/hooks/use-toast"
 import { queryClient } from "@/lib/queryClient"
-import { Loader2, Truck, ShoppingBag, Clock, DollarSign, Phone, Percent } from "lucide-react"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Loader2, Truck, ShoppingBag, Clock, DollarSign, Phone } from "lucide-react"
 import React from "react"
 
 const configSchema = z.object({
@@ -23,9 +22,6 @@ const configSchema = z.object({
   twilio_call: z.boolean().nullable(),
   accepts_tips: z.boolean().nullable(),
   payment_mode: z.enum(['test', 'live']).nullable(),
-  commission_enabled: z.boolean(),
-  commission_rate: z.coerce.number().min(0).max(100).nullable(),
-  commission_base: z.enum(['gross', 'net']).nullable(),
 })
 
 type ConfigFormValues = z.infer<typeof configSchema>
@@ -41,9 +37,6 @@ interface ServiceConfig {
   twilio_call: boolean | null
   accepts_tips: boolean | null
   payment_mode: 'test' | 'live' | null
-  commission_enabled: boolean | null
-  commission_rate: number | null
-  commission_base: 'gross' | 'net' | null
   created_at: string
   updated_at: string | null
 }
@@ -75,9 +68,6 @@ export function RestaurantServiceConfig({ restaurantId }: RestaurantServiceConfi
       twilio_call: null,
       accepts_tips: null,
       payment_mode: 'test',
-      commission_enabled: false,
-      commission_rate: null,
-      commission_base: 'gross',
     },
   })
 
@@ -91,9 +81,6 @@ export function RestaurantServiceConfig({ restaurantId }: RestaurantServiceConfi
         twilio_call: config.twilio_call,
         accepts_tips: config.accepts_tips,
         payment_mode: config.payment_mode ?? 'test',
-        commission_enabled: config.commission_enabled ?? false,
-        commission_rate: config.commission_rate,
-        commission_base: config.commission_base ?? 'gross',
       })
     }
   }, [config, form])
@@ -136,7 +123,6 @@ export function RestaurantServiceConfig({ restaurantId }: RestaurantServiceConfi
 
   const deliveryEnabled = form.watch('has_delivery_enabled')
   const pickupEnabled = form.watch('pickup_enabled')
-  const commissionEnabled = form.watch('commission_enabled')
 
   return (
     <Form {...form}>
@@ -307,104 +293,6 @@ export function RestaurantServiceConfig({ restaurantId }: RestaurantServiceConfi
               )}
             />
 
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Percent className="h-5 w-5" />
-              <CardTitle>Commission</CardTitle>
-            </div>
-            <CardDescription>Configure commission charged on orders (not visible to customers)</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <FormField
-              control={form.control}
-              name="commission_enabled"
-              render={({ field }) => (
-                <FormItem className="flex items-center justify-between rounded-lg border p-4">
-                  <div className="space-y-0.5">
-                    <FormLabel>Enable Commission</FormLabel>
-                    <FormDescription>Add a commission fee to orders</FormDescription>
-                  </div>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      data-testid="switch-commission-enabled"
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-
-            {commissionEnabled && (
-              <>
-                <FormField
-                  control={form.control}
-                  name="commission_rate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Commission Value (%)</FormLabel>
-                      <div className="flex items-center gap-2">
-                        <FormControl>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            max="100"
-                            placeholder="8.00"
-                            {...field}
-                            value={field.value ?? ''}
-                            data-testid="input-commission-rate"
-                          />
-                        </FormControl>
-                        <span className="text-muted-foreground">%</span>
-                      </div>
-                      <FormDescription>
-                        Percentage commission charged on orders
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="commission_base"
-                  render={({ field }) => (
-                    <FormItem className="space-y-3">
-                      <FormLabel>Take Commission From</FormLabel>
-                      <FormControl>
-                        <RadioGroup
-                          onValueChange={field.onChange}
-                          value={field.value ?? 'gross'}
-                          className="flex gap-4"
-                          data-testid="radio-commission-base"
-                        >
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="gross" id="commission-gross" data-testid="radio-commission-gross" />
-                            <label htmlFor="commission-gross" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                              Gross
-                            </label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="net" id="commission-net" data-testid="radio-commission-net" />
-                            <label htmlFor="commission-net" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                              Net
-                            </label>
-                          </div>
-                        </RadioGroup>
-                      </FormControl>
-                      <FormDescription>
-                        Gross: Before discounts | Net: After discounts
-                      </FormDescription>
-                    </FormItem>
-                  )}
-                />
-              </>
-            )}
           </CardContent>
         </Card>
 

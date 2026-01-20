@@ -26,13 +26,6 @@ function getStripe(paymentMode: 'test' | 'live' = 'test') {
   return new Stripe(stripeSecretKey, {})
 }
 
-// Commission config type
-interface CommissionConfig {
-  enabled: boolean
-  rate: number // Percentage (e.g., 8 for 8%)
-  base: 'gross' | 'net'
-}
-
 // Get restaurant's payment mode from service config
 async function getRestaurantPaymentMode(restaurantId: number): Promise<'test' | 'live'> {
   try {
@@ -52,53 +45,6 @@ async function getRestaurantPaymentMode(restaurantId: number): Promise<'test' | 
     console.error('[PaymentMode] Error fetching payment mode:', error)
     return 'test'
   }
-}
-
-// Get restaurant's commission config from service config
-async function getRestaurantCommissionConfig(restaurantId: number): Promise<CommissionConfig> {
-  try {
-    const adminSupabase = createAdminClient() as any
-    
-    const { data: config } = await (adminSupabase as any)
-      .schema('menuca_v3')
-      .from('delivery_and_pickup_configs')
-      .select('commission_enabled, commission_rate, commission_base')
-      .eq('restaurant_id', restaurantId)
-      .maybeSingle()
-    
-    if (config?.commission_enabled && config?.commission_rate) {
-      console.log(`[Commission] Restaurant ${restaurantId} commission: ${config.commission_rate}% (${config.commission_base || 'gross'})`)
-      return {
-        enabled: true,
-        rate: config.commission_rate,
-        base: config.commission_base || 'gross'
-      }
-    }
-    
-    return { enabled: false, rate: 0, base: 'gross' }
-  } catch (error) {
-    console.error('[Commission] Error fetching commission config:', error)
-    return { enabled: false, rate: 0, base: 'gross' }
-  }
-}
-
-// Calculate commission amount based on config
-function calculateCommission(
-  subtotal: number,
-  deliveryFee: number,
-  discount: number,
-  config: CommissionConfig
-): number {
-  if (!config.enabled || config.rate <= 0) return 0
-  
-  // Gross: subtotal + deliveryFee (before discounts)
-  // Net: subtotal + deliveryFee - discount (after discounts)
-  const base = config.base === 'net'
-    ? Math.max(0, subtotal + deliveryFee - discount)
-    : subtotal + deliveryFee
-  
-  const commission = base * (config.rate / 100)
-  return Math.round(commission * 100) / 100 // Round to 2 decimal places
 }
 
 export async function POST(request: NextRequest) {
@@ -211,17 +157,6 @@ export async function POST(request: NextRequest) {
     // Extract order details from payment intent metadata
     const metadata = paymentIntent.metadata
     const restaurantSlug = metadata.restaurant_slug
-    
-    // Extract commission info from payment intent metadata
-    const commissionAmount = parseFloat(metadata.commission_amount || '0') || 0
-    const commissionRate = parseFloat(metadata.commission_rate || '0') || 0
-    const commissionBase = (metadata.commission_base as 'gross' | 'net') || 'gross'
-    
-    console.log('[Order API] Commission from payment intent:', {
-      commissionAmount,
-      commissionRate,
-      commissionBase
-    })
     
     if (!restaurantSlug) {
       return NextResponse.json({ error: 'Invalid payment intent metadata' }, { status: 400 })
@@ -864,7 +799,6 @@ export async function POST(request: NextRequest) {
       tax_amount: finalTax,
       tax_breakdown: taxBreakdown, // Itemized tax breakdown for multi-tax provinces (e.g., Quebec TPS + TVQ)
       tax_province_id: taxProvinceId, // Province ID for tax audit trail
-      commission_amount: commissionAmount > 0 ? commissionAmount : null, // Commission charged (hidden from customer)
       items: validatedItems,
       delivery_address: enrichedDeliveryAddress,
       special_instructions: specialInstructions, // Order notes for kitchen/printer

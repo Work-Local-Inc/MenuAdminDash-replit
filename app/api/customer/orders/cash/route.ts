@@ -7,39 +7,6 @@ import { fetchMenuForCustomer } from '@/lib/supabase/menu'
 import { TaxConfig, TaxLineItem, calculateTaxes, getTotalTax } from '@/lib/types/tax'
 import crypto from 'crypto'
 
-// Commission config type
-interface CommissionConfig {
-  enabled: boolean
-  rate: number // Percentage (e.g., 8 for 8%)
-  base: 'gross' | 'net'
-}
-
-// Get restaurant's commission config from service config
-async function getRestaurantCommissionConfig(adminSupabase: any, restaurantId: number): Promise<CommissionConfig> {
-  try {
-    const { data: config } = await (adminSupabase as any)
-      .schema('menuca_v3')
-      .from('delivery_and_pickup_configs')
-      .select('commission_enabled, commission_rate, commission_base')
-      .eq('restaurant_id', restaurantId)
-      .maybeSingle()
-    
-    if (config?.commission_enabled && config?.commission_rate) {
-      console.log(`[Cash Order] Restaurant ${restaurantId} commission: ${config.commission_rate}% (${config.commission_base || 'gross'})`)
-      return {
-        enabled: true,
-        rate: config.commission_rate,
-        base: config.commission_base || 'gross'
-      }
-    }
-    
-    return { enabled: false, rate: 0, base: 'gross' }
-  } catch (error) {
-    console.error('[Cash Order] Error fetching commission config:', error)
-    return { enabled: false, rate: 0, base: 'gross' }
-  }
-}
-
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient() as any
@@ -307,32 +274,7 @@ export async function POST(request: NextRequest) {
     const taxableAmount = serverSubtotal + deliveryFee
     const taxBreakdown: TaxLineItem[] = calculateTaxes(taxableAmount, taxConfig)
     const serverTax = getTotalTax(taxBreakdown)
-    const baseTotal = serverSubtotal + deliveryFee + serverTax
-    
-    // Fetch and calculate commission based on gross vs net setting
-    // Gross: commission on total (subtotal + delivery + tax)
-    // Net: commission on subtotal only (excludes delivery fee and tax)
-    const commissionConfig = await getRestaurantCommissionConfig(adminSupabase, restaurant.id)
-    let commissionAmount = 0
-    if (commissionConfig.enabled && commissionConfig.rate > 0) {
-      const commissionBase = commissionConfig.base === 'net' 
-        ? serverSubtotal  // Net: subtotal only
-        : baseTotal       // Gross: subtotal + delivery + tax
-      commissionAmount = Math.round(commissionBase * (commissionConfig.rate / 100) * 100) / 100
-    }
-    
-    // Add commission to total (commission is hidden from customer)
-    const serverTotal = baseTotal + commissionAmount
-    
-    console.log('[Cash Order API] Commission calculation:', {
-      serverSubtotal,
-      baseTotal,
-      commissionEnabled: commissionConfig.enabled,
-      commissionRate: commissionConfig.rate,
-      commissionBase: commissionConfig.base,
-      commissionAmount,
-      serverTotal
-    })
+    const serverTotal = serverSubtotal + deliveryFee + serverTax
 
     let parsedServiceTime: { type: string; scheduledTime?: string } = { type: 'asap' }
     if (service_time) {
@@ -417,7 +359,6 @@ export async function POST(request: NextRequest) {
       tax_breakdown: taxBreakdown, // Itemized tax breakdown for multi-tax provinces (e.g., Quebec TPS + TVQ)
       tax_province_id: taxProvinceId, // Province ID for tax audit trail
       delivery_fee: deliveryFee.toFixed(2),
-      commission_amount: commissionAmount > 0 ? commissionAmount.toFixed(2) : null, // Commission charged (hidden from customer)
       total_amount: serverTotal.toFixed(2),
       delivery_address: delivery_address ? JSON.stringify({ ...delivery_address, service_time: parsedServiceTime }) : null,
       items: itemsForOrdersTable,  // Store items in JSONB column for tablet API

@@ -40,7 +40,6 @@ Preferred communication style: Simple, everyday language.
 -   **Subdomain Routing**: Supports branded subdomain URLs (e.g., `restaurant.menu.ca`).
 -   **Payment Mode Toggle**: Allows per-restaurant switching between test and live Stripe payments for controlled rollout.
 -   **Provincial Tax System**: Dynamic provincial tax calculation with per-restaurant rates, replacing hardcoded values. Stores itemized tax lines per order.
--   **Per-Restaurant Commission System**: Configurable commission fee per restaurant (percentage-based, gross or net), calculated server-side and added to order total for internal reporting, hidden from customers.
 
 ### Technical Implementations
 -   **ID Mapping**: Handles `combo_groups.restaurant_id` (V3 IDs) vs. `dishes.restaurant_id` (legacy_v1_id) via API.
@@ -70,47 +69,24 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Implementations
 
-### Per-Restaurant Commission System (Jan 2026)
+### Commission System Rollback (Jan 2026)
 **Status:** COMPLETE
-**Feature:** Configurable commission fee per restaurant, calculated server-side and added to order total.
+**Change:** Removed incorrectly-implemented commission system from customer checkout flow.
 
-**Database Schema (menuca_v3):**
-- `delivery_and_pickup_configs.commission_enabled` (boolean) - Toggle to enable/disable commission
-- `delivery_and_pickup_configs.commission_rate` (numeric) - Percentage rate (e.g., 8 for 8%)
-- `delivery_and_pickup_configs.commission_base` (text) - 'gross' or 'net' calculation base
-- `orders.commission_amount` (numeric) - Commission charged on each order (for reporting)
+Commission was incorrectly added to charge customers at checkout. The correct commission system (built by Santiago) is backend/admin-only:
+- `restaurant_commission_configs` table for per-restaurant commission settings
+- `platform_commission_reports` table for weekly/monthly billing reports
+- Used in admin dashboard and restaurant owner portal only
+- Commission is what Menu.ca charges restaurants, NOT what customers pay
 
-**Commission Calculation:**
-- **Gross**: Commission on total (subtotal + delivery fee + tax)
-- **Net**: Commission on subtotal only (excludes delivery fee and tax)
-- Commission is calculated server-side to prevent client manipulation
-- Commission is hidden from customers (not displayed in cart, checkout, receipts, or emails)
-- Commission is stored on each order for internal reporting
+**Removed from frontend:**
+- Commission display from cart/checkout
+- Commission calculations from payment intent API
+- Commission calculations from cash order API
+- Commission fields from admin service-config UI
 
-**Key Files:**
-- `components/restaurant/tabs/service-config.tsx` - Admin UI (toggle, percentage input, gross/net radio)
-- `app/api/restaurants/[id]/service-config/route.ts` - Admin GET API
-- `app/api/restaurants/[id]/service-config/[configId]/route.ts` - Admin PATCH API (requires admin auth)
-- `app/api/customer/create-payment-intent/route.ts` - Card payments: adds commission to Stripe charge
-- `app/api/customer/orders/route.ts` - Card orders: extracts commission from payment intent metadata
-- `app/api/customer/orders/cash/route.ts` - Cash orders: calculates commission server-side
-
-**Security:**
-- Commission calculated server-side (percentage of validated totals)
-- Admin auth required to modify commission settings
-- Commission amount stored in Stripe payment intent metadata for audit trail
-- Card payments: Subtotal is validated (must be positive, not exceed total) before use in 'net' calculation
-- If invalid subtotal detected, falls back to 'gross' calculation (charges on total amount)
-
-**Display Integration:**
-- Checkout page fetches commission config from restaurant API
-- Commission is calculated client-side using same formula as server
-- Commission is included in displayed Total (no separate line item)
-- Payment intent sends baseTotal; server adds commission to prevent double-counting
-
-**Known Limitations:**
-- Card payment 'net' commission relies on client-supplied subtotal (validated but not server-recomputed)
-- Recommendation: Use 'gross' mode for most accurate commission until full server-side cart validation is added to payment intent API
-- Cash orders have fully server-side commission calculation with no client trust
-
-**Future Enhancement:** Add server-side cart validation in create-payment-intent API to eliminate client subtotal reliance
+**Database columns to be dropped by Brian:**
+- `delivery_and_pickup_configs.commission_enabled`
+- `delivery_and_pickup_configs.commission_rate`
+- `delivery_and_pickup_configs.commission_base`
+- `orders.commission_amount`

@@ -28,47 +28,30 @@ function getStripe(paymentMode: 'test' | 'live' = 'test') {
   return new Stripe(stripeSecretKey, {})
 }
 
-// Commission config type
-interface CommissionConfig {
-  enabled: boolean
-  rate: number // Percentage (e.g., 8 for 8%)
-  base: 'gross' | 'net'
-}
-
-// Get restaurant's service config (payment mode + commission)
-async function getRestaurantServiceConfig(restaurantSlug: string): Promise<{ paymentMode: 'test' | 'live', commission: CommissionConfig }> {
+// Get restaurant's payment mode (test or live)
+async function getRestaurantPaymentMode(restaurantSlug: string): Promise<'test' | 'live'> {
   try {
     const adminSupabase = createAdminClient() as any
     const restaurantId = extractIdFromSlug(restaurantSlug)
     
     if (!restaurantId) {
-      console.log('[ServiceConfig] Could not extract restaurant ID from slug:', restaurantSlug)
-      return { paymentMode: 'test', commission: { enabled: false, rate: 0, base: 'gross' } }
+      console.log('[PaymentMode] Could not extract restaurant ID from slug:', restaurantSlug)
+      return 'test'
     }
     
     const { data: config } = await adminSupabase
       .from('delivery_and_pickup_configs')
-      .select('payment_mode, commission_enabled, commission_rate, commission_base')
+      .select('payment_mode')
       .eq('restaurant_id', restaurantId)
       .maybeSingle()
     
     const paymentMode = config?.payment_mode || 'test'
-    const commission: CommissionConfig = config?.commission_enabled && config?.commission_rate
-      ? { enabled: true, rate: config.commission_rate, base: config.commission_base || 'gross' }
-      : { enabled: false, rate: 0, base: 'gross' }
-    
-    console.log(`[ServiceConfig] Restaurant ${restaurantId}: mode=${paymentMode}, commission=${commission.enabled ? `${commission.rate}% (${commission.base})` : 'disabled'}`)
-    return { paymentMode, commission }
+    console.log(`[PaymentMode] Restaurant ${restaurantId}: mode=${paymentMode}`)
+    return paymentMode
   } catch (error) {
-    console.error('[ServiceConfig] Error fetching config:', error)
-    return { paymentMode: 'test', commission: { enabled: false, rate: 0, base: 'gross' } }
+    console.error('[PaymentMode] Error fetching config:', error)
+    return 'test'
   }
-}
-
-// Legacy function for backward compatibility
-async function getRestaurantPaymentMode(restaurantSlug: string): Promise<'test' | 'live'> {
-  const config = await getRestaurantServiceConfig(restaurantSlug)
-  return config.paymentMode
 }
 
 export async function POST(request: NextRequest) {
@@ -86,47 +69,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid amount' }, { status: 400 })
     }
     
-    // Validate subtotal is reasonable (must be positive and not exceed total)
-    // This prevents commission manipulation through invalid subtotal values
-    const validatedSubtotal = subtotal && typeof subtotal === 'number' && subtotal > 0 && subtotal <= amount
-      ? subtotal
-      : null
-    
-    if (subtotal && !validatedSubtotal) {
-      console.warn('[Payment Intent] Invalid subtotal rejected:', { subtotal, amount })
-    }
-    
-    // Get restaurant's service config (payment mode + commission)
+    // Get restaurant's payment mode
     const restaurantSlug = metadata?.restaurant_slug || ''
-    const { paymentMode, commission } = await getRestaurantServiceConfig(restaurantSlug)
+    const paymentMode = await getRestaurantPaymentMode(restaurantSlug)
     const stripe = getStripe(paymentMode)
-    
-    // Calculate commission based on gross vs net setting
-    // Gross: commission on total amount (subtotal + delivery + tax)
-    // Net: commission on subtotal only (excludes delivery fee and tax)
-    // NOTE: For 'net' mode, if subtotal is invalid/missing, we fall back to 'gross' (full amount)
-    // This ensures commission is always charged correctly even if client manipulation is attempted
-    let commissionAmount = 0
-    if (commission.enabled && commission.rate > 0) {
-      const commissionBase = commission.base === 'net' && validatedSubtotal 
-        ? validatedSubtotal   // Net: validated subtotal only
-        : amount              // Gross: total amount (or fallback if subtotal invalid)
-      commissionAmount = Math.round(commissionBase * (commission.rate / 100) * 100) / 100
-    }
-    
-    // Add commission to the total amount
-    const totalWithCommission = amount + commissionAmount
-    
-    console.log('[Payment Intent] Commission calculation:', {
-      baseAmount: amount,
-      clientSubtotal: subtotal || 'not provided',
-      validatedSubtotal: validatedSubtotal || 'fell back to gross',
-      commissionBase: commission.base,
-      commissionEnabled: commission.enabled,
-      commissionRate: commission.rate,
-      commissionAmount,
-      totalWithCommission
-    })
 
     // For guests, require email
     if (!user && !guest_email) {
@@ -195,9 +141,9 @@ export async function POST(request: NextRequest) {
       },
     } : undefined
 
-    // Create payment intent with commission included
+    // Create payment intent
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(totalWithCommission * 100), // Convert to cents (includes commission)
+      amount: Math.round(amount * 100), // Convert to cents
       currency: 'cad',
       customer: stripeCustomerId,
       shipping: stripeShipping, // Include shipping address for Canadian origin detection
@@ -206,10 +152,6 @@ export async function POST(request: NextRequest) {
         guest_email: guest_email || undefined,
         country: 'CA', // Explicitly mark as Canadian transaction
         payment_mode: paymentMode, // Store payment mode for reference
-        commission_amount: String(commissionAmount), // Store commission for orders API
-        commission_rate: String(commission.rate || 0),
-        commission_base: commission.base || 'gross',
-        base_amount: String(amount), // Store base amount before commission
         ...metadata,
       },
       automatic_payment_methods: {

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useMemo, useRef } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCartStore } from '@/lib/stores/cart-store'
 import { createClient } from '@/lib/supabase/client'
@@ -105,9 +105,6 @@ export default function CheckoutPage() {
   const [serviceConfig, setServiceConfig] = useState<{ 
     has_delivery_enabled?: boolean; 
     pickup_enabled?: boolean;
-    commission_enabled?: boolean;
-    commission_rate?: number;
-    commission_base?: string;
   } | null>(null)
   const [serviceConfigLoading, setServiceConfigLoading] = useState(true) // Start as loading to prevent flash
   const [orderNotes, setOrderNotes] = useState('')
@@ -251,17 +248,11 @@ export default function CheckoutPage() {
           if (config) {
             console.log('[Checkout] ✅ Service config loaded:', { 
               has_delivery_enabled: config.has_delivery_enabled, 
-              pickup_enabled: config.pickup_enabled,
-              commission_enabled: config.commission_enabled,
-              commission_rate: config.commission_rate,
-              commission_base: config.commission_base
+              pickup_enabled: config.pickup_enabled
             })
             setServiceConfig({
               has_delivery_enabled: config.has_delivery_enabled,
-              pickup_enabled: config.pickup_enabled,
-              commission_enabled: config.commission_enabled,
-              commission_rate: config.commission_rate,
-              commission_base: config.commission_base
+              pickup_enabled: config.pickup_enabled
             })
           } else {
             console.log('[Checkout] ⚠️ No service config found - delivery/pickup will default to enabled')
@@ -335,22 +326,7 @@ export default function CheckoutPage() {
   const discount = getDiscount()
   const effectiveDeliveryFee = getEffectiveDeliveryFee()
   const tax = getTax()
-  const baseTotal = getTotal()
-  
-  // Calculate commission (same formula as server-side)
-  const commission = useMemo(() => {
-    if (!serviceConfig?.commission_enabled || !serviceConfig?.commission_rate) {
-      return 0
-    }
-    const rate = Number(serviceConfig.commission_rate) / 100
-    const base = serviceConfig.commission_base === 'net' 
-      ? (subtotal - discount) // Net: commission on subtotal after discounts
-      : baseTotal // Gross: commission on total (subtotal + delivery + tax)
-    return Math.round(base * rate * 100) / 100 // Round to 2 decimal places
-  }, [serviceConfig, subtotal, discount, baseTotal])
-  
-  // Total including commission (for display and payment)
-  const total = baseTotal + commission
+  const total = getTotal()
 
   // Track begin_checkout event when checkout page loads with items and GA is ready
   const hasTrackedBeginCheckout = useRef(false)
@@ -515,8 +491,7 @@ export default function CheckoutPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            amount: baseTotal, // Send base total without commission - server will add commission
-            subtotal: subtotal - discount, // Include net subtotal for 'net' commission calculation
+            amount: total,
             user_id: currentUser?.id ? String(currentUser.id) : undefined,
             guest_email: selectedAddress?.email,
             metadata: {
