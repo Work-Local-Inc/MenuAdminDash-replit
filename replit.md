@@ -90,3 +90,12 @@ Commission was incorrectly added to charge customers at checkout. The correct co
 - `delivery_and_pickup_configs.commission_rate`
 - `delivery_and_pickup_configs.commission_base`
 - `orders.commission_amount`
+
+**Correct Commission System (Backend-Only):**
+The proper commission system uses these database objects (built by Santiago):
+- `restaurant_commission_configs` table - per-restaurant settings (rate, type, base)
+- `platform_commission_reports` table - weekly/monthly billing reports
+- `calculate_platform_commission()` RPC - calculates commission for a date range
+- `generate_platform_commission_report()` RPC - generates billing reports
+
+Commission is calculated AFTER orders are completed, aggregating completed order totals for billing restaurants.
