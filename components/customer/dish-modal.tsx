@@ -1540,19 +1540,23 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
                                   )}
                                 </div>
                               );
-                            })}
-                          </div>
+                                    })}
+                                  </div>
+                                );
+                              })
+                            ))}
+                          </>
                         );
-                      })
-                    ))}
-                  </div>
-                );
-              })}
+                      })()}
+                    </div>
+                  );
+                })}
             </div>
           )}
 
-          {/* Drinks section - always last */}
-          {modifierGroups.filter(g => g.name.toLowerCase().includes('drink')).length > 0 && (
+          {/* Drinks section - always last (only for simple modifier groups, NOT when combo groups have drinks) */}
+          {modifierGroups.filter(g => g.name.toLowerCase().includes('drink')).length > 0 && 
+           !comboGroups.some(cg => cg.sections?.some(s => ['drinks', 'drink', 'beverage', 'beverages'].includes((s.section_type || '').toLowerCase()))) && (
             <div className="space-y-4">
               {modifierGroups
                 .filter(g => g.name.toLowerCase().includes('drink'))
