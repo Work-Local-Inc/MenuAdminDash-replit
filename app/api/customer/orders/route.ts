@@ -728,12 +728,24 @@ export async function POST(request: NextRequest) {
       // TODO: Investigate price calculation discrepancies
     }
     
-    // Use the PAID amount for the order (payment already succeeded, this is the truth)
-    const finalTotal = paymentTotal
-    // Recalculate tax/subtotal proportionally if there's a difference
+    // CRITICAL FIX: Use SERVER-calculated values, NOT back-calculated from Stripe payment
+    // The Stripe payment amount might be wrong if client calculated incorrectly,
+    // but we should store correct tax/subtotal/total in the database for accurate records
+    // and correct kitchen receipt printing
     const finalSubtotal = serverSubtotal
     const finalDeliveryFee = deliveryFee
-    const finalTax = finalTotal - finalSubtotal - finalDeliveryFee
+    const finalTax = tax // Use server-calculated tax, NOT back-calculated
+    const finalTotal = serverTotal // Use server-calculated total for correct records
+    
+    // Log if there was a payment discrepancy (for debugging/auditing)
+    if (Math.abs(paymentTotal - serverTotal) > 0.01) {
+      console.warn('[Order API] PAYMENT DISCREPANCY: Customer paid different amount than calculated', {
+        paymentTotal,
+        serverTotal,
+        difference: (paymentTotal - serverTotal).toFixed(2),
+        note: 'Storing server-calculated values for correct tax records'
+      })
+    }
 
     // Create order with server-validated data
     // IMPORTANT: Match exact schema of orders table (see AI-AGENTS-START-HERE/DATABASE_SCHEMA_QUICK_REF.md)
