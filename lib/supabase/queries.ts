@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function getRestaurants(filters?: {
   province?: string
@@ -64,32 +65,76 @@ export async function getOrders(filters?: {
   status?: string
   limit?: number
 }) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   
   try {
-    let query = supabase
-      .from('orders')
-      .select('*, restaurants(id, name), users!orders_user_id_fkey(id, email, first_name, last_name)')
-      .order('created_at', { ascending: false })
+    const baseColumns = `
+      id,
+      order_number,
+      order_type,
+      order_status,
+      created_at,
+      user_id,
+      restaurant_id,
+      items,
+      subtotal,
+      delivery_fee,
+      tax_amount,
+      tip_amount,
+      total_amount,
+      payment_status,
+      payment_method,
+      delivery_address,
+      special_instructions,
+      restaurants(id, name)
+    `
     
-    if (filters?.restaurant_id) {
-      query = query.eq('restaurant_id', filters.restaurant_id)
+    const guestColumns = `
+      is_guest_order,
+      guest_name,
+      guest_phone,
+      guest_email,
+    `
+    
+    const buildQuery = (includeGuestColumns: boolean) => {
+      const selectClause = includeGuestColumns ? guestColumns + baseColumns : baseColumns
+      let query = supabase
+        .from('orders')
+        .select(selectClause)
+        .order('created_at', { ascending: false })
+      
+      if (filters?.restaurant_id) {
+        query = query.eq('restaurant_id', filters.restaurant_id)
+      }
+      
+      if (filters?.status) {
+        query = query.eq('order_status', filters.status)
+      }
+      
+      if (filters?.limit) {
+        query = query.limit(filters.limit)
+      } else {
+        query = query.limit(100)
+      }
+      
+      return query
     }
     
-    if (filters?.status) {
-      query = query.eq('order_status', filters.status)
-    }
-    
-    if (filters?.limit) {
-      query = query.limit(filters.limit)
-    }
-    
-    const { data, error } = await query
+    let { data, error } = await buildQuery(true)
     
     if (error) {
-      console.error('Get orders error:', error)
+      console.log('[getOrders] Guest columns query failed, trying without guest columns:', error.message)
+      const fallback = await buildQuery(false)
+      data = fallback.data
+      error = fallback.error
+    }
+    
+    if (error) {
+      console.error('[getOrders] Query error:', error)
       return []
     }
+    
+    console.log(`[getOrders] Found ${data?.length || 0} orders`)
     
     return (data || []).map((order: any) => ({
       ...order,
@@ -102,10 +147,12 @@ export async function getOrders(filters?: {
       delivery_address: order.delivery_address,
       special_instructions: order.special_instructions,
       restaurant: order.restaurants || { id: order.restaurant_id, name: 'Unknown Restaurant' },
-      user: order.users || { id: order.user_id, email: 'Unknown User', first_name: '', last_name: '' }
+      user: order.is_guest_order 
+        ? { id: null, email: order.guest_email || 'Guest', first_name: order.guest_name || 'Guest', last_name: '' }
+        : { id: order.user_id, email: 'Customer', first_name: '', last_name: '' }
     }))
   } catch (error) {
-    console.error('Get orders error:', error)
+    console.error('[getOrders] Exception:', error)
     return []
   }
 }
