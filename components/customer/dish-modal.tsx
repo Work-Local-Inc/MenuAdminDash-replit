@@ -441,9 +441,18 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
     return Array.from({ length: numberOfItems }, (_, i) => ordinals[i] || `Item ${i + 1}`);
   };
   
-  // Pizza topping keywords used for placement detection
-  const toppingKeywords = ['topping', 'garniture', 'ingredient', 'add more', 'extra'];
+  // Pizza topping keywords used for placement detection - but only for actual pizzas
+  const toppingKeywords = ['topping', 'garniture', 'ingredient'];
   const defaultPlacements: PlacementType[] = ['left', 'whole', 'right'];
+  
+  // Keywords that indicate the dish is a pizza (should have placement options for toppings)
+  const pizzaDishKeywords = ['pizza', 'pizz', 'pie'];
+  
+  // Check if the current dish is a pizza based on its name
+  const isDishAPizza = (): boolean => {
+    const dishName = (dish.name || '').toLowerCase();
+    return pizzaDishKeywords.some(keyword => dishName.includes(keyword));
+  };
   
   // Items that should NEVER show pizza placement options (they don't go "on" the pizza)
   const nonPlaceableKeywords = ['dip', 'sauce', 'drink', 'beverage', 'pop', 'juice', 'water', 'side', 'fries', 'coleslaw', 'poutine', 'bread', 'crust', 'ranch', 'garlic', 'cheese dip', 'marinara'];
@@ -461,8 +470,11 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
   };
 
   // Check if a combo section should show pizza placements
-  // Detect by section_type OR by common topping-related keywords in the header/names
+  // Only shows placements if the dish is a pizza AND section is for toppings
   const isPizzaToppingSection = (section: ComboGroupSection): boolean => {
+    // Must be a pizza dish first
+    if (!isDishAPizza()) return false;
+    
     if (section.section_type === 'custom_ingredients') return true;
     
     // Check section header
@@ -479,7 +491,11 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
   };
 
   // Check if a simple modifier group should show pizza placements
+  // Only shows placements if the dish is a pizza AND the group is for toppings
   const isSimpleModifierToppingGroup = (group: { name: string }): boolean => {
+    // Must be a pizza dish first
+    if (!isDishAPizza()) return false;
+    
     const groupName = (group.name || '').toLowerCase();
     return toppingKeywords.some(keyword => groupName.includes(keyword));
   };
