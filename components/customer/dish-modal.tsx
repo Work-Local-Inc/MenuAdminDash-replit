@@ -441,18 +441,15 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
     return Array.from({ length: numberOfItems }, (_, i) => ordinals[i] || `Item ${i + 1}`);
   };
   
-  // Pizza topping keywords used for placement detection - but only for actual pizzas
+  // Pizza topping keywords used for placement detection
+  // IMPORTANT: Only use specific topping-related keywords, NOT generic words like "extra" or "add more"
+  // which can match non-pizza items like "Extras Donair"
   const toppingKeywords = ['topping', 'garniture', 'ingredient'];
   const defaultPlacements: PlacementType[] = ['left', 'whole', 'right'];
   
-  // Keywords that indicate the dish is a pizza (should have placement options for toppings)
-  const pizzaDishKeywords = ['pizza', 'pizz', 'pie'];
-  
-  // Check if the current dish is a pizza based on its name
-  const isDishAPizza = (): boolean => {
-    const dishName = (dish.name || '').toLowerCase();
-    return pizzaDishKeywords.some(keyword => dishName.includes(keyword));
-  };
+  // Keywords that indicate the modifier group is NOT for pizza toppings (donair extras, etc.)
+  // These override topping detection even if the group name contains topping keywords
+  const nonPizzaGroupKeywords = ['donair', 'doner', 'shawarma', 'gyro', 'kebab', 'sub', 'sandwich', 'wrap', 'burger', 'poutine', 'salad', 'wing'];
   
   // Items that should NEVER show pizza placement options (they don't go "on" the pizza)
   const nonPlaceableKeywords = ['dip', 'sauce', 'drink', 'beverage', 'pop', 'juice', 'water', 'side', 'fries', 'coleslaw', 'poutine', 'bread', 'crust', 'ranch', 'garlic', 'cheese dip', 'marinara'];
@@ -468,22 +465,31 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
     const name = (groupName || '').toLowerCase();
     return nonPlaceableKeywords.some(keyword => name.includes(keyword));
   };
+  
+  // Check if a group name suggests it's for a non-pizza item (donair, shawarma, etc.)
+  const isNonPizzaItemGroup = (groupName: string): boolean => {
+    const name = (groupName || '').toLowerCase();
+    return nonPizzaGroupKeywords.some(keyword => name.includes(keyword));
+  };
 
   // Check if a combo section should show pizza placements
-  // Only shows placements if the dish is a pizza AND section is for toppings
+  // Shows placements for sections explicitly marked as custom_ingredients OR with topping-related names
+  // But NOT for sections that are clearly for non-pizza items (donair, shawarma, etc.)
   const isPizzaToppingSection = (section: ComboGroupSection): boolean => {
-    // Must be a pizza dish first
-    if (!isDishAPizza()) return false;
+    // Check section header for non-pizza keywords first
+    const header = (section.use_header || '').toLowerCase();
+    if (nonPizzaGroupKeywords.some(keyword => header.includes(keyword))) return false;
     
     if (section.section_type === 'custom_ingredients') return true;
     
-    // Check section header
-    const header = (section.use_header || '').toLowerCase();
+    // Check section header for topping keywords
     if (toppingKeywords.some(keyword => header.includes(keyword))) return true;
     
     // Also check modifier group names within the section
     for (const mg of section.modifier_groups) {
       const groupName = (mg.name || '').toLowerCase();
+      // Skip if this group is for a non-pizza item
+      if (isNonPizzaItemGroup(groupName)) continue;
       if (toppingKeywords.some(keyword => groupName.includes(keyword))) return true;
     }
     
@@ -491,12 +497,13 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
   };
 
   // Check if a simple modifier group should show pizza placements
-  // Only shows placements if the dish is a pizza AND the group is for toppings
+  // Shows placements for groups with topping-related names, but NOT for non-pizza items
   const isSimpleModifierToppingGroup = (group: { name: string }): boolean => {
-    // Must be a pizza dish first
-    if (!isDishAPizza()) return false;
-    
     const groupName = (group.name || '').toLowerCase();
+    
+    // Don't show placements for non-pizza item groups
+    if (isNonPizzaItemGroup(groupName)) return false;
+    
     return toppingKeywords.some(keyword => groupName.includes(keyword));
   };
 
