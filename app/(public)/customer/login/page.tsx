@@ -15,6 +15,7 @@ import { Eye, EyeOff, ArrowLeft } from 'lucide-react'
 import { FcGoogle } from 'react-icons/fc'
 import Link from 'next/link'
 import { Separator } from '@/components/ui/separator'
+import { getApiBaseUrl } from '@/lib/api-utils'
 
 export default function CustomerLoginPage() {
   const router = useRouter()
@@ -111,7 +112,7 @@ export default function CustomerLoginPage() {
       // Create user record in users table via server API
       // Server-side uses service role key with proper permissions
       try {
-        const response = await fetch('/api/customer/signup', {
+        const response = await fetch(`${getApiBaseUrl()}/api/customer/signup`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -137,7 +138,7 @@ export default function CustomerLoginPage() {
 
       // Send welcome email (don't fail signup if email fails)
       try {
-        await fetch('/api/customer/welcome-email', {
+        await fetch(`${getApiBaseUrl()}/api/customer/welcome-email`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

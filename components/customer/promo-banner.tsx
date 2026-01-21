@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tag, Gift, Percent, ChevronRight, Clock, Copy, Check, Sparkles } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { getApiBaseUrl } from '@/lib/api-utils'
 
 interface Promotion {
   id: string
@@ -38,7 +39,7 @@ export function PromoBanner({ restaurantSlug, brandColor }: PromoBannerProps) {
   useEffect(() => {
     const fetchPromotions = async () => {
       try {
-        const response = await fetch(`/api/customer/restaurants/${restaurantSlug}/promotions`)
+        const response = await fetch(`${getApiBaseUrl()}/api/customer/restaurants/${restaurantSlug}/promotions`)
         if (response.ok) {
           const data = await response.json()
           setPromotions(data.promotions || [])

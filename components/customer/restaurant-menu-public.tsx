@@ -11,6 +11,7 @@ import { CartDrawer } from './cart-drawer'
 import { PromoBanner } from './promo-banner'
 import { useCartStore } from '@/lib/stores/cart-store'
 import { resolveBrandingColors, MENUCA_RED } from '@/lib/utils'
+import { getApiBaseUrl } from '@/lib/api-utils'
 
 // Dish availability filter: hide dishes on specific days of the week
 // hidden_days: array of day numbers (0=Sunday, 1=Monday, ..., 6=Saturday)
@@ -89,7 +90,7 @@ export default function RestaurantMenuPublic({
   useEffect(() => {
     const fetchTaxConfig = async () => {
       try {
-        const response = await fetch(`/api/customer/restaurants/${restaurantSlug}/tax`)
+        const response = await fetch(`${getApiBaseUrl()}/api/customer/restaurants/${restaurantSlug}/tax`)
         if (response.ok) {
           const data = await response.json()
           // API returns { province_id, province_code, province_name, total_rate, tax_components }

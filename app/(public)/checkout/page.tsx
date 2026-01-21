@@ -26,6 +26,7 @@ import Link from 'next/link'
 import { trackBeginCheckout, trackAddPaymentInfo, trackPurchase } from '@/lib/analytics'
 import { AnalyticsProvider } from '@/components/providers/analytics-provider'
 import { getTaxLabel } from '@/lib/types/tax'
+import { getApiBaseUrl } from '@/lib/api-utils'
 
 // Cache loaded Stripe instances by publishable key to avoid multiple loads
 const stripeCache = new Map<string, Promise<Stripe | null>>()
@@ -148,7 +149,7 @@ export default function CheckoutPage() {
       
       try {
         console.log('[Checkout] Fetching payment config for:', restaurantSlug)
-        const response = await fetch(`/api/customer/restaurants/${restaurantSlug}/payment-config`)
+        const response = await fetch(`${getApiBaseUrl()}/api/customer/restaurants/${restaurantSlug}/payment-config`)
         
         if (!response.ok) {
           console.error('[Checkout] Failed to fetch payment config')
@@ -199,7 +200,7 @@ export default function CheckoutPage() {
       }
       
       // Build list of fetch promises - always fetch profile
-      const profilePromise = fetch('/api/customer/profile', { credentials: 'include' })
+      const profilePromise = fetch(`${getApiBaseUrl()}/api/customer/profile`, { credentials: 'include' })
         .then(res => res.ok ? res.json() : { user: null })
         .catch(() => ({ user: null }))
       
@@ -208,11 +209,11 @@ export default function CheckoutPage() {
       let restaurantPromise: Promise<any> = Promise.resolve(null)
       
       if (restaurantSlug) {
-        schedulesPromise = fetch(`/api/customer/restaurants/${restaurantSlug}/schedules`)
+        schedulesPromise = fetch(`${getApiBaseUrl()}/api/customer/restaurants/${restaurantSlug}/schedules`)
           .then(res => res.ok ? res.json() : { schedules: [] })
           .catch(() => ({ schedules: [] }))
         
-        restaurantPromise = fetch(`/api/customer/restaurants/${restaurantSlug}`)
+        restaurantPromise = fetch(`${getApiBaseUrl()}/api/customer/restaurants/${restaurantSlug}`)
           .then(res => res.ok ? res.json() : null)
           .catch(() => null)
       }
@@ -277,7 +278,7 @@ export default function CheckoutPage() {
       if (event === 'SIGNED_IN' && session?.user) {
         // User just signed in - refresh user data only
         try {
-          const response = await fetch('/api/customer/profile', { credentials: 'include' })
+          const response = await fetch(`${getApiBaseUrl()}/api/customer/profile`, { credentials: 'include' })
           if (response.ok) {
             const { user: userData } = await response.json()
             setCurrentUser(userData)
@@ -311,7 +312,7 @@ export default function CheckoutPage() {
   const { setGaMeasurementId } = useCartStore()
   useEffect(() => {
     if (!gaMeasurementId && restaurantSlug) {
-      fetch(`/api/customer/restaurants/${restaurantSlug}/analytics`)
+      fetch(`${getApiBaseUrl()}/api/customer/restaurants/${restaurantSlug}/analytics`)
         .then(res => res.ok ? res.json() : null)
         .then(data => {
           if (data?.ga_measurement_id) {
@@ -491,7 +492,7 @@ export default function CheckoutPage() {
         // This ensures Stripe instance matches the current payment mode
         // (prevents mismatch when restaurant switches between test/live mode)
         console.log('[Checkout] Refreshing payment config before creating payment intent...')
-        const configResponse = await fetch(`/api/customer/restaurants/${restaurantSlug}/payment-config`, {
+        const configResponse = await fetch(`${getApiBaseUrl()}/api/customer/restaurants/${restaurantSlug}/payment-config`, {
           cache: 'no-store',
         })
         
@@ -514,7 +515,7 @@ export default function CheckoutPage() {
           }
         }
         
-        const response = await fetch('/api/customer/create-payment-intent', {
+        const response = await fetch(`${getApiBaseUrl()}/api/customer/create-payment-intent`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -568,7 +569,7 @@ export default function CheckoutPage() {
         const cashDeliveryFee = orderType === 'delivery' ? effectiveDeliveryFee : 0
         const cashTax = tax
 
-        const response = await fetch('/api/customer/orders/cash', {
+        const response = await fetch(`${getApiBaseUrl()}/api/customer/orders/cash`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

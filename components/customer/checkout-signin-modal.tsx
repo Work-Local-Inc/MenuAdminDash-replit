@@ -33,6 +33,7 @@ import { useToast } from '@/hooks/use-toast'
 import { Eye, EyeOff, LogIn, UserPlus } from 'lucide-react'
 import { FcGoogle } from 'react-icons/fc'
 import { Separator } from '@/components/ui/separator'
+import { getApiBaseUrl } from '@/lib/api-utils'
 
 const signInSchema = z.object({
   email: z.string().email('Please enter a valid email'),
@@ -168,7 +169,7 @@ export function CheckoutSignInModal({
 
       // Create user record in users table via OAuth profile API
       try {
-        const response = await fetch('/api/customer/oauth-profile', {
+        const response = await fetch(`${getApiBaseUrl()}/api/customer/oauth-profile`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -194,7 +195,7 @@ export function CheckoutSignInModal({
 
       // Send welcome email (don't fail signup if email fails)
       try {
-        await fetch('/api/customer/welcome-email', {
+        await fetch(`${getApiBaseUrl()}/api/customer/welcome-email`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

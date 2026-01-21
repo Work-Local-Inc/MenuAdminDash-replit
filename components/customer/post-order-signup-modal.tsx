@@ -23,6 +23,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
 import { CheckCircle, UserPlus, Sparkles } from 'lucide-react'
+import { getApiBaseUrl } from '@/lib/api-utils'
 
 const signupFormSchema = z.object({
   email: z.string().email(),
@@ -81,7 +82,7 @@ export function PostOrderSignupModal({
     setIsSubmitting(true)
 
     try {
-      const response = await fetch('/api/customer/signup', {
+      const response = await fetch(`${getApiBaseUrl()}/api/customer/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

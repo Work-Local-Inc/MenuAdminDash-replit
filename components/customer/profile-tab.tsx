@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
 import { Save, Loader2, Mail } from 'lucide-react'
+import { getApiBaseUrl } from '@/lib/api-utils'
 
 interface ProfileTabProps {
   user: any
@@ -31,7 +32,7 @@ export function ProfileTab({ user, onUserUpdate, redirectAfterSave }: ProfileTab
   const handleSave = async () => {
     setSaving(true)
     try {
-      const response = await fetch('/api/customer/profile', {
+      const response = await fetch(`${getApiBaseUrl()}/api/customer/profile`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

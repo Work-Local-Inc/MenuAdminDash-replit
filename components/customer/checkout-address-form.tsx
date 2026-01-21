@@ -15,6 +15,7 @@ import { DeliveryMapPreview } from './delivery-map-preview'
 import { useCartStore } from '@/lib/stores/cart-store'
 import { useLoadScript } from '@react-google-maps/api'
 import Link from 'next/link'
+import { getApiBaseUrl } from '@/lib/api-utils'
 
 const googleMapsLibraries: ("places")[] = ["places"]
 
@@ -234,7 +235,7 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick,
           .eq('user_id', userId)
           .order('is_default', { ascending: false }),
         // Also fetch user profile for name/phone (needed for receipts)
-        fetch('/api/customer/profile', { credentials: 'include' }).then(r => r.json()).catch(() => null)
+        fetch(`${getApiBaseUrl()}/api/customer/profile`, { credentials: 'include' }).then(r => r.json()).catch(() => null)
       ])
 
       const { data, error } = addressesResult
@@ -341,7 +342,7 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick,
         onAddressConfirmed(guestAddress)
       } else {
         // AUTHENTICATED: Save to database via API
-        const response = await fetch('/api/customer/addresses', {
+        const response = await fetch(`${getApiBaseUrl()}/api/customer/addresses`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -395,7 +396,7 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick,
 
     setSavingPhone(true)
     try {
-      const response = await fetch('/api/customer/profile', {
+      const response = await fetch(`${getApiBaseUrl()}/api/customer/profile`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone: phoneToSave }),

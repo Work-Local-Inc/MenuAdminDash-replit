@@ -15,6 +15,7 @@ import { isMobileDevice, hasCamera } from '@/lib/utils/device'
 import { ScannedCardData } from '@/lib/utils/card-scanner'
 import { ArrowLeft, CreditCard, Camera, Shield, MapPin, ShoppingBag } from 'lucide-react'
 import { trackPurchase } from '@/lib/analytics'
+import { getApiBaseUrl } from '@/lib/api-utils'
 
 // Order confirmation block that shows either pickup location or delivery address
 function OrderConfirmationBlock({ deliveryAddress }: { deliveryAddress: DeliveryAddress }) {
@@ -207,7 +208,7 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
         
         console.log('[Payment] Creating order with userId:', userId, 'Payment Intent ID:', paymentIntent.id);
         
-        const orderResponse = await fetch('/api/customer/orders', {
+        const orderResponse = await fetch(`${getApiBaseUrl()}/api/customer/orders`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(orderPayload),

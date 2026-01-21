@@ -162,3 +162,40 @@ When switching payment modes (test ↔ live), the Stripe publishable key and sec
 **Database:**
 - `delivery_and_pickup_configs.payment_mode` column: 'test' (default) or 'live'
 - Stored Stripe customer IDs may not work across modes (test customer ≠ live customer)
+
+### Subdomain API Routing Fix (Jan 2026)
+**Status:** LIVE
+**File:** `lib/api-utils.ts`
+
+Branded subdomains (e.g., `centertowndonair.menu.ca`) need to route API calls to the main domain (`orders.menu.ca`) because the subdomain doesn't directly serve API routes.
+
+**Problem:**
+When on `centertowndonair.menu.ca`, relative API calls like `fetch('/api/customer/...')` go to `centertowndonair.menu.ca/api/...` which returns 404.
+
+**Solution:**
+Created `getApiBaseUrl()` helper in `lib/api-utils.ts`:
+- On branded subdomains → returns `https://orders.menu.ca`
+- On main domain or dev → returns empty string (relative URLs work)
+
+**Files Updated:**
+All customer-facing components with API calls now use `getApiBaseUrl()`:
+- `app/(public)/checkout/page.tsx`
+- `app/(public)/customer/login/page.tsx`
+- `components/customer/checkout-address-form.tsx`
+- `components/customer/checkout-payment-form.tsx`
+- `components/customer/checkout-signin-modal.tsx`
+- `components/customer/post-order-signup-modal.tsx`
+- `components/customer/profile-tab.tsx`
+- `components/customer/promo-banner.tsx`
+- `components/customer/restaurant-menu-public.tsx`
+
+**Usage:**
+```typescript
+import { getApiBaseUrl } from '@/lib/api-utils'
+
+// Before (broken on subdomains):
+fetch('/api/customer/orders', {...})
+
+// After (works everywhere):
+fetch(`${getApiBaseUrl()}/api/customer/orders`, {...})
+```
