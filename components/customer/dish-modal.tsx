@@ -1224,7 +1224,230 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
                       
                       return (
                         <>
-                          {/* Render shared sections once (like drinks) */}
+                          {/* Render per-item sections (like toppings, extras) for each item FIRST */}
+                          {Array.from({ length: numberOfItems }).map((_, instanceIndex) => (
+                            perItemSections.map((section) => {
+                              const allModifiers = section.modifier_groups.flatMap(mg => mg.modifiers);
+                              if (allModifiers.length === 0) return null;
+                              
+                              // Check if this section should show pizza placements
+                              const showPizzaPlacements = isPizzaToppingSection(section);
+
+                              return (
+                                <div 
+                                  key={`${section.id}-${instanceIndex}`} 
+                                  className="border rounded-lg p-4 bg-muted/30 space-y-3" 
+                                  data-testid={`combo-section-${section.id}-${instanceIndex}`}
+                                >
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="flex-1">
+                                      {/* Show contextual label for multi-item sections */}
+                                      {numberOfItems > 1 && (
+                                        <span className="text-sm font-bold text-primary block mb-1">
+                                          {contextualLabels[instanceIndex]}
+                                        </span>
+                                      )}
+                                      {section.use_header && (
+                                        <Label className="text-base font-semibold block">
+                                          {section.use_header}
+                                        </Label>
+                                      )}
+                                      <div className="flex items-center gap-2 mt-1">
+                                        {section.min_selection > 0 ? (
+                                          <Badge variant="destructive" className="text-xs">Required</Badge>
+                                        ) : (
+                                          <span className="text-xs text-muted-foreground">Optional</span>
+                                        )}
+                                        {section.free_items > 0 && (
+                                          <span className="text-xs text-muted-foreground">
+                                            • {section.free_items} free
+                                          </span>
+                                        )}
+                                        {section.max_selection > 0 && (
+                                          <span className="text-xs text-muted-foreground">
+                                            • {section.max_selection === 1 ? 'Choose 1' : `Max ${section.max_selection}`}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {section.modifier_groups.map((modifierGroup) => {
+                                    const sectionKey = getComboSectionKey(section.id, modifierGroup.id, instanceIndex);
+                                    const currentSelections = comboSelections[sectionKey] || [];
+
+                                    return (
+                                      <div key={`${modifierGroup.id}-${instanceIndex}`} className="space-y-2">
+                                        {modifierGroup.name && section.modifier_groups.length > 1 && (
+                                          <Label className="text-sm font-medium text-muted-foreground block">
+                                            {modifierGroup.name}
+                                          </Label>
+                                        )}
+
+                                        {/* Single-select (RadioGroup) vs Multi-select */}
+                                        {section.max_selection === 1 ? (
+                                          <RadioGroup
+                                            value={currentSelections[0]?.toString() || ''}
+                                            onValueChange={(value) => {
+                                              const modifier = modifierGroup.modifiers.find(m => m.id === parseInt(value));
+                                              if (modifier) {
+                                                // Deselect any previously selected modifier in this section
+                                                const oldModifier = modifierGroup.modifiers.find(m => currentSelections.includes(m.id));
+                                                if (oldModifier) {
+                                                  handleComboModifierToggle(section, modifierGroup, oldModifier, false, instanceIndex, contextualLabels[instanceIndex]);
+                                                }
+                                                handleComboModifierToggle(section, modifierGroup, modifier, true, instanceIndex, contextualLabels[instanceIndex]);
+                                              }
+                                            }}
+                                            className="space-y-2"
+                                          >
+                                            {modifierGroup.modifiers.map((modifier) => {
+                                              const fullPrice = getComboModifierPrice(modifier);
+                                              const modifierKey = `${modifier.id}-${instanceIndex}`;
+                                              
+                                              return (
+                                                <div key={modifierKey} className="flex items-center gap-3">
+                                                  <RadioGroupItem 
+                                                    value={modifier.id.toString()} 
+                                                    id={`combo-modifier-${modifierKey}`}
+                                                    data-testid={`radio-combo-modifier-${modifierKey}`}
+                                                  />
+                                                  <Label htmlFor={`combo-modifier-${modifierKey}`} className="flex-1 cursor-pointer">
+                                                    <span>{modifier.name}</span>
+                                                    {fullPrice > 0 && (
+                                                      <span className="text-sm text-muted-foreground ml-1">
+                                                        +${fullPrice.toFixed(2)}
+                                                      </span>
+                                                    )}
+                                                  </Label>
+                                                </div>
+                                              );
+                                            })}
+                                          </RadioGroup>
+                                        ) : (
+                                          <div className="space-y-3">
+                                            {(() => {
+                                              // Calculate cumulative quantities to determine free vs paid items
+                                              const freeItems = section.free_items || 0;
+                                              const allModifiersInSection = section.modifier_groups.flatMap(mg => mg.modifiers);
+                                              
+                                              // Build ordered list of modifiers with quantities for free item calculation
+                                              // Count total quantity in section for max_selection check (use composite keys for per-item isolation)
+                                              const totalInSection = allModifiersInSection
+                                                .reduce((sum, m) => sum + (modifierQuantities[`${m.id}-${instanceIndex}`] || 0), 0);
+                                              const isMaxReached = section.max_selection > 0 && totalInSection >= section.max_selection;
+                                              
+                                              // Calculate cumulative position for each modifier to determine free vs paid
+                                              let cumulativeQty = 0;
+                                              const modifierFreeInfo: Record<string, { freeQty: number; paidQty: number }> = {};
+                                              
+                                              for (const m of allModifiersInSection) {
+                                                const mKey = `${m.id}-${instanceIndex}`;
+                                                const qty = modifierQuantities[mKey] || 0;
+                                                if (qty > 0) {
+                                                  const startPos = cumulativeQty;
+                                                  const endPos = cumulativeQty + qty;
+                                                  // How many of this modifier's qty falls within free limit?
+                                                  const freeQty = Math.max(0, Math.min(qty, freeItems - startPos));
+                                                  const paidQty = qty - freeQty;
+                                                  modifierFreeInfo[mKey] = { freeQty, paidQty };
+                                                  cumulativeQty = endPos;
+                                                }
+                                              }
+                                              
+                                              return modifierGroup.modifiers.map((modifier) => {
+                                                const fullPrice = getComboModifierPrice(modifier);
+                                                const modifierKey = `${modifier.id}-${instanceIndex}`;
+                                                const currentQty = modifierQuantities[modifierKey] || 0;
+                                                // Skip placements for dips, sauces, drinks, etc. - they don't go "on" the pizza
+                                                const isNonPlaceable = isNonPlaceableModifier(modifier.name) || isNonPlaceableGroup(modifierGroup.name);
+                                                // Check if this section is for a non-pizza item (donair, shawarma, etc.)
+                                                const sectionHeader = (section.use_header || '').toLowerCase();
+                                                const isNonPizzaSection = nonPizzaGroupKeywords.some(keyword => sectionHeader.includes(keyword));
+                                                // For pizza toppings, always show all 3 placements (Left, Whole, Right)
+                                                // Don't show placements for non-pizza item sections (even if modifier.placements exists in DB)
+                                                const shouldShowPlacements = !isNonPlaceable && !isNonPizzaSection && (showPizzaPlacements || (modifier.placements && modifier.placements.length > 0));
+                                                const placements = shouldShowPlacements ? defaultPlacements : [];
+                                                // Get free/paid breakdown for this modifier using composite key
+                                                const { freeQty = 0, paidQty = 0 } = modifierFreeInfo[modifierKey] || {};
+                                                const paidAmount = paidQty * fullPrice;
+                                                
+                                                return (
+                                                  <div key={modifierKey}>
+                                                    <div className="flex items-center justify-between">
+                                                      <div className="flex items-center gap-2">
+                                                        <span>{modifier.name}</span>
+                                                        {currentQty === 0 && fullPrice > 0 && (
+                                                          <span className="text-sm text-muted-foreground">
+                                                            +${Number(fullPrice).toFixed(2)} each
+                                                          </span>
+                                                        )}
+                                                        {currentQty > 0 && freeQty > 0 && paidQty === 0 && (
+                                                          <span className="text-sm text-green-600 font-medium">
+                                                            Free
+                                                          </span>
+                                                        )}
+                                                        {currentQty > 0 && freeQty > 0 && paidQty > 0 && (
+                                                          <span className="text-sm">
+                                                            <span className="text-green-600 font-medium">{freeQty} Free</span>
+                                                            {fullPrice > 0 && (
+                                                              <span className="text-muted-foreground"> + {paidQty} × ${fullPrice.toFixed(2)}</span>
+                                                            )}
+                                                          </span>
+                                                        )}
+                                                        {currentQty > 0 && freeQty === 0 && paidQty > 0 && fullPrice > 0 && (
+                                                          <span className="text-sm text-muted-foreground">
+                                                            +${Number(fullPrice).toFixed(2)} each
+                                                          </span>
+                                                        )}
+                                                      </div>
+                                                      <div className="flex items-center gap-2">
+                                                        <Button
+                                                          size="icon"
+                                                          variant="outline"
+                                                          className="h-7 w-7"
+                                                          onClick={() => handleComboModifierQuantityChange(section, modifierGroup, modifier, -1, instanceIndex)}
+                                                          disabled={currentQty === 0}
+                                                          data-testid={`button-combo-modifier-decrease-${modifierKey}`}
+                                                        >
+                                                          <Minus className="h-3 w-3" />
+                                                        </Button>
+                                                        <span className="w-6 text-center font-medium" data-testid={`text-combo-modifier-qty-${modifierKey}`}>
+                                                          {currentQty}
+                                                        </span>
+                                                        <Button
+                                                          size="icon"
+                                                          variant="outline"
+                                                          className="h-7 w-7"
+                                                          onClick={() => handleComboModifierQuantityChange(section, modifierGroup, modifier, 1, instanceIndex)}
+                                                          disabled={isMaxReached && currentQty === 0}
+                                                          data-testid={`button-combo-modifier-increase-${modifierKey}`}
+                                                        >
+                                                          <Plus className="h-3 w-3" />
+                                                        </Button>
+                                                      </div>
+                                                    </div>
+                                                    {/* Pizza placement selector */}
+                                                    {currentQty > 0 && placements.length > 0 && (
+                                                      <div className="mt-2 ml-4">
+                                                        <PlacementSelector modifierId={modifier.id} placements={placements} />
+                                                      </div>
+                                                    )}
+                                                  </div>
+                                                );
+                                              });
+                                            })()}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            })
+                          ))}
+
+                          {/* Render shared sections once (like drinks) LAST */}
                           {sharedSections.map((section) => {
                             const allModifiers = section.modifier_groups.flatMap(mg => mg.modifiers);
                             if (allModifiers.length === 0) return null;
@@ -1350,255 +1573,6 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
                               </div>
                             );
                           })}
-                          
-                          {/* Render per-item sections (like extras) for each item */}
-                          {Array.from({ length: numberOfItems }).map((_, instanceIndex) => (
-                            perItemSections.map((section) => {
-                              const allModifiers = section.modifier_groups.flatMap(mg => mg.modifiers);
-                              if (allModifiers.length === 0) return null;
-                              
-                              // Check if this section should show pizza placements
-                              const showPizzaPlacements = isPizzaToppingSection(section);
-
-                              return (
-                                <div 
-                                  key={`${section.id}-${instanceIndex}`} 
-                                  className="border rounded-lg p-4 bg-muted/30 space-y-3" 
-                                  data-testid={`combo-section-${section.id}-${instanceIndex}`}
-                                >
-                                  <div className="flex items-start justify-between gap-2">
-                                    <div className="flex-1">
-                                      {/* Show contextual label for repeated sections */}
-                                      {numberOfItems > 1 && (
-                                        <span className="text-sm font-medium text-muted-foreground block mb-1">
-                                          {contextualLabels[instanceIndex]}
-                                        </span>
-                                      )}
-                                      {section.use_header && (
-                                        <Label className="text-base font-semibold block">
-                                          {section.use_header}
-                                        </Label>
-                                      )}
-                                      <div className="flex items-center gap-2 mt-1">
-                                        {section.min_selection > 0 ? (
-                                          <Badge variant="destructive" className="text-xs">Required</Badge>
-                                        ) : (
-                                          <span className="text-xs text-muted-foreground">Optional</span>
-                                        )}
-                                        {section.free_items > 0 && (
-                                          <span className="text-xs text-muted-foreground">
-                                            • {section.free_items} free
-                                          </span>
-                                        )}
-                                        {section.max_selection > 0 && (
-                                          <span className="text-xs text-muted-foreground">
-                                            • {section.max_selection === 1 ? 'Choose 1' : `Max ${section.max_selection}`}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  {section.modifier_groups.map((modifierGroup) => {
-                                    const sectionKey = getComboSectionKey(section.id, modifierGroup.id, instanceIndex);
-                                    const currentSelections = comboSelections[sectionKey] || [];
-                                    const isMaxSelections = section.max_selection > 0 && currentSelections.length >= section.max_selection;
-
-                              return (
-                                <div key={`${modifierGroup.id}-${instanceIndex}`} className="space-y-2">
-                                  {modifierGroup.name && section.modifier_groups.length > 1 && (
-                                    <Label className="text-sm font-medium text-muted-foreground block">
-                                      {modifierGroup.name}
-                                    </Label>
-                                  )}
-
-                                  {section.max_selection === 1 ? (
-                                    <RadioGroup
-                                      value={currentSelections[0]?.toString() || ''}
-                                      onValueChange={(value) => {
-                                        const modifierId = parseInt(value);
-                                        const modifier = modifierGroup.modifiers.find(m => m.id === modifierId);
-                                        if (modifier) {
-                                          const oldModifierId = currentSelections[0];
-                                          if (oldModifierId) {
-                                            const oldModifier = modifierGroup.modifiers.find(m => m.id === oldModifierId);
-                                            if (oldModifier) {
-                                              handleComboModifierToggle(section, modifierGroup, oldModifier, false, instanceIndex, contextualLabels[instanceIndex]);
-                                            }
-                                          }
-                                          handleComboModifierToggle(section, modifierGroup, modifier, true, instanceIndex, contextualLabels[instanceIndex]);
-                                        }
-                                      }}
-                                    >
-                                      {modifierGroup.modifiers.map((modifier) => {
-                                        const fullPrice = getComboModifierPrice(modifier);
-                                        const isSelected = currentSelections.includes(modifier.id);
-                                        const selectionIndex = currentSelections.indexOf(modifier.id);
-                                        const freeItems = section.free_items || 0;
-                                        const isFreeSlot = isSelected && selectionIndex < freeItems;
-                                        // Skip placements for dips, sauces, drinks, etc. - they don't go "on" the pizza
-                                        const isNonPlaceable = isNonPlaceableModifier(modifier.name) || isNonPlaceableGroup(modifierGroup.name);
-                                        // Check if this section is for a non-pizza item (donair, shawarma, etc.)
-                                        const sectionHeader = (section.use_header || '').toLowerCase();
-                                        const isNonPizzaSection = nonPizzaGroupKeywords.some(keyword => sectionHeader.includes(keyword));
-                                        // For pizza toppings, always show all 3 placements (Left, Whole, Right)
-                                        // Don't show placements for non-pizza item sections (even if modifier.placements exists in DB)
-                                        const shouldShowPlacements = !isNonPlaceable && !isNonPizzaSection && (showPizzaPlacements || (modifier.placements && modifier.placements.length > 0));
-                                        const placements = shouldShowPlacements ? defaultPlacements : [];
-                                        const modifierKey = `${modifier.id}-${instanceIndex}`;
-                                        
-                                        return (
-                                          <div key={modifierKey}>
-                                            <div className="flex items-center space-x-2 mb-1">
-                                              <RadioGroupItem
-                                                value={modifier.id.toString()}
-                                                id={`combo-modifier-${modifierKey}`}
-                                                data-testid={`radio-combo-modifier-${modifierKey}`}
-                                              />
-                                              <Label htmlFor={`combo-modifier-${modifierKey}`} className="flex-1 cursor-pointer">
-                                                <div className="flex items-center justify-between">
-                                                  <span>{modifier.name}</span>
-                                                  <span className="text-sm">
-                                                    {isSelected && isFreeSlot ? (
-                                                      <span className="text-green-600 font-medium">Free</span>
-                                                    ) : fullPrice > 0 ? (
-                                                      <span className="text-muted-foreground">+${Number(fullPrice).toFixed(2)}</span>
-                                                    ) : null}
-                                                  </span>
-                                                </div>
-                                              </Label>
-                                            </div>
-                                            {isSelected && shouldShowPlacements && (
-                                              <PlacementSelector modifierId={modifier.id} placements={placements} />
-                                            )}
-                                          </div>
-                                        );
-                                      })}
-                                    </RadioGroup>
-                                  ) : (
-                                    <div className="space-y-3">
-                                      {(() => {
-                                        // Calculate cumulative quantities to determine free vs paid items
-                                        const freeItems = section.free_items || 0;
-                                        const allModifiersInSection = section.modifier_groups.flatMap(mg => mg.modifiers);
-                                        
-                                        // Build ordered list of modifiers with quantities for free item calculation
-                                        // Count total quantity in section for max_selection check (use composite keys for per-item isolation)
-                                        const totalInSection = allModifiersInSection
-                                          .reduce((sum, m) => sum + (modifierQuantities[`${m.id}-${instanceIndex}`] || 0), 0);
-                                        const isMaxReached = section.max_selection > 0 && totalInSection >= section.max_selection;
-                                        
-                                        // Calculate cumulative position for each modifier to determine free vs paid
-                                        let cumulativeQty = 0;
-                                        const modifierFreeInfo: Record<string, { freeQty: number; paidQty: number }> = {};
-                                        
-                                        for (const m of allModifiersInSection) {
-                                          const mKey = `${m.id}-${instanceIndex}`;
-                                          const qty = modifierQuantities[mKey] || 0;
-                                          if (qty > 0) {
-                                            const startPos = cumulativeQty;
-                                            const endPos = cumulativeQty + qty;
-                                            // How many of this modifier's qty falls within free limit?
-                                            const freeQty = Math.max(0, Math.min(qty, freeItems - startPos));
-                                            const paidQty = qty - freeQty;
-                                            modifierFreeInfo[mKey] = { freeQty, paidQty };
-                                            cumulativeQty = endPos;
-                                          }
-                                        }
-                                        
-                                        return modifierGroup.modifiers.map((modifier) => {
-                                          const fullPrice = getComboModifierPrice(modifier);
-                                          const modifierKey = `${modifier.id}-${instanceIndex}`;
-                                          const currentQty = modifierQuantities[modifierKey] || 0;
-                                          // Skip placements for dips, sauces, drinks, etc. - they don't go "on" the pizza
-                                          const isNonPlaceable = isNonPlaceableModifier(modifier.name) || isNonPlaceableGroup(modifierGroup.name);
-                                          // Check if this section is for a non-pizza item (donair, shawarma, etc.)
-                                          const sectionHeader = (section.use_header || '').toLowerCase();
-                                          const isNonPizzaSection = nonPizzaGroupKeywords.some(keyword => sectionHeader.includes(keyword));
-                                          // For pizza toppings, always show all 3 placements (Left, Whole, Right)
-                                          // Don't show placements for non-pizza item sections (even if modifier.placements exists in DB)
-                                          const shouldShowPlacements = !isNonPlaceable && !isNonPizzaSection && (showPizzaPlacements || (modifier.placements && modifier.placements.length > 0));
-                                          const placements = shouldShowPlacements ? defaultPlacements : [];
-                                          // Get free/paid breakdown for this modifier using composite key
-                                          const { freeQty = 0, paidQty = 0 } = modifierFreeInfo[modifierKey] || {};
-                                          const paidAmount = paidQty * fullPrice;
-                                          
-                                          return (
-                                            <div key={modifierKey}>
-                                              <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-2">
-                                                  <span>{modifier.name}</span>
-                                                  {currentQty === 0 && fullPrice > 0 && (
-                                                    <span className="text-sm text-muted-foreground">
-                                                      +${Number(fullPrice).toFixed(2)} each
-                                                    </span>
-                                                  )}
-                                                  {currentQty > 0 && freeQty > 0 && paidQty === 0 && (
-                                                    <span className="text-sm text-green-600 font-medium">
-                                                      Free
-                                                    </span>
-                                                  )}
-                                                  {currentQty > 0 && freeQty > 0 && paidQty > 0 && (
-                                                    <span className="text-sm">
-                                                      <span className="text-green-600 font-medium">{freeQty} Free</span>
-                                                      {fullPrice > 0 && (
-                                                        <span className="text-muted-foreground"> + {paidQty} × ${fullPrice.toFixed(2)}</span>
-                                                      )}
-                                                    </span>
-                                                  )}
-                                                  {currentQty > 0 && freeQty === 0 && paidQty > 0 && fullPrice > 0 && (
-                                                    <span className="text-sm text-muted-foreground">
-                                                      +${Number(fullPrice).toFixed(2)} each
-                                                    </span>
-                                                  )}
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                  <Button
-                                                    size="icon"
-                                                    variant="outline"
-                                                    className="h-7 w-7"
-                                                    onClick={() => handleComboModifierQuantityChange(section, modifierGroup, modifier, -1, instanceIndex)}
-                                                    disabled={currentQty === 0}
-                                                    data-testid={`button-combo-modifier-decrease-${modifierKey}`}
-                                                  >
-                                                    <Minus className="h-3 w-3" />
-                                                  </Button>
-                                                  <span className="w-6 text-center font-medium" data-testid={`text-combo-modifier-qty-${modifierKey}`}>
-                                                    {currentQty}
-                                                  </span>
-                                                  <Button
-                                                    size="icon"
-                                                    variant="outline"
-                                                    className="h-7 w-7"
-                                                    onClick={() => handleComboModifierQuantityChange(section, modifierGroup, modifier, 1, instanceIndex)}
-                                                    disabled={isMaxReached && currentQty === 0}
-                                                    data-testid={`button-combo-modifier-increase-${modifierKey}`}
-                                                  >
-                                                    <Plus className="h-3 w-3" />
-                                                  </Button>
-                                                  {paidAmount > 0 && (
-                                                    <span className="text-sm font-medium text-muted-foreground ml-1">
-                                                      = +${paidAmount.toFixed(2)}
-                                                    </span>
-                                                  )}
-                                                </div>
-                                              </div>
-                                              {currentQty > 0 && shouldShowPlacements && (
-                                                <PlacementSelector modifierId={modifier.id} placements={placements} />
-                                              )}
-                                            </div>
-                                          );
-                                        });
-                                      })()}
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                                    })}
-                                  </div>
-                                );
-                              })
-                            ))}
                           </>
                         );
                       })()}
