@@ -19,7 +19,15 @@ function getStripe(paymentMode: 'test' | 'live' = 'test') {
     keySource = 'TESTING_STRIPE_SECRET_KEY'
   }
   
-  console.log(`[Stripe] Mode: ${paymentMode}, Source: ${keySource}, Key prefix: ${stripeSecretKey ? stripeSecretKey.substring(0, 12) + '...' : 'NOT SET'}`)
+  // Log full key structure for debugging (safe - only shows first 20 chars which is public info anyway)
+  console.log(`[Stripe] Mode: ${paymentMode}, Source: ${keySource}`)
+  console.log(`[Stripe] Secret key (first 25 chars): ${stripeSecretKey ? stripeSecretKey.substring(0, 25) : 'NOT SET'}`)
+  
+  // Also log what publishable key SHOULD be used to ensure they match
+  const expectedPubKey = paymentMode === 'live' 
+    ? process.env.VITE_STRIPE_PUBLIC_KEY 
+    : process.env.NEXT_PUBLIC_TESTING_VITE_STRIPE_PUBLIC_KEY
+  console.log(`[Stripe] Expected matching publishable key (first 25 chars): ${expectedPubKey ? expectedPubKey.substring(0, 25) : 'NOT SET'}`)
   
   if (!stripeSecretKey) {
     throw new Error(`Missing required Stripe secret key for ${paymentMode} mode (${keySource})`)
