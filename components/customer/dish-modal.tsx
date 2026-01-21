@@ -1392,8 +1392,12 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
                                         const isFreeSlot = isSelected && selectionIndex < freeItems;
                                         // Skip placements for dips, sauces, drinks, etc. - they don't go "on" the pizza
                                         const isNonPlaceable = isNonPlaceableModifier(modifier.name) || isNonPlaceableGroup(modifierGroup.name);
+                                        // Check if this section is for a non-pizza item (donair, shawarma, etc.)
+                                        const sectionHeader = (section.use_header || '').toLowerCase();
+                                        const isNonPizzaSection = nonPizzaGroupKeywords.some(keyword => sectionHeader.includes(keyword));
                                         // For pizza toppings, always show all 3 placements (Left, Whole, Right)
-                                        const shouldShowPlacements = !isNonPlaceable && (showPizzaPlacements || (modifier.placements && modifier.placements.length > 0));
+                                        // Don't show placements for non-pizza item sections (even if modifier.placements exists in DB)
+                                        const shouldShowPlacements = !isNonPlaceable && !isNonPizzaSection && (showPizzaPlacements || (modifier.placements && modifier.placements.length > 0));
                                         const placements = shouldShowPlacements ? defaultPlacements : [];
                                         const modifierKey = `${modifier.id}-${instanceIndex}`;
                                         
@@ -1460,8 +1464,12 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
                                           const currentQty = modifierQuantities[modifier.id] || 0;
                                           // Skip placements for dips, sauces, drinks, etc. - they don't go "on" the pizza
                                           const isNonPlaceable = isNonPlaceableModifier(modifier.name) || isNonPlaceableGroup(modifierGroup.name);
+                                          // Check if this section is for a non-pizza item (donair, shawarma, etc.)
+                                          const sectionHeader = (section.use_header || '').toLowerCase();
+                                          const isNonPizzaSection = nonPizzaGroupKeywords.some(keyword => sectionHeader.includes(keyword));
                                           // For pizza toppings, always show all 3 placements (Left, Whole, Right)
-                                          const shouldShowPlacements = !isNonPlaceable && (showPizzaPlacements || (modifier.placements && modifier.placements.length > 0));
+                                          // Don't show placements for non-pizza item sections (even if modifier.placements exists in DB)
+                                          const shouldShowPlacements = !isNonPlaceable && !isNonPizzaSection && (showPizzaPlacements || (modifier.placements && modifier.placements.length > 0));
                                           const placements = shouldShowPlacements ? defaultPlacements : [];
                                           const modifierKey = `${modifier.id}-${instanceIndex}`;
                                           
