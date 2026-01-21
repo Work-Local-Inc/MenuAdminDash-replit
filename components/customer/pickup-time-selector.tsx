@@ -373,7 +373,7 @@ export function PickupTimeSelector({ className, schedules = [], orderType = 'pic
   const asapSubtext = isServiceClosed 
     ? (serviceOpensAt ? `Opens at ${formatTimeDisplay(serviceOpensAt)}` : 'Closed now')
     : (isDelivery ? '30-45 min' : '15-25 min');
-  const scheduleSubtext = isDelivery ? 'Choose delivery time' : 'Pick a time';
+  const scheduleSubtext = 'Choose time';
 
   // Create branded style for active buttons
   const getActiveStyle = (isActive: boolean) => {

@@ -323,7 +323,7 @@ export function ScheduleTimePicker({
     : (isDelivery ? '30-45 min' : '15-25 min');
   const scheduleSubtext = pickupTime.type === 'scheduled' && pickupTime.scheduledTime
     ? format(new Date(pickupTime.scheduledTime), 'EEE, MMM d @ h:mm a')
-    : 'Choose delivery time';
+    : 'Choose time';
 
   const getActiveStyle = (isActive: boolean) => {
     if (!isActive || !brandedColor) return undefined;
