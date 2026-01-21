@@ -354,18 +354,20 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
     instanceIndex: number = 0
   ) => {
     const sectionKey = getComboSectionKey(section.id, modifierGroup.id, instanceIndex);
-    const currentQty = modifierQuantities[modifier.id] || 0;
+    // Use composite key for per-item isolation: ${modifierId}-${instanceIndex}
+    const modifierKey = `${modifier.id}-${instanceIndex}`;
+    const currentQty = modifierQuantities[modifierKey] || 0;
     const newQty = Math.max(0, currentQty + delta);
     
-    // Check max_selection constraint (total quantity across all modifiers in section)
+    // Check max_selection constraint (total quantity across all modifiers in section for THIS instance)
     if (delta > 0 && section.max_selection > 0) {
       const totalInSection = section.modifier_groups.flatMap(mg => mg.modifiers)
-        .reduce((sum, m) => sum + (modifierQuantities[m.id] || 0), 0);
+        .reduce((sum, m) => sum + (modifierQuantities[`${m.id}-${instanceIndex}`] || 0), 0);
       if (totalInSection >= section.max_selection) return;
     }
     
     // Create updated quantities map for price calculation
-    const updatedQuantities = { ...modifierQuantities, [modifier.id]: newQty };
+    const updatedQuantities = { ...modifierQuantities, [modifierKey]: newQty };
     
     setModifierQuantities(updatedQuantities);
     
@@ -387,31 +389,41 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
     const freeItems = section.free_items || 0;
     const allModifiersInSection = section.modifier_groups.flatMap(mg => mg.modifiers);
     
-    // Build paidQty map for all modifiers in one pass
+    // Build paidQty map for all modifiers in one pass using composite keys
     let cumulativeTotal = 0;
-    const paidQtyMap: Record<number, number> = {};
+    const paidQtyMap: Record<string, number> = {};
     
     for (const m of allModifiersInSection) {
-      const qty = updatedQuantities[m.id] || 0;
+      const mKey = `${m.id}-${instanceIndex}`;
+      const qty = updatedQuantities[mKey] || 0;
       if (qty > 0) {
         const startPos = cumulativeTotal;
         const freeQty = Math.max(0, Math.min(qty, freeItems - startPos));
-        paidQtyMap[m.id] = qty - freeQty;
+        paidQtyMap[mKey] = qty - freeQty;
         cumulativeTotal += qty;
       }
     }
     
     // Update selectedModifiers atomically with correct paidQuantity for all modifiers
+    // For per-item sections, we need to track which instance this modifier belongs to
     setSelectedModifiers(prev => {
-      // Start with modifiers NOT in this section (preserve them)
+      // Start with modifiers NOT in this section/instance (preserve them)
+      // Filter out modifiers from this specific section AND instance
       const sectionModifierIds = new Set(allModifiersInSection.map(m => m.id));
-      const otherModifiers = prev.filter(m => !sectionModifierIds.has(m.id));
+      const otherModifiers = prev.filter(m => {
+        // Keep modifiers not in this section
+        if (!sectionModifierIds.has(m.id)) return true;
+        // Keep modifiers from different instances (check by instanceIndex in key)
+        if (m.instanceIndex !== undefined && m.instanceIndex !== instanceIndex) return true;
+        return false;
+      });
       
       // Build new modifiers for this section based on updatedQuantities
       // Preserve placement from modifierPlacements state
       const sectionModifiers: typeof prev = [];
       for (const m of allModifiersInSection) {
-        const qty = updatedQuantities[m.id] || 0;
+        const mKey = `${m.id}-${instanceIndex}`;
+        const qty = updatedQuantities[mKey] || 0;
         if (qty > 0) {
           const mPrice = getComboModifierPrice(m);
           const placement = modifierPlacements[m.id];
@@ -420,7 +432,8 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
             name: m.name,
             price: mPrice,
             quantity: qty,
-            paidQuantity: paidQtyMap[m.id] || 0,
+            paidQuantity: paidQtyMap[mKey] || 0,
+            instanceIndex, // Track which instance this modifier belongs to
             ...(placement && { placement }),
           });
         }
@@ -1244,16 +1257,15 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
                                       <div className="grid grid-cols-1 gap-2">
                                         {modifierGroup.modifiers.map((modifier) => {
                                           const fullPrice = getComboModifierPrice(modifier);
-                                          const currentQty = modifierQuantities[modifier.id] || 0;
+                                          // Use composite key with instanceIndex for shared sections (instanceIndex=0)
+                                          const modifierKey = `${modifier.id}-${instanceIndex}`;
+                                          const currentQty = modifierQuantities[modifierKey] || 0;
                                           const isNonPlaceable = isNonPlaceableModifier(modifier.name) || isNonPlaceableGroup(modifierGroup.name);
                                           
-                                          // Calculate total selections for THIS SECTION's modifier groups only
-                                          const sectionModifierIds = new Set(
-                                            section.modifier_groups.flatMap(mg => mg.modifiers.map(m => m.id))
-                                          );
-                                          const totalSelected = Object.entries(modifierQuantities)
-                                            .filter(([id]) => sectionModifierIds.has(parseInt(id)))
-                                            .reduce((sum, [, qty]) => sum + qty, 0);
+                                          // Calculate total selections for THIS SECTION's modifier groups only (using composite keys)
+                                          const totalSelected = section.modifier_groups
+                                            .flatMap(mg => mg.modifiers)
+                                            .reduce((sum, m) => sum + (modifierQuantities[`${m.id}-${instanceIndex}`] || 0), 0);
                                           const canAddMore = section.max_selection === 0 || totalSelected < section.max_selection;
                                           
                                           return (
@@ -1298,14 +1310,11 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
                                         })}
                                       </div>
                                       
-                                      {/* Selection count indicator - count only THIS section's modifiers */}
+                                      {/* Selection count indicator - count only THIS section's modifiers using composite keys */}
                                       {section.max_selection > 0 && (() => {
-                                        const sectionModifierIds = new Set(
-                                          section.modifier_groups.flatMap(mg => mg.modifiers.map(m => m.id))
-                                        );
-                                        const sectionTotal = Object.entries(modifierQuantities)
-                                          .filter(([id]) => sectionModifierIds.has(parseInt(id)))
-                                          .reduce((sum, [, qty]) => sum + qty, 0);
+                                        const sectionTotal = section.modifier_groups
+                                          .flatMap(mg => mg.modifiers)
+                                          .reduce((sum, m) => sum + (modifierQuantities[`${m.id}-${instanceIndex}`] || 0), 0);
                                         return (
                                           <div className="text-xs text-muted-foreground text-right" data-testid={`section-count-${section.id}`}>
                                             Selected: {sectionTotal} / {section.max_selection}
@@ -1451,31 +1460,33 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
                                         const allModifiersInSection = section.modifier_groups.flatMap(mg => mg.modifiers);
                                         
                                         // Build ordered list of modifiers with quantities for free item calculation
-                                        // Count total quantity in section for max_selection check
+                                        // Count total quantity in section for max_selection check (use composite keys for per-item isolation)
                                         const totalInSection = allModifiersInSection
-                                          .reduce((sum, m) => sum + (modifierQuantities[m.id] || 0), 0);
+                                          .reduce((sum, m) => sum + (modifierQuantities[`${m.id}-${instanceIndex}`] || 0), 0);
                                         const isMaxReached = section.max_selection > 0 && totalInSection >= section.max_selection;
                                         
                                         // Calculate cumulative position for each modifier to determine free vs paid
                                         let cumulativeQty = 0;
-                                        const modifierFreeInfo: Record<number, { freeQty: number; paidQty: number }> = {};
+                                        const modifierFreeInfo: Record<string, { freeQty: number; paidQty: number }> = {};
                                         
                                         for (const m of allModifiersInSection) {
-                                          const qty = modifierQuantities[m.id] || 0;
+                                          const mKey = `${m.id}-${instanceIndex}`;
+                                          const qty = modifierQuantities[mKey] || 0;
                                           if (qty > 0) {
                                             const startPos = cumulativeQty;
                                             const endPos = cumulativeQty + qty;
                                             // How many of this modifier's qty falls within free limit?
                                             const freeQty = Math.max(0, Math.min(qty, freeItems - startPos));
                                             const paidQty = qty - freeQty;
-                                            modifierFreeInfo[m.id] = { freeQty, paidQty };
+                                            modifierFreeInfo[mKey] = { freeQty, paidQty };
                                             cumulativeQty = endPos;
                                           }
                                         }
                                         
                                         return modifierGroup.modifiers.map((modifier) => {
                                           const fullPrice = getComboModifierPrice(modifier);
-                                          const currentQty = modifierQuantities[modifier.id] || 0;
+                                          const modifierKey = `${modifier.id}-${instanceIndex}`;
+                                          const currentQty = modifierQuantities[modifierKey] || 0;
                                           // Skip placements for dips, sauces, drinks, etc. - they don't go "on" the pizza
                                           const isNonPlaceable = isNonPlaceableModifier(modifier.name) || isNonPlaceableGroup(modifierGroup.name);
                                           // Check if this section is for a non-pizza item (donair, shawarma, etc.)
@@ -1485,10 +1496,8 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
                                           // Don't show placements for non-pizza item sections (even if modifier.placements exists in DB)
                                           const shouldShowPlacements = !isNonPlaceable && !isNonPizzaSection && (showPizzaPlacements || (modifier.placements && modifier.placements.length > 0));
                                           const placements = shouldShowPlacements ? defaultPlacements : [];
-                                          const modifierKey = `${modifier.id}-${instanceIndex}`;
-                                          
-                                          // Get free/paid breakdown for this modifier
-                                          const { freeQty = 0, paidQty = 0 } = modifierFreeInfo[modifier.id] || {};
+                                          // Get free/paid breakdown for this modifier using composite key
+                                          const { freeQty = 0, paidQty = 0 } = modifierFreeInfo[modifierKey] || {};
                                           const paidAmount = paidQty * fullPrice;
                                           
                                           return (

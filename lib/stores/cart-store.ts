@@ -19,6 +19,7 @@ export interface CartModifier {
   quantity?: number; // For multiple of same modifier (e.g., 5 Creamy Garlic dips), default 1
   paidQuantity?: number; // For free items tracking: how many of quantity are paid (after free items applied)
   placement?: PlacementType; // For pizza toppings: whole, left, or right
+  instanceIndex?: number; // For combo per-item sections: which item instance this modifier belongs to (0=first, 1=second, etc.)
 }
 
 export interface CartItem {
