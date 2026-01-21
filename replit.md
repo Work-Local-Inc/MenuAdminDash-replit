@@ -99,3 +99,32 @@ The proper commission system uses these database objects (built by Santiago):
 - `generate_platform_commission_report()` RPC - generates billing reports
 
 Commission is calculated AFTER orders are completed, aggregating completed order totals for billing restaurants.
+
+### Subdomain Routing System (Jan 2026)
+**Status:** LIVE
+**Table:** `menuca_v3.restaurant_subdomains`
+
+Dynamic subdomain-to-restaurant mapping system enables branded URLs like `centertowndonair.menu.ca`.
+
+**Database Structure:**
+- `restaurant_subdomains` table with columns: `restaurant_id`, `subdomain`, `slug`, `name`, `is_active`, `updated_at`
+- `get_subdomain_mapping(subdomain)` RPC - Returns single mapping for middleware lookup
+- `get_all_subdomain_mappings()` RPC - Returns all active mappings for cache warmup
+- Trigger: `update_restaurant_subdomains_timestamp` - auto-updates `updated_at`
+
+**Frontend Implementation (`lib/subdomain-mapping.ts`):**
+- Database-first lookup via RPC with 5-minute in-memory caching
+- Static fallback array for when database is unavailable
+- Middleware (`middleware.ts`) uses async lookup to resolve subdomains
+
+**Current Mappings:**
+| restaurant_id | subdomain | slug | name |
+|---|---|---|---|
+| 131 | centertowndonair | centertown-donair-pizza-131 | Centertown Donair & Pizza |
+| 245 | orchidsushiottawa | orchid-sushi-245 | Orchid Sushi |
+
+**To add new subdomain (no code changes required):**
+```sql
+INSERT INTO menuca_v3.restaurant_subdomains (restaurant_id, subdomain, slug, name)
+VALUES (999, 'newrestaurant', 'new-restaurant-999', 'New Restaurant');
+```

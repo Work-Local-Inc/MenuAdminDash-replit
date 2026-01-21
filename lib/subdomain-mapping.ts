@@ -25,10 +25,16 @@ export interface SubdomainMapping {
 
 export const STATIC_SUBDOMAIN_MAPPINGS: SubdomainMapping[] = [
   {
+    subdomain: 'centertowndonair',
+    slug: 'centertown-donair-pizza-131',
+    restaurantId: 131,
+    name: 'Centertown Donair & Pizza',
+  },
+  {
     subdomain: 'orchidsushiottawa',
     slug: 'orchid-sushi-245',
     restaurantId: 245,
-    name: 'Orchid Sushi Ottawa',
+    name: 'Orchid Sushi',
   },
 ];
 
