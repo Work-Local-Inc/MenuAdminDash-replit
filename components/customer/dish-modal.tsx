@@ -109,7 +109,9 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
   const [groupSelections, setGroupSelections] = useState<Record<number, number[]>>({});
   const [comboSelections, setComboSelections] = useState<Record<string, number[]>>({});
   const [modifierPlacements, setModifierPlacements] = useState<Record<number, PlacementType>>({});
-  const [modifierQuantities, setModifierQuantities] = useState<Record<number, number>>({});
+  // For combo per-item sections, keys are `${modifierId}-${instanceIndex}` to isolate quantities per item
+  // For shared sections and simple modifiers, keys are just `${modifierId}` (or with instanceIndex=0)
+  const [modifierQuantities, setModifierQuantities] = useState<Record<string, number>>({});
   // Special dish selections: key = `${comboGroupId}-${selectionIndex}`, value = dish selection id
   const [specialDishSelections, setSpecialDishSelections] = useState<Record<string, number>>({});
   
@@ -1245,9 +1247,13 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
                                           const currentQty = modifierQuantities[modifier.id] || 0;
                                           const isNonPlaceable = isNonPlaceableModifier(modifier.name) || isNonPlaceableGroup(modifierGroup.name);
                                           
-                                          // Calculate total selections for max check
-                                          const totalSelected = Object.values(modifierQuantities)
-                                            .reduce((sum, qty) => sum + qty, 0);
+                                          // Calculate total selections for THIS SECTION's modifier groups only
+                                          const sectionModifierIds = new Set(
+                                            section.modifier_groups.flatMap(mg => mg.modifiers.map(m => m.id))
+                                          );
+                                          const totalSelected = Object.entries(modifierQuantities)
+                                            .filter(([id]) => sectionModifierIds.has(parseInt(id)))
+                                            .reduce((sum, [, qty]) => sum + qty, 0);
                                           const canAddMore = section.max_selection === 0 || totalSelected < section.max_selection;
                                           
                                           return (
@@ -1292,12 +1298,20 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
                                         })}
                                       </div>
                                       
-                                      {/* Selection count indicator */}
-                                      {section.max_selection > 0 && (
-                                        <div className="text-xs text-muted-foreground text-right">
-                                          Selected: {Object.values(modifierQuantities).reduce((sum, qty) => sum + qty, 0)} / {section.max_selection}
-                                        </div>
-                                      )}
+                                      {/* Selection count indicator - count only THIS section's modifiers */}
+                                      {section.max_selection > 0 && (() => {
+                                        const sectionModifierIds = new Set(
+                                          section.modifier_groups.flatMap(mg => mg.modifiers.map(m => m.id))
+                                        );
+                                        const sectionTotal = Object.entries(modifierQuantities)
+                                          .filter(([id]) => sectionModifierIds.has(parseInt(id)))
+                                          .reduce((sum, [, qty]) => sum + qty, 0);
+                                        return (
+                                          <div className="text-xs text-muted-foreground text-right" data-testid={`section-count-${section.id}`}>
+                                            Selected: {sectionTotal} / {section.max_selection}
+                                          </div>
+                                        );
+                                      })()}
                                     </div>
                                   );
                                 })}
