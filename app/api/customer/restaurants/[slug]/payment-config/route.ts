@@ -17,11 +17,14 @@ export async function GET(
     const adminSupabase = createAdminClient() as any
     
     // Fetch restaurant's payment mode from service config
+    console.log(`[PaymentConfig] Querying delivery_and_pickup_configs for restaurant_id: ${restaurantId}`)
     const { data: config, error } = await adminSupabase
       .from('delivery_and_pickup_configs')
       .select('payment_mode')
       .eq('restaurant_id', restaurantId)
       .maybeSingle()
+    
+    console.log(`[PaymentConfig] DB Query Result - config:`, JSON.stringify(config), 'error:', error?.message || 'none')
     
     if (error) {
       console.error('[PaymentConfig] Error fetching config:', error)
@@ -29,6 +32,7 @@ export async function GET(
     
     // Default to test mode if not set
     const paymentMode = config?.payment_mode || 'test'
+    console.log(`[PaymentConfig] Final paymentMode for restaurant ${restaurantId}: ${paymentMode} (raw from DB: ${config?.payment_mode || 'undefined'})`)
     
     // Return the appropriate publishable key based on payment mode
     // SIMPLIFIED: Direct env var access, no fallback chains
