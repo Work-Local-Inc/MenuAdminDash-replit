@@ -223,11 +223,16 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
   const sizePrice = selectedSizeOption?.price || 0;
   
   // Get the modifier_size_variant_id from the selected dish price for matching modifier prices
-  const getSelectedModifierSizeVariantId = (): number | null => {
-    if (!dish.prices || !Array.isArray(dish.prices)) return null;
-    const selectedDishPrice = dish.prices.find((p: any) => p.size_variant === selectedSize);
+  // Also track the size index for fallback matching when modifier_size_variant_id is null
+  const getSelectedSizeInfo = (): { modifierSizeVariantId: number | null; sizeIndex: number } => {
+    if (!dish.prices || !Array.isArray(dish.prices)) return { modifierSizeVariantId: null, sizeIndex: 0 };
+    
+    const sizeIndex = dish.prices.findIndex((p: any) => p.size_variant === selectedSize);
+    const selectedDishPrice = sizeIndex >= 0 ? dish.prices[sizeIndex] : null;
+    
     console.log('[DishModal] Size lookup:', {
       selectedSize,
+      sizeIndex,
       dishPrices: dish.prices.map((p: any) => ({ 
         size_variant: p.size_variant, 
         modifier_size_variant_id: p.modifier_size_variant_id,
@@ -238,13 +243,17 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
         modifier_size_variant_id: selectedDishPrice.modifier_size_variant_id
       } : null
     });
-    return selectedDishPrice?.modifier_size_variant_id ?? null;
+    
+    return { 
+      modifierSizeVariantId: selectedDishPrice?.modifier_size_variant_id ?? null,
+      sizeIndex: sizeIndex >= 0 ? sizeIndex : 0
+    };
   };
   
-  const selectedModifierSizeVariantId = getSelectedModifierSizeVariantId();
+  const { modifierSizeVariantId: selectedModifierSizeVariantId, sizeIndex: selectedSizeIndex } = getSelectedSizeInfo();
   
   // Price matching using modifier_size_variant_id (Santiago's V3 sizing logic)
-  // Fallback order: exact ID match → Standard (id: 1) → first price
+  // Fallback order: exact ID match → index-based match → Standard (id: 1) → first price
   const getModifierPrice = (modifier: any): number => {
     if (!modifier.prices || modifier.prices.length === 0) return 0;
     
@@ -254,6 +263,7 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
     console.log('[DishModal] getModifierPrice:', {
       modifierName: modifier.name,
       targetSizeId,
+      selectedSizeIndex,
       modifierPrices: modifier.prices.map((p: any) => ({
         modifier_size_variant_id: p.modifier_size_variant_id,
         price: p.price
@@ -269,14 +279,28 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
       }
     }
     
-    // 2. Fallback to Standard (modifier_size_variant_id: 1)
+    // 2. Index-based fallback: match dish size index to modifier price index
+    // This handles cases where modifier_size_variant_id is null but modifiers have multiple prices
+    if (modifier.prices.length > 1 && selectedSizeIndex < modifier.prices.length) {
+      // Sort by display_order if available, otherwise use original order
+      const sortedPrices = [...modifier.prices].sort((a: any, b: any) => 
+        (a.display_order ?? 0) - (b.display_order ?? 0)
+      );
+      const indexBasedPrice = sortedPrices[selectedSizeIndex];
+      if (indexBasedPrice) {
+        console.log('[DishModal] Using index-based price:', indexBasedPrice.price, 'at index', selectedSizeIndex);
+        return indexBasedPrice.price;
+      }
+    }
+    
+    // 3. Fallback to Standard (modifier_size_variant_id: 1)
     const standardPrice = modifier.prices.find((p: any) => p.modifier_size_variant_id === 1);
     if (standardPrice) {
       console.log('[DishModal] Using standard fallback price:', standardPrice.price);
       return standardPrice.price;
     }
     
-    // 3. Ultimate fallback: first price
+    // 4. Ultimate fallback: first price
     console.log('[DishModal] Using first price fallback:', modifier.prices[0]?.price);
     return modifier.prices[0]?.price || 0;
   };
@@ -292,11 +316,20 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
       if (exactMatch) return exactMatch.price;
     }
     
-    // 2. Fallback to Standard (modifier_size_variant_id: 1)
+    // 2. Index-based fallback: match dish size index to modifier price index
+    if (modifier.prices.length > 1 && selectedSizeIndex < modifier.prices.length) {
+      const sortedPrices = [...modifier.prices].sort((a: any, b: any) => 
+        (a.display_order ?? 0) - (b.display_order ?? 0)
+      );
+      const indexBasedPrice = sortedPrices[selectedSizeIndex];
+      if (indexBasedPrice) return indexBasedPrice.price;
+    }
+    
+    // 3. Fallback to Standard (modifier_size_variant_id: 1)
     const standardPrice = modifier.prices.find((p: any) => p.modifier_size_variant_id === 1);
     if (standardPrice) return standardPrice.price;
     
-    // 3. Ultimate fallback: first price
+    // 4. Ultimate fallback: first price
     return modifier.prices[0]?.price || 0;
   };
 
@@ -333,7 +366,7 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
       }
       return sm;
     }));
-  }, [selectedSize, selectedModifierSizeVariantId]);
+  }, [selectedSize, selectedModifierSizeVariantId, selectedSizeIndex]);
 
   const handleModifierToggle = (group: ModifierGroupWithModifiers, modifierId: number, checked: boolean) => {
     const currentSelections = groupSelections[group.id] || [];
