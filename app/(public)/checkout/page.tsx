@@ -487,6 +487,33 @@ export default function CheckoutPage() {
       paymentIntentCreatingRef.current = true
       console.log('[Checkout] Creating payment intent for credit card')
       try {
+        // IMPORTANT: Re-fetch payment config right before creating payment intent
+        // This ensures Stripe instance matches the current payment mode
+        // (prevents mismatch when restaurant switches between test/live mode)
+        console.log('[Checkout] Refreshing payment config before creating payment intent...')
+        const configResponse = await fetch(`/api/customer/restaurants/${restaurantSlug}/payment-config`, {
+          cache: 'no-store',
+        })
+        
+        if (configResponse.ok) {
+          const { publishableKey, paymentMode } = await configResponse.json()
+          console.log('[Checkout] Fresh payment config - mode:', paymentMode, 'key:', publishableKey?.substring(0, 10))
+          
+          // Check if we need to reload Stripe with a different key
+          if (publishableKey && !stripeCache.has(publishableKey)) {
+            console.log('[Checkout] Loading Stripe with fresh key for', paymentMode, 'mode')
+            const promise = loadStripe(publishableKey)
+            stripeCache.set(publishableKey, promise)
+            setStripePromise(promise)
+          } else if (publishableKey) {
+            // Ensure we're using the correct cached instance
+            const cachedPromise = stripeCache.get(publishableKey)
+            if (cachedPromise) {
+              setStripePromise(cachedPromise)
+            }
+          }
+        }
+        
         const response = await fetch('/api/customer/create-payment-intent', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

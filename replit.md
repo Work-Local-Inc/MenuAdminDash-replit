@@ -128,3 +128,37 @@ Dynamic subdomain-to-restaurant mapping system enables branded URLs like `center
 INSERT INTO menuca_v3.restaurant_subdomains (restaurant_id, subdomain, slug, name)
 VALUES (999, 'newrestaurant', 'new-restaurant-999', 'New Restaurant');
 ```
+
+### Stripe Payment Mode Toggle - Critical Implementation Notes (Jan 2026)
+**Status:** LIVE
+
+Per-restaurant switching between test and live Stripe payments.
+
+**CRITICAL: Stripe Key Mismatch Prevention**
+When switching payment modes (test ↔ live), the Stripe publishable key and secret key MUST match. A payment intent created with `sk_live_*` will NOT work with Stripe Elements initialized with `pk_test_*` and vice versa.
+
+**Implementation:**
+1. **payment-config API** (`/api/customer/restaurants/[slug]/payment-config`):
+   - Returns `publishableKey` and `paymentMode` based on DB config
+   - MUST have no-cache headers to prevent stale data
+   - Test mode: uses `NEXT_PUBLIC_TESTING_VITE_STRIPE_PUBLIC_KEY`
+   - Live mode: uses `VITE_STRIPE_PUBLIC_KEY`
+
+2. **create-payment-intent API** (`/api/customer/create-payment-intent`):
+   - Reads payment mode from DB and uses corresponding secret key
+   - Test mode: uses `TESTING_STRIPE_SECRET_KEY`
+   - Live mode: uses `STRIPE_SECRET_KEY`
+   - Handles customer ID mismatch: test customers don't exist in live mode (creates new)
+
+3. **Checkout page** (`app/(public)/checkout/page.tsx`):
+   - Re-fetches payment-config RIGHT BEFORE creating payment intent
+   - Ensures Stripe instance matches current payment mode
+   - Uses `stripeCache` to avoid reloading same Stripe instance
+
+**Common Bug: "Loading..." stuck on payment**
+- Cause: Stripe Elements initialized with test key, payment intent created with live key
+- Fix: Always refresh payment config before creating payment intent
+
+**Database:**
+- `delivery_and_pickup_configs.payment_mode` column: 'test' (default) or 'live'
+- Stored Stripe customer IDs may not work across modes (test customer ≠ live customer)

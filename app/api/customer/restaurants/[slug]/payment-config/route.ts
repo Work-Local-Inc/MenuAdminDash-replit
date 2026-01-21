@@ -54,10 +54,17 @@ export async function GET(
       }, { status: 500 })
     }
     
-    return NextResponse.json({
+    const response = NextResponse.json({
       paymentMode,
       publishableKey,
     })
+    
+    // Prevent caching to ensure fresh payment mode on every request
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
+    response.headers.set('Pragma', 'no-cache')
+    response.headers.set('Expires', '0')
+    
+    return response
     
   } catch (error) {
     console.error('[PaymentConfig] Unexpected error:', error)
