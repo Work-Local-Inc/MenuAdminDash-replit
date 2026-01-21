@@ -271,6 +271,41 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
     return modifier.prices[0]?.price || 0;
   };
 
+  // Update stored modifier prices when size changes
+  // This ensures the total calculation uses current prices for the selected size
+  useEffect(() => {
+    if (selectedModifiers.length === 0) return;
+    
+    // Build a lookup map of all available modifiers (both simple and combo)
+    const allModifiersMap = new Map<number, any>();
+    
+    // Add simple modifiers
+    modifierGroups.forEach(group => {
+      group.modifiers?.forEach(m => allModifiersMap.set(m.id, m));
+    });
+    
+    // Add combo modifiers
+    comboGroups.forEach(cg => {
+      cg.sections?.forEach(section => {
+        section.modifier_groups?.forEach(mg => {
+          mg.modifiers?.forEach(m => allModifiersMap.set(m.id, m));
+        });
+      });
+    });
+    
+    // Update prices for all selected modifiers
+    setSelectedModifiers(prev => prev.map(sm => {
+      const modifier = allModifiersMap.get(sm.id);
+      if (!modifier) return sm;
+      
+      const newPrice = getModifierPrice(modifier);
+      if (newPrice !== sm.price) {
+        return { ...sm, price: newPrice };
+      }
+      return sm;
+    }));
+  }, [selectedSize, selectedModifierSizeVariantId]);
+
   const handleModifierToggle = (group: ModifierGroupWithModifiers, modifierId: number, checked: boolean) => {
     const currentSelections = groupSelections[group.id] || [];
     let newSelections: number[];
