@@ -230,19 +230,6 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
     const sizeIndex = dish.prices.findIndex((p: any) => p.size_variant === selectedSize);
     const selectedDishPrice = sizeIndex >= 0 ? dish.prices[sizeIndex] : null;
     
-    console.log('[DishModal] Size lookup:', {
-      selectedSize,
-      sizeIndex,
-      dishPrices: dish.prices.map((p: any) => ({ 
-        size_variant: p.size_variant, 
-        modifier_size_variant_id: p.modifier_size_variant_id,
-        price: p.price 
-      })),
-      selectedDishPrice: selectedDishPrice ? {
-        size_variant: selectedDishPrice.size_variant,
-        modifier_size_variant_id: selectedDishPrice.modifier_size_variant_id
-      } : null
-    });
     
     return { 
       modifierSizeVariantId: selectedDishPrice?.modifier_size_variant_id ?? null,
@@ -259,24 +246,10 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
     
     const targetSizeId = selectedModifierSizeVariantId;
     
-    // Debug logging for price lookup
-    console.log('[DishModal] getModifierPrice:', {
-      modifierName: modifier.name,
-      targetSizeId,
-      selectedSizeIndex,
-      modifierPrices: modifier.prices.map((p: any) => ({
-        modifier_size_variant_id: p.modifier_size_variant_id,
-        price: p.price
-      }))
-    });
-    
     // 1. Try exact match on modifier_size_variant_id
     if (targetSizeId !== null) {
       const exactMatch = modifier.prices.find((p: any) => p.modifier_size_variant_id === targetSizeId);
-      if (exactMatch) {
-        console.log('[DishModal] Using exact match price:', exactMatch.price);
-        return exactMatch.price;
-      }
+      if (exactMatch) return exactMatch.price;
     }
     
     // 2. Index-based fallback: match dish size index to modifier price index
@@ -287,21 +260,14 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
         (a.display_order ?? 0) - (b.display_order ?? 0)
       );
       const indexBasedPrice = sortedPrices[selectedSizeIndex];
-      if (indexBasedPrice) {
-        console.log('[DishModal] Using index-based price:', indexBasedPrice.price, 'at index', selectedSizeIndex);
-        return indexBasedPrice.price;
-      }
+      if (indexBasedPrice) return indexBasedPrice.price;
     }
     
     // 3. Fallback to Standard (modifier_size_variant_id: 1)
     const standardPrice = modifier.prices.find((p: any) => p.modifier_size_variant_id === 1);
-    if (standardPrice) {
-      console.log('[DishModal] Using standard fallback price:', standardPrice.price);
-      return standardPrice.price;
-    }
+    if (standardPrice) return standardPrice.price;
     
     // 4. Ultimate fallback: first price
-    console.log('[DishModal] Using first price fallback:', modifier.prices[0]?.price);
     return modifier.prices[0]?.price || 0;
   };
 
