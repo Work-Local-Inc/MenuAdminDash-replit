@@ -760,36 +760,59 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
         }
       }
       
-      for (let instanceIndex = 0; instanceIndex < numberOfItems; instanceIndex++) {
-        for (const section of comboGroup.sections) {
-          if (section.min_selection > 0) {
-            // Check if this section has any selectable modifier options
-            const hasSelectableOptions = section.modifier_groups.some(
-              (mg) => mg.modifiers && mg.modifiers.length > 0
-            );
-            
-            // Skip validation for sections with no options (legacy data issue)
-            if (!hasSelectableOptions) {
-              continue;
-            }
-            
-            // Count TOTAL selections across all modifier groups in this section
+      // Shared section types only need validation once (instanceIndex=0)
+      const sharedSectionTypes = ['drinks', 'drink', 'beverage', 'beverages'];
+      
+      for (const section of comboGroup.sections) {
+        if (section.min_selection > 0) {
+          // Check if this section has any selectable modifier options
+          const hasSelectableOptions = section.modifier_groups.some(
+            (mg) => mg.modifiers && mg.modifiers.length > 0
+          );
+          
+          // Skip validation for sections with no options (legacy data issue)
+          if (!hasSelectableOptions) {
+            continue;
+          }
+          
+          // Determine if this is a shared section (drinks) or per-item section
+          const isSharedSection = sharedSectionTypes.includes((section.section_type || '').toLowerCase());
+          
+          if (isSharedSection) {
+            // Shared sections: validate once using instanceIndex=0
             let totalSectionSelections = 0;
             for (const modifierGroup of section.modifier_groups) {
-              const sectionKey = getComboSectionKey(section.id, modifierGroup.id, instanceIndex);
+              const sectionKey = getComboSectionKey(section.id, modifierGroup.id, 0);
               const currentSelections = comboSelections[sectionKey] || [];
               totalSectionSelections += currentSelections.length;
             }
             
             if (totalSectionSelections < section.min_selection) {
-              // Build a meaningful label for the whole section
               const sectionLabel = section.use_header || section.modifier_groups[0]?.name || 'selection';
-              const contextLabel = numberOfItems > 1 
-                ? `${contextualLabels[instanceIndex]} ${sectionLabel}`
-                : sectionLabel;
+              if (!missing.includes(sectionLabel)) {
+                missing.push(sectionLabel);
+              }
+            }
+          } else {
+            // Per-item sections: validate for each instance
+            for (let instanceIndex = 0; instanceIndex < numberOfItems; instanceIndex++) {
+              let totalSectionSelections = 0;
+              for (const modifierGroup of section.modifier_groups) {
+                const sectionKey = getComboSectionKey(section.id, modifierGroup.id, instanceIndex);
+                const currentSelections = comboSelections[sectionKey] || [];
+                totalSectionSelections += currentSelections.length;
+              }
               
-              if (!missing.includes(contextLabel)) {
-                missing.push(contextLabel);
+              if (totalSectionSelections < section.min_selection) {
+                // Build a meaningful label for the whole section
+                const sectionLabel = section.use_header || section.modifier_groups[0]?.name || 'selection';
+                const contextLabel = numberOfItems > 1 
+                  ? `${contextualLabels[instanceIndex]} ${sectionLabel}`
+                  : sectionLabel;
+                
+                if (!missing.includes(contextLabel)) {
+                  missing.push(contextLabel);
+                }
               }
             }
           }
