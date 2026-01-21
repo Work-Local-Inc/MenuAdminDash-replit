@@ -93,8 +93,8 @@ export async function POST(request: NextRequest) {
       userDbId = userData?.id || null
       stripeCustomerId = userData?.stripe_customer_id || undefined
 
-      // Create Stripe customer if doesn't exist
-      if (!stripeCustomerId) {
+      // Helper to create a new Stripe customer
+      const createNewCustomer = async () => {
         const customer = await stripe.customers.create({
           email: userData?.email || user.email || undefined,
           name: userData?.first_name && userData?.last_name 
@@ -102,10 +102,31 @@ export async function POST(request: NextRequest) {
             : undefined,
           metadata: {
             user_id: String(userData?.id || user.id),
+            payment_mode: paymentMode,
           },
         })
+        return customer.id
+      }
 
-        stripeCustomerId = customer.id
+      // If we have an existing customer ID, verify it exists in current Stripe mode
+      if (stripeCustomerId) {
+        try {
+          await stripe.customers.retrieve(stripeCustomerId)
+          console.log(`[Stripe] Customer ${stripeCustomerId} found in ${paymentMode} mode`)
+        } catch (error: any) {
+          if (error.code === 'resource_missing' || error.message?.includes('No such customer')) {
+            console.log(`[Stripe] Customer ${stripeCustomerId} not found in ${paymentMode} mode, creating new one`)
+            stripeCustomerId = await createNewCustomer()
+            
+            // Note: We don't update the DB here because the customer might still be valid in the other mode
+            // A proper solution would use separate columns for test/live customer IDs
+          } else {
+            throw error
+          }
+        }
+      } else {
+        // No existing customer, create one
+        stripeCustomerId = await createNewCustomer()
 
         // Update user with Stripe customer ID  
         if (userData?.id) {
