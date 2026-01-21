@@ -226,6 +226,18 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
   const getSelectedModifierSizeVariantId = (): number | null => {
     if (!dish.prices || !Array.isArray(dish.prices)) return null;
     const selectedDishPrice = dish.prices.find((p: any) => p.size_variant === selectedSize);
+    console.log('[DishModal] Size lookup:', {
+      selectedSize,
+      dishPrices: dish.prices.map((p: any) => ({ 
+        size_variant: p.size_variant, 
+        modifier_size_variant_id: p.modifier_size_variant_id,
+        price: p.price 
+      })),
+      selectedDishPrice: selectedDishPrice ? {
+        size_variant: selectedDishPrice.size_variant,
+        modifier_size_variant_id: selectedDishPrice.modifier_size_variant_id
+      } : null
+    });
     return selectedDishPrice?.modifier_size_variant_id ?? null;
   };
   
@@ -238,17 +250,34 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
     
     const targetSizeId = selectedModifierSizeVariantId;
     
+    // Debug logging for price lookup
+    console.log('[DishModal] getModifierPrice:', {
+      modifierName: modifier.name,
+      targetSizeId,
+      modifierPrices: modifier.prices.map((p: any) => ({
+        modifier_size_variant_id: p.modifier_size_variant_id,
+        price: p.price
+      }))
+    });
+    
     // 1. Try exact match on modifier_size_variant_id
     if (targetSizeId !== null) {
       const exactMatch = modifier.prices.find((p: any) => p.modifier_size_variant_id === targetSizeId);
-      if (exactMatch) return exactMatch.price;
+      if (exactMatch) {
+        console.log('[DishModal] Using exact match price:', exactMatch.price);
+        return exactMatch.price;
+      }
     }
     
     // 2. Fallback to Standard (modifier_size_variant_id: 1)
     const standardPrice = modifier.prices.find((p: any) => p.modifier_size_variant_id === 1);
-    if (standardPrice) return standardPrice.price;
+    if (standardPrice) {
+      console.log('[DishModal] Using standard fallback price:', standardPrice.price);
+      return standardPrice.price;
+    }
     
     // 3. Ultimate fallback: first price
+    console.log('[DishModal] Using first price fallback:', modifier.prices[0]?.price);
     return modifier.prices[0]?.price || 0;
   };
 
