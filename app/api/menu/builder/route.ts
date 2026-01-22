@@ -116,6 +116,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Query dishes WITHOUT nested prices (FK relationship not in Supabase schema cache)
+    // Note: dishes table uses bilingual columns (name_en, name_fr), no image_url column
     const { data: dishes, error: dishesError } = await supabase
       .schema('menuca_v3')
       .from('dishes')
@@ -126,7 +127,6 @@ export async function GET(request: NextRequest) {
         name_fr,
         description_en,
         description_fr,
-        image_url,
         is_active,
         display_order
       `)
