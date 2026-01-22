@@ -25,8 +25,10 @@ export async function GET(request: NextRequest) {
       .from('courses')
       .select(`
         id,
-        name,
-        description,
+        name_en,
+        name_fr,
+        description_en,
+        description_fr,
         display_order,
         is_active
       `)
@@ -120,8 +122,10 @@ export async function GET(request: NextRequest) {
       .select(`
         id,
         course_id,
-        name,
-        description,
+        name_en,
+        name_fr,
+        description_en,
+        description_fr,
         image_url,
         is_active,
         display_order
@@ -243,8 +247,12 @@ export async function GET(request: NextRequest) {
     }
 
     // Filter soft-deleted modifiers in application layer after fetching with left joins
+    // Also add computed 'name' and 'description' fields for backward compatibility (using English as default)
     const categoriesWithData = (categories as any)?.map((category: any) => ({
       ...category,
+      // Add computed name/description for backward compatibility
+      name: category.name_en || category.name_fr || '',
+      description: category.description_en || category.description_fr || '',
       modifier_groups: (templates as any)
         ?.filter((t: any) => t.course_id === category.id)
         .map((t: any) => {
@@ -279,6 +287,9 @@ export async function GET(request: NextRequest) {
         
         return {
           ...dish,
+          // Add computed name/description for backward compatibility
+          name: dish.name_en || dish.name_fr || '',
+          description: dish.description_en || dish.description_fr || '',
           dish_prices: dishPricesForDish, // Add prices array from separate query
           price: defaultPrice, // Computed price from first variant
           modifier_groups: (modifierGroups as any)
