@@ -199,3 +199,44 @@ fetch('/api/customer/orders', {...})
 // After (works everywhere):
 fetch(`${getApiBaseUrl()}/api/customer/orders`, {...})
 ```
+
+### RestoZone 3rd-Party Delivery Integration (Jan 2026)
+**Status:** API READY
+**Documentation:** `docs/RESTOZONE_INTEGRATION.md`
+
+3rd-party delivery dispatch integration for 8 Quebec restaurants that use RestoZone for driver dispatch.
+
+**How It Works:**
+1. **At Checkout** - For distance-based restaurants, the delivery fee is fetched from RestoZone's `getFees()` API. Falls back to existing `restaurant_distance_based_delivery_fees` table if API fails.
+2. **On Tablet** - After order acceptance, restaurant clicks "Request Driver" button which calls RestoZone's `send_data()` API to dispatch a driver.
+3. **Backup Email** - If RestoZone API fails, backup email is sent to dispatch operators.
+
+**Configured Restaurants (8):**
+| V3 ID | Restaurant | RestoZone ID |
+|-------|------------|--------------|
+| 131 | Centertown Donair & Pizza | 255 |
+| 87 | Champa Thai Cuisine | 203 |
+| 943 | Charm Thai Cuisine | 323 |
+| 1010 | Lemongrass Thai Cuisine | 219 |
+| 15 | New Mee Fung Restaurant | 101 |
+| 807 | Oh My Grill | 1051 |
+| 199 | Pho Bo Ga King - Somerset | 337 |
+| 847 | Sushiyana | 1094 |
+
+**API Endpoints:**
+- `GET /api/customer/restaurants/{slug}/delivery-fee` - Get delivery fee for checkout (calls RestoZone)
+- `GET /api/tablet/orders/{id}/dispatch-driver` - Check if dispatch available
+- `POST /api/tablet/orders/{id}/dispatch-driver` - Request driver dispatch
+
+**Configuration Files:**
+- `lib/restozone/config.ts` - Restaurant mappings and API endpoints
+- `lib/restozone/service.ts` - API call logic and backup email
+
+**Backup Emails:**
+- Deliveryzonecanada@gmail.com
+- mattmenuottawa2@gmail.com
+- restozonedispatch@gmail.com
+
+**To Add New Restaurant:**
+1. Add entry to `RESTOZONE_RESTAURANTS` in `lib/restozone/config.ts`
+2. Ensure restaurant has `distance_based_delivery_fee = true` in database
