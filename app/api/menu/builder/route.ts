@@ -168,83 +168,15 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Query modifier groups WITHOUT nested dish_modifiers (no FK relationship)
+    // NOTE: Modifier groups are loaded separately via /api/menu/modifier-groups endpoint
+    // The modifier_groups table uses restaurant_id (not dish_id) - the relationship
+    // between dishes and modifiers is handled by the get_restaurant_menu RPC
+    // For the menu builder, we skip dish-level modifier loading here
     let modifierGroups: any[] = []
     let dishModifiers: any[] = []
     let modifierPrices: any[] = []
     
-    if (dishIds.length > 0) {
-      // Query modifier groups
-      const { data: groupsData, error: groupsError } = await supabase
-        .schema('menuca_v3')
-        .from('modifier_groups' as any)
-        .select(`
-          id,
-          dish_id,
-          course_template_id,
-          name,
-          is_required,
-          min_selections,
-          max_selections,
-          display_order,
-          is_custom
-        `)
-        .in('dish_id', dishIds)
-        .is('deleted_at', null)
-        .order('display_order', { ascending: true })
-      
-      if (groupsError) throw groupsError
-      modifierGroups = groupsData || []
-      
-      // Query dish_modifiers separately and join in application code
-      if (modifierGroups.length > 0) {
-        const modifierGroupIds = modifierGroups.map((g: any) => g.id)
-        const { data: modifiersData, error: modifiersError } = await supabase
-          .schema('menuca_v3')
-          .from('dish_modifiers' as any)
-          .select(`
-            id,
-            modifier_group_id,
-            name,
-            is_included,
-            is_default,
-            display_order,
-            deleted_at,
-            is_active
-          `)
-          .in('modifier_group_id', modifierGroupIds)
-          .eq('is_active', true)
-          .order('display_order', { ascending: true })
-        
-        if (modifiersError) {
-          console.log('[MENU BUILDER] Modifiers query error:', modifiersError)
-        } else {
-          dishModifiers = modifiersData || []
-          console.log('[MENU BUILDER] Modifiers loaded:', dishModifiers.length)
-        }
-
-        // Query dish_modifier_prices separately (pricing is in separate table)
-        if (dishModifiers.length > 0) {
-          const modifierIds = dishModifiers.map((m: any) => m.id)
-          const { data: pricesData, error: pricesError } = await supabase
-            .schema('menuca_v3')
-            .from('dish_modifier_prices' as any)
-            .select(`
-              id,
-              dish_modifier_id,
-              price
-            `)
-            .in('dish_modifier_id', modifierIds)
-          
-          if (pricesError) {
-            console.log('[MENU BUILDER] Modifier prices query error:', pricesError)
-          } else {
-            modifierPrices = pricesData || []
-            console.log('[MENU BUILDER] Modifier prices loaded:', modifierPrices.length)
-          }
-        }
-      }
-    }
+    console.log('[MENU BUILDER] Skipping dish-level modifier query (handled by separate API)')
 
     // Filter soft-deleted modifiers in application layer after fetching with left joins
     // Also add computed 'name' and 'description' fields for backward compatibility (using English as default)
