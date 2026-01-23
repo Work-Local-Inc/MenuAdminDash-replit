@@ -68,14 +68,16 @@ export async function PATCH(
 
     // Validate status transition
     // NOTE: Allow pending → preparing directly for auto-print flow (skips confirmed)
+    // NOTE: Allow ready → completed for pickup orders
+    // NOTE: Allow reversions from completed/delivered back to preparing/ready for order corrections
     const validTransitions: Record<string, string[]> = {
       pending: ["confirmed", "preparing", "cancelled"],
       confirmed: ["preparing", "cancelled"],
       preparing: ["ready", "cancelled"],
       ready: ["out_for_delivery", "completed", "cancelled"],
       out_for_delivery: ["delivered", "cancelled"],
-      delivered: [], // Final state
-      completed: [], // Final state
+      delivered: ["preparing", "ready", "cancelled"], // Allow reversion for corrections
+      completed: ["preparing", "ready", "cancelled"], // Allow reversion for corrections
       cancelled: [], // Final state
     };
 

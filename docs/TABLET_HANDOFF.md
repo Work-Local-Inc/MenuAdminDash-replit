@@ -61,9 +61,13 @@ Optional fields:
 | preparing | ready, cancelled |
 | ready | out_for_delivery, completed, cancelled |
 | out_for_delivery | delivered, cancelled |
-| delivered | (final state) |
-| completed | (final state) |
+| delivered | preparing, ready, cancelled (reversion allowed) |
+| completed | preparing, ready, cancelled (reversion allowed) |
 | cancelled | (final state) |
+
+**Notes:**
+- `ready → completed` is allowed for pickup orders
+- Reversions from `completed`/`delivered` back to `preparing`/`ready` are allowed for order corrections
 
 ---
 
