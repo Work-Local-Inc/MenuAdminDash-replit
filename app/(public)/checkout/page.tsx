@@ -529,6 +529,10 @@ export default function CheckoutPage() {
               order_type: orderType,
               service_time: JSON.stringify(pickupTime),
               order_notes: orderNotes.trim() || undefined,
+              coupon_code: appliedPromo?.code || undefined,
+              discount_amount: appliedPromo ? String(getDiscount()) : undefined,
+              promo_id: appliedPromo?.promoId ? String(appliedPromo.promoId) : undefined,
+              promo_type: appliedPromo?.promoType || undefined,
             }
           }),
         })

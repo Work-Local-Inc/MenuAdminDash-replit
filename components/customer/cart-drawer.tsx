@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useCartStore } from '@/lib/stores/cart-store';
 import { getTaxLabel } from '@/lib/types/tax';
+import { CouponInput } from '@/components/customer/coupon-input';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -194,6 +195,16 @@ export function CartDrawer({ isOpen, onClose, restaurant, buttonStyle }: CartDra
             
             {/* Cart Summary */}
             <div className="border-t px-6 py-4 bg-muted/30">
+              {/* Coupon Input */}
+              {!appliedPromo && restaurant?.slug && (
+                <div className="mb-3">
+                  <CouponInput 
+                    restaurantSlug={restaurant.slug} 
+                    buttonStyle={buttonStyle}
+                  />
+                </div>
+              )}
+              
               {/* Applied Promo Code */}
               {appliedPromo && (
                 <div className="mb-3 p-2 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg flex items-center justify-between">
