@@ -799,7 +799,9 @@ export interface Database {
           type: string
           is_repeatable: boolean
           name: string
+          name_fr: string | null
           description: string | null
+          description_fr: string | null
           active_days: Json | null
           date_start: string | null
           date_stop: string | null
@@ -851,7 +853,9 @@ export interface Database {
           id: number
           restaurant_id: number
           name: string
+          name_fr: string | null
           description: string | null
+          description_fr: string | null
           code: string
           valid_from_at: string | null
           valid_until_at: string | null
