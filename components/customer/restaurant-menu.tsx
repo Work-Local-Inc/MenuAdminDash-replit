@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Store, MapPin, Clock, Phone, ShoppingCart, GripVertical, Pencil, Trash2, Plus, Eye, EyeOff, MoreVertical, Layers, DollarSign, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -114,6 +114,11 @@ export default function RestaurantMenu({
   const streetAddress = location?.street_address;
   const postalCode = location?.postal_code;
   
+  // Compute restaurant slug (used for cart drawer and checkout)
+  const restaurantSlug = useMemo(() => {
+    return urlSlug || `${restaurant.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${restaurant.id}`;
+  }, [urlSlug, restaurant.name, restaurant.id]);
+  
   useEffect(() => {
     if (!editorMode) {
       // Use restaurant_delivery_areas table (same as admin UI)
@@ -124,9 +129,6 @@ export default function RestaurantMenu({
       const deliveryFee = activeArea?.delivery_fee ?? 0;
       const minOrder = activeArea?.delivery_min_order || serviceConfig?.delivery_min_order || 0;
       
-      // Use URL slug if provided, otherwise generate one (fallback)
-      const slug = urlSlug || `${restaurant.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${restaurant.id}`;
-      
       // Build restaurant address for pickup display
       const address = streetAddress 
         ? `${streetAddress}${postalCode ? `, ${postalCode}` : ''}`
@@ -135,9 +137,9 @@ export default function RestaurantMenu({
       // Pass restaurant's primary color for branded checkout
       const primaryColor = restaurant.primary_color || undefined;
       
-      setRestaurant(restaurant.id, restaurant.name, slug, deliveryFee, minOrder, address, primaryColor);
+      setRestaurant(restaurant.id, restaurant.name, restaurantSlug, deliveryFee, minOrder, address, primaryColor);
     }
-  }, [editorMode, restaurant.id, restaurant.name, restaurant.restaurant_delivery_areas, serviceConfig, setRestaurant, streetAddress, postalCode, restaurant.primary_color, urlSlug]);
+  }, [editorMode, restaurant.id, restaurant.name, restaurant.restaurant_delivery_areas, serviceConfig, setRestaurant, streetAddress, postalCode, restaurant.primary_color, restaurantSlug]);
   
   // Scroll to category section
   const scrollToCategory = (courseId: string) => {
@@ -668,6 +670,8 @@ export default function RestaurantMenu({
           isOpen={isCartOpen}
           onClose={() => setIsCartOpen(false)}
           restaurant={restaurant}
+          restaurantSlug={restaurantSlug}
+          buttonStyle={restaurant?.button_style}
         />
       )}
     </div>

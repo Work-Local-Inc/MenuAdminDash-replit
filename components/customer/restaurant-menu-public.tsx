@@ -432,6 +432,8 @@ export default function RestaurantMenuPublic({
         isOpen={isCartOpen}
         onClose={() => setIsCartOpen(false)}
         restaurant={restaurant}
+        restaurantSlug={restaurantSlug}
+        buttonStyle={restaurant?.button_style}
       />
     </div>
   )

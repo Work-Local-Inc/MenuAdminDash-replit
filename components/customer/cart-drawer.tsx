@@ -18,10 +18,11 @@ interface CartDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   restaurant: any;
+  restaurantSlug?: string;
   buttonStyle?: 'rounded' | 'square' | null;
 }
 
-export function CartDrawer({ isOpen, onClose, restaurant, buttonStyle }: CartDrawerProps) {
+export function CartDrawer({ isOpen, onClose, restaurant, restaurantSlug, buttonStyle }: CartDrawerProps) {
   const { items, updateQuantity, removeItem, clearCart, appliedPromo, clearPromo, getDiscount, getEffectiveDeliveryFee, getTaxBreakdown, getTax, orderType } = useCartStore();
   
   // Helper function to get button branding class - only applies to non-icon buttons
@@ -196,10 +197,10 @@ export function CartDrawer({ isOpen, onClose, restaurant, buttonStyle }: CartDra
             {/* Cart Summary */}
             <div className="border-t px-6 py-4 bg-muted/30">
               {/* Coupon Input */}
-              {!appliedPromo && restaurant?.slug && (
+              {!appliedPromo && (restaurantSlug || restaurant?.slug) && (
                 <div className="mb-3">
                   <CouponInput 
-                    restaurantSlug={restaurant.slug} 
+                    restaurantSlug={restaurantSlug || restaurant?.slug} 
                     buttonStyle={buttonStyle}
                   />
                 </div>
