@@ -21,7 +21,9 @@ export async function GET(request: NextRequest) {
     }
     
     // Only fetch coupons for THIS specific restaurant
+    // IMPORTANT: promotional_coupons is in menuca_v3 schema
     const { data, error } = await supabase
+      .schema('menuca_v3')
       .from('promotional_coupons')
       .select('*')
       .eq('restaurant_id', restaurantId)
@@ -51,7 +53,9 @@ export async function POST(request: NextRequest) {
     // Validate request body
     const validatedData = couponCreateSchema.parse(body)
 
+    // IMPORTANT: promotional_coupons is in menuca_v3 schema
     const { data, error } = await supabase
+      .schema('menuca_v3')
       .from('promotional_coupons')
       .insert(validatedData as any)
       .select()

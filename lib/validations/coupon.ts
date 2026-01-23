@@ -18,7 +18,7 @@ export const couponCreateSchema = z.object({
   description: z.string().optional().nullable(),
   description_fr: z.string().optional().nullable(), // French translation
   discount_type: z.enum(["percentage", "fixed", "tiered"]), // Added "tiered" option
-  discount_amount: z.number().min(0), // For tiered discounts, this can be 0
+  discount_amount: z.number().min(0).nullable().optional(), // Nullable for tiered discounts
   minimum_purchase: z.number().optional().nullable(), // Database column name
   max_redemptions: z.number().int().positive().optional().nullable(), // Database column name
   max_uses_per_customer: z.number().int().positive().optional().nullable(), // Per-customer limit

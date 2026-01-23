@@ -42,9 +42,11 @@ export function useCreateCoupon(restaurantId?: string | number) {
         description: data.description || null,
         description_fr: data.description_fr || null,
         discount_type: data.discount_type,
-        discount_amount: data.discount_amount,
+        discount_amount: data.discount_type === 'tiered' ? null : data.discount_amount,
+        discount_tiers: data.discount_type === 'tiered' ? data.discount_tiers : null,
         minimum_purchase: data.minimum_purchase || null,
         max_redemptions: data.max_redemptions || null,
+        max_uses_per_customer: data.max_uses_per_customer || null,
         valid_until_at: data.valid_until_at || null,
         valid_from_at: data.valid_from_at || null,
         restaurant_id: id, // Always required - location-specific only

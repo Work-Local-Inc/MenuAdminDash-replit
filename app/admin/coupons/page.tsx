@@ -460,7 +460,9 @@ export default function CouponsPage() {
                 {discountType === "tiered" && (
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <FormLabel>Discount Tiers</FormLabel>
+                      <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                        Discount Tiers
+                      </label>
                       <Button 
                         type="button" 
                         variant="outline" 
