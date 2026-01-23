@@ -1,6 +1,6 @@
 'use client';
 
-import { X, Trash2, Plus, Minus, ShoppingBag, Tag, Sparkles } from 'lucide-react';
+import { X, Trash2, Plus, Minus, ShoppingBag, Tag, Sparkles, TrendingUp } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -208,21 +208,40 @@ export function CartDrawer({ isOpen, onClose, restaurant, restaurantSlug, button
               
               {/* Applied Promo Code */}
               {appliedPromo && (
-                <div className="mb-3 p-2 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-green-600" />
-                    <span className="text-sm font-medium text-green-700 dark:text-green-400">
-                      {appliedPromo.code} applied
-                    </span>
+                <div className="mb-3 space-y-2">
+                  <div className="p-2 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-green-600" />
+                      <span className="text-sm font-medium text-green-700 dark:text-green-400">
+                        {appliedPromo.code} applied
+                      </span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-xs text-green-600 hover:text-green-700"
+                      onClick={clearPromo}
+                    >
+                      Remove
+                    </Button>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 px-2 text-xs text-green-600 hover:text-green-700"
-                    onClick={clearPromo}
-                  >
-                    Remove
-                  </Button>
+                  
+                  {/* Show next tier incentive for tiered discounts */}
+                  {appliedPromo.isTiered && appliedPromo.nextTier && (appliedPromo.nextTier.threshold_amount > subtotal) && (
+                    <div className="p-2 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <TrendingUp className="w-4 h-4 text-blue-600" />
+                        <span className="text-xs text-blue-700 dark:text-blue-400">
+                          Add ${Math.max(0, appliedPromo.nextTier.threshold_amount - subtotal).toFixed(2)} more to unlock{' '}
+                          <strong>
+                            {appliedPromo.nextTier.discount_type === 'percentage' 
+                              ? `${appliedPromo.nextTier.discount_value}% off` 
+                              : `$${appliedPromo.nextTier.discount_value} off`}
+                          </strong>
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
               

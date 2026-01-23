@@ -16,7 +16,7 @@ import { SearchableRestaurantSelect } from "@/components/admin/searchable-restau
 import { useCoupons, useCreateCoupon } from "@/lib/hooks/use-coupons"
 import { useRestaurants } from "@/lib/hooks/use-restaurants"
 import { formatCurrency, formatDate } from "@/lib/utils"
-import { Plus, Search, Tag, ArrowLeft, Building2, Store, Languages, ChevronDown } from "lucide-react"
+import { Plus, Search, Tag, ArrowLeft, Building2, Store, Languages, ChevronDown, Trash2, Layers } from "lucide-react"
 import {
   Collapsible,
   CollapsibleContent,
@@ -27,6 +27,14 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { useToast } from "@/hooks/use-toast"
 
+// Tier schema for tiered discounts
+const tierSchema = z.object({
+  threshold_amount: z.coerce.number().min(0, "Must be 0 or greater"),
+  discount_type: z.enum(["percentage", "fixed"]),
+  discount_value: z.coerce.number().positive("Must be greater than 0"),
+  description: z.string().optional(),
+})
+
 // Form schema - matches database column names
 // NO global option - coupons are ALWAYS location-specific
 const couponSchema = z.object({
@@ -35,13 +43,31 @@ const couponSchema = z.object({
   name_fr: z.string().optional(),
   description: z.string().optional(),
   description_fr: z.string().optional(),
-  discount_type: z.enum(["percentage", "fixed"]),
-  discount_amount: z.coerce.number().positive("Must be greater than 0"),
+  discount_type: z.enum(["percentage", "fixed", "tiered"]),
+  discount_amount: z.coerce.number().min(0),
   minimum_purchase: z.union([z.coerce.number().positive(), z.literal('')]).optional(),
   max_redemptions: z.union([z.coerce.number().int().positive(), z.literal('')]).optional(),
   max_uses_per_customer: z.union([z.coerce.number().int().positive(), z.literal('')]).optional(),
   valid_until_at: z.string().optional(),
+  discount_tiers: z.array(tierSchema).optional(),
+}).refine((data) => {
+  // If tiered, require at least one tier
+  if (data.discount_type === "tiered") {
+    return data.discount_tiers && data.discount_tiers.length > 0
+  }
+  // If not tiered, require positive discount amount
+  return data.discount_amount > 0
+}, {
+  message: "For tiered discounts, add at least one tier. For regular discounts, enter an amount greater than 0.",
+  path: ["discount_amount"]
 })
+
+type DiscountTier = {
+  threshold_amount: number
+  discount_type: "percentage" | "fixed"
+  discount_value: number
+  description?: string
+}
 
 type CouponFormValues = {
   code: string
@@ -49,12 +75,13 @@ type CouponFormValues = {
   name_fr?: string
   description?: string
   description_fr?: string
-  discount_type: "percentage" | "fixed"
+  discount_type: "percentage" | "fixed" | "tiered"
   discount_amount: number
   minimum_purchase?: number | ''
   max_redemptions?: number | ''
   max_uses_per_customer?: number | ''
   valid_until_at?: string
+  discount_tiers?: DiscountTier[]
 }
 
 export default function CouponsPage() {
@@ -112,8 +139,37 @@ export default function CouponsPage() {
       max_redemptions: undefined,
       max_uses_per_customer: undefined,
       valid_until_at: "",
+      discount_tiers: [],
     },
   })
+  
+  const discountType = form.watch("discount_type")
+  const discountTiers = form.watch("discount_tiers") || []
+  
+  const addTier = () => {
+    const currentTiers = form.getValues("discount_tiers") || []
+    const lastThreshold = currentTiers.length > 0 
+      ? currentTiers[currentTiers.length - 1].threshold_amount + 25 
+      : 0
+    const newTier: DiscountTier = {
+      threshold_amount: lastThreshold,
+      discount_type: "percentage",
+      discount_value: currentTiers.length > 0 ? currentTiers[currentTiers.length - 1].discount_value + 5 : 10,
+    }
+    form.setValue("discount_tiers", [...currentTiers, newTier])
+  }
+  
+  const removeTier = (index: number) => {
+    const currentTiers = form.getValues("discount_tiers") || []
+    form.setValue("discount_tiers", currentTiers.filter((_, i) => i !== index))
+  }
+  
+  const updateTier = (index: number, field: keyof DiscountTier, value: any) => {
+    const currentTiers = form.getValues("discount_tiers") || []
+    const updatedTiers = [...currentTiers]
+    updatedTiers[index] = { ...updatedTiers[index], [field]: value }
+    form.setValue("discount_tiers", updatedTiers)
+  }
 
   const filteredCoupons = coupons.filter((coupon: any) => {
     const searchLower = search.toLowerCase()
@@ -338,29 +394,45 @@ export default function CouponsPage() {
                   </CollapsibleContent>
                 </Collapsible>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="discount_type"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Discount Type</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger data-testid="select-discount-type">
-                              <SelectValue placeholder="Select type" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="percentage">Percentage (%)</SelectItem>
-                            <SelectItem value="fixed">Fixed Amount ($)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                <FormField
+                  control={form.control}
+                  name="discount_type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Discount Type</FormLabel>
+                      <Select onValueChange={(value) => {
+                        field.onChange(value)
+                        if (value === "tiered" && discountTiers.length === 0) {
+                          addTier()
+                        }
+                      }} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-discount-type">
+                            <SelectValue placeholder="Select type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="percentage">Percentage (%)</SelectItem>
+                          <SelectItem value="fixed">Fixed Amount ($)</SelectItem>
+                          <SelectItem value="tiered">
+                            <span className="flex items-center gap-2">
+                              <Layers className="h-4 w-4" />
+                              Tiered (spend more, save more)
+                            </span>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>
+                        {discountType === "tiered" 
+                          ? "Set different discounts based on order value" 
+                          : "Apply a single discount to the order"}
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
+                {discountType !== "tiered" && (
                   <FormField
                     control={form.control}
                     name="discount_amount"
@@ -377,13 +449,105 @@ export default function CouponsPage() {
                           />
                         </FormControl>
                         <FormDescription>
-                          {form.watch("discount_type") === "percentage" ? "Percentage off" : "Dollar amount off"}
+                          {discountType === "percentage" ? "Percentage off" : "Dollar amount off"}
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                </div>
+                )}
+
+                {discountType === "tiered" && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <FormLabel>Discount Tiers</FormLabel>
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={addTier}
+                        data-testid="button-add-tier"
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        Add Tier
+                      </Button>
+                    </div>
+                    <div className="space-y-3">
+                      {discountTiers.map((tier, index) => (
+                        <div 
+                          key={index} 
+                          className="flex items-center gap-2 p-3 border rounded-lg bg-muted/30"
+                          data-testid={`tier-row-${index}`}
+                        >
+                          <div className="flex-1 grid grid-cols-4 gap-2">
+                            <div>
+                              <label className="text-xs text-muted-foreground">Min Order $</label>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={tier.threshold_amount}
+                                onChange={(e) => updateTier(index, "threshold_amount", parseFloat(e.target.value) || 0)}
+                                placeholder="0"
+                                data-testid={`input-tier-threshold-${index}`}
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs text-muted-foreground">Type</label>
+                              <Select
+                                value={tier.discount_type}
+                                onValueChange={(value: "percentage" | "fixed") => updateTier(index, "discount_type", value)}
+                              >
+                                <SelectTrigger data-testid={`select-tier-type-${index}`}>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="percentage">%</SelectItem>
+                                  <SelectItem value="fixed">$</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <label className="text-xs text-muted-foreground">Value</label>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={tier.discount_value}
+                                onChange={(e) => updateTier(index, "discount_value", parseFloat(e.target.value) || 0)}
+                                placeholder="10"
+                                data-testid={`input-tier-value-${index}`}
+                              />
+                            </div>
+                            <div className="flex items-end">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => removeTier(index)}
+                                disabled={discountTiers.length <= 1}
+                                data-testid={`button-remove-tier-${index}`}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {discountTiers.length > 0 && (
+                      <div className="text-sm text-muted-foreground bg-blue-50 dark:bg-blue-950/30 p-3 rounded-lg">
+                        <strong>Preview:</strong>{" "}
+                        {discountTiers
+                          .sort((a, b) => a.threshold_amount - b.threshold_amount)
+                          .map((tier, idx) => (
+                            <span key={idx}>
+                              {idx > 0 && " • "}
+                              Spend ${tier.threshold_amount}+ = {tier.discount_type === "percentage" ? `${tier.discount_value}% off` : `$${tier.discount_value} off`}
+                            </span>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
@@ -566,6 +730,8 @@ export default function CouponsPage() {
                     const maxUses = coupon.max_redemptions ?? coupon.usage_limit ?? coupon.max_uses
                     const maxPerCustomer = coupon.max_uses_per_customer
                     const expiresAt = coupon.valid_until_at ?? coupon.expires_at
+                    const isTiered = coupon.discount_type === "tiered"
+                    const tiers = coupon.discount_tiers || []
                     
                     // Format usage limits display
                     const usageLimitDisplay = () => {
@@ -576,15 +742,40 @@ export default function CouponsPage() {
                       return parts.join(", ")
                     }
                     
+                    // Format tiered discount display
+                    const tieredDisplay = () => {
+                      if (!isTiered || tiers.length === 0) return null
+                      const sortedTiers = [...tiers].sort((a: any, b: any) => a.threshold_amount - b.threshold_amount)
+                      return sortedTiers.map((t: any, i: number) => (
+                        <span key={i} className="block text-xs">
+                          ${t.threshold_amount}+: {t.discount_type === 'percentage' ? `${t.discount_value}%` : `$${t.discount_value}`}
+                        </span>
+                      ))
+                    }
+                    
                     return (
                       <TableRow key={coupon.id} data-testid={`row-coupon-${coupon.id}`}>
                         <TableCell className="font-mono font-bold">{coupon.code}</TableCell>
-                        <TableCell className="capitalize">{coupon.discount_type}</TableCell>
                         <TableCell>
-                          {coupon.discount_type === "percentage" || coupon.discount_type === "percent"
-                            ? `${discountValue}%` 
-                            : formatCurrency(discountValue, 'CAD')
-                          }
+                          {isTiered ? (
+                            <Badge variant="secondary" className="flex items-center gap-1">
+                              <Layers className="h-3 w-3" />
+                              Tiered
+                            </Badge>
+                          ) : (
+                            <span className="capitalize">{coupon.discount_type}</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {isTiered ? (
+                            <div className="space-y-0.5">
+                              {tieredDisplay()}
+                            </div>
+                          ) : coupon.discount_type === "percentage" || coupon.discount_type === "percent" ? (
+                            `${discountValue}%`
+                          ) : (
+                            formatCurrency(discountValue, 'CAD')
+                          )}
                         </TableCell>
                         <TableCell>
                           {minOrder ? formatCurrency(minOrder, 'CAD') : "—"}

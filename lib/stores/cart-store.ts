@@ -35,6 +35,14 @@ export interface CartItem {
   subtotal: number; // (sizePrice + sum of modifier prices) * quantity
 }
 
+// Discount tier for tiered coupons
+export interface DiscountTier {
+  threshold_amount: number;
+  discount_type: 'percentage' | 'fixed';
+  discount_value: number;
+  description?: string;
+}
+
 // Applied promo code details
 export interface AppliedPromo {
   code: string;
@@ -43,6 +51,11 @@ export interface AppliedPromo {
   description: string;
   promoId?: number; // ID from promotional_coupons or promotional_deals
   promoType?: 'coupon' | 'deal';
+  // Tiered discount info
+  isTiered?: boolean;
+  activeTier?: DiscountTier | null;
+  nextTier?: DiscountTier | null;
+  allTiers?: DiscountTier[];
 }
 
 interface CartStore {

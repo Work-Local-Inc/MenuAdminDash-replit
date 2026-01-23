@@ -190,12 +190,63 @@ export async function POST(request: NextRequest) {
       // Calculate discount - handle both old and new column names
       // Old: redeem_value_limit, percent/currency
       // New: discount_amount, percentage/fixed
+      // Tiered: discount_tiers array
       let discountValue = 0;
       let description = '';
       let discountType = coupon.discount_type;
+      let activeTier = null;
+      let nextTier = null;
       
-      // Normalize discount type names
-      if (discountType === 'percent' || discountType === 'percentage') {
+      // Handle tiered discounts
+      if (discountType === 'tiered' && coupon.discount_tiers && Array.isArray(coupon.discount_tiers)) {
+        const tiers = coupon.discount_tiers.sort((a: any, b: any) => b.threshold_amount - a.threshold_amount);
+        
+        // Find the applicable tier based on subtotal
+        for (const tier of tiers) {
+          if (subtotal >= tier.threshold_amount) {
+            activeTier = tier;
+            break;
+          }
+        }
+        
+        // Find the next tier (if any) to show incentive
+        if (activeTier) {
+          const currentIndex = tiers.indexOf(activeTier);
+          if (currentIndex > 0) {
+            nextTier = tiers[currentIndex - 1];
+          }
+        } else if (tiers.length > 0) {
+          // No tier reached yet, show the first (lowest threshold) tier as next
+          nextTier = tiers[tiers.length - 1];
+        }
+        
+        if (activeTier) {
+          if (activeTier.discount_type === 'percentage') {
+            discountValue = activeTier.discount_value;
+            discountType = 'percent';
+            description = `${discountValue}% off (spend $${activeTier.threshold_amount}+ tier)`;
+          } else {
+            discountValue = activeTier.discount_value;
+            discountType = 'currency';
+            description = `$${discountValue} off (spend $${activeTier.threshold_amount}+ tier)`;
+          }
+        } else {
+          // Cart total doesn't qualify for any tier
+          const lowestTier = tiers[tiers.length - 1];
+          const amountNeeded = (lowestTier.threshold_amount - subtotal).toFixed(2);
+          return NextResponse.json(
+            { 
+              error: `Add $${amountNeeded} more to unlock ${lowestTier.discount_type === 'percentage' ? `${lowestTier.discount_value}%` : `$${lowestTier.discount_value}`} off`,
+              is_tiered: true,
+              next_tier: lowestTier,
+              amount_needed: parseFloat(amountNeeded)
+            },
+            { status: 400 }
+          );
+        }
+      }
+      // Normalize discount type names for non-tiered discounts
+      else if (discountType === 'percent' || discountType === 'percentage') {
         discountValue = coupon.discount_amount ?? coupon.redeem_value_limit ?? 0;
         description = `${discountValue}% off your order`;
         discountType = 'percent'; // Normalize for frontend
@@ -224,6 +275,11 @@ export async function POST(request: NextRequest) {
         promo_id: coupon.id,
         promo_type: 'coupon',
         name: coupon.name,
+        // Include tier info for tiered discounts
+        is_tiered: coupon.discount_type === 'tiered',
+        active_tier: activeTier,
+        next_tier: nextTier,
+        all_tiers: coupon.discount_type === 'tiered' ? coupon.discount_tiers : undefined,
       });
     }
 

@@ -1,11 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { Tag, Loader2 } from 'lucide-react';
+import { Tag, Loader2, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useCartStore } from '@/lib/stores/cart-store';
 import { useToast } from '@/hooks/use-toast';
+
+interface TierInfo {
+  threshold_amount: number;
+  discount_type: 'percentage' | 'fixed';
+  discount_value: number;
+}
 
 interface CouponInputProps {
   restaurantSlug: string;
@@ -16,6 +22,12 @@ export function CouponInput({ restaurantSlug, buttonStyle }: CouponInputProps) {
   const [code, setCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tierInfo, setTierInfo] = useState<{
+    isTiered: boolean;
+    activeTier: TierInfo | null;
+    nextTier: TierInfo | null;
+    allTiers: TierInfo[];
+  } | null>(null);
   
   const { appliedPromo, applyPromo, getSubtotal, orderType } = useCartStore();
   const { toast } = useToast();
@@ -63,7 +75,22 @@ export function CouponInput({ restaurantSlug, buttonStyle }: CouponInputProps) {
         description: data.description,
         promoId: data.promo_id,
         promoType: data.promo_type,
+        // Include tier info for tiered discounts
+        isTiered: data.is_tiered || false,
+        activeTier: data.active_tier || null,
+        nextTier: data.next_tier || null,
+        allTiers: data.all_tiers || [],
       });
+      
+      // Store tier info locally for display
+      if (data.is_tiered) {
+        setTierInfo({
+          isTiered: true,
+          activeTier: data.active_tier,
+          nextTier: data.next_tier,
+          allTiers: data.all_tiers || [],
+        });
+      }
       
       setCode('');
       toast({

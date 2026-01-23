@@ -84,9 +84,34 @@ async function validateCouponServerSide(
         }
       }
 
-      // Calculate discount
+      // Calculate discount - handle tiered discounts
       let discountAmount = 0
-      if (coupon.discount_type === 'percentage') {
+      
+      if (coupon.discount_type === 'tiered' && coupon.discount_tiers && Array.isArray(coupon.discount_tiers)) {
+        // Tiered discount: find applicable tier based on subtotal
+        const tiers = coupon.discount_tiers.sort((a: any, b: any) => b.threshold_amount - a.threshold_amount)
+        let activeTier = null
+        
+        for (const tier of tiers) {
+          if (subtotal >= tier.threshold_amount) {
+            activeTier = tier
+            break
+          }
+        }
+        
+        if (activeTier) {
+          if (activeTier.discount_type === 'percentage') {
+            discountAmount = subtotal * (activeTier.discount_value / 100)
+          } else {
+            discountAmount = activeTier.discount_value
+          }
+          console.log(`[PaymentIntent] Applied tiered discount: ${activeTier.discount_type === 'percentage' ? `${activeTier.discount_value}%` : `$${activeTier.discount_value}`} for subtotal $${subtotal} (tier threshold: $${activeTier.threshold_amount})`)
+        } else {
+          // Subtotal doesn't meet any tier threshold - no discount
+          console.log(`[PaymentIntent] Subtotal $${subtotal} does not meet any tier threshold`)
+          return { valid: false, discountAmount: 0, promoId: null, promoType: null, code: null }
+        }
+      } else if (coupon.discount_type === 'percentage') {
         discountAmount = subtotal * (parseFloat(coupon.discount_value) / 100)
         if (coupon.max_discount_amount) {
           discountAmount = Math.min(discountAmount, parseFloat(coupon.max_discount_amount))
