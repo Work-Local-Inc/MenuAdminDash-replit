@@ -1,8 +1,15 @@
 import { Client } from 'pg';
 
 async function runSQL(sqlCommand: string) {
+  const connectionString = process.env.SUPABASE_BRANCH_DB_URL || process.env.SUPABASE_DB_URL;
+  
+  if (!connectionString) {
+    console.error('❌ No Supabase connection string found. Set SUPABASE_BRANCH_DB_URL or SUPABASE_DB_URL');
+    process.exit(1);
+  }
+  
   const client = new Client({
-    connectionString: process.env.DATABASE_URL,
+    connectionString,
   });
 
   try {
