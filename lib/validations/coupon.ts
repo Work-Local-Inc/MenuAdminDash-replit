@@ -4,7 +4,9 @@ import { z } from "zod"
 export const couponCreateSchema = z.object({
   code: z.string().min(1),
   name: z.string().min(1), // Required by database
+  name_fr: z.string().optional().nullable(), // French translation
   description: z.string().optional().nullable(),
+  description_fr: z.string().optional().nullable(), // French translation
   discount_type: z.enum(["percentage", "fixed"]),
   discount_amount: z.number().positive(), // Database column name
   minimum_purchase: z.number().optional().nullable(), // Database column name

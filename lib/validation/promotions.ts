@@ -17,7 +17,9 @@ export const discountTypeSchema = z.enum(['percentage', 'fixed_amount'])
 export const createDealSchema = z.object({
   restaurant_id: z.number().int().positive('Restaurant ID must be a positive integer'),
   name: z.string().min(1, 'Name is required').max(255, 'Name must be less than 255 characters'),
+  name_fr: z.string().max(255).optional().nullable(),
   description: z.string().optional(),
+  description_fr: z.string().optional().nullable(),
   discount_type: discountTypeSchema,
   discount_value: z.number().positive('Discount value must be positive').finite('Discount value must be a valid number'),
   minimum_purchase: z.number().min(0, 'Minimum purchase cannot be negative').finite('Minimum purchase must be a valid number').optional().nullable(),
@@ -40,7 +42,9 @@ export const createDealSchema = z.object({
 // Does NOT allow restaurant_id changes (security)
 export const updateDealSchema = z.object({
   name: z.string().min(1).max(255).optional(),
+  name_fr: z.string().max(255).optional().nullable(),
   description: z.string().optional().nullable(),
+  description_fr: z.string().optional().nullable(),
   discount_type: discountTypeSchema.optional(),
   discount_value: z.number().positive().finite().optional(),
   minimum_purchase: z.number().min(0).finite().optional().nullable(),

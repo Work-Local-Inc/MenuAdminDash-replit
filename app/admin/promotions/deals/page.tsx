@@ -41,7 +41,14 @@ import {
   Store,
   Building2,
   ArrowLeft,
+  Languages,
+  ChevronDown,
 } from "lucide-react"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -52,8 +59,10 @@ import {
 
 const dealSchema = z.object({
   name: z.string().min(1, "Name is required"),
+  name_fr: z.string().optional(),
   deal_type: z.enum(["bogo", "combo", "happy_hour", "bundle", "limited_time"]),
   description: z.string().optional(),
+  description_fr: z.string().optional(),
   discount_type: z.enum(["percentage", "fixed", "free_item"]),
   discount_value: z.coerce.number().min(0),
   conditions: z.object({
@@ -226,7 +235,10 @@ export default function DealsPage() {
     resolver: zodResolver(dealSchema),
     defaultValues: {
       name: "",
+      name_fr: "",
       deal_type: "bogo",
+      description: "",
+      description_fr: "",
       discount_type: "percentage",
       discount_value: 0,
       is_active: true,
@@ -260,7 +272,9 @@ export default function DealsPage() {
       await createDeal.mutateAsync({
         restaurant_id: parseInt(selectedRestaurantId),
         name: data.name,
+        name_fr: data.name_fr || null,
         description: data.description,
+        description_fr: data.description_fr || null,
         deal_type: dbDealType,
         discount_percent: data.discount_type === 'percentage' ? data.discount_value : null,
         discount_amount: data.discount_type === 'fixed' ? data.discount_value : null,
@@ -355,7 +369,7 @@ export default function DealsPage() {
                     <FormItem>
                       <FormLabel>Deal Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g., Buy 2 Get 1 Free" {...field} />
+                        <Input placeholder="e.g., Buy 2 Get 1 Free" data-testid="input-deal-name" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -370,12 +384,51 @@ export default function DealsPage() {
                     <FormItem>
                       <FormLabel>Description</FormLabel>
                       <FormControl>
-                        <Input placeholder="Describe the deal for customers" {...field} />
+                        <Input placeholder="Describe the deal for customers" data-testid="input-deal-description" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+
+                {/* French Translations */}
+                <Collapsible className="border rounded-lg p-4">
+                  <CollapsibleTrigger className="flex items-center justify-between w-full">
+                    <div className="flex items-center gap-2">
+                      <Languages className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium text-sm">French Translation (Optional)</span>
+                    </div>
+                    <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 data-[state=open]:rotate-180" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-4 pt-4">
+                    <FormField
+                      control={form.control}
+                      name="name_fr"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Deal Name (French)</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g., Achetez 2, Obtenez 1 Gratuit" data-testid="input-deal-name-fr" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="description_fr"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Description (French)</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Décrivez l'offre pour les clients" data-testid="input-deal-description-fr" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </CollapsibleContent>
+                </Collapsible>
 
                 {/* Discount Settings */}
                 <div className="grid grid-cols-2 gap-4">

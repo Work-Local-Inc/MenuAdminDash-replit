@@ -16,7 +16,12 @@ import { SearchableRestaurantSelect } from "@/components/admin/searchable-restau
 import { useCoupons, useCreateCoupon } from "@/lib/hooks/use-coupons"
 import { useRestaurants } from "@/lib/hooks/use-restaurants"
 import { formatCurrency, formatDate } from "@/lib/utils"
-import { Plus, Search, Tag, ArrowLeft, Building2, Store } from "lucide-react"
+import { Plus, Search, Tag, ArrowLeft, Building2, Store, Languages, ChevronDown } from "lucide-react"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -27,7 +32,9 @@ import { useToast } from "@/hooks/use-toast"
 const couponSchema = z.object({
   code: z.string().min(1, "Code is required"),
   name: z.string().optional(),
+  name_fr: z.string().optional(),
   description: z.string().optional(),
+  description_fr: z.string().optional(),
   discount_type: z.enum(["percentage", "fixed"]),
   discount_amount: z.coerce.number().positive("Must be greater than 0"),
   minimum_purchase: z.union([z.coerce.number().positive(), z.literal('')]).optional(),
@@ -38,7 +45,9 @@ const couponSchema = z.object({
 type CouponFormValues = {
   code: string
   name?: string
+  name_fr?: string
   description?: string
+  description_fr?: string
   discount_type: "percentage" | "fixed"
   discount_amount: number
   minimum_purchase?: number | ''
@@ -92,7 +101,9 @@ export default function CouponsPage() {
     defaultValues: {
       code: "",
       name: "",
+      name_fr: "",
       description: "",
+      description_fr: "",
       discount_type: "percentage" as const,
       discount_amount: 0,
       minimum_purchase: undefined,
@@ -235,6 +246,94 @@ export default function CouponsPage() {
                     </FormItem>
                   )}
                 />
+
+                {/* Coupon Name */}
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Coupon Name (Optional)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="e.g., Summer Sale Discount" 
+                          data-testid="input-coupon-name"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Display name shown to customers
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Description */}
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description (Optional)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Get 15% off your order" 
+                          data-testid="input-coupon-description"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* French Translations */}
+                <Collapsible className="border rounded-lg p-4">
+                  <CollapsibleTrigger className="flex items-center justify-between w-full">
+                    <div className="flex items-center gap-2">
+                      <Languages className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium text-sm">French Translation (Optional)</span>
+                    </div>
+                    <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 data-[state=open]:rotate-180" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-4 pt-4">
+                    <FormField
+                      control={form.control}
+                      name="name_fr"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Coupon Name (French)</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="e.g., Rabais d'été" 
+                              data-testid="input-coupon-name-fr"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="description_fr"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Description (French)</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="Obtenez 15% de rabais sur votre commande" 
+                              data-testid="input-coupon-description-fr"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </CollapsibleContent>
+                </Collapsible>
 
                 <div className="grid grid-cols-2 gap-4">
                   <FormField

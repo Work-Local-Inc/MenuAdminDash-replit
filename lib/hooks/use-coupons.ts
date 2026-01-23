@@ -38,7 +38,9 @@ export function useCreateCoupon(restaurantId?: string | number) {
       const payload = {
         code: data.code,
         name: data.name || data.code, // Use code as name if not provided
+        name_fr: data.name_fr || null,
         description: data.description || null,
+        description_fr: data.description_fr || null,
         discount_type: data.discount_type,
         discount_amount: data.discount_amount,
         minimum_purchase: data.minimum_purchase || null,
