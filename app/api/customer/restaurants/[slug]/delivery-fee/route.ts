@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { extractIdFromSlug } from '@/lib/utils/slugify';
-import { usesRestozoneDispatch } from '@/lib/restozone/config';
-import { getRestozoneDeliveryFee } from '@/lib/restozone/service';
+import { getDeliveryProviderConfig, getDeliveryProviderAdapter } from '@/lib/delivery-providers';
 
 /**
  * GET /api/customer/restaurants/[slug]/delivery-fee
@@ -39,6 +38,7 @@ export async function GET(
 
     // Get restaurant config and location
     const { data: config, error: configError } = await supabase
+      .schema('menuca_v3')
       .from('delivery_and_pickup_configs')
       .select('has_delivery_enabled, distance_based_delivery_fee')
       .eq('restaurant_id', restaurantId)
@@ -114,36 +114,46 @@ export async function GET(
       }
     }
 
-    // For distance-based restaurants, use RestoZone or fallback fee tiers
+    // For distance-based restaurants, use delivery provider API or fallback fee tiers
     if (config.distance_based_delivery_fee && distanceKm !== null) {
       const roundedDistance = Math.ceil(distanceKm);
 
-      // Check if this restaurant uses RestoZone
-      if (usesRestozoneDispatch(restaurantId)) {
-        console.log(`[Delivery Fee] Checking RestoZone for restaurant ${restaurantId}, distance: ${roundedDistance}km`);
+      // Check if this restaurant uses an external delivery provider
+      const providerConfig = await getDeliveryProviderConfig(restaurantId);
+      
+      if (providerConfig?.provider && providerConfig.provider.isActive && 
+          providerConfig.provider.supportsFeeApi && providerConfig.providerExternalId) {
+        
+        const adapter = getDeliveryProviderAdapter(providerConfig.provider.code);
+        
+        if (adapter) {
+          console.log(`[Delivery Fee] Checking ${providerConfig.provider.name} for restaurant ${restaurantId}, distance: ${roundedDistance}km`);
 
-        // Try RestoZone API first
-        const restozoneResult = await getRestozoneDeliveryFee({
-          restaurantV3Id: restaurantId,
-          distanceKm: roundedDistance,
-        });
-
-        if (restozoneResult.success && restozoneResult.fee !== null) {
-          console.log(`[Delivery Fee] RestoZone returned fee: $${restozoneResult.fee}`);
-          return NextResponse.json({
-            deliveryAvailable: true,
-            deliveryFee: restozoneResult.fee,
+          // Try provider API first
+          const feeResult = await adapter.getFee({
+            restaurantId,
+            providerExternalId: providerConfig.providerExternalId,
             distanceKm: roundedDistance,
-            source: 'restozone_api',
-            isDistanceBased: true,
           });
-        } else {
-          console.log(`[Delivery Fee] RestoZone API failed, using fallback:`, restozoneResult.error);
+
+          if (feeResult.success && feeResult.fee !== null) {
+            console.log(`[Delivery Fee] ${providerConfig.provider.name} returned fee: $${feeResult.fee}`);
+            return NextResponse.json({
+              deliveryAvailable: true,
+              deliveryFee: feeResult.fee,
+              distanceKm: roundedDistance,
+              source: `${providerConfig.provider.code}_api`,
+              isDistanceBased: true,
+            });
+          } else {
+            console.log(`[Delivery Fee] ${providerConfig.provider.name} API failed, using fallback:`, feeResult.error);
+          }
         }
       }
 
       // Fallback: Use existing distance-based fee tiers from database
       const { data: feeTiers, error: feeTiersError } = await supabase
+        .schema('menuca_v3')
         .from('restaurant_distance_based_delivery_fees')
         .select('distance_in_km, total_delivery_fee, driver_earning')
         .eq('restaurant_id', restaurantId)
@@ -184,6 +194,7 @@ export async function GET(
     // For zone-based restaurants (or if distance calculation fails), 
     // return zone info and let client handle point-in-polygon
     const { data: zones, error: zonesError } = await supabase
+      .schema('menuca_v3')
       .from('restaurant_delivery_areas')
       .select('id, delivery_fee, delivery_min_order, is_active, geometry')
       .eq('restaurant_id', restaurantId)

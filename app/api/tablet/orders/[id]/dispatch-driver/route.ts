@@ -6,14 +6,13 @@ import {
   checkRateLimit,
   rateLimitResponse,
 } from '@/lib/tablet/verify-device';
-import { usesRestozoneDispatch, getRestozoneId } from '@/lib/restozone/config';
-import { dispatchRestozoneDriver } from '@/lib/restozone/service';
+import { getDeliveryProviderConfig, getDeliveryProviderAdapter } from '@/lib/delivery-providers';
 
 /**
  * POST /api/tablet/orders/[id]/dispatch-driver
  *
- * Request a driver from RestoZone for a delivery order.
- * Only available for the 8 restaurants configured to use RestoZone.
+ * Request a driver from an external delivery provider for a delivery order.
+ * Only available for restaurants configured with a delivery provider.
  */
 export async function POST(
   request: NextRequest,
@@ -41,15 +40,26 @@ export async function POST(
       return NextResponse.json({ error: 'Invalid order ID' }, { status: 400 });
     }
 
-    // Check if restaurant uses RestoZone
-    if (!usesRestozoneDispatch(deviceContext.restaurant_id)) {
+    const supabase = createAdminClient() as any;
+
+    // Check if restaurant uses an external delivery provider
+    const providerConfig = await getDeliveryProviderConfig(deviceContext.restaurant_id);
+    
+    if (!providerConfig?.provider || !providerConfig.provider.isActive || 
+        !providerConfig.provider.supportsDispatchApi || !providerConfig.providerExternalId) {
       return NextResponse.json(
-        { error: 'Restaurant not configured for RestoZone dispatch' },
+        { error: 'Restaurant not configured for external driver dispatch' },
         { status: 400 }
       );
     }
 
-    const supabase = createAdminClient() as any;
+    const adapter = getDeliveryProviderAdapter(providerConfig.provider.code);
+    if (!adapter) {
+      return NextResponse.json(
+        { error: `No adapter available for provider: ${providerConfig.provider.code}` },
+        { status: 500 }
+      );
+    }
 
     // Get order details with restaurant info
     const { data: order, error: orderError } = await supabase
@@ -158,9 +168,10 @@ export async function POST(
       // Empty body is fine
     }
 
-    // Dispatch driver via RestoZone
-    const dispatchResult = await dispatchRestozoneDriver({
-      restaurantV3Id: deviceContext.restaurant_id,
+    // Dispatch driver via provider adapter
+    const dispatchResult = await adapter.dispatch({
+      restaurantId: deviceContext.restaurant_id,
+      providerExternalId: providerConfig.providerExternalId,
       orderId: orderIdNum,
       address: order.delivery_address || '',
       postalCode: body.postalCode || postalCode,
@@ -179,8 +190,8 @@ export async function POST(
 
     // Record dispatch attempt in order status history
     const historyNotes = dispatchResult.usedBackupEmail
-      ? `Driver dispatched via backup email (API unavailable)`
-      : `Driver dispatched via RestoZone API`;
+      ? `Driver dispatched via backup email (${providerConfig.provider.name} API unavailable)`
+      : `Driver dispatched via ${providerConfig.provider.name} API`;
 
     await supabase
       .from('order_status_history')
@@ -193,17 +204,18 @@ export async function POST(
       });
 
     console.log(
-      `[Tablet Dispatch Driver] Order ${orderIdNum}: ${dispatchResult.success ? 'Success' : 'Failed'}`,
+      `[Tablet Dispatch Driver] Order ${orderIdNum} via ${providerConfig.provider.name}: ${dispatchResult.success ? 'Success' : 'Failed'}`,
       dispatchResult.usedBackupEmail ? '(via backup email)' : ''
     );
 
     return NextResponse.json({
       success: dispatchResult.success,
       order_id: orderIdNum,
+      provider: providerConfig.provider.code,
       used_backup_email: dispatchResult.usedBackupEmail || false,
       message: dispatchResult.usedBackupEmail
-        ? 'Driver request sent via backup email (RestoZone API unavailable)'
-        : 'Driver request sent to RestoZone',
+        ? `Driver request sent via backup email (${providerConfig.provider.name} API unavailable)`
+        : `Driver request sent to ${providerConfig.provider.name}`,
     });
   } catch (error: any) {
     console.error('[Tablet Dispatch Driver] Error:', error);
@@ -234,14 +246,21 @@ export async function GET(
 
     const deviceContext = authResult;
 
-    // Check if restaurant uses RestoZone
-    const usesRestozone = usesRestozoneDispatch(deviceContext.restaurant_id);
-    const restozoneId = getRestozoneId(deviceContext.restaurant_id);
+    // Check if restaurant uses an external delivery provider
+    const providerConfig = await getDeliveryProviderConfig(deviceContext.restaurant_id);
+    
+    const hasProvider = !!(providerConfig?.provider && 
+                          providerConfig.provider.isActive && 
+                          providerConfig.provider.supportsDispatchApi &&
+                          providerConfig.providerExternalId);
 
     return NextResponse.json({
-      uses_restozone: usesRestozone,
-      restozone_id: restozoneId,
-      dispatch_available: usesRestozone,
+      dispatch_available: hasProvider,
+      provider: hasProvider ? {
+        code: providerConfig!.provider!.code,
+        name: providerConfig!.provider!.name,
+        external_id: providerConfig!.providerExternalId,
+      } : null,
     });
   } catch (error: any) {
     console.error('[Tablet Dispatch Driver Check] Error:', error);

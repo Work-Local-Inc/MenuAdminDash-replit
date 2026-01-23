@@ -200,43 +200,53 @@ fetch('/api/customer/orders', {...})
 fetch(`${getApiBaseUrl()}/api/customer/orders`, {...})
 ```
 
-### RestoZone 3rd-Party Delivery Integration (Jan 2026)
-**Status:** API READY
-**Documentation:** `docs/RESTOZONE_INTEGRATION.md`
+### Delivery Providers System (Jan 2026)
+**Status:** LIVE
+**Documentation:** `docs/RESTOZONE_INTEGRATION.md`, `docs/DELIVERY_PROVIDERS_HANDOFF.md`
 
-3rd-party delivery dispatch integration for 8 Quebec restaurants that use RestoZone for driver dispatch.
+Extensible third-party delivery provider integration system supporting RestoZone (and future providers like Tookan, DoorDash Drive, Uber Direct).
+
+**Database Schema:**
+- `menuca_v3.delivery_providers` - Master list of provider companies (code, name, API URL, capabilities)
+- `menuca_v3.delivery_and_pickup_configs` columns:
+  - `delivery_provider_id` - FK to delivery_providers
+  - `delivery_provider_external_id` - Restaurant's ID in provider's system
+
+**Architecture:**
+```
+lib/delivery-providers/
+├── types.ts           # Interfaces for providers, adapters, requests/responses
+├── factory.ts         # Returns adapter based on provider code
+├── get-provider.ts    # Database lookup for restaurant's provider config
+├── index.ts           # Public exports
+└── adapters/
+    └── restozone.ts   # RestoZone-specific implementation
+```
 
 **How It Works:**
-1. **At Checkout** - For distance-based restaurants, the delivery fee is fetched from RestoZone's `getFees()` API. Falls back to existing `restaurant_distance_based_delivery_fees` table if API fails.
-2. **On Tablet** - After order acceptance, restaurant clicks "Request Driver" button which calls RestoZone's `send_data()` API to dispatch a driver.
-3. **Backup Email** - If RestoZone API fails, backup email is sent to dispatch operators.
-
-**Configured Restaurants (8):**
-| V3 ID | Restaurant | RestoZone ID |
-|-------|------------|--------------|
-| 131 | Centertown Donair & Pizza | 255 |
-| 87 | Champa Thai Cuisine | 203 |
-| 943 | Charm Thai Cuisine | 323 |
-| 1010 | Lemongrass Thai Cuisine | 219 |
-| 15 | New Mee Fung Restaurant | 101 |
-| 807 | Oh My Grill | 1051 |
-| 199 | Pho Bo Ga King - Somerset | 337 |
-| 847 | Sushiyana | 1094 |
+1. **At Checkout** - API queries database for restaurant's provider, calls provider's fee API, falls back to distance tiers
+2. **On Tablet** - API queries database, routes to appropriate adapter for driver dispatch
+3. **Backup Email** - Provider adapters send backup emails on API failure
 
 **API Endpoints:**
-- `GET /api/customer/restaurants/{slug}/delivery-fee` - Get delivery fee for checkout (calls RestoZone)
+- `GET /api/customer/restaurants/{slug}/delivery-fee` - Get delivery fee (uses provider API)
 - `GET /api/tablet/orders/{id}/dispatch-driver` - Check if dispatch available
 - `POST /api/tablet/orders/{id}/dispatch-driver` - Request driver dispatch
 
-**Configuration Files:**
-- `lib/restozone/config.ts` - Restaurant mappings and API endpoints
-- `lib/restozone/service.ts` - API call logic and backup email
+**Current Provider: RestoZone**
+- Code: `restozone`
+- Supports: Fee API, Dispatch API
+- Backup emails: Deliveryzonecanada@gmail.com, mattmenuottawa2@gmail.com, restozonedispatch@gmail.com
 
-**Backup Emails:**
-- Deliveryzonecanada@gmail.com
-- mattmenuottawa2@gmail.com
-- restozonedispatch@gmail.com
+**To Add New Restaurant to Existing Provider:**
+```sql
+UPDATE menuca_v3.delivery_and_pickup_configs
+SET delivery_provider_id = (SELECT id FROM menuca_v3.delivery_providers WHERE code = 'restozone'),
+    delivery_provider_external_id = '123'  -- Provider's restaurant ID
+WHERE restaurant_id = 456;
+```
 
-**To Add New Restaurant:**
-1. Add entry to `RESTOZONE_RESTAURANTS` in `lib/restozone/config.ts`
-2. Ensure restaurant has `distance_based_delivery_fee = true` in database
+**To Add New Provider:**
+1. Insert into `menuca_v3.delivery_providers`
+2. Create adapter in `lib/delivery-providers/adapters/`
+3. Register in `lib/delivery-providers/factory.ts`
