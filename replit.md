@@ -58,3 +58,10 @@ Preferred communication style: Simple, everyday language.
 -   **Stripe**: Payment processing.
 -   **Google Places API**: Address autocomplete and verification.
 -   **RestoZone**: Third-party delivery provider.
+
+## Recent Changes
+
+### January 2026
+-   **Coupon Validation at Checkout (Completed)**: Added CouponInput component to cart drawer with full validation flow. Server-side validation in create-payment-intent endpoint. Orders API stores coupon data (promo_id, discount_amount, promo_code) with automatic usage logging to coupon_usage_log table (for promo_type === 'coupon' only). Includes NaN guarding for discount parsing.
+-   **CartDrawer Component Update**: Now requires `restaurantSlug` prop for coupon validation API calls. The slug is computed via useMemo in RestaurantMenu and RestaurantMenuPublic components.
+-   **Bilingual Translations for Marketing Hub (Completed)**: Added French translation support for promotional deals and coupons with English fallback.
