@@ -187,8 +187,10 @@ export async function POST(request: NextRequest) {
     const orderType = (metadata.order_type === 'pickup' ? 'pickup' : 'delivery') as 'delivery' | 'pickup'
     const orderNotes = metadata.order_notes || null
     const couponCode = metadata.coupon_code || null
-    const discountAmount = metadata.discount_amount ? parseFloat(metadata.discount_amount) : 0
-    const promoId = metadata.promo_id ? parseInt(metadata.promo_id) : null
+    const parsedDiscount = parseFloat(metadata.discount_amount || '0')
+    const discountAmount = Number.isFinite(parsedDiscount) ? parsedDiscount : 0
+    const parsedPromoId = parseInt(metadata.promo_id || '0')
+    const promoId = Number.isFinite(parsedPromoId) && parsedPromoId > 0 ? parsedPromoId : null
     const promoType = metadata.promo_type || null
     let serviceTime: { type: 'asap' | 'scheduled'; scheduledTime?: string } = { type: 'asap' }
     
@@ -896,8 +898,9 @@ export async function POST(request: NextRequest) {
         notes: 'Order placed and payment confirmed',
       } as any)
 
-    // Log coupon usage if a coupon was applied
-    if (promoId && discountAmount > 0) {
+    // Log coupon usage if a coupon (not a deal) was applied
+    // Only log to coupon_usage_log for promo_type='coupon' to avoid corrupting analytics
+    if (promoId && discountAmount > 0 && promoType === 'coupon') {
       try {
         await (adminSupabase as any)
           .schema('menuca_v3')

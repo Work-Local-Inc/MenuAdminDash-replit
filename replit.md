@@ -40,6 +40,7 @@ Preferred communication style: Simple, everyday language.
 -   **Modifier Table Schema**: Distinction between legacy and active modifier tables (`modifiers`, `modifier_prices`, `modifier_groups`), with `modifier_groups` relationship managed by RPC.
 -   **API Routing for Subdomains**: `getApiBaseUrl()` helper ensures API calls from branded subdomains route correctly to the main domain.
 -   **Stripe Key Management**: Critical handling to ensure Stripe publishable and secret keys match the active payment mode (test/live) to prevent errors.
+-   **Coupon Validation**: Server-side validation of coupon codes at payment intent creation. Coupon codes are re-validated and discounts recalculated server-side (using `promotional_coupons` and `promotional_deals` tables). Note: Cart subtotals are client-computed; full server-side cart validation would require architectural changes.
 
 ## External Dependencies
 

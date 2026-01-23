@@ -4,6 +4,112 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { extractIdFromSlug } from '@/lib/utils/slugify'
 
+// Validate coupon server-side and calculate discount
+async function validateCouponServerSide(
+  couponCode: string | undefined,
+  restaurantId: number,
+  subtotal: number,
+  orderType: string
+): Promise<{ valid: boolean; discountAmount: number; promoId: number | null; promoType: string | null; code: string | null }> {
+  if (!couponCode) {
+    return { valid: false, discountAmount: 0, promoId: null, promoType: null, code: null }
+  }
+
+  try {
+    const adminSupabase = createAdminClient() as any
+    const code = couponCode.toUpperCase()
+    const now = new Date()
+
+    // Check promotional_coupons first
+    const { data: coupon } = await adminSupabase
+      .schema('menuca_v3')
+      .from('promotional_coupons')
+      .select('*')
+      .eq('code', code)
+      .eq('restaurant_id', restaurantId)
+      .is('deleted_at', null)
+      .maybeSingle()
+
+    if (coupon) {
+      // Validate coupon dates
+      if (coupon.valid_from_at && new Date(coupon.valid_from_at) > now) {
+        return { valid: false, discountAmount: 0, promoId: null, promoType: null, code: null }
+      }
+      if (coupon.valid_until_at && new Date(coupon.valid_until_at) < now) {
+        return { valid: false, discountAmount: 0, promoId: null, promoType: null, code: null }
+      }
+      // Check minimum order
+      if (coupon.minimum_order_amount && subtotal < parseFloat(coupon.minimum_order_amount)) {
+        return { valid: false, discountAmount: 0, promoId: null, promoType: null, code: null }
+      }
+      // Check order type restrictions
+      if (coupon.order_type_restriction && coupon.order_type_restriction !== 'all') {
+        const dbOrderType = orderType === 'pickup' ? 'takeout' : orderType
+        if (coupon.order_type_restriction !== dbOrderType) {
+          return { valid: false, discountAmount: 0, promoId: null, promoType: null, code: null }
+        }
+      }
+
+      // Calculate discount
+      let discountAmount = 0
+      if (coupon.discount_type === 'percentage') {
+        discountAmount = subtotal * (parseFloat(coupon.discount_value) / 100)
+        if (coupon.max_discount_amount) {
+          discountAmount = Math.min(discountAmount, parseFloat(coupon.max_discount_amount))
+        }
+      } else {
+        discountAmount = parseFloat(coupon.discount_value)
+      }
+      discountAmount = Math.round(discountAmount * 100) / 100 // Round to cents
+
+      return { valid: true, discountAmount, promoId: coupon.id, promoType: 'coupon', code }
+    }
+
+    // Check promotional_deals
+    const { data: deal } = await adminSupabase
+      .schema('menuca_v3')
+      .from('promotional_deals')
+      .select('*')
+      .eq('code', code)
+      .eq('restaurant_id', restaurantId)
+      .is('deleted_at', null)
+      .maybeSingle()
+
+    if (deal) {
+      // Validate deal dates
+      if (deal.valid_from_at && new Date(deal.valid_from_at) > now) {
+        return { valid: false, discountAmount: 0, promoId: null, promoType: null, code: null }
+      }
+      if (deal.valid_until_at && new Date(deal.valid_until_at) < now) {
+        return { valid: false, discountAmount: 0, promoId: null, promoType: null, code: null }
+      }
+      // Check minimum order
+      if (deal.minimum_order_amount && subtotal < parseFloat(deal.minimum_order_amount)) {
+        return { valid: false, discountAmount: 0, promoId: null, promoType: null, code: null }
+      }
+
+      // Calculate discount
+      let discountAmount = 0
+      if (deal.discount_type === 'percentage') {
+        discountAmount = subtotal * (parseFloat(deal.discount_value) / 100)
+        if (deal.max_discount_amount) {
+          discountAmount = Math.min(discountAmount, parseFloat(deal.max_discount_amount))
+        }
+      } else {
+        discountAmount = parseFloat(deal.discount_value)
+      }
+      discountAmount = Math.round(discountAmount * 100) / 100
+
+      return { valid: true, discountAmount, promoId: deal.id, promoType: 'deal', code }
+    }
+
+    return { valid: false, discountAmount: 0, promoId: null, promoType: null, code: null }
+  } catch (error) {
+    console.error('[PaymentIntent] Coupon validation error:', error)
+    return { valid: false, discountAmount: 0, promoId: null, promoType: null, code: null }
+  }
+}
+
 // Get Stripe instance based on payment mode (test or live)
 function getStripe(paymentMode: 'test' | 'live' = 'test') {
   let stripeSecretKey: string | undefined
@@ -170,19 +276,46 @@ export async function POST(request: NextRequest) {
       },
     } : undefined
 
+    // SECURITY: Validate coupon server-side instead of trusting client-provided discount
+    const restaurantId = extractIdFromSlug(restaurantSlug)
+    let validatedCoupon = { valid: false, discountAmount: 0, promoId: null as number | null, promoType: null as string | null, code: null as string | null }
+    
+    if (restaurantId && metadata?.coupon_code) {
+      validatedCoupon = await validateCouponServerSide(
+        metadata.coupon_code,
+        restaurantId,
+        subtotal || 0,
+        metadata?.order_type || 'delivery'
+      )
+      console.log('[PaymentIntent] Server-side coupon validation:', validatedCoupon)
+    }
+
+    // Build metadata with server-validated coupon data (overrides client-provided values)
+    const { coupon_code: clientCouponCode, discount_amount: clientDiscount, promo_id: clientPromoId, promo_type: clientPromoType, ...otherMetadata } = metadata || {}
+    
+    const paymentMetadata: Record<string, string> = {
+      user_id: user_id ? String(user_id) : 'guest',
+      guest_email: guest_email || undefined,
+      country: 'CA',
+      payment_mode: paymentMode,
+      ...otherMetadata,
+    }
+    
+    // Only include coupon data if server-side validation passed
+    if (validatedCoupon.valid) {
+      paymentMetadata.coupon_code = validatedCoupon.code || ''
+      paymentMetadata.discount_amount = String(validatedCoupon.discountAmount)
+      paymentMetadata.promo_id = validatedCoupon.promoId ? String(validatedCoupon.promoId) : ''
+      paymentMetadata.promo_type = validatedCoupon.promoType || ''
+    }
+
     // Create payment intent
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(amount * 100), // Convert to cents
       currency: 'cad',
       customer: stripeCustomerId,
       shipping: stripeShipping, // Include shipping address for Canadian origin detection
-      metadata: {
-        user_id: user_id ? String(user_id) : 'guest',
-        guest_email: guest_email || undefined,
-        country: 'CA', // Explicitly mark as Canadian transaction
-        payment_mode: paymentMode, // Store payment mode for reference
-        ...metadata,
-      },
+      metadata: paymentMetadata,
       automatic_payment_methods: {
         enabled: true,
       },
