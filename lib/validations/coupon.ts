@@ -10,6 +10,23 @@ export const discountTierSchema = z.object({
 
 export type DiscountTier = z.infer<typeof discountTierSchema>
 
+// Targeting types for item-specific coupons
+export const targetingTypes = ["all", "dish", "course"] as const
+export type TargetingType = typeof targetingTypes[number]
+
+// Targeting modes: include = whitelist, exclude = blacklist
+export const targetingModes = ["include", "exclude"] as const
+export type TargetingMode = typeof targetingModes[number]
+
+// Target item schema (for displaying names in UI)
+export const targetItemSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  type: z.enum(["dish", "course"]),
+})
+
+export type TargetItem = z.infer<typeof targetItemSchema>
+
 // Schema matches the actual database column names in menuca_v3.promotional_coupons
 export const couponCreateSchema = z.object({
   code: z.string().min(1),
@@ -28,4 +45,9 @@ export const couponCreateSchema = z.object({
   is_active: z.boolean().default(true),
   // Tiered discounts - JSONB array of tier objects
   discount_tiers: z.array(discountTierSchema).optional().nullable(),
+  // Item targeting - apply coupon to specific items only
+  targeting_type: z.enum(["all", "dish", "course"]).default("all"), // What to target
+  targeting_mode: z.enum(["include", "exclude"]).default("include"), // Include or exclude targets
+  targeting_ids: z.array(z.number()).optional().nullable(), // IDs of dishes or courses
+  targeting_items: z.array(targetItemSchema).optional().nullable(), // Cached names for display
 })

@@ -51,6 +51,11 @@ export function useCreateCoupon(restaurantId?: string | number) {
         valid_from_at: data.valid_from_at || null,
         restaurant_id: id, // Always required - location-specific only
         is_active: true,
+        // Item targeting fields
+        targeting_type: data.targeting_type || 'all',
+        targeting_mode: data.targeting_mode || 'include',
+        targeting_ids: data.targeting_ids || null,
+        targeting_items: data.targeting_items || null,
       }
       
       const res = await fetch('/api/coupons', {
