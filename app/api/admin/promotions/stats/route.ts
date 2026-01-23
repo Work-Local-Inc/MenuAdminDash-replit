@@ -59,13 +59,25 @@ export async function GET(request: NextRequest) {
       .eq('is_active', true)
 
     // Get redemption stats from coupon_usage_log
-    const { data: redemptionData } = await supabase
-      .from('coupon_usage_log')
-      .select('discount_amount')
+    // First get coupon IDs for target restaurants (coupon_usage_log doesn't have restaurant_id)
+    const { data: restaurantCouponIds } = await supabase
+      .from('promotional_coupons')
+      .select('id')
       .in('restaurant_id', targetRestaurants)
+    
+    const couponIds = (restaurantCouponIds || []).map((c: any) => c.id)
+    
+    let redemptionData: any[] = []
+    if (couponIds.length > 0) {
+      const { data } = await supabase
+        .from('coupon_usage_log')
+        .select('discount_applied')
+        .in('coupon_id', couponIds)
+      redemptionData = data || []
+    }
 
-    const totalRedemptions = redemptionData?.length || 0
-    const revenueImpact = redemptionData?.reduce((sum: number, r: any) => sum + (parseFloat(r.discount_amount) || 0), 0) || 0
+    const totalRedemptions = redemptionData.length
+    const revenueImpact = redemptionData.reduce((sum: number, r: any) => sum + (parseFloat(r.discount_applied) || 0), 0)
 
     // Get upsell acceptance stats
     const { data: upsellStats } = await supabase

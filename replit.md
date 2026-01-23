@@ -62,6 +62,7 @@ Preferred communication style: Simple, everyday language.
 ## Recent Changes
 
 ### January 2026
+-   **Deal Analytics Dashboard (Completed)**: Enhanced `/admin/promotions/analytics` with real data. Fixed chart-data API to use actual created_at dates for monthly trends (replaced random data). Added redemption trends chart showing monthly coupon usage and discount amounts. Added "Most Used Coupons" table with actual redemption counts. Fixed coupon_usage_log filtering to properly join through promotional_coupons (table doesn't have restaurant_id). Added totalDiscountGiven metric to overview stats.
 -   **Coupon Validation at Checkout (Completed)**: Added CouponInput component to cart drawer with full validation flow. Server-side validation in create-payment-intent endpoint. Orders API stores coupon data (promo_id, discount_amount, promo_code) with automatic usage logging to coupon_usage_log table (for promo_type === 'coupon' only). Includes NaN guarding for discount parsing.
 -   **CartDrawer Component Update**: Now requires `restaurantSlug` prop for coupon validation API calls. The slug is computed via useMemo in RestaurantMenu and RestaurantMenuPublic components.
 -   **Bilingual Translations for Marketing Hub (Completed)**: Added French translation support for promotional deals and coupons with English fallback.

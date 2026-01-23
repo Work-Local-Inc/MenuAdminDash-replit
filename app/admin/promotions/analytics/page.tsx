@@ -54,7 +54,10 @@ interface ChartData {
   topCoupons: { id: number; name: string; code: string; type: string; value: number; minPurchase: number }[]
   topDeals: { id: number; name: string; type: string; value: number; code: string }[]
   monthlyTrends: { month: string; coupons: number; deals: number }[]
+  redemptionTrends: { month: string; redemptions: number; discountGiven: number }[]
+  topUsedCoupons: { id: number; name: string; code: string; type: string; value: number; redemptions: number; totalDiscount: number }[]
   totalRedemptions: number
+  totalDiscountGiven: number
 }
 
 const CHART_COLORS = ['#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#EF4444', '#EC4899']
@@ -121,18 +124,18 @@ export default function AnalyticsPage() {
       bgColor: 'bg-purple-500/10',
     },
     { 
-      title: 'Upsell Rules', 
-      value: chartData.overview.upsells.toString(), 
-      subValue: `${chartData.overview.activeUpsells} active`,
-      icon: TrendingUp,
+      title: 'Total Redemptions', 
+      value: chartData.totalRedemptions.toString(), 
+      subValue: 'Coupon uses',
+      icon: Users,
       color: 'text-green-500',
       bgColor: 'bg-green-500/10',
     },
     { 
-      title: 'Total Redemptions', 
-      value: chartData.totalRedemptions.toString(), 
-      subValue: 'All time',
-      icon: Users,
+      title: 'Total Discounts Given', 
+      value: `$${(chartData.totalDiscountGiven || 0).toFixed(2)}`, 
+      subValue: 'All time savings',
+      icon: DollarSign,
       color: 'text-orange-500',
       bgColor: 'bg-orange-500/10',
     },
@@ -298,6 +301,49 @@ export default function AnalyticsPage() {
         </Card>
       </div>
 
+      {/* Redemptions Over Time Chart */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-green-500" />
+            Coupon Redemptions Over Time
+          </CardTitle>
+          <CardDescription>Monthly coupon usage and discount given</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <Skeleton className="h-64 w-full" />
+          ) : chartData?.redemptionTrends && chartData.redemptionTrends.some(t => t.redemptions > 0) ? (
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={chartData.redemptionTrends}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis dataKey="month" className="text-xs" />
+                <YAxis yAxisId="left" className="text-xs" />
+                <YAxis yAxisId="right" orientation="right" className="text-xs" />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: 'hsl(var(--card))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '8px',
+                  }}
+                  formatter={(value: any, name: string) => {
+                    if (name === 'Discount Given') return [`$${value}`, name]
+                    return [value, name]
+                  }}
+                />
+                <Legend />
+                <Bar yAxisId="left" dataKey="redemptions" name="Redemptions" fill="#10B981" radius={[4, 4, 0, 0]} />
+                <Bar yAxisId="right" dataKey="discountGiven" name="Discount Given" fill="#F59E0B" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-64 flex items-center justify-center text-muted-foreground">
+              No redemption data available yet
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Deal Types Chart */}
       {chartData && chartData.dealTypeBreakdown.length > 0 && (
         <Card>
@@ -420,6 +466,46 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Most Used Coupons (by actual redemptions) */}
+      {chartData?.topUsedCoupons && chartData.topUsedCoupons.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-green-500" />
+              Most Used Coupons
+            </CardTitle>
+            <CardDescription>Top performing coupons by actual redemption count</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {chartData.topUsedCoupons.map((coupon, i) => (
+                <div key={coupon.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-medium text-muted-foreground w-6">#{i + 1}</span>
+                    <div>
+                      <p className="font-medium">{coupon.name || coupon.code}</p>
+                      <p className="text-xs text-muted-foreground font-mono">{coupon.code}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <p className="text-sm font-bold text-green-600">{coupon.redemptions} uses</p>
+                      <p className="text-xs text-muted-foreground">${coupon.totalDiscount.toFixed(2)} given</p>
+                    </div>
+                    <Badge variant="secondary">
+                      {coupon.type === 'percent' ? `${coupon.value}%` : 
+                       coupon.type === 'currency' ? `$${coupon.value}` :
+                       coupon.type === 'delivery' ? 'Free Delivery' : 
+                       'Free Item'}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Campaign Breakdown by Type */}
       <Tabs defaultValue="coupons">

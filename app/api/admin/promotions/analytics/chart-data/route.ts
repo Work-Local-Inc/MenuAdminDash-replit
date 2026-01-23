@@ -29,13 +29,28 @@ export async function GET(request: NextRequest) {
     }
 
     if (targetRestaurantIds.length === 0) {
+      // Generate empty monthly trends for consistent chart display
+      const now = new Date()
+      const emptyMonthlyTrends = []
+      const emptyRedemptionTrends = []
+      for (let i = 5; i >= 0; i--) {
+        const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1)
+        const monthStr = monthStart.toLocaleDateString('en-US', { month: 'short' })
+        emptyMonthlyTrends.push({ month: monthStr, coupons: 0, deals: 0 })
+        emptyRedemptionTrends.push({ month: monthStr, redemptions: 0, discountGiven: 0 })
+      }
+      
       return NextResponse.json({
-        overview: { coupons: 0, deals: 0, upsells: 0, activeCoupons: 0, activeDeals: 0 },
+        overview: { coupons: 0, deals: 0, upsells: 0, activeCoupons: 0, activeDeals: 0, activeUpsells: 0 },
         couponTypeBreakdown: [],
         dealTypeBreakdown: [],
         topCoupons: [],
         topDeals: [],
-        monthlyTrends: [],
+        monthlyTrends: emptyMonthlyTrends,
+        redemptionTrends: emptyRedemptionTrends,
+        topUsedCoupons: [],
+        totalRedemptions: 0,
+        totalDiscountGiven: 0,
       })
     }
 
@@ -141,25 +156,123 @@ export async function GET(request: NextRequest) {
       .order('discount_percent', { ascending: false, nullsFirst: false })
       .limit(5)
 
-    // 6. Monthly creation trends (last 6 months simulated from data)
+    // 6. Monthly creation trends (last 6 months - using REAL data from created_at)
     const now = new Date()
     const monthlyTrends = []
+    
+    // Fetch coupons and deals with created_at for trend analysis
+    const [couponsWithDates, dealsWithDates] = await Promise.all([
+      supabase
+        .from('promotional_coupons')
+        .select('id, created_at')
+        .in('restaurant_id', targetRestaurantIds)
+        .is('deleted_at', null),
+      supabase
+        .from('promotional_deals')
+        .select('id, created_at')
+        .in('restaurant_id', targetRestaurantIds)
+    ])
+    
     for (let i = 5; i >= 0; i--) {
-      const month = new Date(now.getFullYear(), now.getMonth() - i, 1)
-      const monthStr = month.toLocaleDateString('en-US', { month: 'short' })
+      const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59)
+      const monthStr = monthStart.toLocaleDateString('en-US', { month: 'short' })
+      
+      // Count coupons created in this month
+      const couponsInMonth = (couponsWithDates.data || []).filter((c: any) => {
+        const createdAt = new Date(c.created_at)
+        return createdAt >= monthStart && createdAt <= monthEnd
+      }).length
+      
+      // Count deals created in this month
+      const dealsInMonth = (dealsWithDates.data || []).filter((d: any) => {
+        const createdAt = new Date(d.created_at)
+        return createdAt >= monthStart && createdAt <= monthEnd
+      }).length
+      
       monthlyTrends.push({
         month: monthStr,
-        coupons: i === 1 ? coupons.length : Math.floor(Math.random() * 20),
-        deals: i === 1 ? deals.length : Math.floor(Math.random() * 10),
+        coupons: couponsInMonth,
+        deals: dealsInMonth,
       })
     }
 
-    // 7. Coupon usage data (if any)
-    const { data: usageData } = await supabase
-      .from('coupon_usage_log')
-      .select('id, coupon_id, order_id, discount_applied, created_at')
-      .order('created_at', { ascending: false })
-      .limit(100)
+    // 7. Coupon usage data - filter by restaurant through coupon relationship
+    // First get coupon IDs for target restaurants
+    const { data: restaurantCouponIds } = await supabase
+      .from('promotional_coupons')
+      .select('id')
+      .in('restaurant_id', targetRestaurantIds)
+    
+    const couponIds = (restaurantCouponIds || []).map((c: any) => c.id)
+    
+    let usageData: any[] = []
+    if (couponIds.length > 0) {
+      const { data } = await supabase
+        .from('coupon_usage_log')
+        .select('id, coupon_id, order_id, discount_applied, used_at')
+        .in('coupon_id', couponIds)
+        .order('used_at', { ascending: false })
+        .limit(500)
+      usageData = data || []
+    }
+    
+    // 8. Redemptions over time (last 6 months)
+    const redemptionTrends = []
+    for (let i = 5; i >= 0; i--) {
+      const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59)
+      const monthStr = monthStart.toLocaleDateString('en-US', { month: 'short' })
+      
+      const redemptionsInMonth = usageData.filter((u: any) => {
+        const usedAt = new Date(u.used_at)
+        return usedAt >= monthStart && usedAt <= monthEnd
+      })
+      
+      const totalDiscount = redemptionsInMonth.reduce((sum: number, u: any) => 
+        sum + (parseFloat(u.discount_applied) || 0), 0
+      )
+      
+      redemptionTrends.push({
+        month: monthStr,
+        redemptions: redemptionsInMonth.length,
+        discountGiven: Math.round(totalDiscount * 100) / 100,
+      })
+    }
+    
+    // 9. Top coupons by actual usage (enhanced version with redemption counts)
+    const couponUsageCount: Record<number, { count: number; totalDiscount: number }> = {}
+    usageData.forEach((u: any) => {
+      if (!couponUsageCount[u.coupon_id]) {
+        couponUsageCount[u.coupon_id] = { count: 0, totalDiscount: 0 }
+      }
+      couponUsageCount[u.coupon_id].count++
+      couponUsageCount[u.coupon_id].totalDiscount += parseFloat(u.discount_applied) || 0
+    })
+    
+    // Fetch coupon details for top used coupons
+    const topUsedCouponIds = Object.entries(couponUsageCount)
+      .sort((a, b) => b[1].count - a[1].count)
+      .slice(0, 5)
+      .map(([id]) => parseInt(id))
+    
+    let topUsedCoupons: any[] = []
+    if (topUsedCouponIds.length > 0) {
+      const { data: couponsData } = await supabase
+        .from('promotional_coupons')
+        .select('id, name, code, discount_type, redeem_value_limit')
+        .in('id', topUsedCouponIds)
+      
+      topUsedCoupons = (couponsData || []).map((c: any) => ({
+        id: c.id,
+        name: c.name,
+        code: c.code,
+        type: c.discount_type,
+        value: c.redeem_value_limit,
+        redemptions: couponUsageCount[c.id]?.count || 0,
+        totalDiscount: Math.round((couponUsageCount[c.id]?.totalDiscount || 0) * 100) / 100,
+      })).sort((a: any, b: any) => b.redemptions - a.redemptions)
+    }
 
     return NextResponse.json({
       overview,
@@ -181,7 +294,12 @@ export async function GET(request: NextRequest) {
         code: d.promo_code,
       })),
       monthlyTrends,
-      totalRedemptions: usageData?.length || 0,
+      redemptionTrends,
+      topUsedCoupons,
+      totalRedemptions: usageData.length,
+      totalDiscountGiven: Math.round(usageData.reduce((sum: number, u: any) => 
+        sum + (parseFloat(u.discount_applied) || 0), 0
+      ) * 100) / 100,
     })
   } catch (error) {
     console.error('[GET /api/admin/promotions/analytics/chart-data]', error)
