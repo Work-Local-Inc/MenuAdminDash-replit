@@ -69,6 +69,7 @@ export async function POST(request: NextRequest) {
     // Check promotional_coupons (legacy/main coupons table)
     // =====================================================
     const { data: coupon, error: couponError } = await supabase
+      .schema('menuca_v3')
       .from('promotional_coupons')
       .select('*')
       .eq('code', code.toUpperCase())
@@ -111,14 +112,40 @@ export async function POST(request: NextRequest) {
         );
       }
       
-      // Check usage limit - handle both old (usage_limit/usage_count) and new (max_redemptions/redemption_count) column names
+      // Check total usage limit (max_redemptions) - query coupon_usage_log for accurate count
       const usageLimit = coupon.max_redemptions ?? coupon.usage_limit;
-      const usageCount = coupon.redemption_count ?? coupon.usage_count ?? 0;
-      if (usageLimit !== null && usageLimit !== undefined && usageCount >= usageLimit) {
-        return NextResponse.json(
-          { error: 'This promo code has reached its usage limit' },
-          { status: 400 }
-        );
+      if (usageLimit !== null && usageLimit !== undefined) {
+        const { count: usageCount } = await supabase
+          .schema('menuca_v3')
+          .from('coupon_usage_log')
+          .select('*', { count: 'exact', head: true })
+          .eq('coupon_id', coupon.id);
+        
+        if (usageCount !== null && usageCount >= usageLimit) {
+          return NextResponse.json(
+            { error: 'This promo code has reached its usage limit' },
+            { status: 400 }
+          );
+        }
+      }
+      
+      // Check per-customer usage limit (max_uses_per_customer)
+      const maxPerCustomer = coupon.max_uses_per_customer;
+      if (maxPerCustomer !== null && maxPerCustomer !== undefined && user_id) {
+        // Count this user's usage from coupon_usage_log
+        const { count: userUsageCount } = await supabase
+          .schema('menuca_v3')
+          .from('coupon_usage_log')
+          .select('*', { count: 'exact', head: true })
+          .eq('coupon_id', coupon.id)
+          .eq('user_id', user_id);
+        
+        if (userUsageCount !== null && userUsageCount >= maxPerCustomer) {
+          return NextResponse.json(
+            { error: 'You have already used this promo code the maximum number of times' },
+            { status: 400 }
+          );
+        }
       }
       
       // Check minimum purchase
@@ -204,6 +231,7 @@ export async function POST(request: NextRequest) {
     // Check promotional_deals for promo_code match
     // =====================================================
     const { data: deal, error: dealError } = await supabase
+      .schema('menuca_v3')
       .from('promotional_deals')
       .select('*')
       .eq('promo_code', code.toUpperCase())
@@ -237,6 +265,41 @@ export async function POST(request: NextRequest) {
           { error: `Add $${needed} more to use this code (min. $${deal.minimum_purchase})` },
           { status: 400 }
         );
+      }
+      
+      // Check total usage limit for deals (max_total_uses)
+      const maxTotalUses = deal.max_total_uses;
+      if (maxTotalUses !== null && maxTotalUses !== undefined) {
+        const { count: usageCount } = await supabase
+          .schema('menuca_v3')
+          .from('coupon_usage_log')
+          .select('*', { count: 'exact', head: true })
+          .eq('coupon_id', deal.id);
+        
+        if (usageCount !== null && usageCount >= maxTotalUses) {
+          return NextResponse.json(
+            { error: 'This promo code has reached its usage limit' },
+            { status: 400 }
+          );
+        }
+      }
+      
+      // Check per-customer usage limit for deals (max_uses_per_user)
+      const maxPerUser = deal.max_uses_per_user;
+      if (maxPerUser !== null && maxPerUser !== undefined && user_id) {
+        const { count: userUsageCount } = await supabase
+          .schema('menuca_v3')
+          .from('coupon_usage_log')
+          .select('*', { count: 'exact', head: true })
+          .eq('coupon_id', deal.id)
+          .eq('user_id', user_id);
+        
+        if (userUsageCount !== null && userUsageCount >= maxPerUser) {
+          return NextResponse.json(
+            { error: 'You have already used this promo code the maximum number of times' },
+            { status: 400 }
+          );
+        }
       }
       
       // Calculate discount

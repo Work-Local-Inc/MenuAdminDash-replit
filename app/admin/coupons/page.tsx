@@ -39,6 +39,7 @@ const couponSchema = z.object({
   discount_amount: z.coerce.number().positive("Must be greater than 0"),
   minimum_purchase: z.union([z.coerce.number().positive(), z.literal('')]).optional(),
   max_redemptions: z.union([z.coerce.number().int().positive(), z.literal('')]).optional(),
+  max_uses_per_customer: z.union([z.coerce.number().int().positive(), z.literal('')]).optional(),
   valid_until_at: z.string().optional(),
 })
 
@@ -52,6 +53,7 @@ type CouponFormValues = {
   discount_amount: number
   minimum_purchase?: number | ''
   max_redemptions?: number | ''
+  max_uses_per_customer?: number | ''
   valid_until_at?: string
 }
 
@@ -108,6 +110,7 @@ export default function CouponsPage() {
       discount_amount: 0,
       minimum_purchase: undefined,
       max_redemptions: undefined,
+      max_uses_per_customer: undefined,
       valid_until_at: "",
     },
   })
@@ -409,7 +412,7 @@ export default function CouponsPage() {
                     name="max_redemptions"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Max Uses (Optional)</FormLabel>
+                        <FormLabel>Total Uses (Optional)</FormLabel>
                         <FormControl>
                           <Input 
                             type="number" 
@@ -419,6 +422,32 @@ export default function CouponsPage() {
                             value={field.value ?? ''}
                           />
                         </FormControl>
+                        <FormDescription>
+                          Maximum total times this coupon can be used
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="max_uses_per_customer"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Per Customer (Optional)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            placeholder="1" 
+                            data-testid="input-max-uses-per-customer"
+                            {...field}
+                            value={field.value ?? ''}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Max uses per customer
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -535,7 +564,17 @@ export default function CouponsPage() {
                     const discountValue = coupon.discount_amount ?? coupon.redeem_value_limit ?? coupon.discount_value
                     const minOrder = coupon.minimum_purchase ?? coupon.min_order_value
                     const maxUses = coupon.max_redemptions ?? coupon.usage_limit ?? coupon.max_uses
+                    const maxPerCustomer = coupon.max_uses_per_customer
                     const expiresAt = coupon.valid_until_at ?? coupon.expires_at
+                    
+                    // Format usage limits display
+                    const usageLimitDisplay = () => {
+                      if (!maxUses && !maxPerCustomer) return "Unlimited"
+                      const parts = []
+                      if (maxUses) parts.push(`${maxUses} total`)
+                      if (maxPerCustomer) parts.push(`${maxPerCustomer}/customer`)
+                      return parts.join(", ")
+                    }
                     
                     return (
                       <TableRow key={coupon.id} data-testid={`row-coupon-${coupon.id}`}>
@@ -550,7 +589,7 @@ export default function CouponsPage() {
                         <TableCell>
                           {minOrder ? formatCurrency(minOrder, 'CAD') : "—"}
                         </TableCell>
-                        <TableCell>{maxUses || "Unlimited"}</TableCell>
+                        <TableCell className="text-sm">{usageLimitDisplay()}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {expiresAt ? formatDate(expiresAt) : "No expiry"}
                         </TableCell>

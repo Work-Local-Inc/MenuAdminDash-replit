@@ -9,7 +9,8 @@ async function validateCouponServerSide(
   couponCode: string | undefined,
   restaurantId: number,
   subtotal: number,
-  orderType: string
+  orderType: string,
+  userId?: string | null
 ): Promise<{ valid: boolean; discountAmount: number; promoId: number | null; promoType: string | null; code: string | null }> {
   if (!couponCode) {
     return { valid: false, discountAmount: 0, promoId: null, promoType: null, code: null }
@@ -50,6 +51,39 @@ async function validateCouponServerSide(
         }
       }
 
+      // Check total usage limit (max_redemptions)
+      const maxRedemptions = coupon.max_redemptions ?? coupon.usage_limit
+      if (maxRedemptions !== null && maxRedemptions !== undefined) {
+        // Count actual usage from coupon_usage_log
+        const { count: usageCount } = await adminSupabase
+          .schema('menuca_v3')
+          .from('coupon_usage_log')
+          .select('*', { count: 'exact', head: true })
+          .eq('coupon_id', coupon.id)
+        
+        if (usageCount !== null && usageCount >= maxRedemptions) {
+          console.log(`[PaymentIntent] Coupon ${code} has reached usage limit: ${usageCount}/${maxRedemptions}`)
+          return { valid: false, discountAmount: 0, promoId: null, promoType: null, code: null }
+        }
+      }
+
+      // Check per-customer usage limit (max_uses_per_customer)
+      const maxPerCustomer = coupon.max_uses_per_customer
+      if (maxPerCustomer !== null && maxPerCustomer !== undefined && userId) {
+        // Count this user's usage from coupon_usage_log
+        const { count: userUsageCount } = await adminSupabase
+          .schema('menuca_v3')
+          .from('coupon_usage_log')
+          .select('*', { count: 'exact', head: true })
+          .eq('coupon_id', coupon.id)
+          .eq('user_id', userId)
+        
+        if (userUsageCount !== null && userUsageCount >= maxPerCustomer) {
+          console.log(`[PaymentIntent] Coupon ${code} per-customer limit reached for user ${userId}: ${userUsageCount}/${maxPerCustomer}`)
+          return { valid: false, discountAmount: 0, promoId: null, promoType: null, code: null }
+        }
+      }
+
       // Calculate discount
       let discountAmount = 0
       if (coupon.discount_type === 'percentage') {
@@ -86,6 +120,38 @@ async function validateCouponServerSide(
       // Check minimum order
       if (deal.minimum_order_amount && subtotal < parseFloat(deal.minimum_order_amount)) {
         return { valid: false, discountAmount: 0, promoId: null, promoType: null, code: null }
+      }
+
+      // Check total usage limit for deals (max_total_uses)
+      const maxTotalUses = deal.max_total_uses
+      if (maxTotalUses !== null && maxTotalUses !== undefined) {
+        // Count actual usage from coupon_usage_log (deals also logged here with promo_type='deal')
+        const { count: usageCount } = await adminSupabase
+          .schema('menuca_v3')
+          .from('coupon_usage_log')
+          .select('*', { count: 'exact', head: true })
+          .eq('coupon_id', deal.id)
+        
+        if (usageCount !== null && usageCount >= maxTotalUses) {
+          console.log(`[PaymentIntent] Deal ${code} has reached usage limit: ${usageCount}/${maxTotalUses}`)
+          return { valid: false, discountAmount: 0, promoId: null, promoType: null, code: null }
+        }
+      }
+
+      // Check per-customer usage limit for deals (max_uses_per_user)
+      const maxPerUser = deal.max_uses_per_user
+      if (maxPerUser !== null && maxPerUser !== undefined && userId) {
+        const { count: userUsageCount } = await adminSupabase
+          .schema('menuca_v3')
+          .from('coupon_usage_log')
+          .select('*', { count: 'exact', head: true })
+          .eq('coupon_id', deal.id)
+          .eq('user_id', userId)
+        
+        if (userUsageCount !== null && userUsageCount >= maxPerUser) {
+          console.log(`[PaymentIntent] Deal ${code} per-customer limit reached for user ${userId}: ${userUsageCount}/${maxPerUser}`)
+          return { valid: false, discountAmount: 0, promoId: null, promoType: null, code: null }
+        }
       }
 
       // Calculate discount
@@ -285,7 +351,8 @@ export async function POST(request: NextRequest) {
         metadata.coupon_code,
         restaurantId,
         subtotal || 0,
-        metadata?.order_type || 'delivery'
+        metadata?.order_type || 'delivery',
+        user_id || null
       )
       console.log('[PaymentIntent] Server-side coupon validation:', validatedCoupon)
     }
