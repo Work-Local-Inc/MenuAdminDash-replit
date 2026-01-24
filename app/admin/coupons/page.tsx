@@ -1,22 +1,26 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Checkbox } from "@/components/ui/checkbox"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { SearchableRestaurantSelect } from "@/components/admin/searchable-restaurant-select"
 import { useCoupons, useCreateCoupon } from "@/lib/hooks/use-coupons"
 import { useRestaurants } from "@/lib/hooks/use-restaurants"
 import { formatCurrency, formatDate } from "@/lib/utils"
-import { Plus, Search, Tag, ArrowLeft, Building2, Store, Languages, ChevronDown, Trash2, Layers } from "lucide-react"
+import { Plus, Search, Tag, ArrowLeft, Building2, Store, Languages, ChevronDown, Trash2, Layers, Target } from "lucide-react"
 import {
   Collapsible,
   CollapsibleContent,
@@ -26,6 +30,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { useToast } from "@/hooks/use-toast"
+import { useQuery } from "@tanstack/react-query"
 
 // Tier schema for tiered discounts
 const tierSchema = z.object({
@@ -33,6 +38,13 @@ const tierSchema = z.object({
   discount_type: z.enum(["percentage", "fixed"]),
   discount_value: z.coerce.number().positive("Must be greater than 0"),
   description: z.string().optional(),
+})
+
+// Target item schema
+const targetItemSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  type: z.enum(["dish", "course"]),
 })
 
 // Form schema - matches database column names
@@ -50,6 +62,10 @@ const couponSchema = z.object({
   max_uses_per_customer: z.union([z.coerce.number().int().positive(), z.literal('')]).optional(),
   valid_until_at: z.string().optional(),
   discount_tiers: z.array(tierSchema).optional(),
+  targeting_type: z.enum(["all", "dish", "course"]).default("all"),
+  targeting_mode: z.enum(["include", "exclude"]).default("include"),
+  targeting_ids: z.array(z.number()).optional(),
+  targeting_items: z.array(targetItemSchema).optional(),
 }).refine((data) => {
   // If tiered, require at least one tier
   if (data.discount_type === "tiered") {
@@ -69,6 +85,12 @@ type DiscountTier = {
   description?: string
 }
 
+type TargetItem = {
+  id: number
+  name: string
+  type: "dish" | "course"
+}
+
 type CouponFormValues = {
   code: string
   name?: string
@@ -82,6 +104,15 @@ type CouponFormValues = {
   max_uses_per_customer?: number | ''
   valid_until_at?: string
   discount_tiers?: DiscountTier[]
+  targeting_type?: "all" | "dish" | "course"
+  targeting_mode?: "include" | "exclude"
+  targeting_ids?: number[]
+  targeting_items?: TargetItem[]
+}
+
+type TargetingApiResponse = {
+  courses: Array<{ id: number; name: string; type: "course" }>
+  dishes: Array<{ id: number; name: string; courseId: number; type: "dish" }>
 }
 
 export default function CouponsPage() {
@@ -93,6 +124,7 @@ export default function CouponsPage() {
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string>(urlRestaurantId || '')
   const [search, setSearch] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [targetingSearch, setTargetingSearch] = useState("")
   
   // Get restaurant info for display
   const { data: restaurants = [], isLoading: loadingRestaurants } = useRestaurants({ status: 'active' })
@@ -124,6 +156,17 @@ export default function CouponsPage() {
   const { data: coupons = [], isLoading } = useCoupons(selectedRestaurantId || undefined)
   const createCoupon = useCreateCoupon(selectedRestaurantId || undefined)
   const { toast } = useToast()
+  
+  // Fetch targeting options (dishes and courses) for item targeting
+  const { data: targetingData } = useQuery<TargetingApiResponse>({
+    queryKey: ['/api/admin/promotions/targeting', selectedRestaurantId],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/promotions/targeting?restaurant=${selectedRestaurantId}`)
+      if (!res.ok) throw new Error('Failed to fetch targeting options')
+      return res.json()
+    },
+    enabled: !!selectedRestaurantId,
+  })
 
   const form = useForm<CouponFormValues>({
     resolver: zodResolver(couponSchema),
@@ -140,11 +183,74 @@ export default function CouponsPage() {
       max_uses_per_customer: undefined,
       valid_until_at: "",
       discount_tiers: [],
+      targeting_type: "all" as const,
+      targeting_mode: "include" as const,
+      targeting_ids: [],
+      targeting_items: [],
     },
   })
   
   const discountType = form.watch("discount_type")
   const discountTiers = form.watch("discount_tiers") || []
+  const targetingType = form.watch("targeting_type")
+  const targetingIds = form.watch("targeting_ids") || []
+  const targetingItems = form.watch("targeting_items") || []
+  
+  // Get available targets based on targeting type
+  const getAvailableTargets = useMemo(() => {
+    if (!targetingData) return []
+    if (targetingType === "dish") {
+      return targetingData.dishes || []
+    } else if (targetingType === "course") {
+      return targetingData.courses || []
+    }
+    return []
+  }, [targetingData, targetingType])
+  
+  // Group dishes by course for better organization
+  const dishesByCourseName = useMemo(() => {
+    if (!targetingData || targetingType !== "dish") return {}
+    const grouped: Record<string, typeof targetingData.dishes> = {}
+    const courseMap = new Map(targetingData.courses.map(c => [c.id, c.name]))
+    
+    targetingData.dishes.forEach(dish => {
+      const courseName = courseMap.get(dish.courseId) || 'Uncategorized'
+      if (!grouped[courseName]) grouped[courseName] = []
+      grouped[courseName].push(dish)
+    })
+    return grouped
+  }, [targetingData, targetingType])
+  
+  // Filter targets by search
+  const filteredTargets = useMemo(() => {
+    if (!targetingSearch.trim()) return getAvailableTargets
+    const searchLower = targetingSearch.toLowerCase()
+    return getAvailableTargets.filter(item => 
+      item.name.toLowerCase().includes(searchLower)
+    )
+  }, [getAvailableTargets, targetingSearch])
+  
+  // Handle targeting type change - clear selections when type changes
+  const handleTargetingTypeChange = (value: "all" | "dish" | "course") => {
+    form.setValue("targeting_type", value)
+    form.setValue("targeting_ids", [])
+    form.setValue("targeting_items", [])
+    setTargetingSearch("")
+  }
+  
+  // Handle toggling target item
+  const handleTargetItemToggle = (item: { id: number; name: string; type: "dish" | "course" }) => {
+    const currentIds = form.getValues("targeting_ids") || []
+    const currentItems = form.getValues("targeting_items") || []
+    
+    if (currentIds.includes(item.id)) {
+      form.setValue("targeting_ids", currentIds.filter(id => id !== item.id))
+      form.setValue("targeting_items", currentItems.filter(i => i.id !== item.id))
+    } else {
+      form.setValue("targeting_ids", [...currentIds, item.id])
+      form.setValue("targeting_items", [...currentItems, { id: item.id, name: item.name, type: item.type }])
+    }
+  }
   
   const addTier = () => {
     const currentTiers = form.getValues("discount_tiers") || []
@@ -551,6 +657,165 @@ export default function CouponsPage() {
                   </div>
                 )}
 
+                {/* Item Targeting Section */}
+                <Collapsible className="border rounded-lg p-4">
+                  <CollapsibleTrigger className="flex items-center justify-between w-full">
+                    <div className="flex items-center gap-2">
+                      <Target className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium text-sm">Item Targeting (Optional)</span>
+                      {targetingType !== "all" && targetingIds.length > 0 && (
+                        <Badge variant="secondary" className="ml-2">
+                          {targetingIds.length} selected
+                        </Badge>
+                      )}
+                    </div>
+                    <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 data-[state=open]:rotate-180" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-4 pt-4">
+                    <FormField
+                      control={form.control}
+                      name="targeting_type"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Apply Coupon To</FormLabel>
+                          <Select 
+                            value={field.value} 
+                            onValueChange={(value: "all" | "dish" | "course") => handleTargetingTypeChange(value)}
+                          >
+                            <FormControl>
+                              <SelectTrigger data-testid="select-targeting-type">
+                                <SelectValue placeholder="Select targeting type" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="all">All Items</SelectItem>
+                              <SelectItem value="dish">Specific Dishes</SelectItem>
+                              <SelectItem value="course">Specific Courses</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormDescription>
+                            Choose whether this coupon applies to all items or specific dishes/courses
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    {targetingType !== "all" && (
+                      <>
+                        <FormField
+                          control={form.control}
+                          name="targeting_mode"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Targeting Mode</FormLabel>
+                              <FormControl>
+                                <RadioGroup
+                                  value={field.value}
+                                  onValueChange={field.onChange}
+                                  className="flex gap-4"
+                                  data-testid="radio-targeting-mode"
+                                >
+                                  <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="include" id="include" />
+                                    <Label htmlFor="include" className="font-normal cursor-pointer">
+                                      Include (apply only to selected)
+                                    </Label>
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="exclude" id="exclude" />
+                                    <Label htmlFor="exclude" className="font-normal cursor-pointer">
+                                      Exclude (apply to all except selected)
+                                    </Label>
+                                  </div>
+                                </RadioGroup>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <div className="border rounded-lg p-3 space-y-3">
+                          <Label>Select {targetingType === "dish" ? "Dishes" : "Courses"}</Label>
+                          <Input
+                            placeholder={`Search ${targetingType === "dish" ? "dishes" : "courses"}...`}
+                            value={targetingSearch}
+                            onChange={(e) => setTargetingSearch(e.target.value)}
+                            data-testid="input-targeting-search"
+                          />
+                          <ScrollArea className="h-48 border rounded-md p-2">
+                            {targetingType === "dish" && Object.keys(dishesByCourseName).length > 0 ? (
+                              Object.entries(dishesByCourseName).map(([courseName, dishes]) => {
+                                const filteredDishes = targetingSearch.trim()
+                                  ? dishes.filter(d => d.name.toLowerCase().includes(targetingSearch.toLowerCase()))
+                                  : dishes
+                                if (filteredDishes.length === 0) return null
+                                return (
+                                  <div key={courseName} className="mb-3">
+                                    <div className="text-xs font-semibold text-muted-foreground mb-1 px-1">
+                                      {courseName}
+                                    </div>
+                                    {filteredDishes.map((dish) => (
+                                      <div 
+                                        key={dish.id} 
+                                        className="flex items-center space-x-2 py-1.5 px-1 hover-elevate rounded-md cursor-pointer"
+                                        onClick={() => handleTargetItemToggle({ id: dish.id, name: dish.name, type: "dish" })}
+                                        data-testid={`checkbox-dish-${dish.id}`}
+                                      >
+                                        <Checkbox 
+                                          checked={targetingIds.includes(dish.id)}
+                                          onCheckedChange={() => handleTargetItemToggle({ id: dish.id, name: dish.name, type: "dish" })}
+                                        />
+                                        <span className="text-sm">{dish.name}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )
+                              })
+                            ) : targetingType === "course" ? (
+                              filteredTargets.map((course) => (
+                                <div 
+                                  key={course.id} 
+                                  className="flex items-center space-x-2 py-1.5 px-1 hover-elevate rounded-md cursor-pointer"
+                                  onClick={() => handleTargetItemToggle({ id: course.id, name: course.name, type: "course" })}
+                                  data-testid={`checkbox-course-${course.id}`}
+                                >
+                                  <Checkbox 
+                                    checked={targetingIds.includes(course.id)}
+                                    onCheckedChange={() => handleTargetItemToggle({ id: course.id, name: course.name, type: "course" })}
+                                  />
+                                  <span className="text-sm">{course.name}</span>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="text-sm text-muted-foreground text-center py-4">
+                                No {targetingType === "dish" ? "dishes" : "courses"} available
+                              </div>
+                            )}
+                          </ScrollArea>
+                          <div className="text-sm text-muted-foreground flex items-center justify-between">
+                            <span>Selected: {targetingIds.length} {targetingType === "dish" ? "dishes" : "courses"}</span>
+                            {targetingIds.length > 0 && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  form.setValue("targeting_ids", [])
+                                  form.setValue("targeting_items", [])
+                                }}
+                                data-testid="button-clear-targeting"
+                              >
+                                Clear all
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </CollapsibleContent>
+                </Collapsible>
+
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -734,6 +999,10 @@ export default function CouponsPage() {
                     const expiresAt = coupon.valid_until_at ?? coupon.expires_at
                     const isTiered = coupon.discount_type === "tiered"
                     const tiers = coupon.discount_tiers || []
+                    const hasTargeting = coupon.targeting_type && coupon.targeting_type !== "all"
+                    const targetingItemCount = coupon.targeting_items?.length || coupon.targeting_ids?.length || 0
+                    const targetingLabel = coupon.targeting_type === 'dish' ? 'dishes' : 'courses'
+                    const targetingModeLabel = coupon.targeting_mode === 'include' ? 'Only' : 'Excludes'
                     
                     // Format usage limits display
                     const usageLimitDisplay = () => {
@@ -759,13 +1028,47 @@ export default function CouponsPage() {
                       <TableRow key={coupon.id} data-testid={`row-coupon-${coupon.id}`}>
                         <TableCell className="font-mono font-bold">{coupon.code}</TableCell>
                         <TableCell>
-                          {isTiered ? (
-                            <Badge variant="secondary" className="flex items-center gap-1">
-                              <Layers className="h-3 w-3" />
-                              Tiered
-                            </Badge>
-                          ) : (
-                            <span className="capitalize">{coupon.discount_type}</span>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <div>
+                              {isTiered ? (
+                                <Badge variant="secondary" className="flex items-center gap-1">
+                                  <Layers className="h-3 w-3" />
+                                  Tiered
+                                </Badge>
+                              ) : (
+                                <span className="capitalize">{coupon.discount_type}</span>
+                              )}
+                            </div>
+                            {hasTargeting && (
+                              <Badge variant="outline" className="text-xs flex items-center gap-1">
+                                <Target className="h-3 w-3" />
+                                {coupon.targeting_type === 'dish' ? 'Dishes' : 'Courses'}
+                              </Badge>
+                            )}
+                          </div>
+                          {hasTargeting && (
+                            <div className="flex items-center gap-1 mt-1">
+                              <Target className="h-3 w-3 text-muted-foreground" />
+                              <span className="text-xs text-muted-foreground">
+                                {targetingModeLabel} {targetingItemCount} {targetingLabel}
+                              </span>
+                            </div>
+                          )}
+                          {hasTargeting && coupon.targeting_items && coupon.targeting_items.length > 0 && (
+                            <div className="mt-1 text-xs text-muted-foreground max-w-xs">
+                              <div className="flex flex-wrap gap-1">
+                                {coupon.targeting_items.slice(0, 2).map((item: TargetItem) => (
+                                  <span key={item.id} className="bg-muted px-1.5 py-0.5 rounded truncate">
+                                    {item.name}
+                                  </span>
+                                ))}
+                                {coupon.targeting_items.length > 2 && (
+                                  <span className="bg-muted px-1.5 py-0.5 rounded text-xs">
+                                    +{coupon.targeting_items.length - 2} more
+                                  </span>
+                                )}
+                              </div>
+                            </div>
                           )}
                         </TableCell>
                         <TableCell>

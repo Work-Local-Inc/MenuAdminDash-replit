@@ -56,6 +56,15 @@ export interface AppliedPromo {
   activeTier?: DiscountTier | null;
   nextTier?: DiscountTier | null;
   allTiers?: DiscountTier[];
+  // Targeting info for item-specific coupons
+  targeting?: {
+    type: string;
+    mode: string;
+    eligible_subtotal: number;
+    total_subtotal: number;
+    eligible_items_count: number;
+    total_items_count: number;
+  } | null;
 }
 
 interface CartStore {

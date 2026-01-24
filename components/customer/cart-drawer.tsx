@@ -209,21 +209,31 @@ export function CartDrawer({ isOpen, onClose, restaurant, restaurantSlug, button
               {/* Applied Promo Code */}
               {appliedPromo && (
                 <div className="mb-3 space-y-2">
-                  <div className="p-2 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-green-600" />
-                      <span className="text-sm font-medium text-green-700 dark:text-green-400">
-                        {appliedPromo.code} applied
-                      </span>
+                  <div className="p-2 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-green-600" />
+                        <span className="text-sm font-medium text-green-700 dark:text-green-400">
+                          {appliedPromo.code} applied
+                        </span>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs text-green-600 hover:text-green-700"
+                        onClick={clearPromo}
+                      >
+                        Remove
+                      </Button>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 px-2 text-xs text-green-600 hover:text-green-700"
-                      onClick={clearPromo}
-                    >
-                      Remove
-                    </Button>
+                    {appliedPromo.targeting && appliedPromo.targeting.type !== 'all' && (
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Applies to {appliedPromo.targeting.eligible_items_count} of {appliedPromo.targeting.total_items_count} items
+                        <span className="ml-1">
+                          (Discount on ${appliedPromo.targeting.eligible_subtotal.toFixed(2)})
+                        </span>
+                      </div>
+                    )}
                   </div>
                   
                   {/* Show next tier incentive for tiered discounts */}

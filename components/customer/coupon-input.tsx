@@ -29,7 +29,7 @@ export function CouponInput({ restaurantSlug, buttonStyle }: CouponInputProps) {
     allTiers: TierInfo[];
   } | null>(null);
   
-  const { appliedPromo, applyPromo, getSubtotal, orderType } = useCartStore();
+  const { appliedPromo, applyPromo, getSubtotal, orderType, items } = useCartStore();
   const { toast } = useToast();
   
   const getButtonClassName = () => {
@@ -58,6 +58,11 @@ export function CouponInput({ restaurantSlug, buttonStyle }: CouponInputProps) {
           restaurant_slug: restaurantSlug,
           subtotal: getSubtotal(),
           order_type: orderType,
+          cart_items: items.map(item => ({
+            dish_id: item.dishId,
+            quantity: item.quantity,
+            item_subtotal: item.subtotal,
+          })),
         }),
       });
       
@@ -80,6 +85,8 @@ export function CouponInput({ restaurantSlug, buttonStyle }: CouponInputProps) {
         activeTier: data.active_tier || null,
         nextTier: data.next_tier || null,
         allTiers: data.all_tiers || [],
+        // Include targeting info for item-specific coupons
+        targeting: data.targeting || null,
       });
       
       // Store tier info locally for display

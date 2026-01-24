@@ -4,13 +4,60 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { extractIdFromSlug } from '@/lib/utils/slugify'
 
+/**
+ * Cart item input for targeting validation
+ */
+interface CartItemInput {
+  dish_id: number;
+  course_id?: number;
+  quantity: number;
+  item_subtotal: number;
+}
+
+/**
+ * Check if a cart item is eligible based on coupon targeting rules
+ */
+function isItemEligible(
+  item: CartItemInput,
+  targetingType: string,
+  targetingMode: string,
+  targetingIds: number[]
+): boolean {
+  if (!targetingIds || targetingIds.length === 0) return true;
+  
+  const targetId = targetingType === 'dish' ? item.dish_id : item.course_id;
+  
+  // If course targeting but course_id is missing, cannot determine eligibility
+  if (targetingType === 'course' && (targetId === undefined || targetId === null)) {
+    // For include mode: item is NOT eligible (must be in list to qualify)
+    // For exclude mode: item IS eligible (not in excluded list)
+    return targetingMode !== 'include';
+  }
+  
+  const isInList = targetingIds.includes(targetId as number);
+  return targetingMode === 'include' ? isInList : !isInList;
+}
+
+/**
+ * Check if targeting is effectively enabled
+ */
+function hasActiveTargeting(
+  targetingType: string | null | undefined,
+  targetingIds: number[] | null | undefined
+): boolean {
+  if (!targetingType || targetingType === 'all') return false;
+  if (!targetingIds || targetingIds.length === 0) return false;
+  return true;
+}
+
 // Validate coupon server-side and calculate discount
 async function validateCouponServerSide(
   couponCode: string | undefined,
   restaurantId: number,
   subtotal: number,
   orderType: string,
-  userId?: string | null
+  userId?: string | null,
+  cartItems?: CartItemInput[]
 ): Promise<{ valid: boolean; discountAmount: number; promoId: number | null; promoType: string | null; code: string | null }> {
   if (!couponCode) {
     return { valid: false, discountAmount: 0, promoId: null, promoType: null, code: null }
@@ -37,10 +84,6 @@ async function validateCouponServerSide(
         return { valid: false, discountAmount: 0, promoId: null, promoType: null, code: null }
       }
       if (coupon.valid_until_at && new Date(coupon.valid_until_at) < now) {
-        return { valid: false, discountAmount: 0, promoId: null, promoType: null, code: null }
-      }
-      // Check minimum order
-      if (coupon.minimum_order_amount && subtotal < parseFloat(coupon.minimum_order_amount)) {
         return { valid: false, discountAmount: 0, promoId: null, promoType: null, code: null }
       }
       // Check order type restrictions
@@ -84,16 +127,97 @@ async function validateCouponServerSide(
         }
       }
 
+      // Item Targeting Logic
+      const targetingType = coupon.targeting_type || 'all'
+      const targetingMode = coupon.targeting_mode || 'include'
+      const targetingIds: number[] = coupon.targeting_ids || []
+      
+      const targetingEnabled = hasActiveTargeting(targetingType, targetingIds)
+      
+      let eligibleSubtotal = subtotal
+      let eligibleItems: CartItemInput[] = []
+      let enrichedCartItems: CartItemInput[] = []
+      
+      if (targetingEnabled && cartItems && Array.isArray(cartItems) && cartItems.length > 0) {
+        enrichedCartItems = [...cartItems]
+        
+        // For course targeting, fetch course_ids from dishes table if not provided
+        if (targetingType === 'course') {
+          const itemsNeedingCourse = enrichedCartItems.filter(item => item.course_id === undefined || item.course_id === null)
+          
+          if (itemsNeedingCourse.length > 0) {
+            const dishIds = itemsNeedingCourse.map(item => item.dish_id)
+            
+            const { data: dishes, error: dishesError } = await adminSupabase
+              .schema('menuca_v3')
+              .from('dishes')
+              .select('id, course_id')
+              .in('id', dishIds)
+            
+            if (!dishesError && dishes) {
+              const courseMap = new Map<number, number>()
+              for (const dish of dishes) {
+                if (dish.course_id) {
+                  courseMap.set(dish.id, dish.course_id)
+                }
+              }
+              
+              enrichedCartItems = enrichedCartItems.map(item => ({
+                ...item,
+                course_id: item.course_id ?? courseMap.get(item.dish_id)
+              }))
+            }
+          }
+        }
+        
+        // Filter cart items to find eligible items
+        eligibleItems = enrichedCartItems.filter(item => 
+          isItemEligible(item, targetingType, targetingMode, targetingIds)
+        )
+        
+        // Calculate eligible subtotal
+        eligibleSubtotal = eligibleItems.reduce((sum, item) => sum + (item.item_subtotal || 0), 0)
+        
+        console.log(`[PaymentIntent] Targeting applied:`, {
+          targetingType,
+          targetingMode,
+          targetingIds,
+          totalItems: enrichedCartItems.length,
+          eligibleItems: eligibleItems.length,
+          eligibleSubtotal,
+          totalSubtotal: subtotal
+        })
+        
+        // If no items are eligible, coupon is invalid
+        if (eligibleSubtotal === 0) {
+          console.log(`[PaymentIntent] No eligible items for coupon ${code}`)
+          return { valid: false, discountAmount: 0, promoId: null, promoType: null, code: null }
+        }
+      } else if (targetingEnabled) {
+        // Targeting is enabled but no cart items provided - use full subtotal for backward compatibility
+        console.log(`[PaymentIntent] Targeting enabled but no cart items provided, using full subtotal`)
+      }
+      
+      // Use eligibleSubtotal for checks and discount calculation when targeting is active
+      const subtotalForCalculation = targetingEnabled && cartItems && cartItems.length > 0 ? eligibleSubtotal : subtotal
+
+      // Check minimum purchase requirement (supports both column names for backward compatibility)
+      const minPurchase = coupon.minimum_purchase ?? coupon.minimum_order_amount
+      if (minPurchase && subtotalForCalculation < parseFloat(String(minPurchase))) {
+        console.log(`[PaymentIntent] Coupon ${code} minimum purchase not met: $${subtotalForCalculation} < $${minPurchase}`)
+        return { valid: false, discountAmount: 0, promoId: null, promoType: null, code: null }
+      }
+
       // Calculate discount - handle tiered discounts
       let discountAmount = 0
       
       if (coupon.discount_type === 'tiered' && coupon.discount_tiers && Array.isArray(coupon.discount_tiers)) {
-        // Tiered discount: find applicable tier based on subtotal
+        // Tiered discount: find applicable tier based on eligibleSubtotal
         const tiers = coupon.discount_tiers.sort((a: any, b: any) => b.threshold_amount - a.threshold_amount)
         let activeTier = null
         
         for (const tier of tiers) {
-          if (subtotal >= tier.threshold_amount) {
+          if (subtotalForCalculation >= tier.threshold_amount) {
             activeTier = tier
             break
           }
@@ -101,23 +225,24 @@ async function validateCouponServerSide(
         
         if (activeTier) {
           if (activeTier.discount_type === 'percentage') {
-            discountAmount = subtotal * (activeTier.discount_value / 100)
+            discountAmount = subtotalForCalculation * (activeTier.discount_value / 100)
           } else {
             discountAmount = activeTier.discount_value
           }
-          console.log(`[PaymentIntent] Applied tiered discount: ${activeTier.discount_type === 'percentage' ? `${activeTier.discount_value}%` : `$${activeTier.discount_value}`} for subtotal $${subtotal} (tier threshold: $${activeTier.threshold_amount})`)
+          console.log(`[PaymentIntent] Applied tiered discount: ${activeTier.discount_type === 'percentage' ? `${activeTier.discount_value}%` : `$${activeTier.discount_value}`} for subtotal $${subtotalForCalculation} (tier threshold: $${activeTier.threshold_amount})`)
         } else {
           // Subtotal doesn't meet any tier threshold - no discount
-          console.log(`[PaymentIntent] Subtotal $${subtotal} does not meet any tier threshold`)
+          console.log(`[PaymentIntent] Subtotal $${subtotalForCalculation} does not meet any tier threshold`)
           return { valid: false, discountAmount: 0, promoId: null, promoType: null, code: null }
         }
       } else if (coupon.discount_type === 'percentage') {
-        discountAmount = subtotal * (parseFloat(coupon.discount_value) / 100)
+        discountAmount = subtotalForCalculation * (parseFloat(coupon.discount_value) / 100)
         if (coupon.max_discount_amount) {
           discountAmount = Math.min(discountAmount, parseFloat(coupon.max_discount_amount))
         }
       } else {
-        discountAmount = parseFloat(coupon.discount_value)
+        // Fixed discount: cap to subtotalForCalculation so discount doesn't exceed eligible amount
+        discountAmount = Math.min(parseFloat(coupon.discount_value), subtotalForCalculation)
       }
       discountAmount = Math.round(discountAmount * 100) / 100 // Round to cents
 
@@ -267,7 +392,7 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
 
     const body = await request.json()
-    const { amount, subtotal, metadata, user_id, guest_email, shipping_address } = body
+    const { amount, subtotal, metadata, user_id, guest_email, shipping_address, cart_items } = body
     
     // Basic validation
     if (!amount || amount <= 0) {
@@ -377,7 +502,8 @@ export async function POST(request: NextRequest) {
         restaurantId,
         subtotal || 0,
         metadata?.order_type || 'delivery',
-        user_id || null
+        user_id || null,
+        cart_items
       )
       console.log('[PaymentIntent] Server-side coupon validation:', validatedCoupon)
     }

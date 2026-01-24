@@ -2,18 +2,62 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
 /**
+ * Cart item input for targeting validation
+ */
+interface CartItemInput {
+  dish_id: number;
+  course_id?: number;
+  quantity: number;
+  item_subtotal: number;
+}
+
+/**
  * Extract restaurant ID from slug format: "restaurant-name-123"
  */
 function extractIdFromSlug(slug: string): number | null {
-  // Try to match ID at end of slug (format: restaurant-name-123)
   const match = slug.match(/-(\d+)$/);
   if (match) return parseInt(match[1], 10);
   
-  // Try pure numeric slug
   const numericMatch = slug.match(/^(\d+)$/);
   if (numericMatch) return parseInt(numericMatch[1], 10);
   
   return null;
+}
+
+/**
+ * Check if a cart item is eligible based on coupon targeting rules
+ */
+function isItemEligible(
+  item: CartItemInput,
+  targeting_type: string,
+  targeting_mode: string,
+  targeting_ids: number[]
+): boolean {
+  if (!targeting_ids || targeting_ids.length === 0) return true;
+  
+  const targetId = targeting_type === 'dish' ? item.dish_id : item.course_id;
+  
+  // If course targeting but course_id is missing, cannot determine eligibility
+  if (targeting_type === 'course' && (targetId === undefined || targetId === null)) {
+    // For include mode: item is NOT eligible (must be in list to qualify)
+    // For exclude mode: item IS eligible (not in excluded list)
+    return targeting_mode !== 'include';
+  }
+  
+  const isInList = targeting_ids.includes(targetId as number);
+  return targeting_mode === 'include' ? isInList : !isInList;
+}
+
+/**
+ * Check if targeting is effectively enabled
+ */
+function hasActiveTargeting(
+  targeting_type: string | null | undefined,
+  targeting_ids: number[] | null | undefined
+): boolean {
+  if (!targeting_type || targeting_type === 'all') return false;
+  if (!targeting_ids || targeting_ids.length === 0) return false;
+  return true;
 }
 
 /**
@@ -25,9 +69,9 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient() as any;
     const body = await request.json();
     
-    const { code, restaurant_slug, subtotal, order_type, user_id } = body;
+    const { code, restaurant_slug, subtotal, order_type, user_id, cart_items } = body;
     
-    console.log('[Promo Validate] Request:', { code, restaurant_slug, subtotal, order_type });
+    console.log('[Promo Validate] Request:', { code, restaurant_slug, subtotal, order_type, cart_items_count: cart_items?.length });
     
     if (!code || !restaurant_slug) {
       return NextResponse.json(
@@ -36,7 +80,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Extract restaurant ID from slug (format: restaurant-name-123)
     const restaurant_id = extractIdFromSlug(restaurant_slug);
     
     console.log('[Promo Validate] Extracted restaurant_id:', restaurant_id, 'from slug:', restaurant_slug);
@@ -48,7 +91,6 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Verify restaurant exists
     const { data: restaurant, error: restaurantError } = await supabase
       .from('restaurants')
       .select('id')
@@ -80,15 +122,13 @@ export async function POST(request: NextRequest) {
     console.log('[Promo Validate] Coupon lookup:', { 
       code: code.toUpperCase(), 
       restaurant_id, 
-      coupon: coupon ? { id: coupon.id, code: coupon.code } : null, 
+      coupon: coupon ? { id: coupon.id, code: coupon.code, targeting_type: coupon.targeting_type } : null, 
       couponError: couponError?.message 
     });
 
     if (coupon && !couponError) {
-      // Found a coupon! Validate it
       const now = new Date();
       
-      // Check valid_from_at
       if (coupon.valid_from_at && new Date(coupon.valid_from_at) > now) {
         return NextResponse.json(
           { error: 'This promo code is not yet active' },
@@ -96,7 +136,6 @@ export async function POST(request: NextRequest) {
         );
       }
       
-      // Check valid_until_at
       if (coupon.valid_until_at && new Date(coupon.valid_until_at) < now) {
         return NextResponse.json(
           { error: 'This promo code has expired' },
@@ -104,7 +143,6 @@ export async function POST(request: NextRequest) {
         );
       }
       
-      // Check if coupon is active
       if (coupon.is_active === false) {
         return NextResponse.json(
           { error: 'This promo code is no longer active' },
@@ -112,7 +150,6 @@ export async function POST(request: NextRequest) {
         );
       }
       
-      // Check total usage limit (max_redemptions) - query coupon_usage_log for accurate count
       const usageLimit = coupon.max_redemptions ?? coupon.usage_limit;
       if (usageLimit !== null && usageLimit !== undefined) {
         const { count: usageCount } = await supabase
@@ -129,10 +166,8 @@ export async function POST(request: NextRequest) {
         }
       }
       
-      // Check per-customer usage limit (max_uses_per_customer)
       const maxPerCustomer = coupon.max_uses_per_customer;
       if (maxPerCustomer !== null && maxPerCustomer !== undefined && user_id) {
-        // Count this user's usage from coupon_usage_log
         const { count: userUsageCount } = await supabase
           .schema('menuca_v3')
           .from('coupon_usage_log')
@@ -147,17 +182,89 @@ export async function POST(request: NextRequest) {
           );
         }
       }
+
+      // =====================================================
+      // Item Targeting Logic
+      // =====================================================
+      const targetingType = coupon.targeting_type || 'all';
+      const targetingMode = coupon.targeting_mode || 'include';
+      const targetingIds: number[] = coupon.targeting_ids || [];
       
-      // Check minimum purchase
-      if (coupon.minimum_purchase && subtotal < coupon.minimum_purchase) {
-        const needed = (coupon.minimum_purchase - subtotal).toFixed(2);
+      const targetingEnabled = hasActiveTargeting(targetingType, targetingIds);
+      
+      let eligibleSubtotal = subtotal;
+      let eligibleItems: CartItemInput[] = [];
+      let enrichedCartItems: CartItemInput[] = [];
+      let targetingWarning: string | undefined;
+      
+      if (targetingEnabled && cart_items && Array.isArray(cart_items) && cart_items.length > 0) {
+        enrichedCartItems = [...cart_items] as CartItemInput[];
+        
+        if (targetingType === 'course') {
+          const itemsNeedingCourse = enrichedCartItems.filter(item => item.course_id === undefined || item.course_id === null);
+          
+          if (itemsNeedingCourse.length > 0) {
+            const dishIds = itemsNeedingCourse.map(item => item.dish_id);
+            
+            const { data: dishes, error: dishesError } = await supabase
+              .schema('menuca_v3')
+              .from('dishes')
+              .select('id, course_id')
+              .in('id', dishIds);
+            
+            if (!dishesError && dishes) {
+              const courseMap = new Map<number, number>();
+              for (const dish of dishes) {
+                if (dish.course_id) {
+                  courseMap.set(dish.id, dish.course_id);
+                }
+              }
+              
+              enrichedCartItems = enrichedCartItems.map(item => ({
+                ...item,
+                course_id: item.course_id ?? courseMap.get(item.dish_id)
+              }));
+            }
+          }
+        }
+        
+        eligibleItems = enrichedCartItems.filter(item => 
+          isItemEligible(item, targetingType, targetingMode, targetingIds)
+        );
+        
+        eligibleSubtotal = eligibleItems.reduce((sum, item) => sum + (item.item_subtotal || 0), 0);
+        
+        console.log('[Promo Validate] Targeting applied:', {
+          targetingType,
+          targetingMode,
+          targetingIds,
+          totalItems: enrichedCartItems.length,
+          eligibleItems: eligibleItems.length,
+          eligibleSubtotal,
+          totalSubtotal: subtotal
+        });
+        
+        if (eligibleSubtotal === 0) {
+          return NextResponse.json(
+            { error: 'No items in your cart qualify for this coupon' },
+            { status: 400 }
+          );
+        }
+      } else if (targetingEnabled && (!cart_items || !Array.isArray(cart_items) || cart_items.length === 0)) {
+        targetingWarning = 'This coupon applies to specific items only. Final discount will be calculated at checkout.';
+      }
+      
+      const subtotalForChecks = targetingEnabled && cart_items ? eligibleSubtotal : subtotal;
+      
+      if (coupon.minimum_purchase && subtotalForChecks < coupon.minimum_purchase) {
+        const needed = (coupon.minimum_purchase - subtotalForChecks).toFixed(2);
+        const itemContext = targetingEnabled ? ' on eligible items' : '';
         return NextResponse.json(
-          { error: `Add $${needed} more to use this code (min. $${coupon.minimum_purchase})` },
+          { error: `Add $${needed} more${itemContext} to use this code (min. $${coupon.minimum_purchase})` },
           { status: 400 }
         );
       }
       
-      // Check order type
       const availTypes = coupon.availability_types || [];
       const orderTypeOk = availTypes.length === 0 || 
         (order_type === 'delivery' && (availTypes.includes('delivery') || availTypes.includes('all'))) ||
@@ -170,7 +277,6 @@ export async function POST(request: NextRequest) {
         );
       }
       
-      // Check first order only
       if (coupon.is_first_order_only && user_id) {
         const { count: previousOrders } = await supabase
           .from('orders')
@@ -187,36 +293,28 @@ export async function POST(request: NextRequest) {
         }
       }
       
-      // Calculate discount - handle both old and new column names
-      // Old: redeem_value_limit, percent/currency
-      // New: discount_amount, percentage/fixed
-      // Tiered: discount_tiers array
       let discountValue = 0;
       let description = '';
       let discountType = coupon.discount_type;
       let activeTier = null;
       let nextTier = null;
       
-      // Handle tiered discounts
       if (discountType === 'tiered' && coupon.discount_tiers && Array.isArray(coupon.discount_tiers)) {
         const tiers = coupon.discount_tiers.sort((a: any, b: any) => b.threshold_amount - a.threshold_amount);
         
-        // Find the applicable tier based on subtotal
         for (const tier of tiers) {
-          if (subtotal >= tier.threshold_amount) {
+          if (subtotalForChecks >= tier.threshold_amount) {
             activeTier = tier;
             break;
           }
         }
         
-        // Find the next tier (if any) to show incentive
         if (activeTier) {
           const currentIndex = tiers.indexOf(activeTier);
           if (currentIndex > 0) {
             nextTier = tiers[currentIndex - 1];
           }
         } else if (tiers.length > 0) {
-          // No tier reached yet, show the first (lowest threshold) tier as next
           nextTier = tiers[tiers.length - 1];
         }
         
@@ -231,9 +329,8 @@ export async function POST(request: NextRequest) {
             description = `$${discountValue} off (spend $${activeTier.threshold_amount}+ tier)`;
           }
         } else {
-          // Cart total doesn't qualify for any tier
           const lowestTier = tiers[tiers.length - 1];
-          const amountNeeded = (lowestTier.threshold_amount - subtotal).toFixed(2);
+          const amountNeeded = (lowestTier.threshold_amount - subtotalForChecks).toFixed(2);
           return NextResponse.json(
             { 
               error: `Add $${amountNeeded} more to unlock ${lowestTier.discount_type === 'percentage' ? `${lowestTier.discount_value}%` : `$${lowestTier.discount_value}`} off`,
@@ -244,43 +341,56 @@ export async function POST(request: NextRequest) {
             { status: 400 }
           );
         }
-      }
-      // Normalize discount type names for non-tiered discounts
-      else if (discountType === 'percent' || discountType === 'percentage') {
+      } else if (discountType === 'percent' || discountType === 'percentage') {
         discountValue = coupon.discount_amount ?? coupon.redeem_value_limit ?? 0;
         description = `${discountValue}% off your order`;
-        discountType = 'percent'; // Normalize for frontend
+        discountType = 'percent';
       } else if (discountType === 'currency' || discountType === 'fixed') {
         discountValue = coupon.discount_amount ?? coupon.redeem_value_limit ?? 0;
         description = `$${discountValue} off your order`;
-        discountType = 'currency'; // Normalize for frontend
+        discountType = 'currency';
       } else if (discountType === 'item') {
-        discountValue = 0; // Item value determined at checkout
+        discountValue = 0;
         description = coupon.name || 'Free item';
       } else if (discountType === 'delivery') {
-        discountValue = 0; // Delivery fee
+        discountValue = 0;
         description = 'Free delivery';
       } else {
-        // Fallback - try to get value from either column
         discountValue = coupon.discount_amount ?? coupon.redeem_value_limit ?? 0;
         description = coupon.name || 'Discount applied';
       }
       
-      return NextResponse.json({
+      const response: any = {
         valid: true,
         code: coupon.code,
-        discount_type: discountType, // Use normalized type
+        discount_type: discountType,
         discount_value: discountValue,
         description: description,
         promo_id: coupon.id,
         promo_type: 'coupon',
         name: coupon.name,
-        // Include tier info for tiered discounts
         is_tiered: coupon.discount_type === 'tiered',
         active_tier: activeTier,
         next_tier: nextTier,
         all_tiers: coupon.discount_type === 'tiered' ? coupon.discount_tiers : undefined,
-      });
+      };
+      
+      if (targetingEnabled) {
+        response.targeting = {
+          type: targetingType,
+          mode: targetingMode,
+          eligible_subtotal: eligibleSubtotal,
+          total_subtotal: subtotal,
+          eligible_items_count: eligibleItems.length,
+          total_items_count: cart_items?.length || 0,
+        };
+      }
+      
+      if (targetingWarning) {
+        response.targeting_warning = targetingWarning;
+      }
+      
+      return NextResponse.json(response);
     }
 
     // =====================================================
@@ -299,7 +409,6 @@ export async function POST(request: NextRequest) {
       const now = new Date();
       const today = now.toISOString().split('T')[0];
       
-      // Check date range
       if (deal.date_start && deal.date_start > today) {
         return NextResponse.json(
           { error: 'This promo code is not yet active' },
@@ -314,7 +423,6 @@ export async function POST(request: NextRequest) {
         );
       }
       
-      // Check minimum purchase
       if (deal.minimum_purchase && subtotal < deal.minimum_purchase) {
         const needed = (deal.minimum_purchase - subtotal).toFixed(2);
         return NextResponse.json(
@@ -323,7 +431,6 @@ export async function POST(request: NextRequest) {
         );
       }
       
-      // Check total usage limit for deals (max_total_uses)
       const maxTotalUses = deal.max_total_uses;
       if (maxTotalUses !== null && maxTotalUses !== undefined) {
         const { count: usageCount } = await supabase
@@ -340,7 +447,6 @@ export async function POST(request: NextRequest) {
         }
       }
       
-      // Check per-customer usage limit for deals (max_uses_per_user)
       const maxPerUser = deal.max_uses_per_user;
       if (maxPerUser !== null && maxPerUser !== undefined && user_id) {
         const { count: userUsageCount } = await supabase
@@ -358,7 +464,6 @@ export async function POST(request: NextRequest) {
         }
       }
       
-      // Calculate discount
       let discountType: 'percent' | 'currency' | 'item' | 'delivery' = 'percent';
       let discountValue = 0;
       let description = deal.name || 'Special deal';
@@ -389,7 +494,6 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // No match found
     return NextResponse.json(
       { error: 'Invalid promo code' },
       { status: 400 }
@@ -402,4 +506,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
