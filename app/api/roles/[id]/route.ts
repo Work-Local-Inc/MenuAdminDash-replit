@@ -195,7 +195,7 @@ export async function DELETE(
     // Prevent deleting system roles
     if (existingRole.is_system_role) {
       return NextResponse.json(
-        { error: 'Cannot delete system roles (Super Admin, Restaurant Manager, Staff)' },
+        { error: 'Cannot delete system roles (Super Admin, Restaurant Admin)' },
         { status: 403 }
       )
     }

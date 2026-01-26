@@ -102,8 +102,8 @@ export default function CreateAdminUserPage() {
           <Shield className="h-4 w-4" />
           <AlertTitle>Insufficient Permissions</AlertTitle>
           <AlertDescription>
-            Only Super Admins, Managers, and Support staff can create new admin users.
-            Restaurant Managers and Staff do not have this permission.
+            Only Super Admins can create new admin users.
+            Restaurant Admins do not have this permission.
           </AlertDescription>
         </Alert>
       </div>
@@ -114,7 +114,7 @@ export default function CreateAdminUserPage() {
     const selectedRole = allRoles?.find(r => r.id === parseInt(formData.role_id))
     const isAutomated = result[0]?.automated === true
     
-    // AUTOMATED FLOW: Restaurant Owner created successfully
+    // AUTOMATED FLOW: Restaurant Admin created successfully
     if (isAutomated) {
       return (
         <div className="space-y-6">
@@ -125,14 +125,14 @@ export default function CreateAdminUserPage() {
               </Button>
             </Link>
             <div>
-              <h1 className="text-3xl font-bold">Restaurant Owner Created!</h1>
+              <h1 className="text-3xl font-bold">Restaurant Admin Created!</h1>
               <p className="text-muted-foreground">Account created and activated successfully</p>
             </div>
           </div>
 
           <Alert>
             <CheckCircle2 className="h-4 w-4" />
-            <AlertTitle>✅ Restaurant Owner Created Successfully!</AlertTitle>
+            <AlertTitle>Restaurant Admin Created Successfully!</AlertTitle>
             <AlertDescription>
               The account is fully activated and restaurants have been assigned automatically.
             </AlertDescription>
@@ -141,7 +141,7 @@ export default function CreateAdminUserPage() {
           <Card>
             <CardHeader>
               <CardTitle>Account Details</CardTitle>
-              <CardDescription>Send these credentials to the new restaurant owner</CardDescription>
+              <CardDescription>Send these credentials to the new Restaurant Admin</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-4">
@@ -196,7 +196,7 @@ export default function CreateAdminUserPage() {
                   setResult(null)
                   setFormData({ email: '', first_name: '', last_name: '', phone: '', role_id: '', restaurant_ids: [] })
                 }} className="flex-1">
-                  Create Another Owner
+                  Create Another Admin
                 </Button>
               </div>
             </CardContent>
@@ -420,13 +420,13 @@ WHERE email = '${formData.email}';`}
               <p className="text-xs text-muted-foreground">
                 {currentRoleId === 1 
                   ? "As a Super Admin, you can assign any role"
-                  : "You can only assign Staff and Restaurant Manager roles"
+                  : "You do not have permission to create admin users"
                 }
               </p>
             </div>
 
-            {/* Restaurant Selection - Only for Restaurant Managers */}
-            {formData.role_id === "5" && (
+            {/* Restaurant Selection - Only for Restaurant Admins */}
+            {formData.role_id === "2" && (
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <Store className="h-4 w-4" />
@@ -461,7 +461,7 @@ WHERE email = '${formData.email}';`}
                   <Alert>
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
-                      No active restaurants found. Please ensure there are active restaurants before creating a Restaurant Manager.
+                      No active restaurants found. Please ensure there are active restaurants before creating a Restaurant Admin.
                     </AlertDescription>
                   </Alert>
                 )}
@@ -485,13 +485,13 @@ WHERE email = '${formData.email}';`}
                 disabled={
                   createAdmin.isPending || 
                   !formData.role_id ||
-                  (formData.role_id === "5" && formData.restaurant_ids.length === 0)
+                  (formData.role_id === "2" && formData.restaurant_ids.length === 0)
                 }
                 className="flex-1"
                 data-testid="button-submit"
               >
                 {createAdmin.isPending ? 'Creating...' : (
-                  formData.role_id === "5" ? 'Create Restaurant Owner' : 'Create Admin Request'
+                  formData.role_id === "2" ? 'Create Restaurant Admin' : 'Create Admin Request'
                 )}
               </Button>
             </div>

@@ -7,13 +7,19 @@
 
 ## Executive Summary
 
-The dev simplified the admin system to 2 roles (Super Admin, Restaurant Admin) and created optimized SQL/RPC functions, but our codebase still references the old 6-role structure and doesn't utilize the new database functions.
+The dev simplified the admin system to 2 roles (Super Admin, Restaurant Admin) and created optimized SQL/RPC functions. 
 
-**Priority:** Medium-High - The code works but is inconsistent with the simplified database schema.
+**Status: ✅ FIXES IMPLEMENTED (January 2026)**
+
+All identified issues have been addressed:
+- Role ID references updated from 5/6 to 1/2 (simplified schema)
+- UI dropdowns updated to show only Super Admin and Restaurant Admin
+- Auth checks updated to use auth_user_id with email fallback
+- RBAC functions updated with isRestaurantAdmin()
 
 ---
 
-## Gap Analysis
+## Gap Analysis (RESOLVED)
 
 ### 1. Role ID Mismatch (HIGH PRIORITY)
 
@@ -186,11 +192,19 @@ The dev created 17 RLS policies using `current_admin_restaurant_ids()`:
 
 ---
 
-**Files Requiring Updates:**
-- `app/api/admin-users/create/route.ts`
-- `app/admin/users/admin-users/page.tsx`
-- `app/admin/users/admin-users/create/page.tsx`
-- `lib/rbac.ts`
-- `lib/hooks/use-admin-roles.ts`
-- `hooks/use-admin-restaurants.ts`
-- `lib/auth/admin-check.ts`
+## ✅ Completed Fixes (January 2026)
+
+**Files Updated:**
+| File | Change |
+|------|--------|
+| `app/api/admin-users/create/route.ts` | role_id 5→2, permission logic simplified to 2-role system |
+| `app/admin/users/admin-users/page.tsx` | Dropdown options: Super Admin (1), Restaurant Admin (2) |
+| `app/admin/users/admin-users/create/page.tsx` | Updated all role_id="5" refs to "2", fixed UI text |
+| `lib/rbac.ts` | Added isRestaurantAdmin(), deprecated isStaff/isRestaurantManager |
+| `lib/hooks/use-admin-roles.ts` | Simplified to 2-role hierarchy |
+| `hooks/use-admin-restaurants.ts` | Uses auth_user_id with email fallback |
+| `lib/auth/admin-check.ts` | Uses auth_user_id with email fallback |
+
+**Remaining Optimization (Optional):**
+- Consider using Supabase RPC functions (get_admin_restaurants, get_admin_profile) for single-query lookups
+- These would reduce the current 2-3 query pattern to 1 RPC call each

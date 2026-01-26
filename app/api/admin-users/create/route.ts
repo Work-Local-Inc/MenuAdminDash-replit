@@ -15,8 +15,8 @@ function generateTempPassword(): string {
   return password
 }
 
-// Automated Restaurant Owner Creation
-async function createRestaurantOwnerAutomated({
+// Automated Restaurant Admin Creation
+async function createRestaurantAdminAutomated({
   email,
   first_name,
   last_name,
@@ -66,7 +66,7 @@ async function createRestaurantOwnerAutomated({
 
     const authUserId = authData.user.id
 
-    // Step 2: Create admin_users record with role_id = 5 (Restaurant Manager)
+    // Step 2: Create admin_users record with role_id = 2 (Restaurant Admin)
     const { data: adminUser, error: adminUserError } = await adminClient
       .schema('menuca_v3')
       .from('admin_users')
@@ -76,7 +76,7 @@ async function createRestaurantOwnerAutomated({
         last_name,
         phone: phone || null,
         auth_user_id: authUserId,
-        role_id: 5, // Restaurant Manager
+        role_id: 2, // Restaurant Admin (simplified schema)
         status: 'active'
       })
       .select()
@@ -142,13 +142,13 @@ async function createRestaurantOwnerAutomated({
       auth_user_id: authUserId,
       temp_password: tempPassword,
       restaurants_assigned: restaurant_ids.length,
-      message: `Restaurant Owner created successfully. Credentials: Email: ${email}, Temporary Password: ${tempPassword}`
+      message: `Restaurant Admin created successfully. Credentials: Email: ${email}, Temporary Password: ${tempPassword}`
     }])
 
   } catch (error: any) {
-    console.error('Error in createRestaurantOwnerAutomated:', error)
+    console.error('Error in createRestaurantAdminAutomated:', error)
     return NextResponse.json(
-      { error: error.message || 'Failed to create restaurant owner' },
+      { error: error.message || 'Failed to create restaurant admin' },
       { status: 500 }
     )
   }
@@ -169,10 +169,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // For Restaurant Managers, restaurant_ids are required
-    if (role_id === 5 && (!restaurant_ids || restaurant_ids.length === 0)) {
+    // For Restaurant Admins (role_id = 2), restaurant_ids are required
+    if (role_id === 2 && (!restaurant_ids || restaurant_ids.length === 0)) {
       return NextResponse.json(
-        { error: 'restaurant_ids are required for Restaurant Manager role' },
+        { error: 'restaurant_ids are required for Restaurant Admin role' },
         { status: 400 }
       )
     }
@@ -207,16 +207,12 @@ export async function POST(request: NextRequest) {
     const currentRoleId = currentAdmin.role_id
 
     // Permission check: determine if current admin can create this role
+    // Simplified 2-role system: Super Admin (1) and Restaurant Admin (2)
     const canCreateRole = (currentRole: number, targetRole: number): boolean => {
       // Super Admin (1) can create any role
       if (currentRole === 1) return true
       
-      // Manager (2) and Support (3) can only create Staff (6) and Restaurant Manager (5)
-      if (currentRole === 2 || currentRole === 3) {
-        return targetRole === 5 || targetRole === 6
-      }
-      
-      // Restaurant Manager (5) and Staff (6) cannot create admins
+      // Restaurant Admin (2) cannot create other admins
       return false
     }
 
@@ -227,9 +223,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // AUTOMATED FLOW: Restaurant Manager (role_id = 5)
-    if (role_id === 5) {
-      return await createRestaurantOwnerAutomated({
+    // AUTOMATED FLOW: Restaurant Admin (role_id = 2)
+    if (role_id === 2) {
+      return await createRestaurantAdminAutomated({
         email,
         first_name,
         last_name,
@@ -238,7 +234,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // MANUAL FLOW: All other roles (Super Admin, Manager, Support, Staff)
+    // MANUAL FLOW: Super Admin (role_id = 1) - requires manual Supabase auth creation
     // Create admin user directly (bypassing broken RPC function)
     // Note: auth_user_id will be NULL until manual auth creation step
     const { data: result, error } = await supabase

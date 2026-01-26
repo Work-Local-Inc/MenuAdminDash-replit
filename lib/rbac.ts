@@ -124,17 +124,26 @@ export function isSuperAdmin(role: Role | null | undefined): boolean {
 }
 
 /**
- * Check if user is Restaurant Manager
+ * Check if user is Restaurant Admin
+ * (Simplified schema: Restaurant Admin replaces the old Restaurant Manager and Staff roles)
  */
-export function isRestaurantManager(role: Role | null | undefined): boolean {
-  return role?.name === 'Restaurant Manager' && role?.is_system_role === true
+export function isRestaurantAdmin(role: Role | null | undefined): boolean {
+  return role?.name === 'Restaurant Admin' && role?.is_system_role === true
 }
 
 /**
- * Check if user is Staff (read-only)
+ * @deprecated Use isRestaurantAdmin() instead - Staff role no longer exists in simplified schema
  */
 export function isStaff(role: Role | null | undefined): boolean {
-  return role?.name === 'Staff' && role?.is_system_role === true
+  // Always returns false - Staff role removed from simplified 2-role system
+  return false
+}
+
+/**
+ * @deprecated Use isRestaurantAdmin() instead - Restaurant Manager renamed to Restaurant Admin
+ */
+export function isRestaurantManager(role: Role | null | undefined): boolean {
+  return isRestaurantAdmin(role)
 }
 
 // ============================================

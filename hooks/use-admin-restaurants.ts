@@ -6,6 +6,9 @@ import { createClient } from '@/lib/supabase/client'
 /**
  * Fetches the list of restaurant IDs that the current admin user has permission to manage
  * Used to scope all promotional queries to authorized restaurants only
+ * 
+ * Uses auth_user_id for lookup (more secure than email matching)
+ * Falls back to email for backwards compatibility with existing admins
  */
 export function useAdminRestaurants() {
   const supabase = createClient()
@@ -16,19 +19,35 @@ export function useAdminRestaurants() {
       // Get current authenticated user
       const { data: { user }, error: authError } = await supabase.auth.getUser()
       
-      if (authError || !user?.email) {
+      if (authError || !user) {
         throw new Error('Not authenticated')
       }
 
-      // Get admin user record
-      const { data: adminUser, error: adminError } = await supabase
+      // Try to get admin user record by auth_user_id first (preferred)
+      let adminUser = null
+      
+      const { data: authIdMatch } = await supabase
         .from('admin_users')
         .select('id')
-        .eq('email', user.email)
+        .eq('auth_user_id', user.id)
         .is('deleted_at', null)
         .single<{ id: number }>()
 
-      if (adminError || !adminUser) {
+      if (authIdMatch) {
+        adminUser = authIdMatch
+      } else if (user.email) {
+        // Fallback to email for backwards compatibility
+        const { data: emailMatch } = await supabase
+          .from('admin_users')
+          .select('id')
+          .eq('email', user.email)
+          .is('deleted_at', null)
+          .single<{ id: number }>()
+        
+        adminUser = emailMatch
+      }
+
+      if (!adminUser) {
         throw new Error('Admin user not found')
       }
 

@@ -83,7 +83,7 @@ export function useCreateAdminUser() {
       toast({
         title: "Success",
         description: isAutomated 
-          ? "Restaurant Owner created successfully with full access!"
+          ? "Restaurant Admin created successfully with full access!"
           : "Admin user request created successfully. Follow manual steps to complete setup.",
       })
     },

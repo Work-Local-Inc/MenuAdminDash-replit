@@ -19,27 +19,20 @@ export function useAdminRoles() {
 /**
  * Determines which roles the current admin can assign to new admins
  * 
- * Permission Rules:
- * - Super Admin (1): Can create ANY role including other Super Admins
- * - Manager (2): Can create Staff (6) and Restaurant Manager (5) only
- * - Support (3): Can create Staff (6) and Restaurant Manager (5) only
- * - Restaurant Manager (5): Cannot create other admins
- * - Staff (6): Cannot create other admins
+ * Simplified 2-Role Permission System:
+ * - Super Admin (1): Can create any role including other Super Admins and Restaurant Admins
+ * - Restaurant Admin (2): Cannot create other admins
  */
 export function getAssignableRoles(currentAdminRoleId: number | null, allRoles: AdminRole[]): AdminRole[] {
   if (!currentAdminRoleId) return []
 
   // Super Admin can assign any role
   if (currentAdminRoleId === 1) {
-    return allRoles
+    // Filter to only valid roles (1 = Super Admin, 2 = Restaurant Admin)
+    return allRoles.filter(role => role.id === 1 || role.id === 2)
   }
 
-  // Manager and Support can only assign Staff and Restaurant Manager
-  if (currentAdminRoleId === 2 || currentAdminRoleId === 3) {
-    return allRoles.filter(role => role.id === 5 || role.id === 6)
-  }
-
-  // Restaurant Manager and Staff cannot create other admins
+  // Restaurant Admin (2) cannot create other admins
   return []
 }
 
@@ -48,6 +41,6 @@ export function getAssignableRoles(currentAdminRoleId: number | null, allRoles: 
  */
 export function canCreateAdmins(currentAdminRoleId: number | null): boolean {
   if (!currentAdminRoleId) return false
-  // Only Super Admin (1), Manager (2), and Support (3) can create admins
-  return [1, 2, 3].includes(currentAdminRoleId)
+  // Only Super Admin (1) can create admins in the simplified schema
+  return currentAdminRoleId === 1
 }

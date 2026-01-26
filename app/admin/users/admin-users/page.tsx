@@ -99,10 +99,7 @@ export default function AdminUsersPage() {
               <SelectContent>
                 <SelectItem value="all">All Roles</SelectItem>
                 <SelectItem value="1">Super Admin</SelectItem>
-                <SelectItem value="5">Restaurant Manager</SelectItem>
-                <SelectItem value="2">Manager</SelectItem>
-                <SelectItem value="3">Support</SelectItem>
-                <SelectItem value="6">Staff</SelectItem>
+                <SelectItem value="2">Restaurant Admin</SelectItem>
               </SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
