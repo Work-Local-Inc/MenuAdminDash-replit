@@ -14,8 +14,8 @@ const BASE_URL = process.argv[2] || 'http://localhost:5000'
 
 // Test credentials (from database)
 const TEST_DEVICE = {
-  uuid: '006fe8aa-eec7-465c-bb8d-9180d3a2c910',
-  key: 'aU2065zyc6zJrOwhQajVXToYLs4TNsOPlCgzKPVbyDE',
+  uuid: 'fa91341c-07d7-4a1f-86ba-1bb3fe51ba06',
+  key: 'Zwo1r_Zpe1ZVXmde7oJHuSElRdvx8boAG0YpC_XgkhE',
 }
 
 let sessionToken = null
@@ -160,9 +160,11 @@ async function testTokenRefresh() {
   const response = await fetch(`${BASE_URL}/api/tablet/auth/refresh`, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${sessionToken}`,
       'Content-Type': 'application/json',
     },
+    body: JSON.stringify({
+      session_token: sessionToken,
+    }),
   })
 
   if (!response.ok) {
