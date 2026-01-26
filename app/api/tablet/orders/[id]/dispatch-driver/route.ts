@@ -73,8 +73,7 @@ export async function POST(
         customer_phone,
         customer_email,
         delivery_address,
-        delivery_lat,
-        delivery_lng,
+        postal_code,
         delivery_fee,
         tip_amount,
         total_amount,
@@ -111,30 +110,12 @@ export async function POST(
       );
     }
 
-    // Get restaurant location for distance calculation
-    const { data: restaurant, error: restaurantError } = await supabase
-      .schema('menuca_v3')
-      .from('restaurant_locations')
-      .select('lat, lng, postal_code')
-      .eq('restaurant_id', deviceContext.restaurant_id)
-      .single();
+    // Default distance - can be overridden in request body
+    let distanceKm = 5;
 
-    // Calculate distance if we have coordinates
-    let distanceKm = 5; // Default fallback
-    if (restaurant && order.delivery_lat && order.delivery_lng && restaurant.lat && restaurant.lng) {
-      distanceKm = calculateDistance(
-        restaurant.lat,
-        restaurant.lng,
-        order.delivery_lat,
-        order.delivery_lng
-      );
-      // Round to nearest km
-      distanceKm = Math.ceil(distanceKm);
-    }
-
-    // Parse postal code from address if not available
-    let postalCode = '';
-    if (order.delivery_address) {
+    // Get postal code from order or parse from address
+    let postalCode = order.postal_code || '';
+    if (!postalCode && order.delivery_address) {
       const postalMatch = order.delivery_address.match(/[A-Z]\d[A-Z]\s?\d[A-Z]\d/i);
       if (postalMatch) {
         postalCode = postalMatch[0].toUpperCase().replace(/\s/g, '');
