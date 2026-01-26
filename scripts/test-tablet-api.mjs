@@ -183,6 +183,122 @@ async function testTokenRefresh() {
   sessionToken = data.session_token
 }
 
+async function testDispatchDriverDryRun() {
+  if (!sessionToken) throw new Error('No session token - login first')
+
+  // First get a delivery order to test with
+  const ordersResponse = await fetch(`${BASE_URL}/api/tablet/orders?limit=50`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${sessionToken}`,
+      'Content-Type': 'application/json',
+    },
+  })
+
+  if (!ordersResponse.ok) {
+    throw new Error('Failed to fetch orders')
+  }
+
+  const ordersData = await ordersResponse.json()
+  
+  // Find a delivery order in confirmed/preparing/ready status
+  const validStatuses = ['confirmed', 'preparing', 'ready']
+  const deliveryOrder = ordersData.orders?.find(
+    o => o.order_type === 'delivery' && validStatuses.includes(o.order_status)
+  )
+
+  if (!deliveryOrder) {
+    console.log('   No eligible delivery order found (need delivery order in confirmed/preparing/ready status)')
+    console.log('   Skipping dry run test - this is expected if no orders match criteria')
+    return
+  }
+
+  console.log(`   Testing with order #${deliveryOrder.order_number} (ID: ${deliveryOrder.id})`)
+
+  // Test dispatch with dry_run=true
+  const response = await fetch(`${BASE_URL}/api/tablet/orders/${deliveryOrder.id}/dispatch-driver?dry_run=true`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${sessionToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({}),
+  })
+
+  const data = await response.json()
+
+  if (!response.ok) {
+    // 400 with "not configured" is expected for restaurants without a provider
+    if (data.error?.includes('not configured')) {
+      console.log('   Restaurant not configured for external delivery - this is expected')
+      console.log('   (To test dispatch, configure a delivery provider for this restaurant)')
+      return
+    }
+    throw new Error(`HTTP ${response.status}: ${JSON.stringify(data)}`)
+  }
+
+  if (!data.dry_run) {
+    throw new Error('Response missing dry_run flag - may have called real API!')
+  }
+
+  console.log(`   DRY RUN successful!`)
+  console.log(`   Provider: ${data.provider}`)
+  console.log(`   Message: ${data.message}`)
+  console.log(`   Payload preview:`)
+  console.log(`     - Address: ${data.payload?.address}`)
+  console.log(`     - Customer: ${data.payload?.customerName}`)
+  console.log(`     - Total: $${data.payload?.total?.toFixed(2)}`)
+  console.log(`     - Distance: ${data.payload?.distanceKm}km`)
+}
+
+async function testCheckDispatchAvailable() {
+  if (!sessionToken) throw new Error('No session token - login first')
+
+  // Get any order to check dispatch availability
+  const ordersResponse = await fetch(`${BASE_URL}/api/tablet/orders?limit=1`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${sessionToken}`,
+      'Content-Type': 'application/json',
+    },
+  })
+
+  if (!ordersResponse.ok) {
+    throw new Error('Failed to fetch orders')
+  }
+
+  const ordersData = await ordersResponse.json()
+  
+  if (!ordersData.orders?.length) {
+    console.log('   No orders found to check dispatch availability')
+    return
+  }
+
+  const order = ordersData.orders[0]
+  console.log(`   Checking dispatch for order #${order.order_number}`)
+
+  const response = await fetch(`${BASE_URL}/api/tablet/orders/${order.id}/dispatch-driver`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${sessionToken}`,
+      'Content-Type': 'application/json',
+    },
+  })
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(`HTTP ${response.status}: ${JSON.stringify(error)}`)
+  }
+
+  const data = await response.json()
+  
+  console.log(`   Dispatch available: ${data.dispatch_available}`)
+  if (data.provider) {
+    console.log(`   Provider: ${data.provider.name} (${data.provider.code})`)
+    console.log(`   External ID: ${data.provider.external_id}`)
+  }
+}
+
 async function testUnauthorized() {
   const response = await fetch(`${BASE_URL}/api/tablet/orders`, {
     method: 'GET',
@@ -227,6 +343,8 @@ async function runAllTests() {
     results.push(await test('Get Pending Orders', testGetOrdersPending))
     results.push(await test('Heartbeat', testHeartbeat))
     results.push(await test('Token Refresh', testTokenRefresh))
+    results.push(await test('Check Dispatch Available', testCheckDispatchAvailable))
+    results.push(await test('Dispatch Driver (Dry Run)', testDispatchDriverDryRun))
   }
 
   // Summary
