@@ -168,8 +168,11 @@ export async function POST(
       // Empty body is fine
     }
 
-    // Dispatch driver via provider adapter
-    const dispatchResult = await adapter.dispatch({
+    // Check for dry_run mode (test without actually calling provider API)
+    const isDryRun = body.dry_run === true || request.nextUrl.searchParams.get('dry_run') === 'true';
+
+    // Build dispatch payload
+    const dispatchPayload = {
       restaurantId: deviceContext.restaurant_id,
       providerExternalId: providerConfig.providerExternalId,
       orderId: orderIdNum,
@@ -186,7 +189,27 @@ export async function POST(
       notes: order.special_instructions || '',
       paymentMethod: order.payment_method || 'card',
       total: order.total_amount || 0,
-    });
+    };
+
+    // DRY RUN MODE: Log payload and return without calling provider API
+    if (isDryRun) {
+      console.log(`[Tablet Dispatch Driver] DRY RUN - Order ${orderIdNum}:`, {
+        provider: providerConfig.provider.code,
+        payload: dispatchPayload,
+      });
+
+      return NextResponse.json({
+        success: true,
+        dry_run: true,
+        order_id: orderIdNum,
+        provider: providerConfig.provider.code,
+        message: `DRY RUN: Would dispatch driver via ${providerConfig.provider.name} (no actual API call made)`,
+        payload: dispatchPayload,
+      });
+    }
+
+    // LIVE MODE: Dispatch driver via provider adapter
+    const dispatchResult = await adapter.dispatch(dispatchPayload);
 
     // Record dispatch attempt in order status history
     const historyNotes = dispatchResult.usedBackupEmail

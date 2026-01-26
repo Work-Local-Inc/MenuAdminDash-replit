@@ -204,6 +204,56 @@ Content-Type: application/json
 
 All fields are optional - the API will calculate defaults from order data.
 
+### Test Mode (Dry Run)
+
+To test the dispatch flow **without actually calling the provider API** (no real driver will be dispatched):
+
+**Option 1 - Query parameter:**
+```
+POST /api/tablet/orders/{id}/dispatch-driver?dry_run=true
+```
+
+**Option 2 - Request body:**
+```json
+{
+  "dry_run": true
+}
+```
+
+**Dry Run Response:**
+```json
+{
+  "success": true,
+  "dry_run": true,
+  "order_id": 123,
+  "provider": "restozone",
+  "message": "DRY RUN: Would dispatch driver via RestoZone (no actual API call made)",
+  "payload": {
+    "restaurantId": 456,
+    "providerExternalId": "12345",
+    "orderId": 123,
+    "address": "123 Main St, Ottawa, ON K1A 0B1",
+    "postalCode": "K1A0B1",
+    "customerName": "John Doe",
+    "customerPhone": "6135551234",
+    "customerEmail": "john@example.com",
+    "prepTime": "14:30",
+    "deliveryFee": 5.99,
+    "driverTip": 3.00,
+    "driverEarning": 5.99,
+    "distanceKm": 4,
+    "notes": "Ring doorbell",
+    "paymentMethod": "card",
+    "total": 45.99
+  }
+}
+```
+
+This lets you verify:
+- Order validation works correctly
+- Provider configuration is set up properly
+- All dispatch payload fields are populated correctly
+
 **Success Response:**
 ```json
 {
