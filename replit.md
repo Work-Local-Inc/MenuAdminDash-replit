@@ -69,3 +69,9 @@ Preferred communication style: Simple, everyday language.
 -   **Coupon Validation at Checkout (Completed)**: Added CouponInput component to cart drawer with full validation flow. Server-side validation in create-payment-intent endpoint. Orders API stores coupon data (promo_id, discount_amount, promo_code) with automatic usage logging to coupon_usage_log table (for promo_type === 'coupon' only). Includes NaN guarding for discount parsing.
 -   **CartDrawer Component Update**: Now requires `restaurantSlug` prop for coupon validation API calls. The slug is computed via useMemo in RestaurantMenu and RestaurantMenuPublic components.
 -   **Bilingual Translations for Marketing Hub (Completed)**: Added French translation support for promotional deals and coupons with English fallback.
+-   **Admin Role System Simplification (Completed)**: Aligned codebase with dev's simplified 2-role schema:
+    - **Roles**: Super Admin (1) and Restaurant Admin (2) only
+    - **Auth Security**: Admin verification now uses `auth_user_id` (FK to auth.users) with email fallback for backwards compatibility
+    - **UI Updates**: Role dropdowns and creation flows updated for 2-role system
+    - **RBAC Updates**: Added `isRestaurantAdmin()` helper, deprecated `isRestaurantManager()` and `isStaff()`
+    - **Files Updated**: `lib/auth/admin-check.ts`, `lib/rbac.ts`, `hooks/use-admin-restaurants.ts`, `lib/hooks/use-admin-roles.ts`, admin users pages
