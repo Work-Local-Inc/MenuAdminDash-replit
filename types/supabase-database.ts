@@ -1,6 +1,7 @@
 /**
  * Auto-generated TypeScript types for menuca_v3 database
  * Generated: October 15, 2025
+ * Updated: January 27, 2026 (aligned with 05-user-entity.md schema)
  * 
  * Usage:
  *   import { Database } from './types/supabase-database'
@@ -234,25 +235,16 @@ export interface Database {
           has_email_verified: boolean | null
           first_name: string | null
           last_name: string | null
-          display_name: string | null
           phone: string | null
-          language: string | null
-          password_hash: string
-          password_changed_at: string | null
-          is_newsletter_subscribed: boolean | null
-          is_vegan_newsletter_subscribed: boolean | null
-          login_count: number | null
           last_login_at: string | null
-          last_login_ip: string | null
           credit_balance: number | null
-          credit_earned_at: string | null
-          facebook_id: string | null
           origin_restaurant_id: number | null
-          origin_source: string | null
-          v1_user_id: number | null
-          v2_user_id: number | null
+          auth_user_id: string | null
+          stripe_customer_id: string | null
           created_at: string | null
           updated_at: string | null
+          deleted_at: string | null
+          deleted_by: number | null
         }
         Insert: Omit<Database['menuca_v3']['Tables']['users']['Row'], 'id' | 'created_at'> & {
           id?: number
@@ -319,6 +311,65 @@ export interface Database {
           created_at?: string
         }
         Update: Partial<Database['menuca_v3']['Tables']['user_addresses']['Insert']>
+      }
+
+      user_delivery_addresses: {
+        Row: {
+          id: number
+          user_id: number
+          address_label: string | null
+          street_address: string
+          unit: string | null
+          city_id: number | null
+          postal_code: string
+          latitude: number | null
+          longitude: number | null
+          delivery_instructions: string | null
+          is_default: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: Omit<Database['menuca_v3']['Tables']['user_delivery_addresses']['Row'], 'id' | 'created_at' | 'updated_at'> & {
+          id?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: Partial<Database['menuca_v3']['Tables']['user_delivery_addresses']['Insert']>
+      }
+
+      user_favorite_restaurants: {
+        Row: {
+          id: number
+          user_id: number
+          restaurant_id: number
+          created_at: string | null
+        }
+        Insert: Omit<Database['menuca_v3']['Tables']['user_favorite_restaurants']['Row'], 'id' | 'created_at'> & {
+          id?: number
+          created_at?: string
+        }
+        Update: Partial<Database['menuca_v3']['Tables']['user_favorite_restaurants']['Insert']>
+      }
+
+      user_payment_methods: {
+        Row: {
+          id: number
+          user_id: number
+          stripe_payment_method_id: string
+          card_brand: string | null
+          last_4_digits: string | null
+          exp_month: number | null
+          exp_year: number | null
+          is_default: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: Omit<Database['menuca_v3']['Tables']['user_payment_methods']['Row'], 'id' | 'created_at' | 'updated_at'> & {
+          id?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: Partial<Database['menuca_v3']['Tables']['user_payment_methods']['Insert']>
       }
 
       // ==================== MENU & CATALOG ====================
