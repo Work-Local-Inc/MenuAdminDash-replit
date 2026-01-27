@@ -53,11 +53,20 @@ export async function POST(request: NextRequest) {
     // Validate request body
     const validatedData = couponCreateSchema.parse(body)
 
+    // Map validation schema to database columns
+    // Database has both 'name' (required) and 'name_en' for bilingual support
+    // Remove fields that don't exist in the database
+    const { description_fr, ...restData } = validatedData
+    const dbData = {
+      ...restData,
+      name_en: validatedData.name, // Also populate name_en with the name for bilingual support
+    }
+
     // IMPORTANT: promotional_coupons is in menuca_v3 schema
     const { data, error } = await supabase
       .schema('menuca_v3')
       .from('promotional_coupons')
-      .insert(validatedData as any)
+      .insert(dbData as any)
       .select()
       .single()
 

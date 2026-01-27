@@ -18,14 +18,14 @@ export async function GET(request: NextRequest) {
       supabase
         .schema('menuca_v3')
         .from('courses')
-        .select('id, name, display_order')
+        .select('id, name_en, name_fr, display_order')
         .eq('restaurant_id', parseInt(restaurantId))
         .eq('is_active', true)
         .order('display_order', { ascending: true }),
       supabase
         .schema('menuca_v3')
         .from('dishes')
-        .select('id, name, course_id, display_order')
+        .select('id, name_en, name_fr, course_id, display_order')
         .eq('restaurant_id', parseInt(restaurantId))
         .eq('is_active', true)
         .order('display_order', { ascending: true })
@@ -34,15 +34,16 @@ export async function GET(request: NextRequest) {
     if (coursesResult.error) throw coursesResult.error
     if (dishesResult.error) throw dishesResult.error
 
+    // Use name_en with name_fr fallback for bilingual support
     const courses = (coursesResult.data || []).map((course: any) => ({
       id: course.id,
-      name: course.name,
+      name: course.name_en || course.name_fr || `Course ${course.id}`,
       type: 'course' as const,
     }))
 
     const dishes = (dishesResult.data || []).map((dish: any) => ({
       id: dish.id,
-      name: dish.name,
+      name: dish.name_en || dish.name_fr || `Dish ${dish.id}`,
       courseId: dish.course_id,
       type: 'dish' as const,
     }))
