@@ -9,7 +9,9 @@ import { DishImageCard } from './dish-image-card'
 import { DishListRow } from './dish-list-row'
 import { CartDrawer } from './cart-drawer'
 import { PromoBanner } from './promo-banner'
+import { LanguageToggle } from './language-toggle'
 import { useCartStore } from '@/lib/stores/cart-store'
+import { useLanguage } from '@/lib/contexts/language-context'
 import { resolveBrandingColors, MENUCA_RED } from '@/lib/utils'
 import { getApiBaseUrl } from '@/lib/api-utils'
 
@@ -205,19 +207,22 @@ export default function RestaurantMenuPublic({
               )}
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-1 sm:gap-2 flex-shrink-0">
-              {serviceConfig?.has_delivery_enabled && (
-                <Badge variant="secondary" className="text-xs sm:text-sm" data-testid="badge-delivery">
-                  <span className="hidden sm:inline">Delivery Available</span>
-                  <span className="sm:hidden">Delivery</span>
-                </Badge>
-              )}
-              {serviceConfig?.takeout_enabled && (
-                <Badge variant="secondary" className="text-xs sm:text-sm" data-testid="badge-takeout">
-                  <span className="hidden sm:inline">Takeout Available</span>
-                  <span className="sm:hidden">Takeout</span>
-                </Badge>
-              )}
+            <div className="flex flex-col items-end gap-2 flex-shrink-0">
+              <LanguageToggle primaryColor={brandColors.primary} />
+              <div className="flex flex-col sm:flex-row gap-1 sm:gap-2">
+                {serviceConfig?.has_delivery_enabled && (
+                  <Badge variant="secondary" className="text-xs sm:text-sm" data-testid="badge-delivery">
+                    <span className="hidden sm:inline">Delivery Available</span>
+                    <span className="sm:hidden">Delivery</span>
+                  </Badge>
+                )}
+                {serviceConfig?.takeout_enabled && (
+                  <Badge variant="secondary" className="text-xs sm:text-sm" data-testid="badge-takeout">
+                    <span className="hidden sm:inline">Takeout Available</span>
+                    <span className="sm:hidden">Takeout</span>
+                  </Badge>
+                )}
+              </div>
             </div>
           </div>
         </div>

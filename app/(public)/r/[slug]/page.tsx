@@ -6,6 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { extractIdFromSlug, createRestaurantSlug } from '@/lib/utils/slugify';
 import RestaurantMenu from '@/components/customer/restaurant-menu-public';
 import { AnalyticsProvider } from '@/components/providers/analytics-provider';
+import { LanguageProvider } from '@/lib/contexts/language-context';
 import type { RestaurantMenuResponse } from '@/lib/types/menu';
 import { hexToHSL, hasCustomBranding } from '@/lib/utils';
 import { fetchMenuForCustomer } from '@/lib/supabase/menu';
@@ -224,10 +225,12 @@ export default async function RestaurantPage({ params }: RestaurantPageProps) {
   } as React.CSSProperties;
   
   return (
-    <AnalyticsProvider measurementId={gaMeasurementId}>
-      <div style={dynamicStyle}>
-        <RestaurantMenu restaurant={restaurant} courses={courses} slug={params.slug} gaMeasurementId={gaMeasurementId} />
-      </div>
-    </AnalyticsProvider>
+    <LanguageProvider>
+      <AnalyticsProvider measurementId={gaMeasurementId}>
+        <div style={dynamicStyle}>
+          <RestaurantMenu restaurant={restaurant} courses={courses} slug={params.slug} gaMeasurementId={gaMeasurementId} />
+        </div>
+      </AnalyticsProvider>
+    </LanguageProvider>
   );
 }
