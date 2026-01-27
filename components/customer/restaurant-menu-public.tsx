@@ -35,13 +35,17 @@ interface RestaurantMenuPublicProps {
 
 export default function RestaurantMenuPublic({
   restaurant,
-  courses,
+  courses: initialCourses,
   hasMenu = true,
   slug: urlSlug,
   gaMeasurementId,
 }: RestaurantMenuPublicProps) {
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [courses, setCourses] = useState(initialCourses)
+  const [isLoadingMenu, setIsLoadingMenu] = useState(false)
+  const { language } = useLanguage()
+  const [currentLanguage, setCurrentLanguage] = useState<string | null>(null)
 
   const cartItemCount = useCartStore((state) =>
     state.items.reduce((sum, item) => sum + item.quantity, 0)
@@ -95,8 +99,6 @@ export default function RestaurantMenuPublic({
         const response = await fetch(`${getApiBaseUrl()}/api/customer/restaurants/${restaurantSlug}/tax`)
         if (response.ok) {
           const data = await response.json()
-          // API returns { province_id, province_code, province_name, total_rate, tax_components }
-          // Cart store expects just the array of tax components
           if (data.tax_components && Array.isArray(data.tax_components)) {
             setTaxConfig(data.tax_components)
           }
@@ -110,6 +112,37 @@ export default function RestaurantMenuPublic({
       fetchTaxConfig()
     }
   }, [restaurantSlug, setTaxConfig])
+
+  useEffect(() => {
+    if (!mounted || !restaurantSlug) return
+    if (currentLanguage === null) {
+      setCurrentLanguage(language)
+      return
+    }
+    if (currentLanguage === language) return
+
+    const fetchMenuForLanguage = async () => {
+      setIsLoadingMenu(true)
+      try {
+        const response = await fetch(
+          `${getApiBaseUrl()}/api/customer/restaurants/${restaurantSlug}/menu?language=${language}`
+        )
+        if (response.ok) {
+          const data = await response.json()
+          if (data.courses && Array.isArray(data.courses)) {
+            setCourses(data.courses)
+          }
+        }
+      } catch (error) {
+        console.error('[Restaurant] Error fetching menu for language:', error)
+      } finally {
+        setIsLoadingMenu(false)
+        setCurrentLanguage(language)
+      }
+    }
+
+    fetchMenuForLanguage()
+  }, [language, mounted, restaurantSlug, currentLanguage])
 
   const scrollToCategory = (courseId: string) => {
     const element = document.getElementById(`category-${courseId}`)
