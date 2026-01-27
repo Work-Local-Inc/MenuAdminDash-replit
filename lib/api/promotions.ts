@@ -1,6 +1,26 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 
 /**
+ * Check if admin user is a Super Admin (role_id = 1)
+ */
+async function isSuperAdminById(adminUserId: number): Promise<boolean> {
+  const supabase = createAdminClient() as any
+  
+  const { data, error } = await supabase
+    .from('admin_users')
+    .select('role_id')
+    .eq('id', adminUserId)
+    .single()
+  
+  if (error || !data) {
+    return false
+  }
+  
+  // Super Admin has role_id = 1
+  return (data as { role_id: number }).role_id === 1
+}
+
+/**
  * Get admin's authorized restaurant IDs
  * Used server-side in API routes to enforce permissions
  */
@@ -21,11 +41,19 @@ export async function getAdminAuthorizedRestaurants(adminUserId: number): Promis
 
 /**
  * Verify admin has permission for a specific restaurant
+ * Super Admins have access to all restaurants
  */
 export async function verifyRestaurantPermission(
   adminUserId: number,
   restaurantId: number
 ): Promise<boolean> {
+  // Super Admins have access to all restaurants
+  const isSuperAdmin = await isSuperAdminById(adminUserId)
+  if (isSuperAdmin) {
+    return true
+  }
+  
+  // Regular admins need explicit restaurant assignment
   const authorizedIds = await getAdminAuthorizedRestaurants(adminUserId)
   return authorizedIds.includes(restaurantId)
 }

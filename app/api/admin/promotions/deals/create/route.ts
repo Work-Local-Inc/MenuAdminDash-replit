@@ -16,12 +16,18 @@ export async function POST(request: NextRequest) {
   try {
     const { adminUser } = await verifyAdminAuth(request) as { adminUser: any }
     const body = await request.json()
+    
+    console.log('[Create Deal] Admin user:', adminUser)
+    console.log('[Create Deal] Request body:', JSON.stringify(body, null, 2))
 
     // Validate request body with Zod
     const validated = createDealSchema.parse(body)
+    console.log('[Create Deal] Validated:', JSON.stringify(validated, null, 2))
 
     // Verify admin has permission for this restaurant
     const hasPermission = await verifyRestaurantPermission(adminUser.id, validated.restaurant_id)
+    console.log('[Create Deal] Permission check:', { adminUserId: adminUser.id, restaurantId: validated.restaurant_id, hasPermission })
+    
     if (!hasPermission) {
       return NextResponse.json(
         { error: 'You do not have permission to create deals for this restaurant' },
@@ -33,10 +39,25 @@ export async function POST(request: NextRequest) {
 
     // Create the deal with validated data
     // Note: created_at and updated_at are handled by database defaults
-    // Type assertion needed due to Zod schema vs Database type mismatch
+    // IMPORTANT: promotional_deals is in menuca_v3 schema (configured in admin client)
+    // Remove fields that don't exist in the database: description, description_fr, type
+    // Add required fields: deal_type_legacy (NOT NULL constraint in DB)
+    const { description, description_fr, ...restData } = validated
+    
+    // Map deal_type values for database requirements
+    // The database has 'deal_type_legacy' as a NOT NULL column
+    const dealTypeValue = restData.deal_type || 'percent'
+    const dbData = {
+      ...restData,
+      deal_type_legacy: dealTypeValue, // Required column (legacy compatibility)
+    }
+    
+    console.log('[Create Deal] Final DB data:', JSON.stringify(dbData, null, 2))
+    
+    // Note: createAdminClient() already configures menuca_v3 as default schema
     const { data: deal, error } = await supabase
       .from('promotional_deals')
-      .insert(validated as any)
+      .insert(dbData as any)
       .select()
       .single()
 
