@@ -20,9 +20,13 @@ const signupSchema = z.object({
     .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
     .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
     .regex(/[0-9]/, 'Password must contain at least one number')
-    .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character'),
+    .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character')
+    .optional(),
   name: z.string().optional(),
   phone: z.string().optional(),
+  auth_user_id: z.string().uuid().optional(),
+  first_name: z.string().optional(),
+  last_name: z.string().optional(),
 })
 
 export async function POST(request: NextRequest) {
@@ -37,56 +41,72 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { email, password, name, phone } = validation.data
+    const { email, password, name, phone, auth_user_id, first_name: providedFirstName, last_name: providedLastName } = validation.data
 
     const supabase = createAdminClient() as any
 
-    let first_name = ''
-    let last_name = ''
+    let first_name = providedFirstName || ''
+    let last_name = providedLastName || ''
     
-    if (name) {
+    // If name is provided (legacy format), parse it into first/last
+    if (name && !first_name && !last_name) {
       const nameParts = name.trim().split(/\s+/)
       first_name = nameParts[0] || ''
       last_name = nameParts.slice(1).join(' ') || ''
     }
 
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: {
-        first_name,
-        last_name,
-        phone: phone || null,
-      }
-    })
+    let authUserId: string
 
-    if (authError) {
-      console.error('Error creating auth user:', authError)
-      
-      if (authError.message?.includes('already been registered') || 
-          authError.message?.includes('already exists') ||
-          authError.status === 422) {
+    // If auth_user_id is provided, the auth user was created client-side
+    if (auth_user_id) {
+      authUserId = auth_user_id
+    } else {
+      // Create auth user server-side (requires password)
+      if (!password) {
         return NextResponse.json(
-          { error: 'An account with this email already exists' },
-          { status: 409 }
+          { error: 'Password is required when creating account server-side' },
+          { status: 400 }
         )
       }
-      
-      return NextResponse.json(
-        { error: `Failed to create auth account: ${authError.message || 'Unknown error'}` },
-        { status: 500 }
-      )
-    }
 
-    if (!authData.user) {
-      return NextResponse.json(
-        { error: 'Failed to create auth account' },
-        { status: 500 }
-      )
-    }
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: {
+          first_name,
+          last_name,
+          phone: phone || null,
+        }
+      })
 
-    const authUserId = authData.user.id
+      if (authError) {
+        console.error('Error creating auth user:', authError)
+        
+        if (authError.message?.includes('already been registered') || 
+            authError.message?.includes('already exists') ||
+            authError.status === 422) {
+          return NextResponse.json(
+            { error: 'An account with this email already exists' },
+            { status: 409 }
+          )
+        }
+        
+        return NextResponse.json(
+          { error: `Failed to create auth account: ${authError.message || 'Unknown error'}` },
+          { status: 500 }
+        )
+      }
+
+      if (!authData.user) {
+        return NextResponse.json(
+          { error: 'Failed to create auth account' },
+          { status: 500 }
+        )
+      }
+
+      authUserId = authData.user.id
+    }
 
     const { data: existingUser } = await supabase
       .from('users')
