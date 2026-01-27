@@ -40,16 +40,24 @@ export async function POST(request: NextRequest) {
     // Create the deal with validated data
     // Note: created_at and updated_at are handled by database defaults
     // IMPORTANT: promotional_deals is in menuca_v3 schema (configured in admin client)
-    // Remove fields that don't exist in the database: description, description_fr, type
-    // Add required fields: deal_type_legacy (NOT NULL constraint in DB)
-    const { description, description_fr, ...restData } = validated
+    // 
+    // DB Schema (from dev docs):
+    // - name: varchar(255) NOT NULL - LEGACY column
+    // - name_en: varchar(255) - Preferred English name
+    // - name_fr: varchar(255) - French name (nullable)
+    // - description_en: text - English description (NOT 'description')
+    // - description_fr: text - French description (nullable)
+    // - deal_type: varchar(30) - Standard type (percent_off, amount_off, free_item, etc.)
+    // - deal_type_legacy: varchar(50) NOT NULL - Migration/legacy type
+    const { description, ...restData } = validated
     
-    // Map deal_type values for database requirements
-    // The database has 'deal_type_legacy' as a NOT NULL column
-    const dealTypeValue = restData.deal_type || 'percent'
+    // Map form fields to actual DB column names
+    const dealTypeValue = restData.deal_type || 'percent_off'
     const dbData = {
       ...restData,
-      deal_type_legacy: dealTypeValue, // Required column (legacy compatibility)
+      name_en: restData.name, // Populate name_en with the English name
+      description_en: description || null, // Map 'description' field to 'description_en' column
+      deal_type_legacy: dealTypeValue, // Required column (NOT NULL in DB)
     }
     
     console.log('[Create Deal] Final DB data:', JSON.stringify(dbData, null, 2))

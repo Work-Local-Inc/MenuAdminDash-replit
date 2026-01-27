@@ -15,13 +15,15 @@ export const discountTypeSchema = z.enum(['percentage', 'fixed_amount'])
 
 // Create deal schema (for POST /api/admin/promotions/deals/create)
 // Matches the form data sent from the deals page
+// NOTE: DB schema has name (legacy), name_en, name_fr, description_en, description_fr
+// The 'name' field maps to legacy 'name' column, and we also populate 'name_en'
 export const createDealSchema = z.object({
   restaurant_id: z.number().int().positive('Restaurant ID must be a positive integer'),
   name: z.string().min(1, 'Name is required').max(255, 'Name must be less than 255 characters'),
   name_fr: z.string().max(255).optional().nullable(),
-  description: z.string().optional().nullable(),
+  description: z.string().optional().nullable(), // Maps to description_en in DB
   description_fr: z.string().optional().nullable(),
-  deal_type: z.string().optional().nullable(), // e.g., 'percent', 'value', 'freeItem', etc.
+  deal_type: z.string().optional().nullable(), // e.g., 'percent_off', 'amount_off', 'free_item', etc.
   discount_percent: z.number().min(0).optional().nullable(), // Percentage discount
   discount_amount: z.number().min(0).optional().nullable(), // Fixed amount discount
   date_start: z.string().optional().nullable(), // Start date (YYYY-MM-DD format)

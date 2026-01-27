@@ -60,9 +60,35 @@ export async function verifyRestaurantPermission(
 
 /**
  * Get deals for admin's authorized restaurants
+ * Super Admins can see all deals; regular admins only see their assigned restaurants
  */
 export async function getDealsForAdmin(adminUserId: number) {
   const supabase = createAdminClient()
+  
+  // Super Admins can see all deals
+  const superAdmin = await isSuperAdminById(adminUserId)
+  
+  if (superAdmin) {
+    // Return all deals for super admins
+    const { data, error } = await supabase
+      .from('promotional_deals')
+      .select(`
+        *,
+        restaurants:restaurant_id (
+          id,
+          name,
+          slug
+        )
+      `)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      throw error
+    }
+    return data
+  }
+  
+  // Regular admins only see deals for their authorized restaurants
   const authorizedIds = await getAdminAuthorizedRestaurants(adminUserId)
 
   if (authorizedIds.length === 0) {
@@ -91,9 +117,35 @@ export async function getDealsForAdmin(adminUserId: number) {
 
 /**
  * Get coupons for admin's authorized restaurants
+ * Super Admins can see all coupons; regular admins only see their assigned restaurants
  */
 export async function getCouponsForAdmin(adminUserId: number) {
   const supabase = createAdminClient()
+  
+  // Super Admins can see all coupons
+  const superAdmin = await isSuperAdminById(adminUserId)
+  
+  if (superAdmin) {
+    const { data, error } = await supabase
+      .from('promotional_coupons')
+      .select(`
+        *,
+        restaurants:restaurant_id (
+          id,
+          name,
+          slug
+        )
+      `)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      throw error
+    }
+    return data
+  }
+  
+  // Regular admins only see coupons for their authorized restaurants
   const authorizedIds = await getAdminAuthorizedRestaurants(adminUserId)
 
   if (authorizedIds.length === 0) {

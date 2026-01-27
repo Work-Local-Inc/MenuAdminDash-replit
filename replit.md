@@ -75,8 +75,9 @@ Preferred communication style: Simple, everyday language.
     - **UI Updates**: Role dropdowns and creation flows updated for 2-role system
     - **RBAC Updates**: Added `isRestaurantAdmin()` helper, deprecated `isRestaurantManager()` and `isStaff()`
     - **Files Updated**: `lib/auth/admin-check.ts`, `lib/rbac.ts`, `hooks/use-admin-restaurants.ts`, `lib/hooks/use-admin-roles.ts`, admin users pages
--   **Deals API Fix (Completed)**: Fixed promotional deals creation API:
-    - **Database Column Mapping**: Actual `menuca_v3.promotional_deals` table differs from TypeScript types. Removed non-existent columns (`description`, `description_fr`, `type`) from insert.
+-   **Deals API Fix (Completed)**: Fixed promotional deals creation and listing:
+    - **Database Column Mapping**: Actual `menuca_v3.promotional_deals` table differs from TypeScript types. Mapped `description` → `description_en`, added `name_en` population, removed non-existent columns.
     - **Required Fields**: Added `deal_type_legacy` mapping (NOT NULL constraint in DB) from `deal_type` form field.
-    - **Permission Check**: Super Admin (role_id = 1) now bypasses restaurant permission check.
-    - **Files Updated**: `app/api/admin/promotions/deals/create/route.ts`, `lib/api/promotions.ts`
+    - **Super Admin Access**: Both create (`verifyRestaurantPermission`) and list (`getDealsForAdmin`, `getCouponsForAdmin`) now bypass restaurant permission check for Super Admins (role_id = 1).
+    - **Query Invalidation**: Fixed React Query cache invalidation in hooks using predicate matching to properly refresh deals list after mutations.
+    - **Files Updated**: `app/api/admin/promotions/deals/create/route.ts`, `lib/api/promotions.ts`, `lib/hooks/use-promotions.ts`, `lib/validation/promotions.ts`

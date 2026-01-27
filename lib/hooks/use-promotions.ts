@@ -7,6 +7,16 @@ import { useToast } from '@/hooks/use-toast'
 // DEALS
 // ============================================
 
+// Helper function to invalidate all deal queries
+function invalidateDealsQueries(queryClient: ReturnType<typeof useQueryClient>) {
+  queryClient.invalidateQueries({ 
+    predicate: (query) => {
+      const key = query.queryKey
+      return Array.isArray(key) && key[0] === '/api/admin/promotions/deals'
+    }
+  })
+}
+
 interface DealsFilters {
   restaurant_id?: number
   is_enabled?: boolean
@@ -49,7 +59,7 @@ export function useCreateDeal() {
       return res.json()
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/promotions/deals'] })
+      invalidateDealsQueries(queryClient)
       toast({
         title: "Success",
         description: "Deal created successfully",
@@ -83,7 +93,7 @@ export function useUpdateDeal() {
       return res.json()
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/promotions/deals'] })
+      invalidateDealsQueries(queryClient)
       toast({
         title: "Success",
         description: "Deal updated successfully",
@@ -117,7 +127,7 @@ export function useToggleDeal() {
       return res.json()
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/promotions/deals'] })
+      invalidateDealsQueries(queryClient)
       toast({
         title: "Success",
         description: `Deal ${variables.is_enabled ? 'enabled' : 'disabled'} successfully`,
@@ -149,7 +159,7 @@ export function useDeleteDeal() {
       return res.json()
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/promotions/deals'] })
+      invalidateDealsQueries(queryClient)
       toast({
         title: "Success",
         description: "Deal deleted successfully",
