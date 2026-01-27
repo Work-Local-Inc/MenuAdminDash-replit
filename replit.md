@@ -81,3 +81,10 @@ Preferred communication style: Simple, everyday language.
     - **Super Admin Access**: Both create (`verifyRestaurantPermission`) and list (`getDealsForAdmin`, `getCouponsForAdmin`) now bypass restaurant permission check for Super Admins (role_id = 1).
     - **Query Invalidation**: Fixed React Query cache invalidation in hooks using predicate matching to properly refresh deals list after mutations.
     - **Files Updated**: `app/api/admin/promotions/deals/create/route.ts`, `lib/api/promotions.ts`, `lib/hooks/use-promotions.ts`, `lib/validation/promotions.ts`
+-   **User Entity Alignment (Completed)**: Aligned frontend with dev's 05-user-entity.md schema:
+    - **TypeScript Types**: Updated `types/supabase-database.ts` to match actual DB schema (15 columns: id, email, has_email_verified, first_name, last_name, phone, last_login_at, credit_balance, origin_restaurant_id, auth_user_id, stripe_customer_id, created_at, updated_at, deleted_at, deleted_by)
+    - **New Types Added**: `user_delivery_addresses` (with geolocation), `user_favorite_restaurants`, `user_payment_methods`
+    - **Authentication**: Uses `auth_user_id` (FK to auth.users) with email fallback for legacy users, auto-backfills auth_user_id when found via email
+    - **Address Tables**: Customer-facing uses `user_delivery_addresses` (newer table with lat/lng), legacy `user_addresses` still available
+    - **Stripe Integration**: `stripe_customer_id` properly linked to users table
+    - **RLS Policies**: All user data protected via `auth_user_id = auth.uid()`
