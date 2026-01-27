@@ -13,9 +13,9 @@ export function LanguageToggle({ className, primaryColor }: LanguageToggleProps)
 
   if (isLoading) {
     return (
-      <div className={cn("flex items-center h-6 bg-muted rounded-full px-0.5", className)}>
-        <div className="w-8 h-5 rounded-full bg-muted animate-pulse" />
-        <div className="w-8 h-5 rounded-full bg-muted animate-pulse" />
+      <div className={cn("flex items-center h-7 bg-muted rounded-full px-0.5", className)}>
+        <div className="w-9 h-5 rounded-full bg-muted animate-pulse" />
+        <div className="w-9 h-5 rounded-full bg-muted animate-pulse" />
       </div>
     )
   }
@@ -33,7 +33,7 @@ export function LanguageToggle({ className, primaryColor }: LanguageToggleProps)
   return (
     <div 
       className={cn(
-        "inline-flex items-center h-6 bg-muted rounded-full p-0.5 gap-0.5",
+        "inline-flex items-center h-7 bg-muted rounded-full p-0.5 gap-0.5",
         className
       )}
       role="radiogroup"
@@ -46,7 +46,7 @@ export function LanguageToggle({ className, primaryColor }: LanguageToggleProps)
         aria-checked={language === 'en'}
         onClick={() => handleToggle('en')}
         className={cn(
-          "px-2 py-0.5 text-xs font-medium rounded-full transition-all duration-200",
+          "px-2.5 py-0.5 text-xs font-medium rounded-full transition-all duration-200",
           language === 'en'
             ? "bg-primary text-primary-foreground shadow-sm"
             : "text-muted-foreground hover:text-foreground"
@@ -62,7 +62,7 @@ export function LanguageToggle({ className, primaryColor }: LanguageToggleProps)
         aria-checked={language === 'fr'}
         onClick={() => handleToggle('fr')}
         className={cn(
-          "px-2 py-0.5 text-xs font-medium rounded-full transition-all duration-200",
+          "px-2.5 py-0.5 text-xs font-medium rounded-full transition-all duration-200",
           language === 'fr'
             ? "bg-primary text-primary-foreground shadow-sm"
             : "text-muted-foreground hover:text-foreground"
