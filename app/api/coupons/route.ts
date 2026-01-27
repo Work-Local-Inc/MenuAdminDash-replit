@@ -49,18 +49,29 @@ export async function POST(request: NextRequest) {
     // Check authentication
 
     const body = await request.json()
+    console.log('[Coupons API] Received body:', JSON.stringify(body, null, 2))
     
     // Validate request body
     const validatedData = couponCreateSchema.parse(body)
+    console.log('[Coupons API] Validated data:', JSON.stringify(validatedData, null, 2))
 
     // Map validation schema to database columns
-    // Database has both 'name' (required) and 'name_en' for bilingual support
+    // Database uses name_en/name_fr for bilingual support - NOT 'name' or 'description'
     // Remove fields that don't exist in the database
-    const { description_fr, ...restData } = validatedData
+    const { 
+      name, 
+      name_fr,
+      description, 
+      description_fr, 
+      ...restData 
+    } = validatedData
+    
     const dbData = {
       ...restData,
-      name_en: validatedData.name, // Also populate name_en with the name for bilingual support
+      name_en: name, // Map form 'name' to DB 'name_en'
+      name_fr: name_fr || null, // French translation
     }
+    console.log('[Coupons API] DB data to insert:', JSON.stringify(dbData, null, 2))
 
     // IMPORTANT: promotional_coupons is in menuca_v3 schema
     const { data, error } = await supabase
@@ -70,10 +81,15 @@ export async function POST(request: NextRequest) {
       .select()
       .single()
 
-    if (error) throw error
+    if (error) {
+      console.error('[Coupons API] DB error:', error)
+      throw error
+    }
 
+    console.log('[Coupons API] Created coupon:', data)
     return NextResponse.json(data)
   } catch (error: any) {
+    console.error('[Coupons API] Error:', error)
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode })
     }
