@@ -6,6 +6,14 @@ Reviewer: Codex
 ## Executive Summary
 This review identified several **high-risk security issues** centered on publicly accessible debug/test endpoints and webhook verification behavior, plus **opportunities to reduce latency** in order creation and menu rendering. The top priority is to **remove or gate debug endpoints**, **require Stripe webhook signature verification**, and **enforce per-restaurant authorization** on admin/service-role routes. Performance wins are primarily from **reducing sequential DB round-trips**.
 
+## Context from `HANDOFF.md` (Reviewed)
+- **RBAC:** Super Admin = `role_id 1`, Restaurant Admin = `role_id 2`; `verifyAdminAuth` is the standard entry point.
+- **Schema:** Primary schema is `menuca_v3` (use `.schema('menuca_v3')` for platform tables).
+- **Edge Functions:** Some edge functions fail; direct DB fallbacks exist.
+- **Environments:** Separate dev/prod deployments are in use.
+
+These align with the security recommendations below; per-restaurant authorization checks should use the existing admin restaurant assignments (`admin_user_restaurants`) and RBAC helpers.
+
 ## Prioritized Fixes (Highest to Lowest)
 ### P0 — Immediate Security Fixes
 1) **Remove or strictly gate debug/test endpoints** that expose privileged data or device secrets. These currently run without auth and/or with service-role access.
