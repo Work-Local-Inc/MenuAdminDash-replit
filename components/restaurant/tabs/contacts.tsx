@@ -28,7 +28,6 @@ const contactSchema = z.object({
   receives_statements: z.boolean().default(false),
   receives_marketing: z.boolean().default(false),
   preferred_language: z.enum(["en", "fr"]).default("en"),
-  is_active: z.boolean().default(true),
 })
 
 type ContactFormValues = z.infer<typeof contactSchema>
@@ -364,28 +363,6 @@ export function RestaurantContacts({ restaurantId }: RestaurantContactsProps) {
                         </FormItem>
                       )}
                     />
-
-                    <FormField
-                      control={form.control}
-                      name="is_active"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                              data-testid="checkbox-active"
-                            />
-                          </FormControl>
-                          <div className="space-y-1 leading-none">
-                            <FormLabel>Active Contact</FormLabel>
-                            <FormDescription>
-                              Contact is currently active
-                            </FormDescription>
-                          </div>
-                        </FormItem>
-                      )}
-                    />
                   </div>
 
                   <DialogFooter>
@@ -436,7 +413,6 @@ export function RestaurantContacts({ restaurantId }: RestaurantContactsProps) {
                   <TableHead>Contact Info</TableHead>
                   <TableHead>Receives</TableHead>
                   <TableHead>Language</TableHead>
-                  <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -477,11 +453,6 @@ export function RestaurantContacts({ restaurantId }: RestaurantContactsProps) {
                       </div>
                     </TableCell>
                     <TableCell className="uppercase text-sm">{contact.preferred_language || "EN"}</TableCell>
-                    <TableCell>
-                      <Badge variant={contact.is_active ? "default" : "secondary"}>
-                        {contact.is_active ? "Active" : "Inactive"}
-                      </Badge>
-                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Button
