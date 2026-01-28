@@ -10,8 +10,10 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { useToast } from '@/hooks/use-toast'
-import { ArrowLeft, Save, Trash2, Mail, User, Phone, Shield, Calendar, Store } from 'lucide-react'
+import { ArrowLeft, Save, Trash2, Mail, User, Phone, Shield, Calendar, Store, Lock, Eye, EyeOff } from 'lucide-react'
 import Link from 'next/link'
+import { useAdminUser } from '@/hooks/use-admin-user'
+import { createClient } from '@/lib/supabase/client'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,6 +51,11 @@ export default function AdminUserDetailsPage() {
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const id = params.id as string
+  const supabase = createClient()
+
+  // Get current logged-in admin user to check if viewing own profile
+  const { data: currentAdminUser } = useAdminUser()
+  const isOwnProfile = currentAdminUser?.id?.toString() === id
 
   const [formData, setFormData] = useState({
     email: '',
@@ -58,6 +65,15 @@ export default function AdminUserDetailsPage() {
     status: 'active',
     password: '',
   })
+
+  // Separate state for security section (password change)
+  const [securityData, setSecurityData] = useState({
+    newPassword: '',
+    confirmPassword: '',
+  })
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false)
 
   const { data: user, isLoading, error } = useQuery<AdminUser>({
     queryKey: ['/api/admin-users', id],
@@ -134,6 +150,55 @@ export default function AdminUserDetailsPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     updateMutation.mutate(formData)
+  }
+
+  // Handle password update using client-side Supabase auth (for own profile only)
+  const handlePasswordUpdate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (securityData.newPassword !== securityData.confirmPassword) {
+      toast({
+        variant: 'destructive',
+        title: 'Passwords do not match',
+        description: 'Please make sure your new password and confirmation match.',
+      })
+      return
+    }
+
+    if (securityData.newPassword.length < 6) {
+      toast({
+        variant: 'destructive',
+        title: 'Password too short',
+        description: 'Password must be at least 6 characters long.',
+      })
+      return
+    }
+
+    setIsUpdatingPassword(true)
+    
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: securityData.newPassword
+      })
+
+      if (error) {
+        throw error
+      }
+
+      toast({
+        title: 'Password updated',
+        description: 'Your password has been changed successfully.',
+      })
+      setSecurityData({ newPassword: '', confirmPassword: '' })
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Password update failed',
+        description: error.message || 'Failed to update password. Please try again.',
+      })
+    } finally {
+      setIsUpdatingPassword(false)
+    }
   }
 
   const formatDate = (dateString: string | null) => {
@@ -296,19 +361,23 @@ export default function AdminUserDetailsPage() {
                   </div>
                 </div>
 
-                <Separator className="my-4" />
-
-                <div className="space-y-2">
-                  <Label htmlFor="password">New Password (leave blank to keep current)</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    placeholder="Enter new password"
-                    data-testid="input-password"
-                  />
-                </div>
+                {/* Only show password field for admins updating OTHER users */}
+                {!isOwnProfile && (
+                  <>
+                    <Separator className="my-4" />
+                    <div className="space-y-2">
+                      <Label htmlFor="password">New Password (leave blank to keep current)</Label>
+                      <Input
+                        id="password"
+                        type="password"
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        placeholder="Enter new password"
+                        data-testid="input-password"
+                      />
+                    </div>
+                  </>
+                )}
 
                 <div className="flex justify-end">
                   <Button type="submit" disabled={updateMutation.isPending} data-testid="button-save">
@@ -319,6 +388,86 @@ export default function AdminUserDetailsPage() {
               </form>
             </CardContent>
           </Card>
+
+          {/* Security section for users updating their OWN password */}
+          {isOwnProfile && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Lock className="w-5 h-5" />
+                  Security
+                </CardTitle>
+                <CardDescription>Update your password</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handlePasswordUpdate} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="newPassword">New Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="newPassword"
+                        type={showNewPassword ? 'text' : 'password'}
+                        value={securityData.newPassword}
+                        onChange={(e) => setSecurityData({ ...securityData, newPassword: e.target.value })}
+                        placeholder="Enter new password"
+                        data-testid="input-new-password"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-0 top-0 h-full px-3"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        data-testid="button-toggle-new-password"
+                      >
+                        {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="confirmPassword"
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        value={securityData.confirmPassword}
+                        onChange={(e) => setSecurityData({ ...securityData, confirmPassword: e.target.value })}
+                        placeholder="Confirm new password"
+                        data-testid="input-confirm-password"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-0 top-0 h-full px-3"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        data-testid="button-toggle-confirm-password"
+                      >
+                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {securityData.newPassword && securityData.confirmPassword && 
+                   securityData.newPassword !== securityData.confirmPassword && (
+                    <p className="text-sm text-destructive">Passwords do not match</p>
+                  )}
+
+                  <div className="flex justify-end">
+                    <Button 
+                      type="submit" 
+                      disabled={isUpdatingPassword || !securityData.newPassword || !securityData.confirmPassword}
+                      data-testid="button-update-password"
+                    >
+                      <Lock className="w-4 h-4 mr-2" />
+                      {isUpdatingPassword ? 'Updating...' : 'Update Password'}
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         <div className="space-y-6">
