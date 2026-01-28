@@ -25,11 +25,14 @@ import { RestaurantCustomCSS } from "@/components/restaurant/tabs/custom-css"
 import { Categorization } from "@/components/restaurant/tabs/categorization"
 import { Onboarding } from "@/components/restaurant/tabs/onboarding"
 import { OnlineOrderingToggle } from "@/components/restaurant/online-ordering-toggle"
+import { useAdminUser } from "@/hooks/use-admin-user"
 
 export default function RestaurantDetailPage() {
   const params = useParams()
   const restaurantId = params.id as string
   const { data: restaurant, isLoading } = useRestaurant(restaurantId)
+  const { data: adminUser } = useAdminUser()
+  const isSuperAdmin = adminUser?.role_id === 1
 
   if (isLoading) {
     return (
@@ -220,13 +223,15 @@ export default function RestaurantDetailPage() {
             >
               Onboarding
             </TabsTrigger>
-            <TabsTrigger 
-              value="custom-css" 
-              data-testid="tab-custom-css"
-              className="w-full justify-start"
-            >
-              Custom CSS
-            </TabsTrigger>
+            {isSuperAdmin && (
+              <TabsTrigger 
+                value="custom-css" 
+                data-testid="tab-custom-css"
+                className="w-full justify-start"
+              >
+                Custom CSS
+              </TabsTrigger>
+            )}
           </div>
         </TabsList>
 
@@ -288,9 +293,11 @@ export default function RestaurantDetailPage() {
             <RestaurantImages restaurantId={restaurantId} />
           </TabsContent>
 
-          <TabsContent value="custom-css" className="mt-0">
-            <RestaurantCustomCSS restaurantId={restaurantId} />
-          </TabsContent>
+          {isSuperAdmin && (
+            <TabsContent value="custom-css" className="mt-0">
+              <RestaurantCustomCSS restaurantId={restaurantId} />
+            </TabsContent>
+          )}
         </div>
       </Tabs>
     </div>
