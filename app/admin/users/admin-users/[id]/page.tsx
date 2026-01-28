@@ -330,10 +330,10 @@ export default function AdminUserDetailsPage() {
                   />
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="role">Role</Label>
-                    {isSuperAdmin ? (
+                {isSuperAdmin && (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="role">Role</Label>
                       <Select
                         value={formData.role_id.toString()}
                         onValueChange={(value) => setFormData({ ...formData, role_id: parseInt(value) })}
@@ -346,15 +346,9 @@ export default function AdminUserDetailsPage() {
                           <SelectItem value="2">Restaurant Admin</SelectItem>
                         </SelectContent>
                       </Select>
-                    ) : (
-                      <div className="flex h-9 w-full items-center rounded-md border border-input bg-muted px-3 text-sm" data-testid="text-role-readonly">
-                        {formData.role_id === 1 ? 'Super Admin' : 'Restaurant Admin'}
-                      </div>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="status">Status</Label>
-                    {isSuperAdmin ? (
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="status">Status</Label>
                       <Select
                         value={formData.status}
                         onValueChange={(value) => setFormData({ ...formData, status: value })}
@@ -368,13 +362,9 @@ export default function AdminUserDetailsPage() {
                           <SelectItem value="suspended">Suspended</SelectItem>
                         </SelectContent>
                       </Select>
-                    ) : (
-                      <div className="flex h-9 w-full items-center rounded-md border border-input bg-muted px-3 text-sm" data-testid="text-status-readonly">
-                        {formData.status.charAt(0).toUpperCase() + formData.status.slice(1)}
-                      </div>
-                    )}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Only show password field for admins updating OTHER users */}
                 {!isOwnProfile && (
