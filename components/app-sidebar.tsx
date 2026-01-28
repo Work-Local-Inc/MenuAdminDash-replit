@@ -23,6 +23,7 @@ import {
   Gift,
   TrendingUp,
   Sparkles,
+  MapPin,
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -47,6 +48,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
 import { useAdminUser, isSuperAdminRole } from "@/hooks/use-admin-user"
+import { useRestaurants } from "@/lib/hooks/use-restaurants"
 
 const allMenuItems = [
   {
@@ -107,16 +109,32 @@ const allMenuItems = [
 
 export function AppSidebar() {
   const pathname = usePathname()
-  const { data: adminUser, isLoading } = useAdminUser()
+  const { data: adminUser, isLoading: isLoadingUser } = useAdminUser()
+  const { data: restaurants = [], isLoading: isLoadingRestaurants } = useRestaurants()
   
   // Hide super admin items while loading or if not confirmed as Super Admin
   // Only show admin-only items once we CONFIRM user is Super Admin (role_id = 1)
-  const isSuperAdmin = !isLoading && adminUser ? isSuperAdminRole(adminUser.role_id) : false
+  const isSuperAdmin = !isLoadingUser && adminUser ? isSuperAdminRole(adminUser.role_id) : false
 
   const menuItems = useMemo(() => {
     return allMenuItems
       .filter(item => !('superAdminOnly' in item && item.superAdminOnly) || isSuperAdmin)
       .map(item => {
+        // For Restaurant Admins, replace "All Restaurants" with their actual assigned restaurants
+        if (item.title === "Restaurants" && !isSuperAdmin && item.items) {
+          // Build restaurant-specific menu items from the user's assigned restaurants
+          const restaurantItems = restaurants.map((restaurant: { id: number; name: string }) => ({
+            title: restaurant.name,
+            url: `/admin/restaurants/${restaurant.id}`,
+            icon: MapPin,
+          }))
+          
+          return {
+            ...item,
+            items: restaurantItems.length > 0 ? restaurantItems : [{ title: "No restaurants assigned", url: "#" }]
+          }
+        }
+        
         if (item.items) {
           return {
             ...item,
@@ -126,7 +144,7 @@ export function AppSidebar() {
         return item
       })
       .filter(item => !item.items || item.items.length > 0)
-  }, [isSuperAdmin])
+  }, [isSuperAdmin, restaurants])
 
   return (
     <Sidebar>
@@ -147,7 +165,7 @@ export function AppSidebar() {
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   {item.items ? (
-                    <Collapsible defaultOpen={item.items.some(sub => pathname.startsWith(sub.url))}>
+                    <Collapsible defaultOpen={item.items.some((sub: { url: string }) => pathname.startsWith(sub.url))}>
                       <CollapsibleTrigger asChild>
                         <SidebarMenuButton data-testid={`button-nav-${item.title.toLowerCase()}`}>
                           <item.icon className="h-4 w-4" />
@@ -157,7 +175,7 @@ export function AppSidebar() {
                       </CollapsibleTrigger>
                       <CollapsibleContent>
                         <SidebarMenuSub>
-                          {item.items.map((subItem) => (
+                          {item.items.map((subItem: { title: string; url: string }) => (
                             <SidebarMenuSubItem key={subItem.title}>
                               <SidebarMenuSubButton 
                                 asChild
