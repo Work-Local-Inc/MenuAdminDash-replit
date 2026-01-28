@@ -27,7 +27,6 @@ export async function GET(request: NextRequest) {
         role_id,
         status,
         is_active,
-        mfa_enabled,
         last_login_at,
         created_at,
         admin_roles!inner(id, name, description, is_system_role)

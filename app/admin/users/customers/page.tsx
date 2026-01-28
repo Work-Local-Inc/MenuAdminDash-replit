@@ -92,7 +92,6 @@ export default function CustomerUsersPage() {
                       <TableHead>Email</TableHead>
                       <TableHead>Name</TableHead>
                       <TableHead>Phone</TableHead>
-                      <TableHead>Language</TableHead>
                       <TableHead>Credit Balance</TableHead>
                       <TableHead>Email Verified</TableHead>
                       <TableHead>Last Login</TableHead>
@@ -121,11 +120,6 @@ export default function CustomerUsersPage() {
                           ) : (
                             <span className="text-muted-foreground">-</span>
                           )}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="secondary">
-                            {user.language?.toUpperCase() || 'EN'}
-                          </Badge>
                         </TableCell>
                         <TableCell>
                           {user.credit_balance > 0 ? (

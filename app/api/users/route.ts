@@ -23,7 +23,6 @@ export async function GET(request: NextRequest) {
         first_name,
         last_name,
         phone,
-        language,
         credit_balance,
         has_email_verified,
         created_at,
