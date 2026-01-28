@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AuthError } from '@/lib/errors'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
-import bcrypt from 'bcryptjs'
 
 // GET /api/admin-users/[id] - Get single admin user
 export async function GET(
@@ -60,6 +59,31 @@ export async function PATCH(
   const { id } = await params
   const body = await request.json()
 
+  // First get the current user to find their auth_user_id
+  const { data: currentUser, error: fetchError } = await supabase
+    .schema('menuca_v3')
+    .from('admin_users')
+    .select('auth_user_id')
+    .eq('id', id)
+    .single()
+
+  if (fetchError) {
+    console.error('Error fetching admin user:', fetchError)
+    return NextResponse.json({ error: fetchError.message }, { status: 500 })
+  }
+
+  // If password is being updated, use Supabase Auth admin API
+  if (body.password && currentUser?.auth_user_id) {
+    const { error: authError } = await supabase.auth.admin.updateUserById(
+      currentUser.auth_user_id,
+      { password: body.password }
+    )
+    if (authError) {
+      console.error('Error updating password:', authError)
+      return NextResponse.json({ error: `Failed to update password: ${authError.message}` }, { status: 500 })
+    }
+  }
+
   const updateData = {
     email: body.email,
     first_name: body.first_name,
@@ -68,11 +92,6 @@ export async function PATCH(
     status: body.status,
     updated_at: new Date().toISOString(),
   } as Record<string, any>
-
-  // Only update password if provided - hash server-side for security
-  if (body.password) {
-    updateData.password_hash = await bcrypt.hash(body.password, 10)
-  }
 
   const { data, error } = await supabase
     .schema('menuca_v3')
