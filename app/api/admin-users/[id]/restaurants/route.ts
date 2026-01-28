@@ -90,7 +90,7 @@ export async function POST(
   if (error) {
     console.error('Error assigning restaurant:', error)
     if (error.code === '23505') {
-      return NextResponse.json({ error: 'Restaurant already assigned' }, { status: 400 })
+      return NextResponse.json({ error: 'This restaurant is already assigned to this user' }, { status: 400 })
     }
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
