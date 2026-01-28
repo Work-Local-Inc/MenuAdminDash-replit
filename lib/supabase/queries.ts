@@ -172,12 +172,26 @@ export async function getOrders(filters?: {
   }
 }
 
-export async function getDashboardStats() {
+export async function getDashboardStats(allowedRestaurantIds?: number[]) {
   const supabase = await createClient()
   
   try {
     const thirtyDaysAgo = new Date()
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+    
+    // Build queries with optional restaurant filtering for RBAC
+    let ordersCountQuery = supabase.from('orders').select('*', { count: 'exact', head: true })
+    let ordersQuery = supabase.from('orders').select('total_amount')
+    let restaurantsCountQuery = supabase.from('restaurants').select('*', { count: 'exact', head: true }).eq('status', 'active')
+    let recentOrdersQuery = supabase.from('orders').select('restaurant_id, total_amount, created_at').gte('created_at', thirtyDaysAgo.toISOString())
+    
+    // Apply restaurant filtering for Restaurant Admins
+    if (allowedRestaurantIds && allowedRestaurantIds.length > 0) {
+      ordersCountQuery = ordersCountQuery.in('restaurant_id', allowedRestaurantIds)
+      ordersQuery = ordersQuery.in('restaurant_id', allowedRestaurantIds)
+      restaurantsCountQuery = restaurantsCountQuery.in('id', allowedRestaurantIds)
+      recentOrdersQuery = recentOrdersQuery.in('restaurant_id', allowedRestaurantIds)
+    }
     
     const [
       ordersCountRes,
@@ -186,11 +200,11 @@ export async function getDashboardStats() {
       usersCountRes,
       recentOrdersRes
     ] = await Promise.all([
-      supabase.from('orders').select('*', { count: 'exact', head: true }),
-      supabase.from('orders').select('total_amount'),
-      supabase.from('restaurants').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+      ordersCountQuery,
+      ordersQuery,
+      restaurantsCountQuery,
       supabase.from('users').select('*', { count: 'exact', head: true }).is('deleted_at', null),
-      supabase.from('orders').select('restaurant_id, total_amount, created_at').gte('created_at', thirtyDaysAgo.toISOString())
+      recentOrdersQuery
     ])
     
     const totalRevenue = (ordersRes.data || []).reduce((sum: number, order: any) => sum + (parseFloat(order.total_amount) || 0), 0)
@@ -249,7 +263,7 @@ export async function getDashboardStats() {
   }
 }
 
-export async function getRevenueHistory(timeRange: 'daily' | 'weekly' | 'monthly' = 'daily') {
+export async function getRevenueHistory(timeRange: 'daily' | 'weekly' | 'monthly' = 'daily', allowedRestaurantIds?: number[]) {
   const supabase = await createClient()
   
   const now = new Date()
@@ -306,11 +320,18 @@ export async function getRevenueHistory(timeRange: 'daily' | 'weekly' | 'monthly
   }
   
   try {
-    const { data: orders } = await supabase
+    let ordersQuery = supabase
       .from('orders')
       .select('created_at, total_amount')
       .gte('created_at', startDate.toISOString())
       .order('created_at', { ascending: true })
+    
+    // Apply restaurant filtering for Restaurant Admins
+    if (allowedRestaurantIds && allowedRestaurantIds.length > 0) {
+      ordersQuery = ordersQuery.in('restaurant_id', allowedRestaurantIds)
+    }
+    
+    const { data: orders } = await ordersQuery
   
     const revenueMap = new Map<string, number>()
     periods.forEach(period => revenueMap.set(period.key, 0))
