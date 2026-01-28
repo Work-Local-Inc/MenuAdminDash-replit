@@ -1,7 +1,6 @@
 "use client"
 
 import { useQuery } from '@tanstack/react-query'
-import { createClient } from '@/lib/supabase/client'
 
 export interface AdminUserInfo {
   id: number
@@ -13,40 +12,34 @@ export interface AdminUserInfo {
 }
 
 export function useAdminUser() {
-  const supabase = createClient()
-
   return useQuery<AdminUserInfo | null>({
-    queryKey: ['/api/admin/current-user'],
+    queryKey: ['/api/admin-users/me'],
     queryFn: async () => {
-      const { data: { user }, error: authError } = await supabase.auth.getUser()
-      
-      if (authError || !user) {
+      try {
+        const response = await fetch('/api/admin-users/me')
+        
+        if (!response.ok) {
+          if (response.status === 401 || response.status === 404) {
+            return null
+          }
+          throw new Error('Failed to fetch admin user')
+        }
+        
+        const data = await response.json()
+        
+        // Map API response to AdminUserInfo interface
+        return {
+          id: data.admin_id,
+          email: data.email,
+          first_name: data.first_name,
+          last_name: data.last_name,
+          role_id: data.role_id,
+          auth_user_id: null // Not returned from API but not needed
+        } as AdminUserInfo
+      } catch (error) {
+        console.error('[useAdminUser] Error:', error)
         return null
       }
-
-      const { data: authIdMatch } = await supabase
-        .from('admin_users')
-        .select('id, email, first_name, last_name, role_id, auth_user_id')
-        .eq('auth_user_id', user.id)
-        .is('deleted_at', null)
-        .single()
-
-      if (authIdMatch) {
-        return authIdMatch as AdminUserInfo
-      }
-
-      if (user.email) {
-        const { data: emailMatch } = await supabase
-          .from('admin_users')
-          .select('id, email, first_name, last_name, role_id, auth_user_id')
-          .eq('email', user.email)
-          .is('deleted_at', null)
-          .single()
-        
-        return emailMatch as AdminUserInfo | null
-      }
-
-      return null
     },
   })
 }
