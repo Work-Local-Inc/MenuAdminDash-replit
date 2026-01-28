@@ -16,7 +16,6 @@ import { RestaurantDomains } from "@/components/restaurant/tabs/domains"
 import { RestaurantHours } from "@/components/restaurant/tabs/hours"
 import { RestaurantServiceConfig } from "@/components/restaurant/tabs/service-config"
 import { RestaurantDeliveryAreas } from "@/components/restaurant/tabs/delivery-areas"
-import { RestaurantMenuCategories } from "@/components/restaurant/tabs/menu-categories"
 import { RestaurantPaymentMethods } from "@/components/restaurant/tabs/payment-methods"
 import { RestaurantIntegrations } from "@/components/restaurant/tabs/integrations"
 import { RestaurantBranding } from "@/components/restaurant/tabs/branding"
@@ -159,13 +158,6 @@ export default function RestaurantDetailPage() {
             >
               Payment Methods
             </TabsTrigger>
-            <TabsTrigger 
-              value="menu-categories" 
-              data-testid="tab-menu-categories"
-              className="w-full justify-start"
-            >
-              Menu Categories
-            </TabsTrigger>
           </div>
 
           {/* Marketing Section */}
@@ -282,10 +274,6 @@ export default function RestaurantDetailPage() {
 
           <TabsContent value="onboarding" className="mt-0">
             <Onboarding restaurantId={parseInt(restaurantId)} />
-          </TabsContent>
-
-          <TabsContent value="menu-categories" className="mt-0">
-            <RestaurantMenuCategories restaurantId={restaurantId} />
           </TabsContent>
 
           <TabsContent value="payment-methods" className="mt-0">

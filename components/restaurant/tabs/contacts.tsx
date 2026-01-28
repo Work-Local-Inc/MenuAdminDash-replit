@@ -58,7 +58,6 @@ export function RestaurantContacts({ restaurantId }: RestaurantContactsProps) {
       receives_statements: false,
       receives_marketing: false,
       preferred_language: "en",
-      is_active: true,
     },
   })
 
@@ -145,7 +144,6 @@ export function RestaurantContacts({ restaurantId }: RestaurantContactsProps) {
       receives_statements: contact.receives_statements || false,
       receives_marketing: contact.receives_marketing || false,
       preferred_language: contact.preferred_language || "en",
-      is_active: contact.is_active ?? true,
     })
     setIsDialogOpen(true)
   }
