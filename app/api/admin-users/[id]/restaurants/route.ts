@@ -42,7 +42,7 @@ export async function GET(
   const { data: restaurants, error: restError } = await supabase
     .schema('menuca_v3')
     .from('restaurants')
-    .select('id, name, slug, city, status')
+    .select('id, name, slug, status')
     .in('id', restaurantIds)
 
   if (restError) {

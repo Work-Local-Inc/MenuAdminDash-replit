@@ -35,7 +35,6 @@ interface Restaurant {
   id: number
   name: string
   slug: string
-  city?: string
   status?: string
 }
 
@@ -248,9 +247,6 @@ export default function AdminUserRestaurantsPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {restaurant.city && (
-                      <Badge variant="secondary">{restaurant.city}</Badge>
-                    )}
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button size="icon" variant="ghost" data-testid={`button-remove-${restaurant.id}`}>
