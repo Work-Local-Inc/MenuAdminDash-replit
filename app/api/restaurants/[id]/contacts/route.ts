@@ -12,7 +12,25 @@ export async function GET(
     const supabase = createAdminClient() as any
     const restaurantId = parseInt(params.id)
     
-    // Fetch admin users linked to this restaurant (private contacts for internal use)
+    // Fetch from restaurant_contacts table (primary source)
+    const { data: restaurantContacts, error: contactsError } = await supabase
+      .schema('menuca_v3')
+      .from('restaurant_contacts')
+      .select('*')
+      .eq('restaurant_id', restaurantId)
+      .eq('is_active', true)
+      .order('created_at', { ascending: true })
+    
+    if (contactsError) {
+      console.error('[Contacts API] restaurant_contacts query error:', contactsError)
+    }
+    
+    // If we have contacts in restaurant_contacts table, return those
+    if (restaurantContacts && restaurantContacts.length > 0) {
+      return NextResponse.json(restaurantContacts)
+    }
+    
+    // Fallback: Fetch from admin_user_restaurants and restaurant_locations for backwards compatibility
     const { data: adminContacts, error: adminError } = await supabase
       .schema('menuca_v3')
       .from('admin_user_restaurants')

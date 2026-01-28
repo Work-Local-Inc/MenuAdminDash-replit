@@ -34,7 +34,7 @@ Preferred communication style: Simple, everyday language.
 ### Technical Implementations
 -   **ID Mapping**: Handles `combo_groups.restaurant_id` (V3 IDs) vs. `dishes.restaurant_id` (legacy_v1_id) via API.
 -   **Terminology**: "Template" in DB translates to "modifier" or "modifier group" in UI/code.
--   **Contact Information Storage**: Split across `admin_users`, `admin_user_restaurants` (private), and `restaurant_locations` (public).
+-   **Contact Information Storage**: Primary source is `restaurant_contacts` table (menuca_v3 schema) with fields: id, uuid, restaurant_id, title, first_name, last_name, email, phone, receives_orders, receives_statements, receives_marketing, preferred_language, is_active. Falls back to `admin_user_restaurants` and `restaurant_locations` for backwards compatibility. Edge Functions (`add-restaurant-contact`, `update-restaurant-contact`) with direct DB fallback.
 -   **Multilingual Database Architecture**: Dish names stored in bilingual columns (`name_en`, `name_fr`), localized via RPC.
 -   **Performance Optimization**: Parallel data fetching, menu caching with auto-invalidation.
 -   **Modifier Table Schema**: Distinction between legacy and active modifier tables (`modifiers`, `modifier_prices`, `modifier_groups`), with `modifier_groups` relationship managed by RPC.
