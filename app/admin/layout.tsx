@@ -31,7 +31,7 @@ export default function AdminLayout({
     }))
 
   const style = {
-    "--sidebar-width": "16rem",
+    "--sidebar-width": "18rem",
     "--sidebar-width-icon": "3rem",
   }
 

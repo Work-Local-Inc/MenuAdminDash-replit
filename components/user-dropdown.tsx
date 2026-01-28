@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
+import Link from "next/link"
 
 export function UserDropdown() {
   const { user, signOut } = useAuth()
@@ -35,13 +36,17 @@ export function UserDropdown() {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem data-testid="menu-item-profile">
-          <User className="mr-2 h-4 w-4" />
-          Profile
+        <DropdownMenuItem asChild data-testid="menu-item-profile">
+          <Link href="/admin/profile">
+            <User className="mr-2 h-4 w-4" />
+            Profile
+          </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem data-testid="menu-item-settings">
-          <Settings className="mr-2 h-4 w-4" />
-          Settings
+        <DropdownMenuItem asChild data-testid="menu-item-settings">
+          <Link href="/admin/profile">
+            <Settings className="mr-2 h-4 w-4" />
+            Settings
+          </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={signOut} data-testid="menu-item-logout">
