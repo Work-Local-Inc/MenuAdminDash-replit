@@ -88,3 +88,10 @@ Preferred communication style: Simple, everyday language.
     - **Address Tables**: Customer-facing uses `user_delivery_addresses` (newer table with lat/lng), legacy `user_addresses` still available
     - **Stripe Integration**: `stripe_customer_id` properly linked to users table
     - **RLS Policies**: All user data protected via `auth_user_id = auth.uid()`
+-   **RBAC Implementation for Restaurant Admins (Completed)**: Implemented comprehensive role-based access control:
+    - **Sidebar Navigation**: Users and Devices sections hidden from Restaurant Admins (role_id = 2), only visible to Super Admins (role_id = 1)
+    - **Restaurant API Filtering**: Database-level filtering using `allowedRestaurantIds` parameter to restrict Restaurant Admins to only their assigned locations. Uses `admin_user_restaurants` table for assignments.
+    - **Menu Builder Auto-Select**: When a Restaurant Admin has only one assigned restaurant, the restaurant selector is hidden and that restaurant is automatically selected
+    - **useAdminUser Hook**: New hook (`hooks/use-admin-user.ts`) fetches current admin user's role information for client-side RBAC decisions
+    - **Type Safety**: Added AdminUser interface and explicit validation in API routes
+    - **Files Updated**: `components/app-sidebar.tsx`, `app/api/restaurants/route.ts`, `lib/supabase/queries.ts`, `app/admin/menu/builder/page.tsx`, `hooks/use-admin-user.ts`
