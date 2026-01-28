@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "memory": {
+      "command": "node",
+      "args": [
+        "/opt/homebrew/lib/node_modules/claude-code-memory/dist/index.js",
+        "/Users/brianlapp/Documents/GitHub/MenuAdminDash-replit"
+      ]
+    }
+  }
+}

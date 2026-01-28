@@ -11,3 +11,5 @@ attached_assets
 .env
 .env.local
 .env*.local
+# Memory MCP
+.memory/
