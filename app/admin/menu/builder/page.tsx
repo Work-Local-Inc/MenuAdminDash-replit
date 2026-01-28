@@ -81,6 +81,9 @@ export default function MenuBuilderPage() {
   const initialRestaurantId = searchParams.get('restaurant') || ''
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string>(initialRestaurantId)
   
+  // Fetch restaurants early - needed for auto-select logic
+  const { data: restaurants = [], isLoading: loadingRestaurants } = useRestaurants()
+  
   // Update state when URL changes
   useEffect(() => {
     const urlRestaurantId = searchParams.get('restaurant') || ''
@@ -142,9 +145,6 @@ export default function MenuBuilderPage() {
   // Track which categories have modifier section expanded
   const [expandedCategoryModifiers, setExpandedCategoryModifiers] = useState<Set<number>>(new Set())
 
-  // Hooks
-  const { data: restaurants = [], isLoading: loadingRestaurants } = useRestaurants()
-  
   // ISSUE 1 FIX: Only call useMenuBuilder when valid restaurant selected
   const { data: categories = [], isLoading: loadingCategories } = useMenuBuilder(
     selectedRestaurantId && parseInt(selectedRestaurantId) > 0 ? parseInt(selectedRestaurantId) : null
