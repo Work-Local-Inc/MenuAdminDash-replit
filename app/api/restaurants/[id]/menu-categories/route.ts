@@ -13,8 +13,9 @@ export async function GET(
     const supabase = createAdminClient() as any
     const restaurantId = parseInt(params.id)
     
-    // Get courses
+    // Get courses from menuca_v3 schema
     const { data: courses, error: coursesError } = await supabase
+      .schema('menuca_v3')
       .from('courses')
       .select('id, name, description, display_order, is_active')
       .eq('restaurant_id', restaurantId)
@@ -22,8 +23,9 @@ export async function GET(
     
     if (coursesError) throw coursesError
     
-    // Get dish counts in a single query with GROUP BY
+    // Get dish counts from menuca_v3 schema
     const { data: dishCounts, error: countError } = await supabase
+      .schema('menuca_v3')
       .from('dishes')
       .select('course_id')
       .eq('restaurant_id', restaurantId)

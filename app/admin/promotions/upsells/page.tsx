@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select"
 import { SearchableRestaurantSelect } from "@/components/admin/searchable-restaurant-select"
 import { Switch } from "@/components/ui/switch"
 import { useRestaurants } from "@/lib/hooks/use-restaurants"
@@ -506,16 +506,16 @@ export default function UpsellsPage() {
                               const courseDishes = dishes.filter((d: any) => d.course_id === course.id)
                               if (courseDishes.length === 0) return null
                               return (
-                                <div key={course.id}>
-                                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted">
+                                <SelectGroup key={course.id}>
+                                  <SelectLabel className="text-xs font-semibold text-muted-foreground">
                                     {course.name}
-                                  </div>
+                                  </SelectLabel>
                                   {courseDishes.map((dish: any) => (
                                     <SelectItem key={dish.id} value={dish.id.toString()}>
                                       {dish.name}
                                     </SelectItem>
                                   ))}
-                                </div>
+                                </SelectGroup>
                               )
                             })}
                           </SelectContent>
