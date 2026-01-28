@@ -34,6 +34,7 @@ export const createDealSchema = z.object({
   min_order_value: z.number().min(0).optional().nullable(),
   max_uses_per_user: z.number().int().min(1).optional().nullable(),
   max_total_uses: z.number().int().min(1).optional().nullable(),
+  included_items: z.array(z.number()).optional().nullable(), // Dish IDs the deal applies to
 })
 
 // Update deal schema (for PATCH /api/admin/promotions/deals/[id])

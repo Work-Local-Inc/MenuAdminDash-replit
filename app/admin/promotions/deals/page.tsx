@@ -2,7 +2,7 @@
 "use client"
 export const dynamic = 'force-dynamic';
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -16,8 +16,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SearchableRestaurantSelect } from "@/components/admin/searchable-restaurant-select"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Checkbox } from "@/components/ui/checkbox"
 import { useRestaurants } from "@/lib/hooks/use-restaurants"
 import { useDeals, useCreateDeal, useToggleDeal, useDeleteDeal } from "@/lib/hooks/use-promotions"
+import { useQuery } from "@tanstack/react-query"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -43,6 +46,7 @@ import {
   ArrowLeft,
   Languages,
   ChevronDown,
+  Target,
 } from "lucide-react"
 import {
   Collapsible,
@@ -78,9 +82,21 @@ const dealSchema = z.object({
   valid_from: z.string().optional(),
   valid_until: z.string().optional(),
   is_active: z.boolean(),
+  included_items: z.array(z.number()).optional(),
 })
 
 type DealFormValues = z.infer<typeof dealSchema>
+
+type DishItem = {
+  id: number
+  name: string
+  course_id: number | null
+}
+
+type CourseItem = {
+  id: number
+  name: string
+}
 
 const dealTypes = [
   { value: 'bogo', label: 'Buy One Get One', icon: Package, color: 'bg-green-500' },
@@ -219,6 +235,30 @@ export default function DealsPage() {
   const { data: restaurants = [], isLoading: loadingRestaurants } = useRestaurants({ status: 'active' })
   const selectedRestaurant = restaurants.find((r: any) => r.id.toString() === selectedRestaurantId)
   
+  // Fetch courses for the selected restaurant
+  const { data: courses = [] } = useQuery<CourseItem[]>({
+    queryKey: ['menu-categories', selectedRestaurantId],
+    queryFn: async () => {
+      if (!selectedRestaurantId) return []
+      const response = await fetch(`/api/restaurants/${selectedRestaurantId}/menu-categories`)
+      if (!response.ok) return []
+      return await response.json()
+    },
+    enabled: !!selectedRestaurantId,
+  })
+
+  // Fetch dishes for the selected restaurant
+  const { data: dishes = [] } = useQuery<DishItem[]>({
+    queryKey: ['menu-dishes', selectedRestaurantId],
+    queryFn: async () => {
+      if (!selectedRestaurantId) return []
+      const response = await fetch(`/api/menu/dishes?restaurant_id=${selectedRestaurantId}`)
+      if (!response.ok) return []
+      return await response.json()
+    },
+    enabled: !!selectedRestaurantId,
+  })
+  
   // Fetch real deals data
   const { data: deals = [], isLoading: loadingDeals } = useDeals(
     selectedRestaurantId ? { restaurant_id: parseInt(selectedRestaurantId) } : undefined
@@ -230,6 +270,7 @@ export default function DealsPage() {
   const [search, setSearch] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [activeTab, setActiveTab] = useState("all")
+  const [dishSearch, setDishSearch] = useState("")
 
   const form = useForm<DealFormValues>({
     resolver: zodResolver(dealSchema),
@@ -242,8 +283,48 @@ export default function DealsPage() {
       discount_type: "percentage",
       discount_value: 0,
       is_active: true,
+      included_items: [],
     },
   })
+  
+  const includedItems = form.watch("included_items") || []
+  
+  // Group dishes by course for better organization
+  const dishesByCourse = useMemo(() => {
+    const grouped: Record<string, DishItem[]> = {}
+    const courseMap = new Map<number, string>(courses.map((c) => [c.id, c.name]))
+    
+    dishes.forEach((dish: DishItem) => {
+      const courseName = dish.course_id ? (courseMap.get(dish.course_id) || 'Uncategorized') : 'Uncategorized'
+      if (!grouped[courseName]) grouped[courseName] = []
+      grouped[courseName].push(dish)
+    })
+    return grouped
+  }, [dishes, courses])
+  
+  // Filter dishes by search
+  const filteredDishesByCourse = useMemo(() => {
+    if (!dishSearch.trim()) return dishesByCourse
+    const searchLower = dishSearch.toLowerCase()
+    const filtered: Record<string, DishItem[]> = {}
+    Object.entries(dishesByCourse).forEach(([courseName, courseDishes]) => {
+      const matchingDishes = courseDishes.filter(d => d.name.toLowerCase().includes(searchLower))
+      if (matchingDishes.length > 0) {
+        filtered[courseName] = matchingDishes
+      }
+    })
+    return filtered
+  }, [dishesByCourse, dishSearch])
+  
+  // Toggle dish selection
+  const handleDishToggle = (dishId: number) => {
+    const current = form.getValues("included_items") || []
+    if (current.includes(dishId)) {
+      form.setValue("included_items", current.filter(id => id !== dishId))
+    } else {
+      form.setValue("included_items", [...current, dishId])
+    }
+  }
 
   // Filter deals based on search and tab
   const filteredDeals = deals.filter((deal: any) => {
@@ -281,9 +362,11 @@ export default function DealsPage() {
         date_start: data.valid_from ? new Date(data.valid_from).toISOString().split('T')[0] : null,
         date_stop: data.valid_until ? new Date(data.valid_until).toISOString().split('T')[0] : null,
         is_enabled: data.is_active,
+        included_items: data.included_items && data.included_items.length > 0 ? data.included_items : null,
       })
       setIsDialogOpen(false)
       form.reset()
+      setDishSearch("")
     } catch (error: any) {
       toast({
         title: "Error",
@@ -508,6 +591,77 @@ export default function DealsPage() {
                     )}
                   />
                 </div>
+
+                {/* Item Selection */}
+                <Collapsible className="border rounded-lg p-4">
+                  <CollapsibleTrigger className="flex items-center justify-between w-full">
+                    <div className="flex items-center gap-2">
+                      <Target className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium text-sm">Apply to Specific Dishes (Optional)</span>
+                      {includedItems.length > 0 && (
+                        <Badge variant="secondary" className="ml-2">
+                          {includedItems.length} selected
+                        </Badge>
+                      )}
+                    </div>
+                    <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 data-[state=open]:rotate-180" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-4 pt-4">
+                    <p className="text-sm text-muted-foreground">
+                      Select which dishes this deal applies to. Leave empty to apply to all items.
+                    </p>
+                    <Input
+                      placeholder="Search dishes..."
+                      value={dishSearch}
+                      onChange={(e) => setDishSearch(e.target.value)}
+                      data-testid="input-dish-search"
+                    />
+                    <ScrollArea className="h-48 border rounded-md p-2">
+                      {Object.keys(filteredDishesByCourse).length > 0 ? (
+                        Object.entries(filteredDishesByCourse).map(([courseName, courseDishes]) => (
+                          <div key={courseName} className="mb-3">
+                            <div className="text-xs font-semibold text-muted-foreground mb-1 px-1 sticky top-0 bg-background">
+                              {courseName}
+                            </div>
+                            {courseDishes.map((dish) => (
+                              <div
+                                key={dish.id}
+                                className="flex items-center gap-2 py-1.5 px-1 hover:bg-muted/50 rounded cursor-pointer"
+                                onClick={() => handleDishToggle(dish.id)}
+                              >
+                                <Checkbox
+                                  checked={includedItems.includes(dish.id)}
+                                  onCheckedChange={() => handleDishToggle(dish.id)}
+                                  data-testid={`checkbox-dish-${dish.id}`}
+                                />
+                                <span className="text-sm">{dish.name}</span>
+                              </div>
+                            ))}
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-sm text-muted-foreground text-center py-4">
+                          {dishSearch ? "No dishes match your search" : "No dishes available"}
+                        </div>
+                      )}
+                    </ScrollArea>
+                    {includedItems.length > 0 && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">
+                          {includedItems.length} dish{includedItems.length !== 1 ? 'es' : ''} selected
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => form.setValue("included_items", [])}
+                        >
+                          Clear all
+                        </Button>
+                      </div>
+                    )}
+                  </CollapsibleContent>
+                </Collapsible>
 
                 {/* Active Toggle */}
                 <FormField

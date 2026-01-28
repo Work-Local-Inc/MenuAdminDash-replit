@@ -95,3 +95,10 @@ Preferred communication style: Simple, everyday language.
     - **useAdminUser Hook**: New hook (`hooks/use-admin-user.ts`) fetches current admin user's role information for client-side RBAC decisions
     - **Type Safety**: Added AdminUser interface and explicit validation in API routes
     - **Files Updated**: `components/app-sidebar.tsx`, `app/api/restaurants/route.ts`, `lib/supabase/queries.ts`, `app/admin/menu/builder/page.tsx`, `hooks/use-admin-user.ts`
+-   **Item Targeting for Deals (Completed)**: Added item targeting support for promotional deals similar to coupons:
+    - **UI**: Collapsible "Apply to Specific Dishes (Optional)" section in deal creation form
+    - **Dish Selection**: Searchable list with dishes grouped by course/category
+    - **Selection UI**: Checkboxes for each dish, selection count badge, clear all button
+    - **Data Storage**: `included_items` array field stores selected dish IDs
+    - **API Validation**: Updated `createDealSchema` in `lib/validation/promotions.ts` to accept `included_items`
+    - **Files Updated**: `app/admin/promotions/deals/page.tsx`, `lib/validation/promotions.ts`, `app/api/admin/promotions/deals/create/route.ts`
