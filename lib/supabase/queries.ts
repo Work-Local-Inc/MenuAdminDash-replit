@@ -73,6 +73,7 @@ export async function getOrders(filters?: {
   restaurant_id?: string
   status?: string
   limit?: number
+  allowedRestaurantIds?: number[]
 }) {
   const supabase = createAdminClient()
   
@@ -111,6 +112,11 @@ export async function getOrders(filters?: {
         .from('orders')
         .select(selectClause)
         .order('created_at', { ascending: false })
+      
+      // RBAC: Filter by allowed restaurant IDs for Restaurant Admins
+      if (filters?.allowedRestaurantIds && filters.allowedRestaurantIds.length > 0) {
+        query = query.in('restaurant_id', filters.allowedRestaurantIds)
+      }
       
       if (filters?.restaurant_id) {
         query = query.eq('restaurant_id', filters.restaurant_id)
