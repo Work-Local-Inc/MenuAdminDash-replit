@@ -183,7 +183,7 @@ export default function CustomerUsersPage() {
 
               <div className="mt-4 flex items-center justify-between">
                 <div className="text-sm text-muted-foreground">
-                  Showing {data.data.length} of {data.count} customer users
+                  Showing {data?.data?.length ?? 0} of {data?.count ?? 0} customer users
                 </div>
                 <div className="flex gap-2">
                   <Button
@@ -199,7 +199,7 @@ export default function CustomerUsersPage() {
                     variant="outline"
                     size="sm"
                     onClick={() => setPage(p => p + 1)}
-                    disabled={(page + 1) * pageSize >= data.count}
+                    disabled={(page + 1) * pageSize >= (data?.count ?? 0)}
                     data-testid="button-next-page"
                   >
                     Next

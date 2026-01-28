@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
 import { AuthError } from '@/lib/errors'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function GET(request: NextRequest) {
   try {
     await verifyAdminAuth(request)
-    const supabase = await createClient() as any
+    const supabase = createAdminClient() as any
 
     const searchParams = request.nextUrl.searchParams
     const search = searchParams.get('search') || ''
@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
     const offset = parseInt(searchParams.get('offset') || '0')
 
     let query = supabase
+      .schema('menuca_v3')
       .from('users')
       .select(`
         id,
