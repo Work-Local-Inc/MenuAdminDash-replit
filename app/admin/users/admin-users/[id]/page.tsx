@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { useToast } from '@/hooks/use-toast'
-import { ArrowLeft, Save, Trash2, Mail, User, Phone, Shield, Calendar } from 'lucide-react'
+import { ArrowLeft, Save, Trash2, Mail, User, Phone, Shield, Calendar, Store } from 'lucide-react'
 import Link from 'next/link'
 import {
   AlertDialog,
@@ -361,6 +361,20 @@ export default function AdminUserDetailsPage() {
                 </div>
                 <div className="text-sm font-medium">{formatDate(user.created_at)}</div>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Restaurant Access</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Button variant="outline" className="w-full" asChild data-testid="button-manage-restaurants">
+                <Link href={`/admin/users/admin-users/${id}/restaurants`}>
+                  <Store className="w-4 h-4 mr-2" />
+                  Manage Restaurants
+                </Link>
+              </Button>
             </CardContent>
           </Card>
         </div>
