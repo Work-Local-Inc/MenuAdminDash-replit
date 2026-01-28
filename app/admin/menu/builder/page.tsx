@@ -89,6 +89,19 @@ export default function MenuBuilderPage() {
     }
   }, [searchParams])
   
+  // Auto-select restaurant if only one is available
+  useEffect(() => {
+    if (!loadingRestaurants && restaurants.length === 1 && !selectedRestaurantId) {
+      const onlyRestaurant = restaurants[0]
+      const restaurantId = onlyRestaurant?.id?.toString()
+      // Only update if we have a valid restaurant ID and URL doesn't already have it
+      if (restaurantId && searchParams.get('restaurant') !== restaurantId) {
+        setSelectedRestaurantId(restaurantId)
+        router.push(`/admin/menu/builder?restaurant=${restaurantId}`)
+      }
+    }
+  }, [loadingRestaurants, restaurants, selectedRestaurantId, router, searchParams])
+  
   // Handler to update both state and URL
   const handleRestaurantChange = (restaurantId: string) => {
     setSelectedRestaurantId(restaurantId)
@@ -644,23 +657,25 @@ export default function MenuBuilderPage() {
         </p>
       </div>
 
-      {/* Restaurant Selector */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Select Restaurant</CardTitle>
-          <CardDescription>Choose a restaurant to manage its menu</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <SearchableRestaurantSelect
-            restaurants={restaurants}
-            value={selectedRestaurantId}
-            onValueChange={handleRestaurantChange}
-            isLoading={loadingRestaurants}
-            placeholder="Select a restaurant"
-            data-testid="select-restaurant"
-          />
-        </CardContent>
-      </Card>
+      {/* Restaurant Selector - hidden when only one restaurant is available */}
+      {(loadingRestaurants || restaurants.length > 1) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Select Restaurant</CardTitle>
+            <CardDescription>Choose a restaurant to manage its menu</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <SearchableRestaurantSelect
+              restaurants={restaurants}
+              value={selectedRestaurantId}
+              onValueChange={handleRestaurantChange}
+              isLoading={loadingRestaurants}
+              placeholder="Select a restaurant"
+              data-testid="select-restaurant"
+            />
+          </CardContent>
+        </Card>
+      )}
 
       {/* Toolbar */}
       {selectedRestaurantId && (

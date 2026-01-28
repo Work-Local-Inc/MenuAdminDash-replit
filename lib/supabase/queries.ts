@@ -6,6 +6,7 @@ export async function getRestaurants(filters?: {
   city?: string
   status?: string
   search?: string
+  allowedRestaurantIds?: number[]
 }) {
   const supabase = await createClient()
   
@@ -21,6 +22,14 @@ export async function getRestaurants(filters?: {
     
     if (filters?.search) {
       query = query.or(`name.ilike.%${filters.search}%,slug.ilike.%${filters.search}%`)
+    }
+    
+    // RBAC filter: only return restaurants in the allowed list
+    if (filters?.allowedRestaurantIds && filters.allowedRestaurantIds.length > 0) {
+      query = query.in('id', filters.allowedRestaurantIds)
+    } else if (filters?.allowedRestaurantIds && filters.allowedRestaurantIds.length === 0) {
+      // If explicitly empty array passed, return no restaurants
+      return []
     }
     
     const { data, error } = await query

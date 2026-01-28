@@ -1,5 +1,6 @@
 "use client"
 
+import { useMemo } from "react"
 import {
   LayoutDashboard,
   Store,
@@ -45,8 +46,9 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
+import { useAdminUser, isSuperAdminRole } from "@/hooks/use-admin-user"
 
-const menuItems = [
+const allMenuItems = [
   {
     title: "Dashboard",
     url: "/admin/dashboard",
@@ -57,10 +59,10 @@ const menuItems = [
     icon: Store,
     items: [
       { title: "All Restaurants", url: "/admin/restaurants" },
-      { title: "Franchise Management", url: "/admin/franchises" },
-      { title: "Onboarding Wizard", url: "/admin/onboarding/new" },
-      { title: "Onboarding Status", url: "/admin/onboarding" },
-      { title: "Domain Verification", url: "/admin/domains" },
+      { title: "Franchise Management", url: "/admin/franchises", superAdminOnly: true },
+      { title: "Onboarding Wizard", url: "/admin/onboarding/new", superAdminOnly: true },
+      { title: "Onboarding Status", url: "/admin/onboarding", superAdminOnly: true },
+      { title: "Domain Verification", url: "/admin/domains", superAdminOnly: true },
     ],
   },
   {
@@ -79,6 +81,7 @@ const menuItems = [
   {
     title: "Devices",
     icon: Tablet,
+    superAdminOnly: true,
     items: [
       { title: "All Devices", url: "/admin/devices" },
       { title: "Register Device", url: "/admin/devices/register" },
@@ -92,6 +95,7 @@ const menuItems = [
   {
     title: "Users",
     icon: Users,
+    superAdminOnly: true,
     items: [
       { title: "Customer Users", url: "/admin/users/customers" },
       { title: "All Admin Users", url: "/admin/users/admin-users" },
@@ -103,6 +107,26 @@ const menuItems = [
 
 export function AppSidebar() {
   const pathname = usePathname()
+  const { data: adminUser, isLoading } = useAdminUser()
+  
+  // Show all items while loading, then filter based on role once we know
+  // Default to Super Admin view (show everything) until we confirm otherwise
+  const isSuperAdmin = isLoading || !adminUser ? true : isSuperAdminRole(adminUser.role_id)
+
+  const menuItems = useMemo(() => {
+    return allMenuItems
+      .filter(item => !('superAdminOnly' in item && item.superAdminOnly) || isSuperAdmin)
+      .map(item => {
+        if (item.items) {
+          return {
+            ...item,
+            items: item.items.filter(subItem => !('superAdminOnly' in subItem && subItem.superAdminOnly) || isSuperAdmin)
+          }
+        }
+        return item
+      })
+      .filter(item => !item.items || item.items.length > 0)
+  }, [isSuperAdmin])
 
   return (
     <Sidebar>
