@@ -56,6 +56,7 @@ export default function AdminUserDetailsPage() {
   // Get current logged-in admin user to check if viewing own profile
   const { data: currentAdminUser } = useAdminUser()
   const isOwnProfile = currentAdminUser?.id?.toString() === id
+  const isSuperAdmin = currentAdminUser?.role_id === 1
 
   const [formData, setFormData] = useState({
     email: '',
@@ -257,6 +258,7 @@ export default function AdminUserDetailsPage() {
             </p>
           </div>
         </div>
+        {isSuperAdmin && (
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <Button variant="destructive" data-testid="button-delete-user">
@@ -284,6 +286,7 @@ export default function AdminUserDetailsPage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+        )}
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
@@ -330,34 +333,46 @@ export default function AdminUserDetailsPage() {
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="role">Role</Label>
-                    <Select
-                      value={formData.role_id.toString()}
-                      onValueChange={(value) => setFormData({ ...formData, role_id: parseInt(value) })}
-                    >
-                      <SelectTrigger data-testid="select-role">
-                        <SelectValue placeholder="Select role" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1">Super Admin</SelectItem>
-                        <SelectItem value="2">Restaurant Admin</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    {isSuperAdmin ? (
+                      <Select
+                        value={formData.role_id.toString()}
+                        onValueChange={(value) => setFormData({ ...formData, role_id: parseInt(value) })}
+                      >
+                        <SelectTrigger data-testid="select-role">
+                          <SelectValue placeholder="Select role" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1">Super Admin</SelectItem>
+                          <SelectItem value="2">Restaurant Admin</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <div className="flex h-9 w-full items-center rounded-md border border-input bg-muted px-3 text-sm" data-testid="text-role-readonly">
+                        {formData.role_id === 1 ? 'Super Admin' : 'Restaurant Admin'}
+                      </div>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="status">Status</Label>
-                    <Select
-                      value={formData.status}
-                      onValueChange={(value) => setFormData({ ...formData, status: value })}
-                    >
-                      <SelectTrigger data-testid="select-status">
-                        <SelectValue placeholder="Select status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="inactive">Inactive</SelectItem>
-                        <SelectItem value="suspended">Suspended</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    {isSuperAdmin ? (
+                      <Select
+                        value={formData.status}
+                        onValueChange={(value) => setFormData({ ...formData, status: value })}
+                      >
+                        <SelectTrigger data-testid="select-status">
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="inactive">Inactive</SelectItem>
+                          <SelectItem value="suspended">Suspended</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <div className="flex h-9 w-full items-center rounded-md border border-input bg-muted px-3 text-sm" data-testid="text-status-readonly">
+                        {formData.status.charAt(0).toUpperCase() + formData.status.slice(1)}
+                      </div>
+                    )}
                   </div>
                 </div>
 
