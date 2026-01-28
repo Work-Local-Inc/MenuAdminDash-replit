@@ -16,6 +16,6 @@ export default async function Home() {
     }
   }
   
-  // Default: redirect to a popular restaurant (or homepage when built)
-  redirect('/r/econo-pizza-1009')
+  // Default: redirect to admin login page
+  redirect('/login')
 }
