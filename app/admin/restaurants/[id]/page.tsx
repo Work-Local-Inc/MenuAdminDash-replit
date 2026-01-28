@@ -21,7 +21,6 @@ import { RestaurantIntegrations } from "@/components/restaurant/tabs/integration
 import { RestaurantBranding } from "@/components/restaurant/tabs/branding"
 import { RestaurantSEO } from "@/components/restaurant/tabs/seo"
 import { RestaurantImages } from "@/components/restaurant/tabs/images"
-import { RestaurantFeedback } from "@/components/restaurant/tabs/feedback"
 import { RestaurantCustomCSS } from "@/components/restaurant/tabs/custom-css"
 import { Categorization } from "@/components/restaurant/tabs/categorization"
 import { Onboarding } from "@/components/restaurant/tabs/onboarding"
@@ -222,13 +221,6 @@ export default function RestaurantDetailPage() {
               Onboarding
             </TabsTrigger>
             <TabsTrigger 
-              value="feedback" 
-              data-testid="tab-feedback"
-              className="w-full justify-start"
-            >
-              Feedback
-            </TabsTrigger>
-            <TabsTrigger 
               value="custom-css" 
               data-testid="tab-custom-css"
               className="w-full justify-start"
@@ -294,10 +286,6 @@ export default function RestaurantDetailPage() {
 
           <TabsContent value="images" className="mt-0">
             <RestaurantImages restaurantId={restaurantId} />
-          </TabsContent>
-
-          <TabsContent value="feedback" className="mt-0">
-            <RestaurantFeedback restaurantId={restaurantId} />
           </TabsContent>
 
           <TabsContent value="custom-css" className="mt-0">
