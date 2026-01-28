@@ -109,9 +109,9 @@ export function AppSidebar() {
   const pathname = usePathname()
   const { data: adminUser, isLoading } = useAdminUser()
   
-  // Show all items while loading, then filter based on role once we know
-  // Default to Super Admin view (show everything) until we confirm otherwise
-  const isSuperAdmin = isLoading || !adminUser ? true : isSuperAdminRole(adminUser.role_id)
+  // Hide super admin items while loading or if not confirmed as Super Admin
+  // Only show admin-only items once we CONFIRM user is Super Admin (role_id = 1)
+  const isSuperAdmin = !isLoading && adminUser ? isSuperAdminRole(adminUser.role_id) : false
 
   const menuItems = useMemo(() => {
     return allMenuItems
