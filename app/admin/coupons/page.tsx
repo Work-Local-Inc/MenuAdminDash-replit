@@ -381,7 +381,7 @@ export default function CouponsPage() {
               Create Coupon
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
             <DialogHeader>
               <DialogTitle>Create New Coupon</DialogTitle>
               <DialogDescription>
@@ -389,7 +389,7 @@ export default function CouponsPage() {
               </DialogDescription>
             </DialogHeader>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 overflow-y-auto flex-1 pr-2">
                 <FormField
                   control={form.control}
                   name="code"
