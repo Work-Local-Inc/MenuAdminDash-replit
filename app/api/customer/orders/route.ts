@@ -6,6 +6,7 @@ import Stripe from 'stripe'
 import { sendOrderConfirmationEmail } from '@/lib/emails/service'
 import { fetchMenuForCustomer } from '@/lib/supabase/menu'
 import { TaxConfig, TaxLineItem, calculateTaxes, getTotalTax } from '@/lib/types/tax'
+import { getEffectivePrepTime, formatPrepTimeRange } from '@/lib/utils/prep-time'
 
 // Get Stripe instance based on payment mode (test or live)
 function getStripe(paymentMode: 'test' | 'live' = 'test') {
@@ -940,7 +941,11 @@ export async function POST(request: NextRequest) {
             hour12: true 
           })}`
         } else {
-          estimatedTime = orderType === 'pickup' ? 'ASAP (Pickup)' : 'ASAP (Delivery)'
+          // Use dynamic prep time based on busy mode and peak hours
+          const prepTimeResult = await getEffectivePrepTime(restaurantId)
+          const prepTimeRange = formatPrepTimeRange(prepTimeResult.prep_time_minutes, orderType as 'pickup' | 'delivery')
+          estimatedTime = prepTimeRange
+          console.log(`[Order API] Dynamic prep time for restaurant ${restaurantId}: ${prepTimeResult.prep_time_minutes}min (mode: ${prepTimeResult.mode}, is_busy: ${prepTimeResult.is_busy})`)
         }
         
         // Get restaurant location for pickup orders

@@ -5,6 +5,7 @@ import { extractIdFromSlug } from '@/lib/utils/slugify'
 import { sendOrderConfirmationEmail } from '@/lib/emails/service'
 import { fetchMenuForCustomer } from '@/lib/supabase/menu'
 import { TaxConfig, TaxLineItem, calculateTaxes, getTotalTax } from '@/lib/types/tax'
+import { getEffectivePrepTime, formatPrepTimeRange } from '@/lib/utils/prep-time'
 import crypto from 'crypto'
 
 export async function POST(request: NextRequest) {
@@ -415,7 +416,7 @@ export async function POST(request: NextRequest) {
     } else if (email && delivery_address) {
       try {
         // Calculate estimated time based on service_time
-        let estimatedTime = order_type === 'pickup' ? 'ASAP (Pickup)' : 'ASAP (Delivery)'
+        let estimatedTime: string
         if (service_time?.type === 'scheduled' && service_time.scheduledTime) {
           const scheduledDate = new Date(service_time.scheduledTime)
           estimatedTime = `Scheduled for ${scheduledDate.toLocaleDateString('en-US', { 
@@ -427,6 +428,11 @@ export async function POST(request: NextRequest) {
             minute: '2-digit',
             hour12: true 
           })}`
+        } else {
+          // Use dynamic prep time based on busy mode and peak hours
+          const prepTimeResult = await getEffectivePrepTime(restaurantId)
+          estimatedTime = formatPrepTimeRange(prepTimeResult.prep_time_minutes, order_type as 'pickup' | 'delivery')
+          console.log(`[Cash Order API] Dynamic prep time for restaurant ${restaurantId}: ${prepTimeResult.prep_time_minutes}min (mode: ${prepTimeResult.mode}, is_busy: ${prepTimeResult.is_busy})`)
         }
 
         // Get restaurant location for pickup orders
