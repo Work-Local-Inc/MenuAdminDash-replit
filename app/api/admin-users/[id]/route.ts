@@ -4,12 +4,21 @@ import { AuthError } from '@/lib/errors'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
 
 // GET /api/admin-users/[id] - Get single admin user
+// SECURITY: Super Admins only - Restaurant Admins should not view other admins
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await verifyAdminAuth(request)
+    const authResult = await verifyAdminAuth(request)
+    
+    // Only Super Admins (role_id = 1) can view admin user details
+    if (authResult.adminUser.role_id !== 1) {
+      return NextResponse.json(
+        { error: 'Access denied. Super Admin privileges required.' },
+        { status: 403 }
+      )
+    }
   } catch (error: any) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode })

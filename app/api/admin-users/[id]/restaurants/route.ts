@@ -3,12 +3,21 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { AuthError } from '@/lib/errors'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
 
+// SECURITY: Super Admins only - Restaurant Admins should not view other admins' assignments
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await verifyAdminAuth(request)
+    const authResult = await verifyAdminAuth(request)
+    
+    // Only Super Admins (role_id = 1) can view admin user restaurant assignments
+    if (authResult.adminUser.role_id !== 1) {
+      return NextResponse.json(
+        { error: 'Access denied. Super Admin privileges required.' },
+        { status: 403 }
+      )
+    }
   } catch (error: any) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode })
@@ -53,12 +62,21 @@ export async function GET(
   return NextResponse.json(restaurants || [])
 }
 
+// SECURITY: Super Admins only - Restaurant Admins cannot assign restaurants
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await verifyAdminAuth(request)
+    const authResult = await verifyAdminAuth(request)
+    
+    // Only Super Admins (role_id = 1) can assign restaurants to admins
+    if (authResult.adminUser.role_id !== 1) {
+      return NextResponse.json(
+        { error: 'Access denied. Super Admin privileges required.' },
+        { status: 403 }
+      )
+    }
   } catch (error: any) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode })
