@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { verifyAdminAuth } from '@/lib/auth/admin-check'
-import { AuthError } from '@/lib/errors'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { verifyAdminAuth, AuthError } from '@/lib/auth/admin-check'
 import { z } from 'zod'
 
 const updateAvailabilitySchema = z.object({
@@ -15,6 +14,7 @@ export async function GET(
   try {
     await verifyAdminAuth(request)
     const { id } = await params
+    const dishId = parseInt(id)
     const supabase = createAdminClient() as any
 
     // First check if dish exists
@@ -22,51 +22,45 @@ export async function GET(
       .schema('menuca_v3')
       .from('dishes')
       .select('id')
-      .eq('id', parseInt(id))
+      .eq('id', dishId)
       .single()
 
     if (dishError) {
-      // If column doesn't exist error, return empty array (feature not yet in DB)
-      if (dishError.code === '42703') {
-        return NextResponse.json({
-          success: true,
-          hidden_days: [],
-          note: 'Day availability feature not yet configured in database'
-        })
+      if (dishError.code === 'PGRST116') {
+        return NextResponse.json(
+          { error: 'Dish not found' },
+          { status: 404 }
+        )
       }
       throw dishError
     }
 
-    if (!dish) {
-      return NextResponse.json(
-        { error: 'Dish not found' },
-        { status: 404 }
-      )
-    }
-
-    // Try to get hidden_days if column exists
-    const { data, error } = await supabase
+    // Get hidden days from dish_availability table
+    const { data: availabilityData, error: availError } = await supabase
       .schema('menuca_v3')
-      .from('dishes')
-      .select('id, hidden_days')
-      .eq('id', parseInt(id))
-      .single()
+      .from('dish_availability')
+      .select('day_of_week')
+      .eq('dish_id', dishId)
+      .eq('is_hidden', true)
 
-    if (error) {
-      // If column doesn't exist, return empty array
-      if (error.code === '42703') {
+    if (availError) {
+      // If table doesn't exist, return empty array
+      if (availError.code === '42P01') {
         return NextResponse.json({
           success: true,
           hidden_days: [],
-          note: 'Day availability feature not yet configured in database'
+          note: 'dish_availability table not found'
         })
       }
-      throw error
+      throw availError
     }
+
+    // Extract day_of_week values into an array
+    const hiddenDays = (availabilityData || []).map((row: { day_of_week: number }) => row.day_of_week)
 
     return NextResponse.json({
       success: true,
-      hidden_days: data?.hidden_days || []
+      hidden_days: hiddenDays
     })
   } catch (error: any) {
     if (error instanceof AuthError) {
@@ -87,44 +81,71 @@ export async function PATCH(
   try {
     await verifyAdminAuth(request)
     const { id } = await params
+    const dishId = parseInt(id)
     const supabase = createAdminClient() as any
 
     const body = await request.json()
     const validatedData = updateAvailabilitySchema.parse(body)
+    const newHiddenDays = validatedData.hidden_days
 
-    const { data, error } = await supabase
+    // First check if dish exists
+    const { data: dish, error: dishError } = await supabase
       .schema('menuca_v3')
       .from('dishes')
-      .update({
-        hidden_days: validatedData.hidden_days,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', parseInt(id))
-      .select('id, hidden_days')
+      .select('id')
+      .eq('id', dishId)
       .single()
 
-    if (error) {
-      // If column doesn't exist, return success but note feature not available
-      if (error.code === '42703') {
-        return NextResponse.json({
-          success: true,
-          hidden_days: validatedData.hidden_days,
-          message: 'Day availability feature not yet configured in database - changes not persisted'
-        })
+    if (dishError) {
+      if (dishError.code === 'PGRST116') {
+        return NextResponse.json(
+          { error: 'Dish not found' },
+          { status: 404 }
+        )
       }
-      throw error
+      throw dishError
     }
 
-    if (!data) {
-      return NextResponse.json(
-        { error: 'Dish not found' },
-        { status: 404 }
-      )
+    // Delete all existing availability records for this dish
+    const { error: deleteError } = await supabase
+      .schema('menuca_v3')
+      .from('dish_availability')
+      .delete()
+      .eq('dish_id', dishId)
+
+    if (deleteError) {
+      // If table doesn't exist, return error
+      if (deleteError.code === '42P01') {
+        return NextResponse.json({
+          success: false,
+          error: 'dish_availability table not found',
+          hidden_days: newHiddenDays
+        }, { status: 500 })
+      }
+      throw deleteError
+    }
+
+    // Insert new hidden days if any
+    if (newHiddenDays.length > 0) {
+      const insertRows = newHiddenDays.map(day => ({
+        dish_id: dishId,
+        day_of_week: day,
+        is_hidden: true
+      }))
+
+      const { error: insertError } = await supabase
+        .schema('menuca_v3')
+        .from('dish_availability')
+        .insert(insertRows)
+
+      if (insertError) {
+        throw insertError
+      }
     }
 
     return NextResponse.json({
       success: true,
-      hidden_days: data.hidden_days || [],
+      hidden_days: newHiddenDays,
       message: 'Availability updated successfully'
     })
   } catch (error: any) {
