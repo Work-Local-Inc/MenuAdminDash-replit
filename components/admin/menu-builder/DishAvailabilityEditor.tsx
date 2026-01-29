@@ -34,12 +34,16 @@ export function DishAvailabilityEditor({ dishId, onChange }: DishAvailabilityEdi
   const { toast } = useToast()
 
   useEffect(() => {
+    let isMounted = true
+    
     async function fetchAvailability() {
       if (!dishId) return
       
       setIsLoading(true)
       try {
         const response = await fetch(`/api/menu/dishes/${dishId}/availability`)
+        
+        if (!isMounted) return
         
         if (!response.ok) {
           const errorData = await response.json()
@@ -53,19 +57,25 @@ export function DishAvailabilityEditor({ dishId, onChange }: DishAvailabilityEdi
         }
 
         const result = await response.json()
-        if (result?.success && Array.isArray(result.hidden_days)) {
+        if (isMounted && result?.success && Array.isArray(result.hidden_days)) {
           setHiddenDays(result.hidden_days)
           setLastSavedDays(result.hidden_days)
         }
       } catch (err) {
         console.error('Error fetching dish availability:', err)
       } finally {
-        setIsLoading(false)
+        if (isMounted) {
+          setIsLoading(false)
+        }
       }
     }
 
     fetchAvailability()
-  }, [dishId, toast])
+    
+    return () => {
+      isMounted = false
+    }
+  }, [dishId])
 
   const saveAvailability = async (newHiddenDays: number[]) => {
     setIsSaving(true)
