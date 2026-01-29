@@ -100,6 +100,7 @@ export default function OrderConfirmationPage() {
   const [order, setOrder] = useState<Order | null>(null)
   const [loading, setLoading] = useState(true)
   const [showSignupModal, setShowSignupModal] = useState(false)
+  const [dynamicPrepTime, setDynamicPrepTime] = useState<string | null>(null)
 
   useEffect(() => {
     // Clear cart when confirmation page loads (order completed successfully)
@@ -141,6 +142,27 @@ export default function OrderConfirmationPage() {
 
       const data = await response.json()
       setOrder(data)
+
+      // Fetch dynamic prep time for ASAP orders
+      const serviceTime = data.delivery_address?.service_time
+      if (!serviceTime?.scheduledTime && data.restaurant_id) {
+        try {
+          const prepTimeRes = await fetch(`/api/customer/restaurants/${data.restaurant_id}/prep-time`)
+          if (prepTimeRes.ok) {
+            const prepTimeData = await prepTimeRes.json()
+            const isPickup = data.order_type === 'pickup'
+            const prepMinutes = prepTimeData.prep_time_minutes || 30
+            if (isPickup) {
+              setDynamicPrepTime(`${prepMinutes}-${prepMinutes + 10} minutes`)
+            } else {
+              const deliveryMin = prepMinutes + 15
+              setDynamicPrepTime(`${deliveryMin}-${deliveryMin + 15} minutes`)
+            }
+          }
+        } catch (e) {
+          console.error('Failed to fetch prep time:', e)
+        }
+      }
 
       // Show signup modal for guest orders after a short delay
       if (data.is_guest_order && data.guest_email) {
@@ -223,7 +245,11 @@ export default function OrderConfirmationPage() {
       const scheduledDate = new Date(serviceTime.scheduledTime)
       return format(scheduledDate, 'MMM d, yyyy \'at\' h:mm a')
     }
-    return isPickup ? 'ASAP (Ready for pickup)' : 'ASAP (45-60 minutes)'
+    // Use dynamic prep time if available
+    if (dynamicPrepTime) {
+      return dynamicPrepTime
+    }
+    return isPickup ? '15-25 minutes' : '45-60 minutes'
   }
   const estimatedDeliveryTime = getEstimatedTimeText()
   
