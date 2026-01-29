@@ -17,6 +17,34 @@ export async function GET(
     const { id } = await params
     const supabase = createAdminClient() as any
 
+    // First check if dish exists
+    const { data: dish, error: dishError } = await supabase
+      .schema('menuca_v3')
+      .from('dishes')
+      .select('id')
+      .eq('id', parseInt(id))
+      .single()
+
+    if (dishError) {
+      // If column doesn't exist error, return empty array (feature not yet in DB)
+      if (dishError.code === '42703') {
+        return NextResponse.json({
+          success: true,
+          hidden_days: [],
+          note: 'Day availability feature not yet configured in database'
+        })
+      }
+      throw dishError
+    }
+
+    if (!dish) {
+      return NextResponse.json(
+        { error: 'Dish not found' },
+        { status: 404 }
+      )
+    }
+
+    // Try to get hidden_days if column exists
     const { data, error } = await supabase
       .schema('menuca_v3')
       .from('dishes')
@@ -24,18 +52,21 @@ export async function GET(
       .eq('id', parseInt(id))
       .single()
 
-    if (error) throw error
-
-    if (!data) {
-      return NextResponse.json(
-        { error: 'Dish not found' },
-        { status: 404 }
-      )
+    if (error) {
+      // If column doesn't exist, return empty array
+      if (error.code === '42703') {
+        return NextResponse.json({
+          success: true,
+          hidden_days: [],
+          note: 'Day availability feature not yet configured in database'
+        })
+      }
+      throw error
     }
 
     return NextResponse.json({
       success: true,
-      hidden_days: data.hidden_days || []
+      hidden_days: data?.hidden_days || []
     })
   } catch (error: any) {
     if (error instanceof AuthError) {
@@ -72,7 +103,17 @@ export async function PATCH(
       .select('id, hidden_days')
       .single()
 
-    if (error) throw error
+    if (error) {
+      // If column doesn't exist, return success but note feature not available
+      if (error.code === '42703') {
+        return NextResponse.json({
+          success: true,
+          hidden_days: validatedData.hidden_days,
+          message: 'Day availability feature not yet configured in database - changes not persisted'
+        })
+      }
+      throw error
+    }
 
     if (!data) {
       return NextResponse.json(
