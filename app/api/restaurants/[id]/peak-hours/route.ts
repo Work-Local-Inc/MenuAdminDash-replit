@@ -5,11 +5,8 @@ import { AuthError } from '@/lib/errors'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { PeakHour } from '@/types/supabase-database'
 
-interface OrderHourCount {
-  day_of_week: number
-  hour_of_day: number
-  order_count: number
-}
+const WEEKS_TO_ANALYZE = 4
+const MIN_ORDERS_PER_HOUR_SLOT = 3
 
 export async function GET(
   request: NextRequest,
@@ -26,8 +23,21 @@ export async function GET(
     
     const supabase = createAdminClient()
     
+    const { data: restaurant } = await supabase
+      .from('restaurants')
+      .select(`
+        id,
+        restaurant_locations!inner (
+          cities!inner (timezone)
+        )
+      `)
+      .eq('id', parseInt(restaurantId))
+      .single()
+    
+    const timezone = (restaurant as any)?.restaurant_locations?.[0]?.cities?.timezone || 'America/Toronto'
+    
     const fourWeeksAgo = new Date()
-    fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28)
+    fourWeeksAgo.setDate(fourWeeksAgo.getDate() - (WEEKS_TO_ANALYZE * 7))
     
     const { data: orders, error } = await supabase
       .from('orders')
@@ -43,16 +53,23 @@ export async function GET(
         peak_hours: [],
         order_count: orders?.length || 0,
         message: 'Not enough order history to detect peak hours (minimum 20 orders needed)',
-        hourly_data: []
+        hourly_data: [],
+        timezone
       })
     }
     
     const hourCounts: Record<string, { day: number; hour: number; count: number }> = {}
     
+    const dayFormatter = new Intl.DateTimeFormat('en-US', { timeZone: timezone, weekday: 'short' })
+    const hourFormatter = new Intl.DateTimeFormat('en-US', { timeZone: timezone, hour: 'numeric', hour12: false })
+    const dayMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }
+    
     for (const order of orders) {
       const date = new Date(order.created_at)
-      const day = date.getDay()
-      const hour = date.getHours()
+      const dayStr = dayFormatter.format(date)
+      const hourStr = hourFormatter.format(date)
+      const day = dayMap[dayStr] ?? 0
+      const hour = parseInt(hourStr, 10)
       const key = `${day}-${hour}`
       
       if (!hourCounts[key]) {
@@ -67,16 +84,27 @@ export async function GET(
     })
     
     const totalOrders = orders.length
-    const uniqueHours = hourlyData.length
-    const averageOrdersPerHour = totalOrders / uniqueHours
-    const peakThreshold = averageOrdersPerHour * 1.5
+    const slotsWithOrders = hourlyData.length
+    const averagePerSlot = totalOrders / slotsWithOrders
     
-    const peakHourCandidates = hourlyData.filter(h => h.count >= peakThreshold)
+    const peakThreshold = Math.max(
+      averagePerSlot * 1.5,
+      MIN_ORDERS_PER_HOUR_SLOT
+    )
+    
+    const peakHourCandidates = hourlyData
+      .filter(h => h.count >= peakThreshold)
+      .sort((a, b) => b.count - a.count)
     
     const peakHours: PeakHour[] = []
     let currentPeak: PeakHour | null = null
     
-    for (const candidate of peakHourCandidates) {
+    const sortedCandidates = [...peakHourCandidates].sort((a, b) => {
+      if (a.day !== b.day) return a.day - b.day
+      return a.hour - b.hour
+    })
+    
+    for (const candidate of sortedCandidates) {
       if (!currentPeak) {
         currentPeak = { day: candidate.day, start: candidate.hour, end: candidate.hour + 1 }
       } else if (currentPeak.day === candidate.day && currentPeak.end === candidate.hour) {
@@ -94,9 +122,10 @@ export async function GET(
     return NextResponse.json({
       peak_hours: peakHours,
       order_count: totalOrders,
-      average_per_hour: Math.round(averageOrdersPerHour * 10) / 10,
+      average_per_slot: Math.round(averagePerSlot * 10) / 10,
       peak_threshold: Math.round(peakThreshold * 10) / 10,
-      hourly_data: hourlyData
+      hourly_data: hourlyData,
+      timezone
     })
   } catch (error: any) {
     if (error instanceof AuthError) {
