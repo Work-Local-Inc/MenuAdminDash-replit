@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { extractIdFromSlug } from '@/lib/utils/slugify'
 import { PeakHour } from '@/types/supabase-database'
 
@@ -7,8 +7,23 @@ function isCurrentlyPeakHour(peakHours: PeakHour[] | null, timezone?: string): b
   if (!peakHours || peakHours.length === 0) return false
   
   const now = new Date()
-  const currentDay = now.getDay()
-  const currentHour = now.getHours()
+  
+  let currentDay: number
+  let currentHour: number
+  
+  if (timezone) {
+    const dayFormatter = new Intl.DateTimeFormat('en-US', { timeZone: timezone, weekday: 'short' })
+    const hourFormatter = new Intl.DateTimeFormat('en-US', { timeZone: timezone, hour: 'numeric', hour12: false })
+    const dayMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }
+    
+    const dayStr = dayFormatter.format(now)
+    const hourStr = hourFormatter.format(now)
+    currentDay = dayMap[dayStr] ?? now.getDay()
+    currentHour = parseInt(hourStr, 10)
+  } else {
+    currentDay = now.getDay()
+    currentHour = now.getHours()
+  }
   
   return peakHours.some(peak => 
     peak.day === currentDay && 
@@ -22,7 +37,7 @@ export async function GET(
   { params }: { params: { slug: string } }
 ) {
   try {
-    const supabase = await createClient() as any
+    const adminSupabase = createAdminClient() as any
     const slug = params.slug
     
     const restaurantId = extractIdFromSlug(slug)
@@ -34,7 +49,8 @@ export async function GET(
       )
     }
     
-    const { data: config, error } = await supabase
+    const { data: config, error } = await adminSupabase
+      .schema('menuca_v3')
       .from('delivery_and_pickup_configs')
       .select(`
         takeout_time_minutes,
@@ -65,7 +81,26 @@ export async function GET(
     let mode = 'normal'
     
     if (busyModeEnabled && busyPrepTime > normalPrepTime) {
-      const isPeakNow = isCurrentlyPeakHour(peakHours)
+      let timezone: string | undefined
+      
+      const { data: restaurant } = await adminSupabase
+        .schema('menuca_v3')
+        .from('restaurants')
+        .select('city_id')
+        .eq('id', restaurantId)
+        .maybeSingle()
+      
+      if (restaurant?.city_id) {
+        const { data: city } = await adminSupabase
+          .schema('menuca_v3')
+          .from('cities')
+          .select('timezone')
+          .eq('id', restaurant.city_id)
+          .maybeSingle()
+        timezone = city?.timezone
+      }
+      
+      const isPeakNow = isCurrentlyPeakHour(peakHours, timezone)
       
       if (isPeakNow) {
         effectivePrepTime = busyPrepTime

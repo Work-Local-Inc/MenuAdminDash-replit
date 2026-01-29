@@ -144,15 +144,16 @@ export default function OrderConfirmationPage() {
       setOrder(data)
 
       // Fetch dynamic prep time for ASAP orders
-      const serviceTime = data.delivery_address?.service_time
-      if (!serviceTime?.scheduledTime && data.restaurant_id) {
+      const serviceTimeData = data.delivery_address?.service_time
+      if (!serviceTimeData?.scheduledTime && data.restaurant?.id && data.restaurant?.name) {
         try {
-          const prepTimeRes = await fetch(`/api/customer/restaurants/${data.restaurant_id}/prep-time`)
+          const restaurantSlug = createRestaurantSlug(data.restaurant.name, data.restaurant.id)
+          const prepTimeRes = await fetch(`/api/customer/restaurants/${restaurantSlug}/prep-time`)
           if (prepTimeRes.ok) {
             const prepTimeData = await prepTimeRes.json()
-            const isPickup = data.order_type === 'pickup'
+            const isPickupOrder = data.order_type === 'pickup'
             const prepMinutes = prepTimeData.prep_time_minutes || 30
-            if (isPickup) {
+            if (isPickupOrder) {
               setDynamicPrepTime(`${prepMinutes}-${prepMinutes + 10} minutes`)
             } else {
               const deliveryMin = prepMinutes + 15
