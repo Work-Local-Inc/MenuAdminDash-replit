@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { verifyAdminAuth } from '@/lib/auth/admin-check'
+import { UnauthorizedError, ForbiddenError } from '@/lib/errors'
 
 export async function GET(request: NextRequest) {
   try {
+    // Verify admin authentication
+    const { adminUser } = await verifyAdminAuth(request)
+    
     const supabase = createAdminClient() as any
     const { searchParams } = new URL(request.url)
     const restaurantId = searchParams.get('restaurant')
@@ -50,6 +55,12 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ courses, dishes })
   } catch (error: any) {
+    if (error instanceof UnauthorizedError) {
+      return NextResponse.json({ error: error.message }, { status: 401 })
+    }
+    if (error instanceof ForbiddenError) {
+      return NextResponse.json({ error: error.message }, { status: 403 })
+    }
     console.error('[Targeting API] Error:', error)
     return NextResponse.json(
       { error: error.message || 'Failed to fetch targeting options' },

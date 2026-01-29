@@ -102,3 +102,11 @@ Preferred communication style: Simple, everyday language.
     - **Data Storage**: `included_items` array field stores selected dish IDs
     - **API Validation**: Updated `createDealSchema` in `lib/validation/promotions.ts` to accept `included_items`
     - **Files Updated**: `app/admin/promotions/deals/page.tsx`, `lib/validation/promotions.ts`, `app/api/admin/promotions/deals/create/route.ts`
+-   **RBAC Security Hardening (Completed)**: Comprehensive security audit and fixes for role-based access control:
+    - **Critical Endpoint Protection**: Added `verifyAdminAuth` to 6 previously unprotected endpoints (promotional campaigns, targeting, templates, modifier-groups, migrate/admin-roles)
+    - **Restaurant Ownership Checks**: Created `lib/auth/restaurant-access.ts` helper with `verifyRestaurantAccess()` function. Applied to 30+ restaurant sub-resource routes under `/api/restaurants/[id]/*` to prevent cross-restaurant access
+    - **Menu Route Protection**: Added restaurant validation to `/api/menu/dishes` and `/api/menu/courses` routes
+    - **Dashboard Edge Case**: Fixed stats endpoint to return empty data for Restaurant Admins with zero assignments (prevents data leakage)
+    - **Migration Endpoint**: Protected `/api/migrate/admin-roles` to development-only with Super Admin check
+    - **Security Pattern**: Super Admin (role_id=1) has full access; Restaurant Admin (role_id=2) restricted via `admin_user_restaurants` table assignments
+    - **Files Updated**: All files under `app/api/restaurants/[id]/`, `app/api/menu/`, `app/api/admin/promotions/`, `lib/auth/restaurant-access.ts`, `app/api/dashboard/stats/route.ts`

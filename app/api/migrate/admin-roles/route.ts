@@ -1,10 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { verifyAdminAuth } from '@/lib/auth/admin-check'
+import { UnauthorizedError, ForbiddenError } from '@/lib/errors'
 
 export async function POST(request: NextRequest) {
-  const supabase = createAdminClient() as any
-  
   try {
+    // SECURITY: Only allow in development environment
+    if (process.env.NODE_ENV === 'production') {
+      return NextResponse.json(
+        { error: 'Migration endpoints are disabled in production' },
+        { status: 403 }
+      )
+    }
+    
+    // Verify admin authentication - Super Admin only
+    const { adminUser } = await verifyAdminAuth(request)
+    
+    if ((adminUser as { role_id: number }).role_id !== 1) {
+      return NextResponse.json(
+        { error: 'Super Admin access required for migrations' },
+        { status: 403 }
+      )
+    }
+    
+    const supabase = createAdminClient() as any
     // Try to insert roles directly - if table doesn't exist, it will fail
     // This is safer than running DDL from application code
 
@@ -109,6 +128,12 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error: any) {
+    if (error instanceof UnauthorizedError) {
+      return NextResponse.json({ error: error.message }, { status: 401 })
+    }
+    if (error instanceof ForbiddenError) {
+      return NextResponse.json({ error: error.message }, { status: 403 })
+    }
     console.error('Migration error:', error)
     return NextResponse.json({
       success: false,

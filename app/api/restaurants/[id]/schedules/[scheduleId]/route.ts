@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
+import { verifyRestaurantAccess } from '@/lib/auth/restaurant-access'
 import { AuthError } from '@/lib/errors'
 
 export async function PATCH(
@@ -8,7 +9,13 @@ export async function PATCH(
   { params }: { params: { id: string; scheduleId: string } }
 ) {
   try {
-    await verifyAdminAuth(request)
+    const { adminUser } = await verifyAdminAuth(request)
+    
+    const restaurantId = parseInt(params.id)
+    const access = await verifyRestaurantAccess(adminUser as any, restaurantId)
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.error }, { status: access.status })
+    }
     
     const supabase = createAdminClient() as any
     const body = await request.json()
@@ -58,7 +65,13 @@ export async function DELETE(
   { params }: { params: { id: string; scheduleId: string } }
 ) {
   try {
-    await verifyAdminAuth(request)
+    const { adminUser } = await verifyAdminAuth(request)
+    
+    const restaurantId = parseInt(params.id)
+    const access = await verifyRestaurantAccess(adminUser as any, restaurantId)
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.error }, { status: access.status })
+    }
     
     const supabase = createAdminClient() as any
     

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
+import { verifyRestaurantAccess } from '@/lib/auth/restaurant-access'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AuthError } from '@/lib/errors'
 import { z } from 'zod'
@@ -21,10 +22,15 @@ export async function PUT(
   { params }: { params: { id: string; areaId: string } }
 ) {
   try {
-    const { user } = await verifyAdminAuth(request)
+    const { adminUser } = await verifyAdminAuth(request)
     const supabase = createAdminClient() as any
     const restaurantId = parseInt(params.id)
     const areaId = parseInt(params.areaId)
+    
+    const access = await verifyRestaurantAccess(adminUser as any, restaurantId)
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.error }, { status: access.status })
+    }
     
     const body = await request.json()
     const validatedData = updateDeliveryAreaSchema.parse(body)
@@ -150,10 +156,15 @@ export async function DELETE(
   { params }: { params: { id: string; areaId: string } }
 ) {
   try {
-    const { user } = await verifyAdminAuth(request)
+    const { adminUser } = await verifyAdminAuth(request)
     const supabase = createAdminClient() as any
     const restaurantId = parseInt(params.id)
     const areaId = parseInt(params.areaId)
+    
+    const access = await verifyRestaurantAccess(adminUser as any, restaurantId)
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.error }, { status: access.status })
+    }
     
     // Check if this area exists in the legacy table first
     const { data: legacyArea } = await supabase

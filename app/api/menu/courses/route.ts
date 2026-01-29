@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
+import { verifyRestaurantAccess } from '@/lib/auth/restaurant-access'
 import { AuthError } from '@/lib/errors'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { z } from 'zod'
@@ -14,7 +15,7 @@ const createCourseSchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
-    await verifyAdminAuth(request)
+    const { adminUser } = await verifyAdminAuth(request)
     const supabase = createAdminClient() as any
 
     const { searchParams } = new URL(request.url)
@@ -25,6 +26,12 @@ export async function GET(request: NextRequest) {
         { error: 'restaurant_id is required' },
         { status: 400 }
       )
+    }
+
+    // Verify restaurant access for Restaurant Admins
+    const access = await verifyRestaurantAccess(adminUser as any, parseInt(restaurantId))
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.error }, { status: access.status })
     }
 
     const { data, error } = await supabase
@@ -50,13 +57,19 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    await verifyAdminAuth(request)
+    const { adminUser } = await verifyAdminAuth(request)
     const supabase = createAdminClient() as any
 
     const body = await request.json()
     
     // Validate input
     const validatedData = createCourseSchema.parse(body)
+    
+    // Verify restaurant access for Restaurant Admins
+    const access = await verifyRestaurantAccess(adminUser as any, validatedData.restaurant_id)
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.error }, { status: access.status })
+    }
 
     // Get the max display_order for this restaurant
     const { data: existingCourses } = await supabase

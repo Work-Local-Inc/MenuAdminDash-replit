@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
+import { verifyRestaurantAccess } from '@/lib/auth/restaurant-access'
 import { AuthError } from '@/lib/errors'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { z } from 'zod'
@@ -21,7 +22,14 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    await verifyAdminAuth(request)
+    const { adminUser } = await verifyAdminAuth(request)
+    const restaurantId = parseInt(params.id)
+
+    const access = await verifyRestaurantAccess(adminUser as any, restaurantId)
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.error }, { status: access.status })
+    }
+
     const supabase = createAdminClient() as any
     
     // Try restaurant_delivery_zones first
@@ -110,9 +118,15 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    await verifyAdminAuth(request)
-    const supabase = createAdminClient() as any
+    const { adminUser } = await verifyAdminAuth(request)
     const restaurantId = parseInt(params.id)
+
+    const access = await verifyRestaurantAccess(adminUser as any, restaurantId)
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.error }, { status: access.status })
+    }
+
+    const supabase = createAdminClient() as any
     
     const body = await request.json()
     const validatedData = deliveryAreaSchema.parse(body)
