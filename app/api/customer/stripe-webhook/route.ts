@@ -9,13 +9,20 @@ if (!stripeSecretKey) {
   throw new Error('Missing required Stripe secret key. Set STRIPE_SECRET_KEY or TESTING_STRIPE_SECRET_KEY')
 }
 
-console.log('[Stripe Webhook] Using Stripe key:', stripeSecretKey.substring(0, 10) + '...')
-
 const stripe = new Stripe(stripeSecretKey, {})
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
 
 export async function POST(request: NextRequest) {
+  // SECURITY: Fail closed if webhook secret is not configured
+  if (!webhookSecret) {
+    console.error('[Stripe Webhook] STRIPE_WEBHOOK_SECRET not configured - rejecting request')
+    return NextResponse.json(
+      { error: 'Webhook not configured' },
+      { status: 500 }
+    )
+  }
+
   const body = await request.text()
   const signature = request.headers.get('stripe-signature')
 
@@ -26,13 +33,8 @@ export async function POST(request: NextRequest) {
   let event: Stripe.Event
 
   try {
-    // Verify webhook signature if secret is configured
-    if (webhookSecret) {
-      event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
-    } else {
-      // For development without webhook secret
-      event = JSON.parse(body)
-    }
+    // Verify webhook signature - always required
+    event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
   } catch (err: any) {
     console.error('Webhook signature verification failed:', err.message)
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })

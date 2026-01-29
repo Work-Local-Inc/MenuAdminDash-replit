@@ -12,6 +12,11 @@ const supabase = createClient(
 )
 
 export async function GET() {
+  // SECURITY: Block in production - development only
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+
   try {
     console.log('🔍 Debugging data access...')
     
