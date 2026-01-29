@@ -6,7 +6,6 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Calendar, Loader2 } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 import { useToast } from '@/hooks/use-toast'
 
 interface DishAvailabilityEditorProps {
@@ -40,13 +39,11 @@ export function DishAvailabilityEditor({ dishId, onChange }: DishAvailabilityEdi
       
       setIsLoading(true)
       try {
-        const supabase = createClient()
-        const { data, error } = await supabase.rpc('get_dish_availability', {
-          p_dish_id: dishId
-        } as any)
-
-        if (error) {
-          console.error('Error fetching dish availability:', error)
+        const response = await fetch(`/api/menu/dishes/${dishId}/availability`)
+        
+        if (!response.ok) {
+          const errorData = await response.json()
+          console.error('Error fetching dish availability:', errorData)
           toast({
             title: 'Error',
             description: 'Failed to load availability settings',
@@ -55,7 +52,7 @@ export function DishAvailabilityEditor({ dishId, onChange }: DishAvailabilityEdi
           return
         }
 
-        const result = data as { success: boolean; hidden_days: number[] } | null
+        const result = await response.json()
         if (result?.success && Array.isArray(result.hidden_days)) {
           setHiddenDays(result.hidden_days)
           setLastSavedDays(result.hidden_days)
@@ -73,14 +70,17 @@ export function DishAvailabilityEditor({ dishId, onChange }: DishAvailabilityEdi
   const saveAvailability = async (newHiddenDays: number[]) => {
     setIsSaving(true)
     try {
-      const supabase = createClient()
-      const { data, error } = await supabase.rpc('update_dish_availability', {
-        p_dish_id: dishId,
-        p_hidden_days: newHiddenDays
-      } as any)
+      const response = await fetch(`/api/menu/dishes/${dishId}/availability`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ hidden_days: newHiddenDays }),
+      })
 
-      if (error) {
-        console.error('Error updating dish availability:', error)
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error('Error updating dish availability:', errorData)
         setHiddenDays(lastSavedDays)
         toast({
           title: 'Error',
@@ -90,7 +90,7 @@ export function DishAvailabilityEditor({ dishId, onChange }: DishAvailabilityEdi
         return false
       }
 
-      const result = data as { success: boolean; message?: string; error?: string } | null
+      const result = await response.json()
       if (result?.success) {
         setLastSavedDays(newHiddenDays)
         onChange?.(newHiddenDays)
