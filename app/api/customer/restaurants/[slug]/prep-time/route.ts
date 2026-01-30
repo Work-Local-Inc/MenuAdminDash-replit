@@ -81,24 +81,15 @@ export async function GET(
     let mode = 'normal'
     
     if (busyModeEnabled && busyPrepTime > normalPrepTime) {
-      let timezone: string | undefined
-      
+      // Get timezone directly from restaurant record
       const { data: restaurant } = await adminSupabase
         .schema('menuca_v3')
         .from('restaurants')
-        .select('city_id')
+        .select('timezone')
         .eq('id', restaurantId)
         .maybeSingle()
       
-      if (restaurant?.city_id) {
-        const { data: city } = await adminSupabase
-          .schema('menuca_v3')
-          .from('cities')
-          .select('timezone')
-          .eq('id', restaurant.city_id)
-          .maybeSingle()
-        timezone = city?.timezone
-      }
+      const timezone: string | undefined = restaurant?.timezone
       
       const isPeakNow = isCurrentlyPeakHour(peakHours, timezone)
       

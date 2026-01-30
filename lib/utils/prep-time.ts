@@ -67,23 +67,15 @@ export async function getEffectivePrepTime(restaurantId: number): Promise<PrepTi
     const peakHours = config.peak_hours as PeakHour[] | null
     
     if (busyModeEnabled && busyPrepTime > normalPrepTime) {
+      // Get timezone directly from restaurant record
       const { data: restaurant } = await adminSupabase
         .schema('menuca_v3')
         .from('restaurants')
-        .select('city_id')
+        .select('timezone')
         .eq('id', restaurantId)
         .maybeSingle()
       
-      let timezone: string | undefined
-      if (restaurant?.city_id) {
-        const { data: city } = await adminSupabase
-          .schema('menuca_v3')
-          .from('cities')
-          .select('timezone')
-          .eq('id', restaurant.city_id)
-          .maybeSingle()
-        timezone = city?.timezone
-      }
+      const timezone: string | undefined = restaurant?.timezone
       
       const isPeakNow = isCurrentlyPeakHour(peakHours, timezone)
       
