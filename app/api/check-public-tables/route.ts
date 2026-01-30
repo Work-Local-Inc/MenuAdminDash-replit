@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server'
 
 export async function GET() {
+  // SECURITY: Block in production - development only
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+
   try {
     // Direct REST API call to Supabase to list what's available
     const response = await fetch(

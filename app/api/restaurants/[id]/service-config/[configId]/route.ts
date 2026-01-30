@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
+import { verifyRestaurantAccess } from '@/lib/auth/restaurant-access'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AuthError } from '@/lib/errors'
 
@@ -9,7 +10,13 @@ export async function PATCH(
 ) {
   try {
     // Verify admin authentication before allowing config changes
-    await verifyAdminAuth(request)
+    const { adminUser } = await verifyAdminAuth(request)
+    
+    const restaurantId = parseInt(params.id)
+    const access = await verifyRestaurantAccess(adminUser as any, restaurantId)
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.error }, { status: access.status })
+    }
     
     const supabase = createAdminClient() as any
     const body = await request.json()
@@ -22,6 +29,9 @@ export async function PATCH(
       'pickup_enabled', 
       'distance_based_delivery_fee',
       'takeout_time_minutes',
+      'busy_takeout_time_minutes',
+      'busy_mode_enabled',
+      'peak_hours',
       'twilio_call',
       'accepts_tips',
       'payment_mode',
@@ -63,7 +73,13 @@ export async function DELETE(
 ) {
   try {
     // Verify admin authentication before allowing config deletion
-    await verifyAdminAuth(request)
+    const { adminUser } = await verifyAdminAuth(request)
+    
+    const restaurantId = parseInt(params.id)
+    const access = await verifyRestaurantAccess(adminUser as any, restaurantId)
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.error }, { status: access.status })
+    }
     
     const supabase = createAdminClient() as any
     

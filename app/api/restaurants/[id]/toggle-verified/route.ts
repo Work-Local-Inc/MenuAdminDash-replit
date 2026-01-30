@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { verifyAdminAuth } from '@/lib/auth/admin-check';
+import { verifyRestaurantAccess } from '@/lib/auth/restaurant-access';
 
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    await verifyAdminAuth(request);
+    const { adminUser } = await verifyAdminAuth(request);
     
     const restaurantId = parseInt(params.id, 10);
     if (isNaN(restaurantId)) {
@@ -15,6 +16,11 @@ export async function POST(
         { error: 'Invalid restaurant ID' },
         { status: 400 }
       );
+    }
+
+    const access = await verifyRestaurantAccess(adminUser as any, restaurantId);
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
     }
 
     const supabase = await createClient() as any;

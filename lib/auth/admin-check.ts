@@ -2,6 +2,22 @@ import { NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { UnauthorizedError, ForbiddenError } from '@/lib/errors'
+import { User } from '@supabase/supabase-js'
+
+// Type for the admin user returned by verifyAdminAuth
+export interface AdminUser {
+  id: number
+  email: string
+  first_name: string | null
+  last_name: string | null
+  role_id: number
+}
+
+// Return type for verifyAdminAuth
+export interface AdminAuthResult {
+  user: User
+  adminUser: AdminUser
+}
 
 /**
  * Verify the request is from an authenticated admin user
@@ -14,7 +30,7 @@ import { UnauthorizedError, ForbiddenError } from '@/lib/errors'
  * 
  * Returns the authenticated user if valid, throws error otherwise
  */
-export async function verifyAdminAuth(request: NextRequest) {
+export async function verifyAdminAuth(request: NextRequest): Promise<AdminAuthResult> {
   const supabase = await createClient()
   
   // Step 1: Check if user is authenticated via Supabase Auth

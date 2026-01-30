@@ -3,12 +3,21 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { AuthError } from '@/lib/errors'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
 
+// SECURITY: Super Admins only - Restaurant Admins cannot remove restaurant assignments
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; restaurantId: string }> }
 ) {
   try {
-    await verifyAdminAuth(request)
+    const authResult = await verifyAdminAuth(request)
+    
+    // Only Super Admins (role_id = 1) can remove restaurant assignments
+    if (authResult.adminUser.role_id !== 1) {
+      return NextResponse.json(
+        { error: 'Access denied. Super Admin privileges required.' },
+        { status: 403 }
+      )
+    }
   } catch (error: any) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode })

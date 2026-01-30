@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
+import { verifyRestaurantAccess } from '@/lib/auth/restaurant-access'
 import { AuthError } from '@/lib/errors'
 import { createAdminClient } from '@/lib/supabase/admin'
 
@@ -8,9 +9,16 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    await verifyAdminAuth(request)
-    const supabase = createAdminClient() as any
+    const { adminUser } = await verifyAdminAuth(request)
     const restaurantId = parseInt(params.id)
+    
+    // Verify restaurant access for Restaurant Admins
+    const access = await verifyRestaurantAccess(adminUser as any, restaurantId)
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.error }, { status: access.status })
+    }
+    
+    const supabase = createAdminClient() as any
     
     // Fetch from restaurant_contacts table (primary source)
     const { data: restaurantContacts, error: contactsError } = await supabase
@@ -116,9 +124,16 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    await verifyAdminAuth(request)
+    const { adminUser } = await verifyAdminAuth(request)
+    const restaurantId = parseInt(params.id)
+    
+    // Verify restaurant access for Restaurant Admins
+    const access = await verifyRestaurantAccess(adminUser as any, restaurantId)
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.error }, { status: access.status })
+    }
+    
     const supabase = createAdminClient() as any
-
     const body = await request.json()
 
     const { data, error } = await supabase.functions.invoke('add-restaurant-contact', {

@@ -21,6 +21,12 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
+export interface PeakHour {
+  day: number // 0 = Sunday, 1 = Monday, etc.
+  start: number // Hour in 24h format (e.g., 11 for 11am)
+  end: number // Hour in 24h format (e.g., 14 for 2pm)
+}
+
 export interface Database {
   menuca_v3: {
     Tables: {
@@ -188,6 +194,9 @@ export interface Database {
           pickup_enabled: boolean
           distance_based_delivery_fee: boolean
           takeout_time_minutes: number | null
+          busy_takeout_time_minutes: number | null
+          busy_mode_enabled: boolean
+          peak_hours: PeakHour[] | null
           twilio_call: boolean | null
           accepts_tips: boolean | null
           created_at: string

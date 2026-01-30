@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
+import { verifyRestaurantAccess } from '@/lib/auth/restaurant-access'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AuthError } from '@/lib/errors'
 import { z } from 'zod'
@@ -13,17 +14,18 @@ export async function PATCH(
   { params }: { params: { id: string; feedbackId: string } }
 ) {
   try {
-    await verifyAdminAuth(request)
+    const { adminUser } = await verifyAdminAuth(request)
+    
+    const restaurantId = parseInt(params.id)
+    const access = await verifyRestaurantAccess(adminUser as any, restaurantId)
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.error }, { status: access.status })
+    }
     
     const supabase = createAdminClient() as any
     
-    // TODO: Add role-based access control check once RBAC is implemented (Phase 3)
-    // Only admin users should be able to submit admin responses
-    
     let body
     try {
-    await verifyAdminAuth(request)
-    
       body = await request.json()
     } catch {
       return NextResponse.json(

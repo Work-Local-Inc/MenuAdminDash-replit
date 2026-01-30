@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { verifyAdminAuth } from '@/lib/auth/admin-check';
+import { UnauthorizedError, ForbiddenError } from '@/lib/errors';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    // Verify admin authentication
+    const { adminUser } = await verifyAdminAuth(request);
+    
     const dishId = parseInt(params.id);
     if (isNaN(dishId) || dishId <= 0) {
       return NextResponse.json(
@@ -32,6 +37,12 @@ export async function GET(
 
     return NextResponse.json(data || []);
   } catch (error: any) {
+    if (error instanceof UnauthorizedError) {
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
+    if (error instanceof ForbiddenError) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
     console.error('Error fetching modifier groups:', error);
     return NextResponse.json(
       { error: 'Failed to fetch modifier groups' },
@@ -45,6 +56,9 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Verify admin authentication
+    const { adminUser } = await verifyAdminAuth(request);
+    
     const dishId = parseInt(params.id);
     if (isNaN(dishId) || dishId <= 0) {
       return NextResponse.json(
@@ -97,6 +111,12 @@ export async function POST(
 
     return NextResponse.json(data);
   } catch (error: any) {
+    if (error instanceof UnauthorizedError) {
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
+    if (error instanceof ForbiddenError) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
     console.error('Error creating modifier group:', error);
     return NextResponse.json(
       { error: 'Failed to create modifier group' },

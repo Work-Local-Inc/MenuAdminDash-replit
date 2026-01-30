@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { verifyAdminAuth } from '@/lib/auth/admin-check';
+import { UnauthorizedError, ForbiddenError } from '@/lib/errors';
 import { UpdateCampaignSchema } from '@/lib/validations/promotions';
 
 interface RouteParams {
@@ -12,6 +14,9 @@ interface RouteParams {
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
+    // Verify admin authentication
+    const { adminUser } = await verifyAdminAuth(request);
+    
     const { id } = await params;
     const campaignId = parseInt(id, 10);
     
@@ -69,6 +74,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       },
     });
   } catch (error) {
+    if (error instanceof UnauthorizedError) {
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
+    if (error instanceof ForbiddenError) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
     console.error('Campaign GET error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -83,6 +94,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
  */
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
+    // Verify admin authentication
+    const { adminUser } = await verifyAdminAuth(request);
+    
     const { id } = await params;
     const campaignId = parseInt(id, 10);
     
@@ -219,6 +233,12 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({ campaign: updatedCampaign || campaign });
   } catch (error) {
+    if (error instanceof UnauthorizedError) {
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
+    if (error instanceof ForbiddenError) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
     console.error('Campaign PATCH error:', error);
     if (error instanceof Error && error.name === 'ZodError') {
       return NextResponse.json(
@@ -239,6 +259,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
  */
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
+    // Verify admin authentication
+    const { adminUser } = await verifyAdminAuth(request);
+    
     const { id } = await params;
     const campaignId = parseInt(id, 10);
     
@@ -271,6 +294,12 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    if (error instanceof UnauthorizedError) {
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
+    if (error instanceof ForbiddenError) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
     console.error('Campaign DELETE error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },

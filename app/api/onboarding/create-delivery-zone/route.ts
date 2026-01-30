@@ -7,11 +7,8 @@ import { z } from 'zod';
 const createDeliveryZoneSchema = z.object({
   restaurant_id: z.number(),
   zone_name: z.string().optional().nullable(),
-  center_latitude: z.number().optional().nullable(),
-  center_longitude: z.number().optional().nullable(),
-  radius_meters: z.number().min(500).max(50000).optional().nullable(),
-  delivery_fee_cents: z.number().min(0).default(299),
-  minimum_order_cents: z.number().min(0).default(1500),
+  delivery_fee: z.number().min(0).default(2.99),
+  minimum_order: z.number().min(0).default(15),
   estimated_delivery_minutes: z.number().optional().nullable(),
 });
 
@@ -26,17 +23,27 @@ export async function POST(request: NextRequest) {
 
     const supabase = createAdminClient() as any;
 
-    // Insert into restaurant_delivery_zones table
+    // Get max area_number for this restaurant
+    const { data: maxArea } = await supabase
+      .schema('menuca_v3')
+      .from('restaurant_delivery_areas')
+      .select('area_number')
+      .eq('restaurant_id', validatedData.restaurant_id)
+      .order('area_number', { ascending: false })
+      .limit(1);
+    
+    const nextAreaNumber = (maxArea?.[0]?.area_number || 0) + 1;
+
+    // Insert into restaurant_delivery_areas table (per entity docs)
     const { data, error } = await supabase
-      .from('restaurant_delivery_zones')
+      .schema('menuca_v3')
+      .from('restaurant_delivery_areas')
       .insert({
         restaurant_id: validatedData.restaurant_id,
-        zone_name: validatedData.zone_name || 'Default Zone',
-        center_latitude: validatedData.center_latitude,
-        center_longitude: validatedData.center_longitude,
-        radius_meters: validatedData.radius_meters || 5000,
-        delivery_fee_cents: validatedData.delivery_fee_cents,
-        minimum_order_cents: validatedData.minimum_order_cents,
+        area_number: nextAreaNumber,
+        area_name: validatedData.zone_name || 'Default Zone',
+        delivery_fee: validatedData.delivery_fee,
+        delivery_min_order: validatedData.minimum_order,
         estimated_delivery_minutes: validatedData.estimated_delivery_minutes || 45,
         is_active: true,
       })

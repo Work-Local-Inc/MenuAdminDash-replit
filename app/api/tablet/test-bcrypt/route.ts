@@ -8,6 +8,11 @@ import bcrypt from 'bcryptjs'
  * REMOVE AFTER DEBUGGING
  */
 export async function POST(request: NextRequest) {
+  // SECURITY: Block in production - development only
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+
   try {
     const { test_key } = await request.json()
 

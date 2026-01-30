@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
+import { verifyRestaurantAccess } from '@/lib/auth/restaurant-access'
 import { AuthError } from '@/lib/errors'
 import { createAdminClient } from '@/lib/supabase/admin'
 
@@ -8,10 +9,15 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    await verifyAdminAuth(request)
+    const { adminUser } = await verifyAdminAuth(request)
 
     const supabase = createAdminClient() as any
     const restaurantId = parseInt(params.id)
+    
+    const access = await verifyRestaurantAccess(adminUser as any, restaurantId)
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.error }, { status: access.status })
+    }
     
     // Get courses from menuca_v3 schema
     const { data: courses, error: coursesError } = await supabase

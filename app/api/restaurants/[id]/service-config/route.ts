@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
+import { verifyRestaurantAccess } from '@/lib/auth/restaurant-access'
 import { AuthError } from '@/lib/errors'
 import { createAdminClient } from '@/lib/supabase/admin'
 
@@ -8,7 +9,14 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    await verifyAdminAuth(request)
+    const { adminUser } = await verifyAdminAuth(request)
+    const restaurantId = params.id
+    
+    const access = await verifyRestaurantAccess(adminUser as any, restaurantId)
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.error }, { status: access.status })
+    }
+    
     const supabase = createAdminClient() as any
     
     const { data, error } = await supabase
@@ -33,7 +41,14 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    await verifyAdminAuth(request)
+    const { adminUser } = await verifyAdminAuth(request)
+    const restaurantId = params.id
+    
+    const access = await verifyRestaurantAccess(adminUser as any, restaurantId)
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.error }, { status: access.status })
+    }
+    
     const supabase = createAdminClient() as any
     const body = await request.json()
     
@@ -47,6 +62,9 @@ export async function POST(
       'pickup_enabled', 
       'distance_based_delivery_fee',
       'takeout_time_minutes',
+      'busy_takeout_time_minutes',
+      'busy_mode_enabled',
+      'peak_hours',
       'twilio_call',
       'accepts_tips',
       'payment_mode',

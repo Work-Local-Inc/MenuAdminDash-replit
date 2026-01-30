@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { verifyAdminAuth } from '@/lib/auth/admin-check';
+import { UnauthorizedError, ForbiddenError } from '@/lib/errors';
 import { 
   CreateCampaignSchema, 
   CampaignFiltersSchema,
@@ -12,6 +14,9 @@ import {
  */
 export async function GET(request: NextRequest) {
   try {
+    // Verify admin authentication
+    const { adminUser } = await verifyAdminAuth(request);
+    
     const supabase = await createClient() as any;
     
     // Parse query params
@@ -96,6 +101,12 @@ export async function GET(request: NextRequest) {
       offset: filters.offset,
     });
   } catch (error) {
+    if (error instanceof UnauthorizedError) {
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
+    if (error instanceof ForbiddenError) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
     console.error('Campaigns GET error:', error);
     if (error instanceof Error && error.name === 'ZodError') {
       return NextResponse.json(
@@ -116,6 +127,9 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    // Verify admin authentication
+    const { adminUser } = await verifyAdminAuth(request);
+    
     const supabase = await createClient() as any;
     const body = await request.json();
     
@@ -219,6 +233,12 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ campaign: completeCampaign }, { status: 201 });
   } catch (error) {
+    if (error instanceof UnauthorizedError) {
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
+    if (error instanceof ForbiddenError) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
     console.error('Campaigns POST error:', error);
     if (error instanceof Error && error.name === 'ZodError') {
       return NextResponse.json(

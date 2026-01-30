@@ -36,6 +36,21 @@ export async function GET(request: NextRequest) {
       }
       
       allowedRestaurantIds = (assignments || []).map((a: { restaurant_id: number }) => a.restaurant_id)
+      
+      // Handle edge case: Restaurant Admin with zero assignments
+      // Return empty stats instead of returning stats for ALL restaurants
+      if (!allowedRestaurantIds || allowedRestaurantIds.length === 0) {
+        return NextResponse.json({
+          totalRestaurants: 0,
+          activeRestaurants: 0,
+          totalOrders: 0,
+          pendingOrders: 0,
+          totalRevenue: 0,
+          todayRevenue: 0,
+          totalUsers: 0,
+          newUsersThisMonth: 0
+        })
+      }
     }
 
     const stats = await getDashboardStats(allowedRestaurantIds)

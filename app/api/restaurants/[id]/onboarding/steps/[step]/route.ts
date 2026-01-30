@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdminAuth } from '@/lib/auth/admin-check';
+import { verifyRestaurantAccess } from '@/lib/auth/restaurant-access';
 import { AuthError } from '@/lib/errors';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { z } from 'zod';
@@ -24,13 +25,18 @@ export async function PATCH(
   { params }: { params: { id: string; step: string } }
 ) {
   try {
-    await verifyAdminAuth(request);
+    const { adminUser } = await verifyAdminAuth(request);
 
     const restaurantId = parseInt(params.id);
     const step = params.step;
 
     if (isNaN(restaurantId)) {
       return NextResponse.json({ error: 'Invalid restaurant ID' }, { status: 400 });
+    }
+
+    const access = await verifyRestaurantAccess(adminUser as any, restaurantId);
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
     }
 
     if (!validSteps.includes(step)) {
