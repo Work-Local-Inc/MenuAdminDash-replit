@@ -1,7 +1,7 @@
 <!-- MEMORY:START -->
 # MenuAdminDash-replit
 
-_Last updated: 2026-01-29 | 9 active memories, 9 total_
+_Last updated: 2026-01-30 | 17 active memories, 18 total_
 
 ## Architecture
 - Memory tracking system (memory-mcp) initialized with global hooks and project-level configuration in `.memory/` and `... [setup, tooling]
@@ -10,12 +10,22 @@ _Last updated: 2026-01-29 | 9 active memories, 9 total_
 ## Key Decisions
 - Selected Supabase Auth with Role-Based Access Control (RBAC) supporting Super Admin and Restaurant Admin roles [auth, access-control]
 - Prioritize Role-Based Access Control (RBAC) implementation over edge function reliability due to critical data isolat... [security, priority, rbac]
-- Decided SSH is not currently needed for project, as all debugging and testing can be done directly in the repository [infrastructure, development]
 - Simplified admin dropdown menu by removing redundant 'Settings' option, keeping only 'Profile' and 'Log out' [ui, navigation]
+- Reconsider previous decision that SSH is not needed for project, exploring direct SSH access to Replit for advanced l... [ssh, debugging]
 
 ## Patterns & Conventions
 - Project memories will be automatically captured and synced after each conversation response [workflow, documentation]
 - Created a standardized BACKLOG.md tracking file in AI-AGENTS-START-HERE folder with predefined sections and usage tem... [documentation, workflow]
+- Generated SSH key for Replit connection using ed25519 algorithm with custom naming convention 'claude-code-replit' [ssh, authentication]
+- Generated new SSH key for Replit with simplified 'claude' comment to troubleshoot key submission issues [ssh, key-generation]
+- Created new SSH key file named 'replit_new' for connecting to Replit instance, different from previous 'replit' key [ssh, remote-access]
+
+## Gotchas & Pitfalls
+- Stripe error logging requires external dashboard access (Stripe, Replit, Supabase), not just local log files [debugging, logging, payments]
+- Replit SSH access requires manual configuration through UI and generates dynamic connection credentials that must be ... [infrastructure, security]
+- SSH public key must be pasted as a single line, with key type (ssh-ed25519), key data, and optional comment all on th... [ssh, key-management]
+- SSH key generation might require minimalist comments to prevent submission errors in Replit's interface [ssh, troubleshooting]
+- Replit SSH sessions might require '-T' flag for stable terminal interaction and disable pseudo-terminal allocation [ssh, remote-debugging]
 
 ## Current Progress
 - Created comprehensive security audit report for RBAC implementation in claude-reports/RBAC_SECURITY_AUDIT_2026-01-28.md [security, documentation]

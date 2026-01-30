@@ -1,6 +1,6 @@
 "use client"
 
-import { User, LogOut, Settings } from "lucide-react"
+import { User, LogOut } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 import { useAdminUser } from "@/hooks/use-admin-user"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -47,12 +47,6 @@ export function UserDropdown() {
           <Link href={profileUrl}>
             <User className="mr-2 h-4 w-4" />
             Profile
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild data-testid="menu-item-settings">
-          <Link href={profileUrl}>
-            <Settings className="mr-2 h-4 w-4" />
-            Settings
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
