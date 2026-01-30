@@ -107,6 +107,7 @@ export async function getDeliveryProviderConfig(
   }
 
   // Fallback to hardcoded RestoZone mappings
+  console.log(`[getDeliveryProviderConfig] Checking restaurant ${restaurantId} against hardcoded list:`, Object.keys(RESTOZONE_HARDCODED_MAPPINGS));
   const restozoneId = RESTOZONE_HARDCODED_MAPPINGS[restaurantId];
   if (restozoneId) {
     console.log(`[getDeliveryProviderConfig] Using hardcoded RestoZone mapping for restaurant ${restaurantId} -> ${restozoneId}`);
