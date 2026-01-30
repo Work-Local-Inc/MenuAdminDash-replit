@@ -37,6 +37,8 @@ export async function getDeliveryProviderConfig(
 ): Promise<RestaurantDeliveryConfig | null> {
   const supabase = createAdminClient() as any;
 
+  console.log(`[getDeliveryProviderConfig] Fetching config for restaurant ${restaurantId}`);
+  
   const { data, error } = await supabase
     .schema('menuca_v3')
     .from('delivery_and_pickup_configs')
@@ -60,16 +62,22 @@ export async function getDeliveryProviderConfig(
     .single();
 
   if (error) {
-    console.log(`[getDeliveryProviderConfig] No config found for restaurant ${restaurantId}:`, error.message);
+    console.log(`[getDeliveryProviderConfig] Error for restaurant ${restaurantId}:`, error.code, error.message);
     return null;
   }
 
   if (!data) {
-    console.log(`[getDeliveryProviderConfig] No delivery provider configured for restaurant ${restaurantId}`);
+    console.log(`[getDeliveryProviderConfig] No config row for restaurant ${restaurantId}`);
     return null;
   }
 
   const result = data as ProviderQueryResult;
+  console.log(`[getDeliveryProviderConfig] Restaurant ${restaurantId} config:`, {
+    hasDelivery: result.has_delivery_enabled,
+    distanceBased: result.distance_based_delivery_fee,
+    externalId: result.delivery_provider_external_id,
+    provider: result.delivery_providers?.code || 'none'
+  });
   
   let provider: DeliveryProvider | null = null;
   
