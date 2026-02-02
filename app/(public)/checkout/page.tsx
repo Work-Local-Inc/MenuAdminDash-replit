@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { useCartStore } from '@/lib/stores/cart-store'
+import { useCartStore, AppliedPromo } from '@/lib/stores/cart-store'
 import { createClient } from '@/lib/supabase/client'
 import { Elements } from '@stripe/react-stripe-js'
 import { loadStripe, Stripe } from '@stripe/stripe-js'
@@ -70,7 +70,8 @@ export default function CheckoutPage() {
     orderTypeSelected,
     pickupTime,
     clearCart,
-    appliedPromo
+    appliedPromo,
+    applyPromo
   } = useCartStore()
   
   // Debug: Log what slug the cart has stored
@@ -343,6 +344,71 @@ export default function CheckoutPage() {
       trackBeginCheckout(cartItems, total)
     }
   }, [loading, items, gaMeasurementId, total])
+
+  // Auto-apply deals: Fetch and automatically apply eligible deals
+  const hasCheckedAutoDeals = useRef(false)
+  useEffect(() => {
+    const fetchAutoDeals = async () => {
+      // Only check once, when we have restaurant info and no promo already applied
+      if (hasCheckedAutoDeals.current || !restaurantSlug || subtotal <= 0 || appliedPromo) {
+        return
+      }
+      
+      hasCheckedAutoDeals.current = true
+      console.log('[Checkout] Checking for auto-apply deals...')
+      
+      try {
+        const response = await fetch(`${getApiBaseUrl()}/api/customer/restaurants/${restaurantSlug}/auto-deals`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            subtotal,
+            service_type: effectiveOrderType,
+            customer_email: currentUser?.email || guestPickupEmail || selectedAddress?.email,
+            customer_id: currentUser?.id || null
+          })
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          
+          if (data.eligible_deal && data.applied) {
+            console.log('[Checkout] Auto-applying deal:', data.eligible_deal)
+            
+            // Apply the deal to cart
+            const promo: AppliedPromo = {
+              code: data.eligible_deal.name || 'AUTO-DEAL',
+              type: data.eligible_deal.deal_type === 'percent' || data.eligible_deal.deal_type === 'percentTotal' 
+                ? 'percentage' 
+                : 'fixed',
+              value: data.eligible_deal.deal_type === 'percent' || data.eligible_deal.deal_type === 'percentTotal'
+                ? data.eligible_deal.discount_percent
+                : data.eligible_deal.discount_amount,
+              description: data.eligible_deal.is_first_order_only 
+                ? `${data.eligible_deal.name} (First Order)` 
+                : data.eligible_deal.name,
+              promoId: data.eligible_deal.id,
+              promoType: 'deal',
+            }
+            
+            applyPromo(promo)
+            
+            toast({
+              title: "Deal Applied!",
+              description: promo.description,
+            })
+          }
+        }
+      } catch (error) {
+        console.error('[Checkout] Error fetching auto-deals:', error)
+      }
+    }
+    
+    // Only run after initial loading is complete
+    if (!loading && restaurantSlug && subtotal > 0) {
+      fetchAutoDeals()
+    }
+  }, [loading, restaurantSlug, subtotal, effectiveOrderType, currentUser, guestPickupEmail, selectedAddress, appliedPromo, applyPromo, toast])
 
   const handleSignOut = async () => {
     try {
