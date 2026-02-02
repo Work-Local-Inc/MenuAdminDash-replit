@@ -574,6 +574,31 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
     return false;
   };
 
+  // Helper to determine if a section should be treated as single-select
+  // Used for crust/size type selections where only one choice makes sense
+  const isSingleSelectSection = (section: ComboGroupSection): boolean => {
+    // Already marked as single-select in database
+    if (section.max_selection === 1) return true;
+    
+    // Respect database max_selection > 1 - don't override with heuristic
+    if (section.max_selection > 1) return false;
+    
+    // Only apply heuristic when max_selection is 0 (unlimited/unset)
+    // Check section header for single-select indicators (crust only - most reliable)
+    const header = (section.use_header || '').toLowerCase();
+    // Use narrow keywords to avoid false positives
+    const crustKeywords = ['crust', 'crust type', 'choose your crust'];
+    if (crustKeywords.some(keyword => header.includes(keyword))) return true;
+    
+    // Check modifier group names for crust indicators only
+    for (const mg of section.modifier_groups) {
+      const groupName = (mg.name || '').toLowerCase();
+      if (crustKeywords.some(keyword => groupName.includes(keyword))) return true;
+    }
+    
+    return false;
+  };
+  
   // Check if a simple modifier group should show pizza placements
   // Shows placements for groups with topping-related names, but NOT for non-pizza items
   const isSimpleModifierToppingGroup = (group: { name: string }): boolean => {
@@ -597,7 +622,8 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
     const currentSelections = comboSelections[sectionKey] || [];
     let newSelections: number[];
 
-    if (section.max_selection === 1) {
+    // Use helper to detect single-select sections (crust, size, etc.)
+    if (isSingleSelectSection(section)) {
       newSelections = checked ? [modifier.id] : [];
       if (!checked) {
         const oldModifierId = currentSelections[0];
@@ -843,14 +869,31 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
           
           if (isSharedSection) {
             // Shared sections: validate once using instanceIndex=0
-            let totalSectionSelections = 0;
+            // Count total QUANTITY selected - use modifierQuantities first (for +/- controls)
+            // Fall back to comboSelections count (for checkbox single-select)
+            let totalSectionQuantity = 0;
+            let hasQuantityTracking = false;
+            
             for (const modifierGroup of section.modifier_groups) {
               const sectionKey = getComboSectionKey(section.id, modifierGroup.id, 0);
-              const currentSelections = comboSelections[sectionKey] || [];
-              totalSectionSelections += currentSelections.length;
+              const sectionSelections = comboSelections[sectionKey] || [];
+              
+              for (const modifier of modifierGroup.modifiers) {
+                const modifierKey = `${modifier.id}-0`; // instanceIndex=0 for shared sections
+                const qty = modifierQuantities[modifierKey] || 0;
+                if (qty > 0) {
+                  hasQuantityTracking = true;
+                  totalSectionQuantity += qty;
+                }
+              }
+              
+              // If no quantity tracking, count checkbox selections (each counts as 1)
+              if (!hasQuantityTracking) {
+                totalSectionQuantity += sectionSelections.length;
+              }
             }
             
-            if (totalSectionSelections < section.min_selection) {
+            if (totalSectionQuantity < section.min_selection) {
               const sectionLabel = section.use_header || section.modifier_groups[0]?.name || 'selection';
               if (!missing.includes(sectionLabel)) {
                 missing.push(sectionLabel);
@@ -859,14 +902,31 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
           } else {
             // Per-item sections: validate for each instance
             for (let instanceIndex = 0; instanceIndex < numberOfItems; instanceIndex++) {
-              let totalSectionSelections = 0;
+              // Count total QUANTITY selected - use modifierQuantities first (for +/- controls)
+              // Fall back to comboSelections count (for checkbox single-select)
+              let totalSectionQuantity = 0;
+              let hasQuantityTracking = false;
+              
               for (const modifierGroup of section.modifier_groups) {
                 const sectionKey = getComboSectionKey(section.id, modifierGroup.id, instanceIndex);
-                const currentSelections = comboSelections[sectionKey] || [];
-                totalSectionSelections += currentSelections.length;
+                const sectionSelections = comboSelections[sectionKey] || [];
+                
+                for (const modifier of modifierGroup.modifiers) {
+                  const modifierKey = `${modifier.id}-${instanceIndex}`;
+                  const qty = modifierQuantities[modifierKey] || 0;
+                  if (qty > 0) {
+                    hasQuantityTracking = true;
+                    totalSectionQuantity += qty;
+                  }
+                }
+                
+                // If no quantity tracking, count checkbox selections (each counts as 1)
+                if (!hasQuantityTracking) {
+                  totalSectionQuantity += sectionSelections.length;
+                }
               }
               
-              if (totalSectionSelections < section.min_selection) {
+              if (totalSectionQuantity < section.min_selection) {
                 // Build a meaningful label for the whole section
                 const sectionLabel = section.use_header || section.modifier_groups[0]?.name || 'selection';
                 const contextLabel = numberOfItems > 1 
@@ -1326,9 +1386,9 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
                                             • {section.free_items} free
                                           </span>
                                         )}
-                                        {section.max_selection > 0 && (
+                                        {(section.max_selection > 0 || isSingleSelectSection(section)) && (
                                           <span className="text-xs text-muted-foreground">
-                                            • {section.max_selection === 1 ? 'Choose 1' : `Max ${section.max_selection}`}
+                                            • {isSingleSelectSection(section) ? 'Choose 1' : `Max ${section.max_selection}`}
                                           </span>
                                         )}
                                       </div>
@@ -1348,7 +1408,8 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
                                         )}
 
                                         {/* Single-select (RadioGroup) vs Multi-select */}
-                                        {section.max_selection === 1 ? (
+                                        {/* Use isSingleSelectSection to handle crust/size sections even if max_selection isn't set */}
+                                        {isSingleSelectSection(section) ? (
                                           <RadioGroup
                                             value={currentSelections[0]?.toString() || ''}
                                             onValueChange={(value) => {
@@ -1540,9 +1601,9 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
                                           • {section.free_items} free
                                         </span>
                                       )}
-                                      {section.max_selection > 0 && (
+                                      {(section.max_selection > 0 || isSingleSelectSection(section)) && (
                                         <span className="text-xs text-muted-foreground">
-                                          • {section.max_selection === 1 ? 'Choose 1' : `Select ${section.max_selection}`}
+                                          • {isSingleSelectSection(section) ? 'Choose 1' : `Select ${section.max_selection}`}
                                         </span>
                                       )}
                                     </div>

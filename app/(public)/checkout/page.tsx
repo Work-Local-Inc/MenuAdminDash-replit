@@ -347,72 +347,86 @@ export default function CheckoutPage() {
 
   // Auto-apply deals: Fetch and automatically apply eligible deals
   const hasCheckedAutoDeals = useRef(false)
-  useEffect(() => {
-    const fetchAutoDeals = async () => {
-      // Only check once, when we have restaurant info and no promo already applied
-      if (hasCheckedAutoDeals.current || !restaurantSlug || subtotal <= 0 || appliedPromo) {
-        return
-      }
-      
-      hasCheckedAutoDeals.current = true
-      console.log('[Checkout] Checking for auto-apply deals...')
-      
-      try {
-        const response = await fetch(`${getApiBaseUrl()}/api/customer/restaurants/${restaurantSlug}/auto-deals`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            subtotal,
-            service_type: effectiveOrderType,
-            customer_email: currentUser?.email || guestPickupEmail || selectedAddress?.email,
-            customer_id: currentUser?.id || null
-          })
-        })
-        
-        if (response.ok) {
-          const data = await response.json()
-          
-          if (data.eligible_deal && data.applied) {
-            console.log('[Checkout] Auto-applying deal:', data.eligible_deal)
-            
-            // Determine if this is a percentage or fixed discount
-            // Handle variations: percent, percent_off, percentTotal, amount, amount_off, value, valueTotal
-            const dealType = data.eligible_deal.deal_type || ''
-            const isPercentage = dealType.includes('percent') || dealType === 'percentTotal'
-            
-            // Apply the deal to cart
-            // AppliedPromo uses 'percent' for percentage discounts and 'currency' for fixed amounts
-            const promo: AppliedPromo = {
-              code: data.eligible_deal.name || 'AUTO-DEAL',
-              type: isPercentage ? 'percent' : 'currency',
-              value: isPercentage
-                ? data.eligible_deal.discount_percent
-                : (data.eligible_deal.discount_amount || data.eligible_deal.calculated_discount),
-              description: data.eligible_deal.is_first_order_only 
-                ? `${data.eligible_deal.name} (First Order)` 
-                : data.eligible_deal.name,
-              promoId: data.eligible_deal.id,
-              promoType: 'deal',
-            }
-            
-            applyPromo(promo)
-            
-            toast({
-              title: "Deal Applied!",
-              description: promo.description,
-            })
-          }
-        }
-      } catch (error) {
-        console.error('[Checkout] Error fetching auto-deals:', error)
-      }
+  // Function to check and apply auto-deals - can be called on load or when guest enters email
+  const checkAutoDeals = async (email: string | null | undefined, forceCheck = false) => {
+    // Skip if we already have a promo applied or no restaurant
+    if ((!forceCheck && hasCheckedAutoDeals.current) || !restaurantSlug || subtotal <= 0 || appliedPromo) {
+      return
     }
     
-    // Only run after initial loading is complete
-    if (!loading && restaurantSlug && subtotal > 0) {
-      fetchAutoDeals()
+    if (!forceCheck) {
+      hasCheckedAutoDeals.current = true
     }
-  }, [loading, restaurantSlug, subtotal, effectiveOrderType, currentUser, guestPickupEmail, selectedAddress, appliedPromo, applyPromo, toast])
+    
+    console.log('[Checkout] Checking for auto-apply deals... Email:', email)
+    
+    try {
+      const response = await fetch(`${getApiBaseUrl()}/api/customer/restaurants/${restaurantSlug}/auto-deals`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subtotal,
+          service_type: effectiveOrderType,
+          customer_email: email || null,
+          customer_id: currentUser?.id || null
+        })
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        
+        if (data.eligible_deal && data.applied) {
+          console.log('[Checkout] Auto-applying deal:', data.eligible_deal)
+          
+          // Determine if this is a percentage or fixed discount
+          // Handle variations: percent, percent_off, percentTotal, amount, amount_off, value, valueTotal
+          const dealType = data.eligible_deal.deal_type || ''
+          const isPercentage = dealType.includes('percent') || dealType === 'percentTotal'
+          
+          // Apply the deal to cart
+          // AppliedPromo uses 'percent' for percentage discounts and 'currency' for fixed amounts
+          const promo: AppliedPromo = {
+            code: data.eligible_deal.name || 'AUTO-DEAL',
+            type: isPercentage ? 'percent' : 'currency',
+            value: isPercentage
+              ? data.eligible_deal.discount_percent
+              : (data.eligible_deal.discount_amount || data.eligible_deal.calculated_discount),
+            description: data.eligible_deal.is_first_order_only 
+              ? `${data.eligible_deal.name} (First Order)` 
+              : data.eligible_deal.name,
+            promoId: data.eligible_deal.id,
+            promoType: 'deal',
+          }
+          
+          applyPromo(promo)
+          
+          toast({
+            title: "Deal Applied!",
+            description: promo.description,
+          })
+        }
+      }
+    } catch (error) {
+      console.error('[Checkout] Error fetching auto-deals:', error)
+    }
+  }
+  
+  useEffect(() => {
+    // Only run after initial loading is complete
+    // Also run when guestPickupEmail changes (in case email entered before subtotal becomes >0)
+    if (!loading && restaurantSlug && subtotal > 0) {
+      const email = currentUser?.email || guestPickupEmail || selectedAddress?.email
+      checkAutoDeals(email)
+    }
+  }, [loading, restaurantSlug, subtotal, effectiveOrderType, currentUser, guestPickupEmail, selectedAddress, appliedPromo])
+  
+  // Handler for when guest enters email - re-check for first-order deals
+  const handleGuestEmailBlur = () => {
+    if (guestPickupEmail && guestPickupEmail.includes('@') && !appliedPromo) {
+      console.log('[Checkout] Guest email entered, re-checking auto-deals...')
+      checkAutoDeals(guestPickupEmail, true)
+    }
+  }
 
   const handleSignOut = async () => {
     try {
@@ -984,6 +998,7 @@ export default function CheckoutPage() {
                           data-testid="input-guest-pickup-email"
                           value={guestPickupEmail}
                           onChange={(e) => setGuestPickupEmail(e.target.value)}
+                          onBlur={handleGuestEmailBlur}
                         />
                         <p className="text-xs text-muted-foreground">
                           We'll send your order confirmation to this email
