@@ -400,7 +400,7 @@ export default function MarketingHubPage() {
                   </CardDescription>
                 </div>
                 <Button variant="ghost" size="sm" asChild>
-                  <Link href={`/admin/promotions/all?restaurant=${selectedRestaurantId}`}>
+                  <Link href={`/admin/promotions/deals?restaurant=${selectedRestaurantId}`}>
                     View All
                     <ArrowRight className="h-4 w-4 ml-1" />
                   </Link>
