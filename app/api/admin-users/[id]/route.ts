@@ -27,8 +27,12 @@ export async function GET(
   const isSuperAdmin = authResult.adminUser.role_id === 1
   const isOwnProfile = authResult.adminUser.id.toString() === id
 
+  console.log(`[GET /api/admin-users/${id}] Requesting user: ID=${authResult.adminUser.id}, Role=${authResult.adminUser.role_id}, Email=${authResult.adminUser.email}`)
+  console.log(`[GET /api/admin-users/${id}] isSuperAdmin=${isSuperAdmin}, isOwnProfile=${isOwnProfile}`)
+
   // Restaurant Admins can only view their own profile
   if (!isSuperAdmin && !isOwnProfile) {
+    console.log(`[GET /api/admin-users/${id}] ACCESS DENIED: User ${authResult.adminUser.id} cannot view user ${id}`)
     return NextResponse.json(
       { error: 'Access denied. You can only view your own profile.' },
       { status: 403 }
