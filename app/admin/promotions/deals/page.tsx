@@ -19,7 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useRestaurants } from "@/lib/hooks/use-restaurants"
-import { useDeals, useCreateDeal, useToggleDeal, useDeleteDeal } from "@/lib/hooks/use-promotions"
+import { useDeals, useCreateDeal, useUpdateDeal, useToggleDeal, useDeleteDeal } from "@/lib/hooks/use-promotions"
 import { useQuery } from "@tanstack/react-query"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -264,11 +264,13 @@ export default function DealsPage() {
     selectedRestaurantId ? { restaurant_id: parseInt(selectedRestaurantId) } : undefined
   )
   const createDeal = useCreateDeal()
+  const updateDeal = useUpdateDeal()
   const toggleDeal = useToggleDeal()
   const deleteDealMutation = useDeleteDeal()
   
   const [search, setSearch] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [editingDeal, setEditingDeal] = useState<any>(null)
   const [activeTab, setActiveTab] = useState("all")
   const [dishSearch, setDishSearch] = useState("")
 
@@ -340,6 +342,42 @@ export default function DealsPage() {
     return matchesSearch && mappedType === activeTab
   })
 
+  const handleEditDeal = (deal: any) => {
+    // Map database deal_type back to form deal_type
+    let formDealType: "bogo" | "combo" | "happy_hour" | "bundle" | "limited_time" = "bogo"
+    if (deal.deal_type === 'freeItem') formDealType = "bogo"
+    else if (deal.deal_type === 'percent' || deal.deal_type === 'value') formDealType = "bundle"
+    
+    // Determine discount type
+    let discountType: "percentage" | "fixed" | "free_item" = "percentage"
+    let discountValue = 0
+    if (deal.discount_percent) {
+      discountType = "percentage"
+      discountValue = deal.discount_percent
+    } else if (deal.discount_amount) {
+      discountType = "fixed"
+      discountValue = deal.discount_amount
+    } else if (deal.deal_type === 'freeItem') {
+      discountType = "free_item"
+    }
+    
+    setEditingDeal(deal)
+    form.reset({
+      name: deal.name || "",
+      name_fr: deal.name_fr || "",
+      deal_type: formDealType,
+      description: deal.description || "",
+      description_fr: deal.description_fr || "",
+      discount_type: discountType,
+      discount_value: discountValue,
+      is_active: deal.is_enabled ?? true,
+      included_items: deal.included_items || [],
+      valid_from: deal.date_start || "",
+      valid_until: deal.date_stop || "",
+    })
+    setIsDialogOpen(true)
+  }
+
   const onSubmit = async (data: DealFormValues) => {
     if (!selectedRestaurantId) return
     
@@ -349,8 +387,8 @@ export default function DealsPage() {
         : data.discount_type === 'percentage' ? 'percent'
         : data.discount_type === 'fixed' ? 'value'
         : data.deal_type
-        
-      await createDeal.mutateAsync({
+      
+      const dealData = {
         restaurant_id: parseInt(selectedRestaurantId),
         name: data.name,
         name_fr: data.name_fr || null,
@@ -363,14 +401,21 @@ export default function DealsPage() {
         date_stop: data.valid_until ? new Date(data.valid_until).toISOString().split('T')[0] : null,
         is_enabled: data.is_active,
         included_items: data.included_items && data.included_items.length > 0 ? data.included_items : null,
-      })
+      }
+      
+      if (editingDeal) {
+        await updateDeal.mutateAsync({ id: editingDeal.id, data: dealData })
+      } else {
+        await createDeal.mutateAsync(dealData)
+      }
       setIsDialogOpen(false)
+      setEditingDeal(null)
       form.reset()
       setDishSearch("")
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Failed to create deal",
+        description: error.message || `Failed to ${editingDeal ? 'update' : 'create'} deal`,
         variant: "destructive",
       })
     }
@@ -399,7 +444,13 @@ export default function DealsPage() {
           </div>
         </div>
         {selectedRestaurantId && (
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <Dialog open={isDialogOpen} onOpenChange={(open) => {
+            setIsDialogOpen(open)
+            if (!open) {
+              setEditingDeal(null)
+              form.reset()
+            }
+          }}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
@@ -408,9 +459,9 @@ export default function DealsPage() {
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Create New Deal</DialogTitle>
+              <DialogTitle>{editingDeal ? 'Edit Deal' : 'Create New Deal'}</DialogTitle>
               <DialogDescription>
-                Set up a new promotional deal for your restaurant
+                {editingDeal ? 'Update this promotional deal' : 'Set up a new promotional deal for your restaurant'}
               </DialogDescription>
             </DialogHeader>
             <Form {...form}>
@@ -691,13 +742,14 @@ export default function DealsPage() {
                     variant="outline"
                     onClick={() => {
                       setIsDialogOpen(false)
+                      setEditingDeal(null)
                       form.reset()
                     }}
                   >
                     Cancel
                   </Button>
                   <Button type="submit">
-                    Create Deal
+                    {editingDeal ? 'Update Deal' : 'Create Deal'}
                   </Button>
                 </DialogFooter>
               </form>
@@ -814,7 +866,7 @@ export default function DealsPage() {
             <DealCard 
               key={deal.id} 
               deal={deal}
-              onEdit={() => console.log("Edit", deal.id)}
+              onEdit={() => handleEditDeal(deal)}
               onDelete={() => deleteDealMutation.mutate(deal.id)}
               onToggle={() => toggleDeal.mutate({ id: deal.id, is_enabled: !deal.is_enabled })}
             />
