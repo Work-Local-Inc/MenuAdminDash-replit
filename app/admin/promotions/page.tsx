@@ -258,10 +258,10 @@ export default function MarketingHubPage() {
                 Analytics
               </Link>
             </Button>
-            <Button asChild>
+            <Button asChild data-testid="button-create-promo">
               <Link href={`/admin/promotions/create?restaurant=${selectedRestaurantId}`}>
                 <Plus className="h-4 w-4 mr-2" />
-                Create Campaign
+                Create Promo
               </Link>
             </Button>
           </div>
@@ -357,9 +357,18 @@ export default function MarketingHubPage() {
             </h2>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               <QuickActionCard
+                icon={Plus}
+                title="Create Promo"
+                description="Create a deal or coupon in one simple form"
+                href="/admin/promotions/create"
+                color="bg-primary"
+                restaurantId={selectedRestaurantId}
+                onNavigate={(href) => router.push(href)}
+              />
+              <QuickActionCard
                 icon={Tag}
-                title="Create Coupon"
-                description="Discount codes for customers to use at checkout"
+                title="Manage Coupons"
+                description="View and edit existing coupon codes"
                 href="/admin/coupons"
                 color="bg-blue-500"
                 restaurantId={selectedRestaurantId}
@@ -367,19 +376,10 @@ export default function MarketingHubPage() {
               />
               <QuickActionCard
                 icon={Gift}
-                title="Create Deal"
-                description="BOGO, combo deals, and limited-time offers"
+                title="Manage Deals"
+                description="View and edit existing deals"
                 href="/admin/promotions/deals"
                 color="bg-purple-500"
-                restaurantId={selectedRestaurantId}
-                onNavigate={(href) => router.push(href)}
-              />
-              <QuickActionCard
-                icon={TrendingUp}
-                title="Create Upsell"
-                description="Suggest add-ons to increase order value"
-                href="/admin/promotions/upsells"
-                color="bg-green-500"
                 restaurantId={selectedRestaurantId}
                 onNavigate={(href) => router.push(href)}
               />
