@@ -120,28 +120,11 @@ export function AppSidebar() {
     return allMenuItems
       .filter(item => !('superAdminOnly' in item && item.superAdminOnly) || isSuperAdmin)
       .map(item => {
-        // For Restaurant Admins with a small number of restaurants (1-5), show quick links
-        // Otherwise, just show "All Restaurants" link
+        // For Restaurant Admins, just show "All Restaurants" - no individual restaurant links
         if (item.title === "Restaurants" && !isSuperAdmin && item.items) {
-          if (restaurants.length > 0 && restaurants.length <= 5) {
-            // Show "All Restaurants" plus quick links to their specific restaurants
-            const restaurantItems = restaurants.map((restaurant: { id: number; name: string }) => ({
-              title: restaurant.name,
-              url: `/admin/restaurants/${restaurant.id}`,
-            }))
-            return {
-              ...item,
-              items: [
-                { title: "All Restaurants", url: "/admin/restaurants" },
-                ...restaurantItems
-              ]
-            }
-          } else {
-            // Just show "All Restaurants" link - don't flood the sidebar
-            return {
-              ...item,
-              items: [{ title: "All Restaurants", url: "/admin/restaurants" }]
-            }
+          return {
+            ...item,
+            items: [{ title: "All Restaurants", url: "/admin/restaurants" }]
           }
         }
         
