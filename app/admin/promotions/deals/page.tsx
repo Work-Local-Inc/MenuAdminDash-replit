@@ -82,6 +82,7 @@ const dealSchema = z.object({
   valid_from: z.string().optional(),
   valid_until: z.string().optional(),
   is_active: z.boolean(),
+  is_first_order_only: z.boolean().optional(),
   included_items: z.array(z.number()).optional(),
 })
 
@@ -285,6 +286,7 @@ export default function DealsPage() {
       discount_type: "percentage",
       discount_value: 0,
       is_active: true,
+      is_first_order_only: false,
       included_items: [],
     },
   })
@@ -371,6 +373,7 @@ export default function DealsPage() {
       discount_type: discountType,
       discount_value: discountValue,
       is_active: deal.is_enabled ?? true,
+      is_first_order_only: deal.is_first_order_only ?? false,
       included_items: deal.included_items || [],
       valid_from: deal.date_start || "",
       valid_until: deal.date_stop || "",
@@ -400,6 +403,7 @@ export default function DealsPage() {
         date_start: data.valid_from ? new Date(data.valid_from).toISOString().split('T')[0] : null,
         date_stop: data.valid_until ? new Date(data.valid_until).toISOString().split('T')[0] : null,
         is_enabled: data.is_active,
+        is_first_order_only: data.is_first_order_only ?? false,
         included_items: data.included_items && data.included_items.length > 0 ? data.included_items : null,
       }
       
@@ -729,6 +733,31 @@ export default function DealsPage() {
                       <FormControl>
                         <Switch
                           checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                {/* First Order Only Toggle */}
+                <FormField
+                  control={form.control}
+                  name="is_first_order_only"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-base flex items-center gap-2">
+                          <Users className="h-4 w-4" />
+                          First Order Only
+                        </FormLabel>
+                        <FormDescription>
+                          Only available to new customers placing their first order
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value ?? false}
                           onCheckedChange={field.onChange}
                         />
                       </FormControl>
