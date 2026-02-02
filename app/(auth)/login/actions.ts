@@ -10,14 +10,20 @@ export async function login(formData: FormData) {
   const email = formData.get('email') as string
   const password = formData.get('password') as string
 
-  const { error } = await supabase.auth.signInWithPassword({
+  console.log(`[Login] Attempting login for: ${email}`)
+
+  const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
   })
 
   if (error) {
+    console.error(`[Login] FAILED for ${email}:`, error.message)
     return { error: error.message }
   }
+
+  console.log(`[Login] SUCCESS for ${email}, user_id: ${data.user?.id}`)
+  console.log(`[Login] Session created: ${!!data.session}, expires: ${data.session?.expires_at}`)
 
   revalidatePath('/', 'layout')
   redirect('/admin/dashboard')

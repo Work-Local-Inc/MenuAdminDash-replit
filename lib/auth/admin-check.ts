@@ -34,12 +34,16 @@ export async function verifyAdminAuth(request: NextRequest): Promise<AdminAuthRe
   const supabase = await createClient()
   
   // Step 1: Check if user is authenticated via Supabase Auth
+  console.log('[Admin Auth] Calling supabase.auth.getUser()...')
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   
   if (authError || !user) {
-    console.error('[Admin Auth] Not authenticated:', authError)
+    console.error('[Admin Auth] Not authenticated:', authError?.message || 'No user found')
+    console.error('[Admin Auth] Full error:', authError)
     throw new UnauthorizedError('Unauthorized - authentication required')
   }
+  
+  console.log(`[Admin Auth] Authenticated Supabase user: ${user.email} (${user.id})`)
   
   // Step 2: Verify user auth_user_id exists in admin_users table (using service role to bypass RLS)
   // This ensures the authenticated user is actually an admin
