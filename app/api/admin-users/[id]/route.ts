@@ -4,21 +4,14 @@ import { AuthError } from '@/lib/errors'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
 
 // GET /api/admin-users/[id] - Get single admin user
-// SECURITY: Super Admins only - Restaurant Admins should not view other admins
+// SECURITY: Super Admins can view any admin; Restaurant Admins can only view themselves
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  let authResult
   try {
-    const authResult = await verifyAdminAuth(request)
-    
-    // Only Super Admins (role_id = 1) can view admin user details
-    if (authResult.adminUser.role_id !== 1) {
-      return NextResponse.json(
-        { error: 'Access denied. Super Admin privileges required.' },
-        { status: 403 }
-      )
-    }
+    authResult = await verifyAdminAuth(request)
   } catch (error: any) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode })
@@ -31,6 +24,16 @@ export async function GET(
 
   const supabase = createAdminClient() as any
   const { id } = await params
+  const isSuperAdmin = authResult.adminUser.role_id === 1
+  const isOwnProfile = authResult.adminUser.id.toString() === id
+
+  // Restaurant Admins can only view their own profile
+  if (!isSuperAdmin && !isOwnProfile) {
+    return NextResponse.json(
+      { error: 'Access denied. You can only view your own profile.' },
+      { status: 403 }
+    )
+  }
 
   const { data, error } = await supabase
     .schema('menuca_v3')
@@ -48,6 +51,7 @@ export async function GET(
 }
 
 // PATCH /api/admin-users/[id] - Update admin user
+// SECURITY: Super Admins can update any admin; Restaurant Admins can only update themselves
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -74,6 +78,16 @@ export async function PATCH(
   const body = await request.json()
 
   const isSuperAdmin = requestingAdminRoleId === 1
+  const isOwnProfile = requestingAdminId?.toString() === id
+
+  // SECURITY: Restaurant Admins can only update their own profile
+  if (!isSuperAdmin && !isOwnProfile) {
+    console.warn(`[SECURITY] Non-Super Admin (ID: ${requestingAdminId}) attempted to update another user ${id}`)
+    return NextResponse.json(
+      { error: 'Access denied. You can only update your own profile.' },
+      { status: 403 }
+    )
+  }
 
   // SECURITY: Only Super Admins can change role_id or status
   if (!isSuperAdmin && (body.role_id !== undefined || body.status !== undefined)) {
