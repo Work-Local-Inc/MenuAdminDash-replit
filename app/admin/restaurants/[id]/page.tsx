@@ -23,7 +23,6 @@ import { RestaurantSEO } from "@/components/restaurant/tabs/seo"
 import { RestaurantImages } from "@/components/restaurant/tabs/images"
 import { RestaurantCustomCSS } from "@/components/restaurant/tabs/custom-css"
 import { Categorization } from "@/components/restaurant/tabs/categorization"
-import { Onboarding } from "@/components/restaurant/tabs/onboarding"
 import { OnlineOrderingToggle } from "@/components/restaurant/online-ordering-toggle"
 import { useAdminUser } from "@/hooks/use-admin-user"
 
@@ -216,13 +215,6 @@ export default function RestaurantDetailPage() {
             >
               Integrations
             </TabsTrigger>
-            <TabsTrigger 
-              value="onboarding" 
-              data-testid="tab-onboarding"
-              className="w-full justify-start"
-            >
-              Onboarding
-            </TabsTrigger>
             {isSuperAdmin && (
               <TabsTrigger 
                 value="custom-css" 
@@ -267,10 +259,6 @@ export default function RestaurantDetailPage() {
 
           <TabsContent value="categorization" className="mt-0">
             <Categorization restaurantId={parseInt(restaurantId)} />
-          </TabsContent>
-
-          <TabsContent value="onboarding" className="mt-0">
-            <Onboarding restaurantId={parseInt(restaurantId)} />
           </TabsContent>
 
           <TabsContent value="payment-methods" className="mt-0">
