@@ -375,15 +375,19 @@ export default function CheckoutPage() {
           if (data.eligible_deal && data.applied) {
             console.log('[Checkout] Auto-applying deal:', data.eligible_deal)
             
+            // Determine if this is a percentage or fixed discount
+            // Handle variations: percent, percent_off, percentTotal, amount, amount_off, value, valueTotal
+            const dealType = data.eligible_deal.deal_type || ''
+            const isPercentage = dealType.includes('percent') || dealType === 'percentTotal'
+            
             // Apply the deal to cart
+            // AppliedPromo uses 'percent' for percentage discounts and 'currency' for fixed amounts
             const promo: AppliedPromo = {
               code: data.eligible_deal.name || 'AUTO-DEAL',
-              type: data.eligible_deal.deal_type === 'percent' || data.eligible_deal.deal_type === 'percentTotal' 
-                ? 'percentage' 
-                : 'fixed',
-              value: data.eligible_deal.deal_type === 'percent' || data.eligible_deal.deal_type === 'percentTotal'
+              type: isPercentage ? 'percent' : 'currency',
+              value: isPercentage
                 ? data.eligible_deal.discount_percent
-                : data.eligible_deal.discount_amount,
+                : (data.eligible_deal.discount_amount || data.eligible_deal.calculated_discount),
               description: data.eligible_deal.is_first_order_only 
                 ? `${data.eligible_deal.name} (First Order)` 
                 : data.eligible_deal.name,
