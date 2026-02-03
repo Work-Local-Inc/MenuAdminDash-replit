@@ -512,6 +512,7 @@ export async function POST(request: NextRequest) {
     const { coupon_code: clientCouponCode, discount_amount: clientDiscount, promo_id: clientPromoId, promo_type: clientPromoType, ...otherMetadata } = metadata || {}
     
     const paymentMetadata: Record<string, string> = {
+      restaurant_id: restaurantId ? String(restaurantId) : '',
       user_id: user_id ? String(user_id) : 'guest',
       guest_email: guest_email || undefined,
       country: 'CA',
