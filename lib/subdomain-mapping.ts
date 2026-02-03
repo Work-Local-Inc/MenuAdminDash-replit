@@ -103,6 +103,8 @@ async function fetchMappingsFromDatabase(): Promise<SubdomainMapping[] | null> {
       return null;
     }
     
+    console.log('[Subdomain] Fetching mappings from database...');
+    
     // Call the RPC function to get all mappings
     // Note: Content-Profile header needed for menuca_v3 schema
     const response = await fetch(`${supabaseUrl}/rest/v1/rpc/get_all_subdomain_mappings`, {
@@ -116,7 +118,11 @@ async function fetchMappingsFromDatabase(): Promise<SubdomainMapping[] | null> {
       body: JSON.stringify({}),
     });
     
+    console.log('[Subdomain] RPC response status:', response.status);
+    
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[Subdomain] RPC error response:', errorText);
       // RPC function might not exist yet
       if (response.status === 404) {
         console.log('[Subdomain] RPC function not found, using static fallback');
@@ -127,6 +133,7 @@ async function fetchMappingsFromDatabase(): Promise<SubdomainMapping[] | null> {
     }
     
     const data = await response.json();
+    console.log('[Subdomain] RPC response data:', JSON.stringify(data));
     
     if (!Array.isArray(data)) {
       console.log('[Subdomain] Invalid response format, using static fallback');
@@ -141,7 +148,7 @@ async function fetchMappingsFromDatabase(): Promise<SubdomainMapping[] | null> {
       name: row.name || '',
     }));
     
-    console.log(`[Subdomain] Loaded ${mappings.length} mappings from database`);
+    console.log(`[Subdomain] Loaded ${mappings.length} mappings from database:`, mappings.map(m => m.subdomain).join(', '));
     return mappings;
   } catch (error) {
     console.error('[Subdomain] Database fetch error:', error);

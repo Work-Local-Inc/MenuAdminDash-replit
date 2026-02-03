@@ -17,8 +17,10 @@ export async function middleware(request: NextRequest) {
   console.log(`[Middleware] Host: ${rawHostname}, Hostname: ${hostname}, Subdomain: ${subdomain}, Path: ${pathname}`)
   
   if (subdomain) {
+    console.log(`[Middleware] Looking up subdomain: ${subdomain}`)
     // Use async lookup to fetch from database (with caching)
     const mapping = await getRestaurantBySubdomainAsync(subdomain)
+    console.log(`[Middleware] Mapping result:`, mapping ? `Found: ${mapping.slug}` : 'NOT FOUND')
     
     if (mapping) {
       // Block admin/login routes on branded subdomains - redirect to main domain
