@@ -42,6 +42,12 @@ export const STATIC_SUBDOMAIN_MAPPINGS: SubdomainMapping[] = [
     restaurantId: 815,
     name: 'Golden Center Pizza',
   },
+  {
+    subdomain: 'bronson.papajoesottawa',
+    slug: 'papa-joes-pizza-downtown-13',
+    restaurantId: 13,
+    name: "Papa Joe's Pizza - Downtown",
+  },
 ];
 
 // ============================================
