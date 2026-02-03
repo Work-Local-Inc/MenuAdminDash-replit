@@ -242,7 +242,11 @@ export default function RestaurantDetailPage() {
           </TabsContent>
 
           <TabsContent value="domains" className="mt-0">
-            <RestaurantDomains restaurantId={restaurantId} />
+            <RestaurantDomains 
+              restaurantId={restaurantId} 
+              restaurantName={restaurant.name}
+              restaurantSlug={`${restaurant.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${restaurantId}`}
+            />
           </TabsContent>
 
           <TabsContent value="hours" className="mt-0">
