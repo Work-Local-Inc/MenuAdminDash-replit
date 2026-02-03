@@ -36,6 +36,12 @@ export const STATIC_SUBDOMAIN_MAPPINGS: SubdomainMapping[] = [
     restaurantId: 245,
     name: 'Orchid Sushi',
   },
+  {
+    subdomain: 'goldencenterpizza',
+    slug: 'golden-center-pizza-815',
+    restaurantId: 815,
+    name: 'Golden Center Pizza',
+  },
 ];
 
 // ============================================
