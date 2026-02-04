@@ -213,216 +213,201 @@ export default function RestaurantStatementsPage() {
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
             ) : statement ? (
-              <div className="space-y-6 text-sm print:text-xs" id="printable-statement">
-                <div className="flex justify-between items-start">
-                  <div></div>
-                  <div className="text-right">
-                    <h2 className="text-xl font-bold print:text-lg">Statement</h2>
-                  </div>
+              <div className="max-w-3xl mx-auto bg-white dark:bg-gray-900 rounded-lg overflow-hidden shadow-sm print:shadow-none print:max-w-none" id="printable-statement">
+                {/* Header with Logo */}
+                <div className="bg-white dark:bg-gray-900 px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-center print:py-2">
+                  <img 
+                    src="https://nthpbtdjhhnwfxqsxbvy.supabase.co/storage/v1/object/public/email-assets/logo.png" 
+                    alt="Menu.ca" 
+                    className="h-10 print:h-8"
+                  />
                 </div>
 
-                <div className="grid grid-cols-2 gap-8">
-                  <div className="space-y-1">
-                    <div className="flex gap-2">
-                      <span className="text-muted-foreground w-24">Date:</span>
-                      <span>{dateRange}</span>
+                {/* Hero Section */}
+                <div className="bg-red-600 px-6 py-8 text-center print:py-4">
+                  <h1 className="text-2xl font-bold text-white print:text-xl">Statement</h1>
+                  <p className="text-red-100 mt-1">Payment Summary for {statement.restaurant.name}</p>
+                </div>
+
+                {/* Statement Info */}
+                <div className="px-6 py-6 print:py-4">
+                  <div className="grid grid-cols-2 gap-6 mb-6">
+                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-500 dark:text-gray-400 font-medium">Statement #</span>
+                          <span className="font-semibold">{statement.statement_number}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500 dark:text-gray-400 font-medium">Period</span>
+                          <span className="font-semibold">{dateRange}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500 dark:text-gray-400 font-medium">Customer ID</span>
+                          <span className="font-semibold">{statement.restaurant.id}</span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex gap-2">
-                      <span className="text-muted-foreground w-24">Statement #</span>
-                      <span>{statement.statement_number}</span>
+                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-2">PAID TO</p>
+                      <p className="font-semibold text-gray-900 dark:text-white">{statement.restaurant.name}</p>
+                      {statement.restaurant.contact_name && (
+                        <p className="text-sm text-gray-600 dark:text-gray-300">{statement.restaurant.contact_name}</p>
+                      )}
+                      <p className="text-sm text-gray-600 dark:text-gray-300">{statement.restaurant.address}</p>
+                      {(statement.restaurant.city || statement.restaurant.postal_code) && (
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                          {statement.restaurant.city}{statement.restaurant.city && statement.restaurant.postal_code ? ', ' : ''}{statement.restaurant.postal_code}
+                        </p>
+                      )}
                     </div>
-                    <div className="flex gap-2">
-                      <span className="text-muted-foreground w-24">Customer ID</span>
-                      <span>{statement.restaurant.id}</span>
+                  </div>
+
+                  {/* Transaction Summary */}
+                  <div className="mb-6">
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                      <span className="w-1 h-5 bg-red-600 rounded-full"></span>
+                      Transaction Summary
+                    </h2>
+                    <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+                      <table className="w-full text-sm">
+                        <thead className="bg-gray-50 dark:bg-gray-800">
+                          <tr>
+                            <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Type</th>
+                            <th className="text-center py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Orders</th>
+                            <th className="text-right py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Paid Directly</th>
+                            <th className="text-right py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Unpaid</th>
+                            <th className="text-right py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Bank Fees</th>
+                            <th className="text-right py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Owed</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                          <tr className="bg-white dark:bg-gray-900">
+                            <td className="py-3 px-4 font-medium">Cash</td>
+                            <td className="text-center py-3 px-4">{statement.summary.cash_orders.count}</td>
+                            <td className="text-right py-3 px-4">{formatCurrency(statement.summary.cash_orders.total)}</td>
+                            <td className="text-right py-3 px-4 text-gray-400">—</td>
+                            <td className="text-right py-3 px-4 text-gray-400">—</td>
+                            <td className="text-right py-3 px-4 font-medium">{formatCurrency(0)}</td>
+                          </tr>
+                          <tr className="bg-white dark:bg-gray-900">
+                            <td className="py-3 px-4 font-medium">Credit Card</td>
+                            <td className="text-center py-3 px-4">{statement.summary.cc_orders.count}</td>
+                            <td className="text-right py-3 px-4 text-gray-400">—</td>
+                            <td className="text-right py-3 px-4">{formatCurrency(statement.summary.cc_orders.total)}</td>
+                            <td className="text-right py-3 px-4">{formatCurrency(statement.summary.cc_orders.bank_fees)}</td>
+                            <td className="text-right py-3 px-4 font-medium">{formatCurrency(statement.summary.cc_orders.total)}</td>
+                          </tr>
+                          <tr className="bg-white dark:bg-gray-900">
+                            <td className="py-3 px-4 font-medium">Interac®</td>
+                            <td className="text-center py-3 px-4">{statement.summary.interac_orders.count}</td>
+                            <td className="text-right py-3 px-4 text-gray-400">—</td>
+                            <td className="text-right py-3 px-4">{formatCurrency(statement.summary.interac_orders.total)}</td>
+                            <td className="text-right py-3 px-4">{formatCurrency(statement.summary.interac_orders.bank_fees)}</td>
+                            <td className="text-right py-3 px-4 font-medium">{formatCurrency(statement.summary.interac_orders.total)}</td>
+                          </tr>
+                        </tbody>
+                        <tfoot className="bg-gray-50 dark:bg-gray-800 font-semibold">
+                          <tr>
+                            <td className="py-3 px-4">Total</td>
+                            <td className="text-center py-3 px-4">
+                              {statement.summary.cash_orders.count + statement.summary.cc_orders.count + statement.summary.interac_orders.count}
+                            </td>
+                            <td className="text-right py-3 px-4">{formatCurrency(statement.summary.cash_orders.total)}</td>
+                            <td className="text-right py-3 px-4">{formatCurrency(statement.totals.total_unpaid)}</td>
+                            <td className="text-right py-3 px-4">{formatCurrency(statement.fees.bank_fees)}</td>
+                            <td className="text-right py-3 px-4">{formatCurrency(statement.totals.total_unpaid)}</td>
+                          </tr>
+                        </tfoot>
+                      </table>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-muted-foreground">HST: {statement.menu_hst_number}</p>
-                  </div>
-                </div>
 
-                <div className="space-y-1">
-                  <p className="text-muted-foreground">Paid to:</p>
-                  <div className="pl-8">
-                    {statement.restaurant.contact_name && (
-                      <p className="font-medium">{statement.restaurant.contact_name}</p>
-                    )}
-                    <p className="font-medium">{statement.restaurant.name}</p>
-                    <p>{statement.restaurant.address}</p>
-                    {(statement.restaurant.city || statement.restaurant.postal_code) && (
-                      <p>{statement.restaurant.city}{statement.restaurant.city && statement.restaurant.postal_code ? ', ' : ''}{statement.restaurant.postal_code}</p>
-                    )}
-                    {statement.restaurant.phone && <p>{statement.restaurant.phone}</p>}
-                  </div>
-                </div>
-
-                <table className="w-full border-collapse text-xs">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-2 px-1">Date</th>
-                      <th className="text-left py-2 px-1">Description</th>
-                      <th className="text-center py-2 px-1">Total Transactions</th>
-                      <th className="text-right py-2 px-1">Total Amount Paid Directly</th>
-                      <th className="text-right py-2 px-1">Total Amount Unpaid</th>
-                      <th className="text-right py-2 px-1">Total Bank Fees</th>
-                      <th className="text-right py-2 px-1">Total owed</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr className="border-b">
-                      <td className="py-2 px-1">{dateRange}</td>
-                      <td className="py-2 px-1">Cash Transactions</td>
-                      <td className="text-center py-2 px-1">{statement.summary.cash_orders.count}</td>
-                      <td className="text-right py-2 px-1">{formatCurrency(statement.summary.cash_orders.total)}</td>
-                      <td className="text-right py-2 px-1 text-muted-foreground">N/A</td>
-                      <td className="text-right py-2 px-1 text-muted-foreground">N/A</td>
-                      <td className="text-right py-2 px-1">{formatCurrency(0)}</td>
-                    </tr>
-                    <tr className="border-b">
-                      <td className="py-2 px-1">{dateRange}</td>
-                      <td className="py-2 px-1">Credit Card Transactions</td>
-                      <td className="text-center py-2 px-1">{statement.summary.cc_orders.count}</td>
-                      <td className="text-right py-2 px-1 text-muted-foreground">N/A</td>
-                      <td className="text-right py-2 px-1">{formatCurrency(statement.summary.cc_orders.total)}</td>
-                      <td className="text-right py-2 px-1">{formatCurrency(statement.summary.cc_orders.bank_fees)}</td>
-                      <td className="text-right py-2 px-1">{formatCurrency(statement.summary.cc_orders.total)}</td>
-                    </tr>
-                    <tr className="border-b">
-                      <td className="py-2 px-1">{dateRange}</td>
-                      <td className="py-2 px-1">Interac® Transactions</td>
-                      <td className="text-center py-2 px-1">{statement.summary.interac_orders.count}</td>
-                      <td className="text-right py-2 px-1 text-muted-foreground">N/A</td>
-                      <td className="text-right py-2 px-1">{formatCurrency(statement.summary.interac_orders.total)}</td>
-                      <td className="text-right py-2 px-1">{formatCurrency(statement.summary.interac_orders.bank_fees)}</td>
-                      <td className="text-right py-2 px-1">{formatCurrency(statement.summary.interac_orders.total)}</td>
-                    </tr>
-                    <tr className="font-medium">
-                      <td className="py-2 px-1"></td>
-                      <td className="py-2 px-1 text-right">Total:</td>
-                      <td className="text-center py-2 px-1">
-                        {statement.summary.cash_orders.count + statement.summary.cc_orders.count + statement.summary.interac_orders.count}
-                      </td>
-                      <td className="text-right py-2 px-1">{formatCurrency(statement.summary.cash_orders.total)}</td>
-                      <td className="text-right py-2 px-1">{formatCurrency(statement.totals.total_unpaid)}</td>
-                      <td className="text-right py-2 px-1">{formatCurrency(statement.fees.bank_fees)}</td>
-                      <td className="text-right py-2 px-1">{formatCurrency(statement.totals.total_unpaid)}</td>
-                    </tr>
-                  </tbody>
-                </table>
-
-                <div className="mt-6">
-                  <h3 className="font-semibold mb-2">Credits and Charges</h3>
-                  <table className="w-full border-collapse text-xs">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left py-2 px-1">Description</th>
-                        <th className="text-left py-2 px-1">Date</th>
-                        <th className="text-right py-2 px-1">Amount</th>
-                        <th className="text-right py-2 px-1">Tax</th>
-                        <th className="text-right py-2 px-1">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr className="font-medium">
-                        <td className="py-2 px-1">Total Owed</td>
-                        <td className="py-2 px-1"></td>
-                        <td className="text-right py-2 px-1">{(statement.fees.total_fees - statement.fees.hst).toFixed(2)}</td>
-                        <td className="text-right py-2 px-1">{statement.fees.hst.toFixed(2)}</td>
-                        <td className="text-right py-2 px-1">{statement.fees.total_fees.toFixed(2)}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="mt-6 grid grid-cols-2 gap-8">
-                  <div>
-                    <h3 className="font-semibold mb-2">Remittance</h3>
-                    <div className="space-y-1 text-xs">
-                      <div className="flex justify-between">
-                        <span>Statement #</span>
-                        <span>{statement.statement_number}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Date</span>
-                        <span>{dateRange}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Total order value</span>
-                        <span>{formatCurrency(statement.totals.total_order_value)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Total amount unpaid</span>
-                        <span>{formatCurrency(statement.totals.total_unpaid)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Commission</span>
-                        <span>{formatCurrency(statement.fees.commission)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Delivery commission</span>
-                        <span>{formatCurrency(statement.fees.delivery_commission)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Weekly commission</span>
-                        <span>{formatCurrency(statement.fees.weekly_commission)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Transaction fee($)</span>
-                        <span>{formatCurrency(statement.fees.transaction_fees)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Bank fees</span>
-                        <span>{formatCurrency(statement.fees.bank_fees)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Tax</span>
-                        <span>HST: {formatCurrency(statement.fees.hst)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Total fees</span>
-                        <span>{formatCurrency(statement.fees.total_fees)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Delivery fee and tips</span>
-                        <span>{formatCurrency(statement.totals.delivery_tips + statement.totals.delivery_fees)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Charges owed</span>
-                        <span>{formatCurrency(0)}</span>
-                      </div>
-                      <div className="flex justify-between font-semibold pt-2 border-t">
-                        <span>Net Paid</span>
-                        <span>{formatCurrency(statement.net_payable)}</span>
+                  {/* Fees & Deductions */}
+                  <div className="mb-6">
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                      <span className="w-1 h-5 bg-red-600 rounded-full"></span>
+                      Fees & Deductions
+                    </h2>
+                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                      <div className="divide-y divide-gray-200 dark:divide-gray-700">
+                        <div className="flex justify-between py-3 px-4">
+                          <span className="text-gray-600 dark:text-gray-300">Commission ({statement.fees.commission_rate}%)</span>
+                          <span className="font-medium">-{formatCurrency(statement.fees.commission)}</span>
+                        </div>
+                        {statement.fees.weekly_commission > 0 && (
+                          <div className="flex justify-between py-3 px-4">
+                            <span className="text-gray-600 dark:text-gray-300">Weekly Commission</span>
+                            <span className="font-medium">-{formatCurrency(statement.fees.weekly_commission)}</span>
+                          </div>
+                        )}
+                        {statement.fees.delivery_commission > 0 && (
+                          <div className="flex justify-between py-3 px-4">
+                            <span className="text-gray-600 dark:text-gray-300">Delivery Commission</span>
+                            <span className="font-medium">-{formatCurrency(statement.fees.delivery_commission)}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between py-3 px-4">
+                          <span className="text-gray-600 dark:text-gray-300">Transaction Fees</span>
+                          <span className="font-medium">-{formatCurrency(statement.fees.transaction_fees)}</span>
+                        </div>
+                        <div className="flex justify-between py-3 px-4">
+                          <span className="text-gray-600 dark:text-gray-300">Bank Fees</span>
+                          <span className="font-medium">-{formatCurrency(statement.fees.bank_fees)}</span>
+                        </div>
+                        <div className="flex justify-between py-3 px-4">
+                          <span className="text-gray-600 dark:text-gray-300">HST (13%)</span>
+                          <span className="font-medium">-{formatCurrency(statement.fees.hst)}</span>
+                        </div>
+                        <div className="flex justify-between py-3 px-4 bg-gray-100 dark:bg-gray-700 font-semibold">
+                          <span>Total Fees</span>
+                          <span className="text-red-600">-{formatCurrency(statement.fees.total_fees)}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  <div>
-                    <h3 className="font-semibold mb-2 invisible">Delivery</h3>
-                    <div className="space-y-1 text-xs">
-                      <div className="flex justify-between">
-                        <span>Delivery service</span>
-                        <span></span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Delivery service tips</span>
-                        <span>{formatCurrency(statement.totals.delivery_tips)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Delivery Commission</span>
-                        <span>{statement.fees.delivery_commission.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Delivery fee</span>
-                        <span>{statement.totals.delivery_fees.toFixed(2)}</span>
+                  {/* Net Payment */}
+                  <div className="bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800 p-6 text-center">
+                    <p className="text-sm text-green-700 dark:text-green-400 font-medium mb-1">NET PAYMENT</p>
+                    <p className="text-3xl font-bold text-green-700 dark:text-green-400">{formatCurrency(statement.net_payable)}</p>
+                    <p className="text-xs text-green-600 dark:text-green-500 mt-2">
+                      {statement.totals.total_unpaid > 0 ? `${formatCurrency(statement.totals.total_unpaid)} collected - ${formatCurrency(statement.fees.total_fees)} fees` : 'No credit card orders this period'}
+                    </p>
+                  </div>
+
+                  {/* Delivery Breakdown (if applicable) */}
+                  {(statement.totals.delivery_tips > 0 || statement.totals.delivery_fees > 0) && (
+                    <div className="mt-6">
+                      <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                        <span className="w-1 h-5 bg-red-600 rounded-full"></span>
+                        Delivery Breakdown
+                      </h2>
+                      <div className="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-300">Delivery Fees</span>
+                            <span className="font-medium">{formatCurrency(statement.totals.delivery_fees)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-300">Delivery Tips</span>
+                            <span className="font-medium">{formatCurrency(statement.totals.delivery_tips)}</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
                 </div>
 
-                <div className="mt-8 pt-4 border-t text-center text-xs text-muted-foreground space-y-1">
-                  <p className="font-medium">Allow three business days for payment</p>
-                  <p>Payments will be made under the name "Local Media Concepts Inc."</p>
+                {/* Footer */}
+                <div className="bg-gray-50 dark:bg-gray-800 px-6 py-6 border-t border-gray-200 dark:border-gray-700 text-center print:py-4">
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Allow three business days for payment</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Payments made under "Local Media Concepts Inc."</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">HST: {statement.menu_hst_number}</p>
+                  <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Powered by Menu.ca</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500">Connecting you with local restaurants</p>
+                  </div>
                 </div>
               </div>
             ) : (
