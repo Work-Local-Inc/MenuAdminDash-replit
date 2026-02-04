@@ -26,6 +26,7 @@ import {
   MapPin,
   Rocket,
   Wrench,
+  BarChart3,
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -102,6 +103,16 @@ const allMenuItems = [
     title: "Marketing",
     url: "/admin/promotions",
     icon: Megaphone,
+  },
+  {
+    title: "Reporting",
+    icon: BarChart3,
+    superAdminOnly: true,
+    items: [
+      { title: "Weekly Commission", url: "/admin/reporting/commission" },
+      { title: "Restaurant Statements", url: "/admin/reporting/statements" },
+      { title: "Daily Orders", url: "/admin/reporting/orders" },
+    ],
   },
   {
     title: "Users",
