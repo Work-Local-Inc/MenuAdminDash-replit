@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { format, startOfWeek, endOfWeek, subWeeks, addDays } from "date-fns"
 import { CalendarIcon, FileText, Printer, Search } from "lucide-react"
@@ -97,7 +97,52 @@ export default function RestaurantStatementsPage() {
   }
 
   const handlePrint = () => {
-    window.print()
+    const printStyles = document.createElement('style')
+    printStyles.id = 'print-styles'
+    printStyles.innerHTML = `
+      @media print {
+        * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+          color-adjust: exact !important;
+        }
+        body {
+          background: white !important;
+        }
+        .print-statement-container {
+          max-width: 100% !important;
+          margin: 0 !important;
+          box-shadow: none !important;
+        }
+        .bg-red-600 {
+          background-color: #dc2626 !important;
+        }
+        .bg-green-50 {
+          background-color: #f0fdf4 !important;
+        }
+        .bg-gray-50 {
+          background-color: #f9fafb !important;
+        }
+        .text-white {
+          color: white !important;
+        }
+        .text-red-100 {
+          color: #fee2e2 !important;
+        }
+        .text-green-700 {
+          color: #15803d !important;
+        }
+        .border-green-200 {
+          border-color: #bbf7d0 !important;
+        }
+      }
+    `
+    document.head.appendChild(printStyles)
+    
+    setTimeout(() => {
+      window.print()
+      document.getElementById('print-styles')?.remove()
+    }, 100)
   }
 
   const dateRange = `${format(startDate, "yyyy-MM-dd")} - ${format(endDate, "yyyy-MM-dd")}`
@@ -213,7 +258,7 @@ export default function RestaurantStatementsPage() {
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
             ) : statement ? (
-              <div className="max-w-3xl mx-auto bg-white dark:bg-gray-900 rounded-lg overflow-hidden shadow-sm print:shadow-none print:max-w-none" id="printable-statement">
+              <div className="max-w-3xl mx-auto bg-white dark:bg-gray-900 rounded-lg overflow-hidden shadow-sm print:shadow-none print:max-w-none print-statement-container" id="printable-statement">
                 {/* Header with Logo */}
                 <div className="bg-white dark:bg-gray-900 px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-center print:py-2">
                   <img 
