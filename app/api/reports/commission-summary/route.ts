@@ -25,9 +25,18 @@ interface RestaurantRow {
 
 interface CommissionConfig {
   restaurant_id: number
+  commission_enabled: boolean
   commission_rate: number
-  commission_type: string
-  uses_gateway: boolean
+  commission_type: string  // 'percentage' or 'fixed'
+  commission_base: string  // 'gross' or 'net'
+  effective_from: string
+  effective_until: string | null
+}
+
+interface PaymentOption {
+  restaurant_id: number
+  payment_method: string
+  is_enabled: boolean
 }
 
 export async function GET(request: NextRequest) {
@@ -98,9 +107,11 @@ export async function GET(request: NextRequest) {
       restaurants.map(r => [r.id, { name: r.name }])
     )
 
+    // Get commission configs - filter for current active configs (effective_until is null or in future)
     const { data: configData, error: configError } = await supabase
       .from('restaurant_commission_configs')
-      .select('*')
+      .select('restaurant_id, commission_enabled, commission_rate, commission_type, commission_base, effective_from, effective_until')
+      .is('effective_until', null)  // Current active configs
 
     if (configError) {
       console.error('[Commission Summary] Config query error:', configError)
@@ -109,6 +120,24 @@ export async function GET(request: NextRequest) {
     const commissionConfigs = (configData || []) as CommissionConfig[]
     const configMap = new Map(
       commissionConfigs.map(c => [c.restaurant_id, c])
+    )
+
+    // Get payment options to determine which restaurants accept credit cards
+    const { data: paymentOptionsData, error: paymentOptionsError } = await supabase
+      .from('restaurant_payment_options')
+      .select('restaurant_id, payment_method, is_enabled')
+      .eq('is_enabled', true)
+
+    if (paymentOptionsError) {
+      console.error('[Commission Summary] Payment options query error:', paymentOptionsError)
+    }
+
+    // Restaurants that accept credit cards (have credit_card payment method enabled)
+    const paymentOptions = (paymentOptionsData || []) as PaymentOption[]
+    const restaurantsWithCards = new Set(
+      paymentOptions
+        .filter(p => p.payment_method === 'credit_card')
+        .map(p => p.restaurant_id)
     )
 
     const restaurantOrders = new Map<number, OrderRow[]>()
@@ -137,19 +166,33 @@ export async function GET(request: NextRequest) {
       const subtotalSum = nonCashOrders.reduce((sum, o) => sum + (o.subtotal || 0), 0)
       const deliveryTips = restaurantOrdersList.reduce((sum, o) => sum + (o.tip_amount || 0), 0)
 
-      const commissionRate = config?.commission_rate || 0.10
+      // Get commission config - commission_rate is stored as percentage (e.g., 10 for 10%)
+      const commissionEnabled = config?.commission_enabled ?? true
+      const commissionRateRaw = config?.commission_rate ?? 10  // Default 10%
+      const commissionRate = commissionRateRaw / 100  // Convert to decimal (10 -> 0.10)
       const commissionType = config?.commission_type || 'percentage'
-      const usesGateway = config?.uses_gateway !== false
+      const commissionBase = config?.commission_base || 'gross'
+      
+      // Determine if restaurant accepts credit cards (uses gateway)
+      // Cash-only restaurants won't have credit_card payment option enabled
+      const usesGateway = restaurantsWithCards.has(restaurantId)
 
       let commission = 0
       let weeklyCommission = 0
       let transactionFee = 0
 
-      if (commissionType === 'weekly_flat' || commissionType === 'flat') {
-        weeklyCommission = config?.commission_rate || 0
-        transactionFee = ccOrders.length * 0.30
-      } else {
-        commission = subtotalSum * commissionRate
+      if (commissionEnabled) {
+        if (commissionType === 'fixed') {
+          // Fixed weekly commission (flat fee per week)
+          weeklyCommission = commissionRateRaw  // Use raw value as flat amount
+          transactionFee = ccOrders.length * 0.30  // Plus per-transaction fee
+        } else {
+          // Percentage commission - calculate based on commission_base
+          const baseAmount = commissionBase === 'net' 
+            ? subtotalSum  // Net = subtotal only
+            : subtotalSum  // Gross = subtotal (could include more in future)
+          commission = baseAmount * commissionRate
+        }
       }
 
       const deliveryCommission = 0
