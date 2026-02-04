@@ -127,7 +127,11 @@ const allMenuItems = [
   },
 ]
 
-export function AppSidebar() {
+interface AppSidebarProps {
+  className?: string
+}
+
+export function AppSidebar({ className }: AppSidebarProps = {}) {
   const pathname = usePathname()
   const { data: adminUser, isLoading: isLoadingUser } = useAdminUser()
   const { data: restaurants = [], isLoading: isLoadingRestaurants } = useRestaurants()
@@ -160,7 +164,7 @@ export function AppSidebar() {
   }, [isSuperAdmin, restaurants])
 
   return (
-    <Sidebar>
+    <Sidebar className={className}>
       <SidebarHeader className="border-b p-4">
         <Link href="/admin/dashboard" className="flex items-center gap-2" data-testid="link-logo">
           <img 

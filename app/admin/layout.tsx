@@ -37,10 +37,10 @@ export default function AdminLayout({
 
   return (
     <SidebarProvider style={style as React.CSSProperties}>
-      <div className="flex h-screen w-full">
-        <AppSidebar />
+      <div className="flex h-screen w-full print:block">
+        <AppSidebar className="print:hidden" />
         <div className="flex flex-1 flex-col">
-          <header className="flex h-14 items-center justify-between border-b px-4">
+          <header className="flex h-14 items-center justify-between border-b px-4 print:hidden">
             <div className="flex items-center gap-4">
               <SidebarTrigger data-testid="button-sidebar-toggle" />
               <Separator orientation="vertical" className="h-6" />
@@ -60,7 +60,7 @@ export default function AdminLayout({
               <UserDropdown />
             </div>
           </header>
-          <main className="flex-1 overflow-auto bg-muted/40 p-6">
+          <main className="flex-1 overflow-auto bg-muted/40 p-6 print:p-0 print:bg-white print:overflow-visible">
             {children}
           </main>
         </div>
