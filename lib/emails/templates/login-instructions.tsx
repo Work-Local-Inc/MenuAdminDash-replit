@@ -90,32 +90,18 @@ export default function LoginInstructionsEmail({
               To Change Your Password
             </Heading>
 
-            <div style={stepsList}>
-              <div style={stepItem}>
-                <span style={stepNumber}>1</span>
-                <Text style={stepText}>
-                  After logging in, click on the small gray circle with your initials in the top right corner to display the user options.
-                </Text>
-              </div>
-              <div style={stepItem}>
-                <span style={stepNumber}>2</span>
-                <Text style={stepText}>
-                  Click on "Profile" to access the Edit Admin User page.
-                </Text>
-              </div>
-              <div style={stepItem}>
-                <span style={stepNumber}>3</span>
-                <Text style={stepText}>
-                  Under "Security," enter your new password and confirm it.
-                </Text>
-              </div>
-              <div style={stepItem}>
-                <span style={stepNumber}>4</span>
-                <Text style={stepText}>
-                  Click "Update Password" to save your changes.
-                </Text>
-              </div>
-            </div>
+            <Text style={stepText}>
+              <strong>1.</strong> After logging in, click on the small gray circle with your initials in the top right corner to display the user options.
+            </Text>
+            <Text style={stepText}>
+              <strong>2.</strong> Click on "Profile" to access the Edit Admin User page.
+            </Text>
+            <Text style={stepText}>
+              <strong>3.</strong> Under "Security," enter your new password and confirm it.
+            </Text>
+            <Text style={stepText}>
+              <strong>4.</strong> Click "Update Password" to save your changes.
+            </Text>
 
             <Hr style={divider} />
 
@@ -262,36 +248,11 @@ const credentialLink = {
   textDecoration: 'underline',
 }
 
-const stepsList = {
-  margin: '16px 0',
-}
-
-const stepItem = {
-  display: 'flex',
-  alignItems: 'flex-start',
-  marginBottom: '12px',
-  gap: '12px',
-}
-
-const stepNumber = {
-  backgroundColor: '#DC2626',
-  color: '#ffffff',
-  borderRadius: '50%',
-  width: '24px',
-  height: '24px',
-  minWidth: '24px',
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  fontSize: '13px',
-  fontWeight: 'bold',
-}
-
 const stepText = {
   color: '#1f2937',
   fontSize: '15px',
-  lineHeight: '22px',
-  margin: '0',
+  lineHeight: '24px',
+  margin: '8px 0',
 }
 
 const divider = {
