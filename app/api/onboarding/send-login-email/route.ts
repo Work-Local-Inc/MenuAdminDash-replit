@@ -15,9 +15,11 @@ interface SendLoginEmailRequest {
   restaurantName: string
   employeeName: string
   employeeContact?: string
+  password?: string
+  dashboardUrl?: string
 }
 
-function generatePlainText(data: SendLoginEmailRequest): string {
+function generatePlainText(data: SendLoginEmailRequest, password: string, dashboardUrl: string): string {
   const lines: string[] = []
   const greeting = data.adminName ? `Hi ${data.adminName},` : 'Hi,'
   
@@ -34,9 +36,9 @@ function generatePlainText(data: SendLoginEmailRequest): string {
   lines.push('----------------------------------------')
   lines.push('LOGIN INFORMATION')
   lines.push('----------------------------------------')
-  lines.push(`Dashboard Link: ${DASHBOARD_URL}`)
+  lines.push(`Dashboard Link: ${dashboardUrl}`)
   lines.push(`Email: ${data.adminEmail}`)
-  lines.push(`Default Password: ${DEFAULT_PASSWORD}`)
+  lines.push(`Default Password: ${password}`)
   lines.push('')
   lines.push('----------------------------------------')
   lines.push('TO CHANGE YOUR PASSWORD')
@@ -93,13 +95,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const password = body.password || DEFAULT_PASSWORD
+    const dashboardUrl = body.dashboardUrl || DASHBOARD_URL
+
     console.log('[Onboarding Email] Sending login instructions', {
       adminEmail: body.adminEmail,
       restaurantName: body.restaurantName,
       employeeName: body.employeeName,
+      dashboardUrl,
     })
 
-    const plainText = generatePlainText(body)
+    const plainText = generatePlainText(body, password, dashboardUrl)
 
     const result = await resend.emails.send({
       from: `Menu.ca <${FROM_EMAIL.includes('<') ? FROM_EMAIL.match(/<(.+)>/)?.[1] || FROM_EMAIL : FROM_EMAIL}>`,
@@ -108,8 +114,8 @@ export async function POST(request: NextRequest) {
       react: LoginInstructionsEmail({
         adminName: body.adminName,
         adminEmail: body.adminEmail,
-        defaultPassword: DEFAULT_PASSWORD,
-        dashboardUrl: DASHBOARD_URL,
+        defaultPassword: password,
+        dashboardUrl: dashboardUrl,
         employeeName: body.employeeName,
         employeeContact: body.employeeContact,
       }),
