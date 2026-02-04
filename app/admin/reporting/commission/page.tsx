@@ -55,7 +55,7 @@ export default function WeeklyCommissionPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [sortField, setSortField] = useState<SortField>("total")
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc")
-  const [showNonGatewayOnly, setShowNonGatewayOnly] = useState(false)
+  const [showCashOnly, setShowCashOnly] = useState(false)
   const [showNegativeOnly, setShowNegativeOnly] = useState(false)
 
   const { data: summaryData, isLoading, error } = useQuery<CommissionSummaryRow[]>({
@@ -68,9 +68,9 @@ export default function WeeklyCommissionPage() {
     let filtered = summaryData.filter(row => {
       const matchesSearch = row.restaurant_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         row.restaurant_id.toString().includes(searchTerm)
-      const matchesGateway = !showNonGatewayOnly || !row.uses_gateway
+      const matchesCashOnly = !showCashOnly || !row.uses_gateway
       const matchesNegative = !showNegativeOnly || row.total < 0
-      return matchesSearch && matchesGateway && matchesNegative
+      return matchesSearch && matchesCashOnly && matchesNegative
     })
 
     return filtered.sort((a, b) => {
@@ -83,7 +83,7 @@ export default function WeeklyCommissionPage() {
       }
       return String(aVal).localeCompare(String(bVal)) * modifier
     })
-  }, [summaryData, searchTerm, sortField, sortDirection, showNonGatewayOnly, showNegativeOnly])
+  }, [summaryData, searchTerm, sortField, sortDirection, showCashOnly, showNegativeOnly])
 
   const totals = useMemo(() => {
     if (!filteredAndSortedData.length) return null
@@ -115,7 +115,7 @@ export default function WeeklyCommissionPage() {
     const headers = [
       "ID", "Name", "Address", "Total Unpaid", "Commission", "Weekly Commission",
       "Transaction Fee", "Bank Fee", "Charges", "Delivery Commission", 
-      "Delivery Tips", "HST", "Total", "Uses Gateway", "Order Count"
+      "Delivery Tips", "HST", "Total", "Payment Type", "Order Count"
     ]
     
     const csvContent = [
@@ -134,7 +134,7 @@ export default function WeeklyCommissionPage() {
         row.delivery_tips.toFixed(2),
         row.hst.toFixed(2),
         row.total.toFixed(2),
-        row.uses_gateway ? "Yes" : "No",
+        row.uses_gateway ? "Card" : "Cash Only",
         row.order_count,
       ].join(","))
     ].join("\n")
@@ -248,13 +248,13 @@ export default function WeeklyCommissionPage() {
                 Negative Only
               </Button>
               <Button
-                variant={showNonGatewayOnly ? "default" : "outline"}
+                variant={showCashOnly ? "default" : "outline"}
                 size="sm"
-                onClick={() => setShowNonGatewayOnly(!showNonGatewayOnly)}
-                data-testid="button-filter-non-gateway"
+                onClick={() => setShowCashOnly(!showCashOnly)}
+                data-testid="button-filter-cash-only"
               >
                 <Filter className="mr-1 h-3 w-3" />
-                Non-Gateway
+                Cash Only
               </Button>
             </div>
           </div>
@@ -285,7 +285,7 @@ export default function WeeklyCommissionPage() {
                     <SortableHeader field="delivery_tips">Tips</SortableHeader>
                     <SortableHeader field="hst">HST</SortableHeader>
                     <SortableHeader field="total">Net Pay</SortableHeader>
-                    <TableHead>Gateway</TableHead>
+                    <TableHead>Payment</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -319,9 +319,9 @@ export default function WeeklyCommissionPage() {
                       </TableCell>
                       <TableCell>
                         {row.uses_gateway ? (
-                          <Badge variant="secondary">Yes</Badge>
+                          <Badge variant="secondary">Card</Badge>
                         ) : (
-                          <Badge variant="outline" className="border-yellow-500 text-yellow-700">Invoice</Badge>
+                          <Badge variant="outline" className="border-yellow-500 text-yellow-700 dark:text-yellow-400">Cash Only</Badge>
                         )}
                       </TableCell>
                     </TableRow>
