@@ -24,6 +24,8 @@ import {
   TrendingUp,
   Sparkles,
   MapPin,
+  Rocket,
+  Wrench,
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -62,9 +64,16 @@ const allMenuItems = [
     items: [
       { title: "All Restaurants", url: "/admin/restaurants" },
       { title: "Franchise Management", url: "/admin/franchises", superAdminOnly: true },
-      { title: "Onboarding Wizard", url: "/admin/onboarding/new", superAdminOnly: true },
-      { title: "Onboarding Status", url: "/admin/onboarding", superAdminOnly: true },
       { title: "Domain Verification", url: "/admin/domains", superAdminOnly: true },
+    ],
+  },
+  {
+    title: "Onboarding",
+    icon: Rocket,
+    superAdminOnly: true,
+    items: [
+      { title: "Wizard", url: "/admin/onboarding/new" },
+      { title: "Tools", url: "/admin/onboarding/tools" },
     ],
   },
   {
