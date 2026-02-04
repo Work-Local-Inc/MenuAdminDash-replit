@@ -20,12 +20,16 @@ interface OrderRow {
 interface RestaurantRow {
   id: number
   name: string
+}
+
+interface RestaurantContact {
+  first_name: string | null
+  last_name: string | null
+  phone: string | null
+  email: string | null
   address: string | null
   city: string | null
   postal_code: string | null
-  phone: string | null
-  hst_number: string | null
-  contact_name: string | null
 }
 
 interface CommissionConfig {
@@ -71,11 +75,12 @@ export async function GET(request: NextRequest) {
 
     const { data: restaurantData, error: restaurantError } = await supabase
       .from('restaurants')
-      .select('id, name, address, city, postal_code, phone, hst_number, contact_name')
+      .select('id, name')
       .eq('id', restaurantId)
       .single()
 
     if (restaurantError || !restaurantData) {
+      console.error('[Statement] Restaurant query error:', restaurantError)
       return NextResponse.json(
         { error: 'Restaurant not found' },
         { status: 404 }
@@ -83,6 +88,16 @@ export async function GET(request: NextRequest) {
     }
 
     const restaurant = restaurantData as RestaurantRow
+
+    const { data: contactData } = await supabase
+      .schema('menuca_v3')
+      .from('restaurant_contacts')
+      .select('first_name, last_name, phone, email, address, city, postal_code')
+      .eq('restaurant_id', restaurantId)
+      .limit(1)
+      .single()
+
+    const contact = (contactData || {}) as RestaurantContact
 
     const { data: ordersData, error: ordersError } = await supabase
       .from('orders')
@@ -174,12 +189,14 @@ export async function GET(request: NextRequest) {
       restaurant: {
         id: restaurant.id,
         name: restaurant.name,
-        contact_name: restaurant.contact_name || '',
-        address: restaurant.address || '',
-        city: restaurant.city || '',
-        postal_code: restaurant.postal_code || '',
-        phone: restaurant.phone || '',
-        hst_number: restaurant.hst_number,
+        contact_name: contact.first_name && contact.last_name 
+          ? `${contact.first_name} ${contact.last_name}` 
+          : contact.first_name || '',
+        address: contact.address || '',
+        city: contact.city || '',
+        postal_code: contact.postal_code || '',
+        phone: contact.phone || '',
+        hst_number: null,
       },
       summary: {
         cash_orders: { count: cashOrders.length, total: Math.round(cashTotal * 100) / 100 },

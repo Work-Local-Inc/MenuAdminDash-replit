@@ -20,7 +20,6 @@ interface OrderRow {
 interface RestaurantRow {
   id: number
   name: string
-  address: string | null
 }
 
 interface CommissionConfig {
@@ -86,7 +85,7 @@ export async function GET(request: NextRequest) {
 
     const { data: restaurantsData, error: restaurantsError } = await supabase
       .from('restaurants')
-      .select('id, name, address')
+      .select('id, name')
 
     if (restaurantsError) {
       console.error('[Commission Summary] Restaurants query error:', restaurantsError)
@@ -94,7 +93,7 @@ export async function GET(request: NextRequest) {
 
     const restaurants = (restaurantsData || []) as RestaurantRow[]
     const restaurantMap = new Map(
-      restaurants.map(r => [r.id, { name: r.name, address: r.address || '' }])
+      restaurants.map(r => [r.id, { name: r.name }])
     )
 
     const { data: configData, error: configError } = await supabase
@@ -121,7 +120,7 @@ export async function GET(request: NextRequest) {
     const summaryRows = []
 
     for (const [restaurantId, restaurantOrdersList] of Array.from(restaurantOrders.entries())) {
-      const restaurantInfo = restaurantMap.get(restaurantId) || { name: `Restaurant #${restaurantId}`, address: '' }
+      const restaurantInfo = restaurantMap.get(restaurantId) || { name: `Restaurant #${restaurantId}` }
       const config = configMap.get(restaurantId)
 
       const ccOrders = restaurantOrdersList.filter(o => 
@@ -164,7 +163,6 @@ export async function GET(request: NextRequest) {
       summaryRows.push({
         restaurant_id: restaurantId,
         restaurant_name: restaurantInfo.name,
-        restaurant_address: restaurantInfo.address,
         total_unpaid: Math.round(totalUnpaid * 100) / 100,
         commission: Math.round(commission * 100) / 100,
         weekly_commission: Math.round(weeklyCommission * 100) / 100,
