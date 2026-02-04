@@ -14,6 +14,7 @@ import {
 } from '@react-email/components'
 
 const LOGO_URL = 'https://nthpbtdjhhnwfxqsxbvy.supabase.co/storage/v1/object/public/email-assets/logo.png';
+const HERO_BG_URL = 'https://nthpbtdjhhnwfxqsxbvy.supabase.co/storage/v1/object/public/email-assets/hero-bg.jpg';
 
 interface LoginInstructionsEmailProps {
   adminName?: string
@@ -174,8 +175,10 @@ const logoImage = {
 }
 
 const heroSection = {
-  backgroundColor: '#DC2626',
-  padding: '32px 24px',
+  backgroundImage: `linear-gradient(rgba(220, 38, 38, 0.88), rgba(220, 38, 38, 0.88)), url(${HERO_BG_URL})`,
+  backgroundSize: 'cover',
+  backgroundPosition: 'center',
+  padding: '48px 24px',
   textAlign: 'center' as const,
 }
 
