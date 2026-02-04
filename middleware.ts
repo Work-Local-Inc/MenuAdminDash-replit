@@ -34,7 +34,10 @@ export async function middleware(request: NextRequest) {
         const url = request.nextUrl.clone()
         url.pathname = `/r/${mapping.slug}`
         console.log(`[Middleware] Rewriting ${subdomain} to ${url.pathname}`)
-        return NextResponse.rewrite(url)
+        // Add header to indicate this is a subdomain rewrite (skip slug redirect in page)
+        const response = NextResponse.rewrite(url)
+        response.headers.set('x-subdomain-rewrite', 'true')
+        return response
       }
       
       // For other paths (/checkout, /cart, /customer/*)

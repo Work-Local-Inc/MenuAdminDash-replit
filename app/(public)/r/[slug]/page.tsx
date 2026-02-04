@@ -1,5 +1,6 @@
 import { notFound, redirect } from 'next/navigation';
 import { Metadata } from 'next';
+import { headers } from 'next/headers';
 import { unstable_noStore as noStore } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -172,10 +173,15 @@ export default async function RestaurantPage({ params }: RestaurantPageProps) {
     redirect('/');
   }
   
-  // Redirect to correct slug if needed
-  const correctSlug = createRestaurantSlug(restaurant.id, restaurant.name);
-  if (params.slug !== correctSlug) {
-    redirect(`/r/${correctSlug}`);
+  // Redirect to correct slug if needed (but skip if this is a subdomain rewrite)
+  const headersList = headers();
+  const isSubdomainRewrite = headersList.get('x-subdomain-rewrite') === 'true';
+  
+  if (!isSubdomainRewrite) {
+    const correctSlug = createRestaurantSlug(restaurant.id, restaurant.name);
+    if (params.slug !== correctSlug) {
+      redirect(`/r/${correctSlug}`);
+    }
   }
   
   // Fetch menu using cached get_restaurant_menu SQL function (250x faster)
