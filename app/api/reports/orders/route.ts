@@ -18,9 +18,10 @@ interface OrderRow {
   tip_amount: number
   discount_amount: number
   total_amount: number
-  payment_method: string
+  payment_method: string | null
   payment_status: string
   created_at: string
+  stripe_payment_intent_id: string | null
 }
 
 interface RestaurantRow {
@@ -71,7 +72,8 @@ export async function GET(request: NextRequest) {
         total_amount,
         payment_method,
         payment_status,
-        created_at
+        created_at,
+        stripe_payment_intent_id
       `)
       .gte('created_at', `${startDate}T00:00:00`)
       .lte('created_at', `${endDate}T23:59:59`)
@@ -101,6 +103,10 @@ export async function GET(request: NextRequest) {
 
     const formattedOrders = orders.map(order => {
       const createdAt = new Date(order.created_at)
+      // Derive payment method: Stripe orders have stripe_payment_intent_id, payment_method may be null
+      const derivedPaymentMethod = order.stripe_payment_intent_id 
+        ? 'card' 
+        : (order.payment_method || 'unknown')
       return {
         order_id: order.uuid || order.id.toString(),
         order_number: order.order_number || `#${order.id}`,
@@ -116,7 +122,7 @@ export async function GET(request: NextRequest) {
         tip_amount: order.tip_amount || 0,
         discount_amount: order.discount_amount || 0,
         total_amount: order.total_amount || 0,
-        payment_method: order.payment_method || 'unknown',
+        payment_method: derivedPaymentMethod,
         payment_status: order.payment_status || 'pending',
       }
     })
@@ -128,7 +134,7 @@ export async function GET(request: NextRequest) {
         .filter(o => o.payment_method === 'credit_card' || o.payment_method === 'card')
         .reduce((sum, o) => sum + o.total_amount, 0),
       total_cash: formattedOrders
-        .filter(o => o.payment_method === 'cash')
+        .filter(o => ['cash', 'credit_at_door', 'debit_at_door', 'credit_or_debit_at_door'].includes(o.payment_method))
         .reduce((sum, o) => sum + o.total_amount, 0),
       total_interac: formattedOrders
         .filter(o => o.payment_method === 'interac')

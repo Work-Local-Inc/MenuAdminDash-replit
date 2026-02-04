@@ -12,9 +12,10 @@ interface OrderRow {
   total_amount: number
   delivery_fee: number
   tip_amount: number
-  payment_method: string
+  payment_method: string | null
   payment_status: string
   order_status: string
+  stripe_payment_intent_id: string | null
 }
 
 interface RestaurantRow {
@@ -66,7 +67,8 @@ export async function GET(request: NextRequest) {
         tip_amount,
         payment_method,
         payment_status,
-        order_status
+        order_status,
+        stripe_payment_intent_id
       `)
       .gte('created_at', `${startDate}T00:00:00`)
       .lte('created_at', `${endDate}T23:59:59`)
@@ -123,8 +125,10 @@ export async function GET(request: NextRequest) {
       const restaurantInfo = restaurantMap.get(restaurantId) || { name: `Restaurant #${restaurantId}` }
       const config = configMap.get(restaurantId)
 
+      // Stripe orders have stripe_payment_intent_id set (payment_method may be null)
+      // Cash orders have payment_method = 'cash', 'interac', 'credit_at_door', etc.
       const ccOrders = restaurantOrdersList.filter(o => 
-        o.payment_method === 'credit_card' || o.payment_method === 'card'
+        o.stripe_payment_intent_id || o.payment_method === 'credit_card' || o.payment_method === 'card'
       )
       const interacOrders = restaurantOrdersList.filter(o => o.payment_method === 'interac')
       const nonCashOrders = [...ccOrders, ...interacOrders]

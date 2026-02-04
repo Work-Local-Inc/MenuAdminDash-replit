@@ -42,6 +42,7 @@ Preferred communication style: Simple, everyday language.
 -   **Stripe Key Management**: Ensures Stripe keys match the active payment mode.
 -   **Coupon Validation**: Server-side validation of coupon codes at payment intent creation, including item targeting, tiered discounts, and usage limits.
 -   **RBAC Security Hardening**: Comprehensive role-based access control with `verifyAdminAuth` and `verifyRestaurantAccess()` functions applied to critical endpoints to prevent unauthorized and cross-restaurant access.
+-   **Payment Method Detection**: Stripe orders have `stripe_payment_intent_id` set but `payment_method` may be null in the orders table. Reports check for `stripe_payment_intent_id` to identify card payments. Cash orders have `payment_method` values like 'cash', 'interac', 'credit_at_door', etc.
 
 ## External Dependencies
 
