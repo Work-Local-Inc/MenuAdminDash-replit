@@ -5,7 +5,7 @@ import { verifyAdminAuth } from '@/lib/auth/admin-check'
 
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
 const DEFAULT_PASSWORD = process.env.ONBOARDING_DEFAULT_PASSWORD || 'Menu123*'
-const DASHBOARD_URL = process.env.ONBOARDING_DASHBOARD_URL || 'https://menuv3.replit.app/login'
+const DASHBOARD_URL = process.env.ONBOARDING_DASHBOARD_URL || 'https://orders.menu.ca/login'
 
 const SUPER_ADMIN_ROLE_ID = 1
 
