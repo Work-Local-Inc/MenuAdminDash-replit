@@ -167,12 +167,15 @@ export function AppSidebar() {
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   {item.items ? (
-                    <Collapsible defaultOpen={item.items.some((sub: { url: string }) => pathname.startsWith(sub.url))}>
+                    <Collapsible 
+                      className="group/collapsible"
+                      defaultOpen={item.items.some((sub: { url: string }) => pathname.startsWith(sub.url))}
+                    >
                       <CollapsibleTrigger asChild>
                         <SidebarMenuButton data-testid={`button-nav-${item.title.toLowerCase()}`}>
                           <item.icon className="h-4 w-4" />
                           <span>{item.title}</span>
-                          <ChevronRight className="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                          <ChevronRight className="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                         </SidebarMenuButton>
                       </CollapsibleTrigger>
                       <CollapsibleContent>
