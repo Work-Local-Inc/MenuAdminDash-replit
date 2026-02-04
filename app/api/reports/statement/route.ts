@@ -21,7 +21,11 @@ interface RestaurantRow {
   id: number
   name: string
   address: string | null
+  city: string | null
+  postal_code: string | null
+  phone: string | null
   hst_number: string | null
+  contact_name: string | null
 }
 
 interface CommissionConfig {
@@ -67,7 +71,7 @@ export async function GET(request: NextRequest) {
 
     const { data: restaurantData, error: restaurantError } = await supabase
       .from('restaurants')
-      .select('id, name, address, hst_number')
+      .select('id, name, address, city, postal_code, phone, hst_number, contact_name')
       .eq('id', restaurantId)
       .single()
 
@@ -152,20 +156,29 @@ export async function GET(request: NextRequest) {
     const totalFees = totalServiceFees + hst
 
     const totalUnpaid = ccTotal + interacTotal
+    const totalOrderValue = cashTotal + ccTotal + interacTotal
     const netPayable = totalUnpaid - totalFees
+
+    const deliveryTips = orders.reduce((sum, o) => sum + (o.tip_amount || 0), 0)
+    const deliveryFees = orders.reduce((sum, o) => sum + (o.delivery_fee || 0), 0)
 
     const weekNumber = getWeek(new Date(startDate))
     const year = getYear(new Date(startDate))
-    const statementNumber = `STM-${restaurantId}-${year}-${String(weekNumber).padStart(2, '0')}`
+    const statementNumber = String(weekNumber)
 
     const statement = {
       statement_number: statementNumber,
       period_start: startDate,
       period_end: endDate,
+      menu_hst_number: "82804 8280 RT0001",
       restaurant: {
         id: restaurant.id,
         name: restaurant.name,
+        contact_name: restaurant.contact_name || '',
         address: restaurant.address || '',
+        city: restaurant.city || '',
+        postal_code: restaurant.postal_code || '',
+        phone: restaurant.phone || '',
         hst_number: restaurant.hst_number,
       },
       summary: {
@@ -190,6 +203,12 @@ export async function GET(request: NextRequest) {
         bank_fees: Math.round(bankFees * 100) / 100,
         hst: Math.round(hst * 100) / 100,
         total_fees: Math.round(totalFees * 100) / 100,
+      },
+      totals: {
+        total_order_value: Math.round(totalOrderValue * 100) / 100,
+        total_unpaid: Math.round(totalUnpaid * 100) / 100,
+        delivery_tips: Math.round(deliveryTips * 100) / 100,
+        delivery_fees: Math.round(deliveryFees * 100) / 100,
       },
       net_payable: Math.round(netPayable * 100) / 100,
     }
