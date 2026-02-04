@@ -298,21 +298,21 @@ export default function WeeklyCommissionPage() {
                       )}
                       data-testid={`row-restaurant-${row.restaurant_id}`}
                     >
-                      <TableCell className="font-mono text-sm">{row.restaurant_id}</TableCell>
+                      <TableCell className="tabular-nums text-sm">{row.restaurant_id}</TableCell>
                       <TableCell className="font-medium max-w-[200px] truncate" title={row.restaurant_name}>
                         {row.restaurant_name}
                       </TableCell>
                       <TableCell>{row.order_count}</TableCell>
-                      <TableCell className="font-mono">{formatCurrency(row.total_unpaid)}</TableCell>
-                      <TableCell className="font-mono">{formatCurrency(row.commission)}</TableCell>
-                      <TableCell className="font-mono">{formatCurrency(row.weekly_commission)}</TableCell>
-                      <TableCell className="font-mono">{formatCurrency(row.transaction_fee)}</TableCell>
-                      <TableCell className="font-mono">{formatCurrency(row.bank_fee)}</TableCell>
-                      <TableCell className="font-mono">{formatCurrency(row.delivery_commission)}</TableCell>
-                      <TableCell className="font-mono">{formatCurrency(row.delivery_tips)}</TableCell>
-                      <TableCell className="font-mono">{formatCurrency(row.hst)}</TableCell>
+                      <TableCell className="tabular-nums">{formatCurrency(row.total_unpaid)}</TableCell>
+                      <TableCell className="tabular-nums">{formatCurrency(row.commission)}</TableCell>
+                      <TableCell className="tabular-nums">{formatCurrency(row.weekly_commission)}</TableCell>
+                      <TableCell className="tabular-nums">{formatCurrency(row.transaction_fee)}</TableCell>
+                      <TableCell className="tabular-nums">{formatCurrency(row.bank_fee)}</TableCell>
+                      <TableCell className="tabular-nums">{formatCurrency(row.delivery_commission)}</TableCell>
+                      <TableCell className="tabular-nums">{formatCurrency(row.delivery_tips)}</TableCell>
+                      <TableCell className="tabular-nums">{formatCurrency(row.hst)}</TableCell>
                       <TableCell className={cn(
-                        "font-mono font-semibold",
+                        "tabular-nums font-semibold",
                         row.total < 0 && "text-destructive"
                       )}>
                         {formatCurrency(row.total)}
@@ -344,27 +344,27 @@ export default function WeeklyCommissionPage() {
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 text-sm">
                 <div>
                   <span className="text-muted-foreground">CC Total:</span>
-                  <p className="font-mono font-semibold">{formatCurrency(totals.total_unpaid)}</p>
+                  <p className="tabular-nums font-semibold">{formatCurrency(totals.total_unpaid)}</p>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Commission:</span>
-                  <p className="font-mono font-semibold">{formatCurrency(totals.commission)}</p>
+                  <p className="tabular-nums font-semibold">{formatCurrency(totals.commission)}</p>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Bank Fees:</span>
-                  <p className="font-mono font-semibold">{formatCurrency(totals.bank_fee)}</p>
+                  <p className="tabular-nums font-semibold">{formatCurrency(totals.bank_fee)}</p>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Delivery:</span>
-                  <p className="font-mono font-semibold">{formatCurrency(totals.delivery_commission)}</p>
+                  <p className="tabular-nums font-semibold">{formatCurrency(totals.delivery_commission)}</p>
                 </div>
                 <div>
                   <span className="text-muted-foreground">HST:</span>
-                  <p className="font-mono font-semibold">{formatCurrency(totals.hst)}</p>
+                  <p className="tabular-nums font-semibold">{formatCurrency(totals.hst)}</p>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Net Payable:</span>
-                  <p className="font-mono font-semibold text-primary">{formatCurrency(totals.total)}</p>
+                  <p className="tabular-nums font-semibold text-primary">{formatCurrency(totals.total)}</p>
                 </div>
               </div>
             </div>

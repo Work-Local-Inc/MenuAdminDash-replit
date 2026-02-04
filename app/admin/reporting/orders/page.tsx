@@ -344,7 +344,7 @@ export default function DailyOrdersPage() {
                 <TableBody>
                   {data?.orders.map((order) => (
                     <TableRow key={order.order_id} data-testid={`row-order-${order.order_id}`}>
-                      <TableCell className="font-mono text-sm">{order.order_number}</TableCell>
+                      <TableCell className="tabular-nums text-sm">{order.order_number}</TableCell>
                       <TableCell>
                         <div className="text-sm">{order.date_placed}</div>
                         <div className="text-xs text-muted-foreground">{order.order_time}</div>
@@ -357,9 +357,9 @@ export default function DailyOrdersPage() {
                       </TableCell>
                       <TableCell>{getStatusBadge(order.order_status)}</TableCell>
                       <TableCell>{getPaymentBadge(order.payment_method)}</TableCell>
-                      <TableCell className="text-right font-mono">{formatCurrency(order.subtotal)}</TableCell>
-                      <TableCell className="text-right font-mono">{formatCurrency(order.tax_amount)}</TableCell>
-                      <TableCell className="text-right font-mono font-semibold">{formatCurrency(order.total_amount)}</TableCell>
+                      <TableCell className="text-right tabular-nums">{formatCurrency(order.subtotal)}</TableCell>
+                      <TableCell className="text-right tabular-nums">{formatCurrency(order.tax_amount)}</TableCell>
+                      <TableCell className="text-right tabular-nums font-semibold">{formatCurrency(order.total_amount)}</TableCell>
                       <TableCell>
                         <Link href={`/admin/orders/${order.order_id}`}>
                           <Button variant="ghost" size="icon">
