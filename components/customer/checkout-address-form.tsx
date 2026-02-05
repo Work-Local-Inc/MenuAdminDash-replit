@@ -309,10 +309,11 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick,
         })
         return
       }
-      if (!email || !email.includes('@')) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!email || !emailRegex.test(email)) {
         toast({
           title: "Email required",
-          description: "Please enter a valid email address",
+          description: "Please enter a valid email address (e.g., name@example.com)",
           variant: "destructive",
         })
         return

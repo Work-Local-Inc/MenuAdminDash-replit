@@ -508,10 +508,11 @@ export default function CheckoutPage() {
         })
         return
       }
-      if (!guestPickupEmail || !guestPickupEmail.includes('@')) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!guestPickupEmail || !emailRegex.test(guestPickupEmail)) {
         toast({
           title: "Email required",
-          description: "Please enter a valid email address",
+          description: "Please enter a valid email address (e.g., name@example.com)",
           variant: "destructive",
         })
         return
