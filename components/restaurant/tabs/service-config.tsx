@@ -70,6 +70,89 @@ interface RestaurantServiceConfigProps {
   restaurantId: string
 }
 
+function TwilioPhoneConfig({ restaurantId }: { restaurantId: string }) {
+  const { toast } = useToast()
+  const [phone, setPhone] = React.useState('')
+  
+  const { data: twilioConfig, isLoading } = useQuery<{ phone: string | null; enables_calls: boolean }>({
+    queryKey: ['/api/restaurants', restaurantId, 'twilio-config'],
+    queryFn: async () => {
+      const res = await fetch(`/api/restaurants/${restaurantId}/twilio-config`)
+      if (!res.ok) throw new Error('Failed to fetch twilio config')
+      return res.json()
+    },
+  })
+
+  React.useEffect(() => {
+    if (twilioConfig?.phone) {
+      setPhone(twilioConfig.phone)
+    }
+  }, [twilioConfig])
+
+  const saveTwilioConfig = useMutation({
+    mutationFn: async (phoneNumber: string) => {
+      const res = await fetch(`/api/restaurants/${restaurantId}/twilio-config`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: phoneNumber || null, enables_calls: true }),
+      })
+      if (!res.ok) throw new Error(await res.text())
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/restaurants', restaurantId, 'twilio-config'] })
+      toast({ title: "Success", description: "Fallback phone number saved" })
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" })
+    },
+  })
+
+  if (isLoading) {
+    return <div className="p-4 text-sm text-muted-foreground">Loading...</div>
+  }
+
+  return (
+    <div className="rounded-lg border p-4 space-y-3">
+      <div className="space-y-1">
+        <label className="text-sm font-medium">Fallback Phone Number</label>
+        <p className="text-xs text-muted-foreground">
+          This number will receive automated calls when orders aren't acknowledged. 
+          Leave blank to use the restaurant admin's phone.
+        </p>
+      </div>
+      <div className="flex gap-2">
+        <Input
+          type="tel"
+          placeholder="+1 (555) 123-4567"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          className="flex-1"
+          data-testid="input-twilio-phone"
+        />
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => saveTwilioConfig.mutate(phone)}
+          disabled={saveTwilioConfig.isPending}
+          data-testid="button-save-twilio-phone"
+        >
+          {saveTwilioConfig.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            "Save"
+          )}
+        </Button>
+      </div>
+      {twilioConfig?.phone && (
+        <p className="text-xs text-green-600">
+          Currently configured: {twilioConfig.phone}
+        </p>
+      )}
+    </div>
+  )
+}
+
 export function RestaurantServiceConfig({ restaurantId }: RestaurantServiceConfigProps) {
   const { toast } = useToast()
 
@@ -184,6 +267,7 @@ export function RestaurantServiceConfig({ restaurantId }: RestaurantServiceConfi
   const deliveryEnabled = form.watch('has_delivery_enabled')
   const pickupEnabled = form.watch('pickup_enabled')
   const busyModeEnabled = form.watch('busy_mode_enabled')
+  const twilioCallEnabled = form.watch('twilio_call')
 
   return (
     <Form {...form}>
@@ -437,8 +521,8 @@ export function RestaurantServiceConfig({ restaurantId }: RestaurantServiceConfi
                   <div className="space-y-0.5 flex items-center gap-3">
                     <Phone className="h-4 w-4 text-muted-foreground" />
                     <div>
-                      <FormLabel>Twilio Phone Calls</FormLabel>
-                      <FormDescription>Enable automated phone call notifications for new orders</FormDescription>
+                      <FormLabel>Twilio Fallback Calls</FormLabel>
+                      <FormDescription>Auto-call the restaurant if tablet orders aren't acknowledged within 3 minutes</FormDescription>
                     </div>
                   </div>
                   <FormControl>
@@ -451,6 +535,10 @@ export function RestaurantServiceConfig({ restaurantId }: RestaurantServiceConfi
                 </FormItem>
               )}
             />
+
+            {twilioCallEnabled && (
+              <TwilioPhoneConfig restaurantId={restaurantId} />
+            )}
 
           </CardContent>
         </Card>
