@@ -106,7 +106,14 @@ async function handleRequest(request: NextRequest) {
 
     const repeatCount = Number(searchParams.get('repeat') || '0')
     const order = await fetchOrder(orderId)
-    console.log('[Twilio Voice] Order items:', JSON.stringify(order.items, null, 2))
+    
+    // Detailed logging for debugging "zero items" issue
+    console.log('[Twilio Voice] Order ID:', orderId)
+    console.log('[Twilio Voice] Order number:', order.order_number)
+    console.log('[Twilio Voice] Items type:', typeof order.items)
+    console.log('[Twilio Voice] Items is array:', Array.isArray(order.items))
+    console.log('[Twilio Voice] Items length:', Array.isArray(order.items) ? order.items.length : 'N/A')
+    console.log('[Twilio Voice] Raw items:', JSON.stringify(order.items, null, 2))
 
     if (digits === '2') {
       await recordFallbackCallAttempt({

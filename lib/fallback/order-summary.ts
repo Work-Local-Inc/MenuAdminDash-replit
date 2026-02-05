@@ -118,7 +118,11 @@ export function buildOrderFallbackMessage(order: {
   special_instructions?: string | null
   restaurants?: { name?: string | null; timezone?: string | null }
 }) {
+  console.log('[OrderSummary] Input order.items type:', typeof order.items)
+  console.log('[OrderSummary] Input order.items:', JSON.stringify(order.items)?.substring(0, 500))
   const items = parseItems(order.items)
+  console.log('[OrderSummary] Parsed items count:', items.length)
+  console.log('[OrderSummary] Parsed items:', JSON.stringify(items)?.substring(0, 500))
   const deliveryAddress = parseDeliveryAddress(order.delivery_address)
   const serviceTime = getServiceTime(deliveryAddress, order.special_instructions)
   const restaurantName = order.restaurants?.name || 'your restaurant'
