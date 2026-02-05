@@ -26,7 +26,7 @@ interface OrderMetaRow {
 
 const FALLBACK_CALL_MARKER = '[TWILIO_FALLBACK_CALL]'
 const FALLBACK_CONFIRMED_MARKER = '[TWILIO_FALLBACK_CONFIRMED]'
-const MAX_CALL_ATTEMPTS = 3
+const MAX_CALL_ATTEMPTS = 1 // Temporarily disabled retry until AMD is implemented
 const RETRY_INTERVAL_MS = 3 * 60 * 1000 // 3 minutes between retries
 
 export async function getRestaurantPhoneForFallback(restaurantId: number): Promise<string | null> {
