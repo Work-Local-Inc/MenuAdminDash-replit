@@ -96,21 +96,16 @@ function formatDigitsForSpeech(digits: string): string {
 }
 
 function summarizeItems(items: OrderItem[]) {
-  // Get all items with quantities for speech
-  const allItems = items.map((item) => {
+  // Build numbered list: "Item 1: Donair. Item 2: Chicken Shawarma."
+  const numberedItems = items.map((item, index) => {
     const qty = item.quantity && item.quantity > 1 ? `${item.quantity} ` : ''
-    return `${qty}${getItemName(item)}`.trim()
+    const itemName = `${qty}${getItemName(item)}`.trim()
+    return `Item ${index + 1}: ${itemName}`
   })
-  
-  // For speech: read up to 4 items, mention "and more" if there are extras
-  const maxToRead = 4
-  const itemsToRead = allItems.slice(0, maxToRead)
-  const remaining = allItems.length - itemsToRead.length
 
   return {
     itemCount: items.length,
-    itemsToRead,
-    remaining,
+    numberedItems,
   }
 }
 
@@ -136,28 +131,26 @@ export function buildOrderFallbackMessage(order: {
     ? formatDigitsForSpeech(getLastDigits(order.order_number, 5))
     : ''
 
-  const { itemCount, itemsToRead, remaining } = summarizeItems(items)
+  const { itemCount, numberedItems } = summarizeItems(items)
 
   const serviceTimeText = serviceTime.type === 'scheduled' && serviceTime.scheduledTime
     ? `scheduled for ${formatScheduledTime(serviceTime.scheduledTime, timeZone)}`
     : 'A S A P'
 
-  // Build item text - read items with quantities
-  let itemsText = ''
-  if (itemsToRead.length > 0) {
-    if (remaining > 0) {
-      itemsText = `${itemsToRead.join(', ')}, and ${remaining} more items`
-    } else {
-      itemsText = itemsToRead.join(', ')
-    }
-  }
+  // Build item list - each item on its own line with pauses
+  // "Item 1: Donair. Item 2: Chicken Shawarma." etc.
+  const itemsText = numberedItems.length > 0 
+    ? numberedItems.join('. ') + '.'
+    : ''
 
-  // Friendly template with natural pauses (commas create pauses in TTS)
+  // Friendly template with clear numbered item list
   const message = [
     `Hi! This is Menu dot C A calling for ${restaurantName}.`,
     `You have a new ${orderType} order, ${serviceTimeText}.`,
     orderDigits ? `Order ending in ${orderDigits}.` : '',
-    itemsText ? `${itemsText}, totaling ${total}.` : `Total ${total}.`,
+    itemsText ? `The order contains ${itemCount} items.` : '',
+    itemsText,
+    `Total: ${total}.`,
   ].filter(Boolean).join(' ')
 
   const shortMessage = `New ${orderType} order for ${restaurantName}. ${serviceTimeText}. ${total}.`
