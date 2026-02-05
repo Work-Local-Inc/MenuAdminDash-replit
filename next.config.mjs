@@ -11,6 +11,7 @@ const nextConfig = {
   // Disable Suspense boundary requirement for useSearchParams
   experimental: {
     missingSuspenseWithCSRBailout: false,
+    instrumentationHook: true,
   },
   env: {
     // Use TEST Stripe key for testing with 4242 cards
