@@ -18,10 +18,11 @@ function buildTwiml(message: string, orderId: number, token: string | null, repe
   if (token) {
     actionUrl.searchParams.set('t', token)
   }
+  const safeActionUrl = escapeForXml(actionUrl.toString())
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Gather numDigits="1" action="${actionUrl.toString()}" method="POST" timeout="6">
+  <Gather numDigits="1" action="${safeActionUrl}" method="POST" timeout="6">
     <Say voice="alice">${safeMessage} Press 1 to repeat. Press 2 to confirm received.</Say>
   </Gather>
   <Say voice="alice">No input received. Goodbye.</Say>
