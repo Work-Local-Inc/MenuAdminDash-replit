@@ -102,6 +102,7 @@ async function handleRequest(request: NextRequest) {
 
     const repeatCount = Number(searchParams.get('repeat') || '0')
     const order = await fetchOrder(orderId)
+    console.log('[Twilio Voice] Order items:', JSON.stringify(order.items, null, 2))
 
     if (digits === '2') {
       await recordFallbackCallAttempt({

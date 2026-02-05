@@ -5,6 +5,9 @@ export type OrderSummary = {
 
 type OrderItem = {
   name?: string
+  dish_name?: string
+  item_name?: string
+  menu_item_name?: string
   quantity?: number
 }
 
@@ -79,11 +82,15 @@ function formatCurrency(amount: any): string {
   }).format(num)
 }
 
+function getItemName(item: OrderItem): string {
+  return item.dish_name || item.name || item.item_name || item.menu_item_name || 'item'
+}
+
 function summarizeItems(items: OrderItem[]) {
   const totalCount = items.reduce((sum, item) => sum + (item.quantity || 1), 0)
-  const topItems = items.slice(0, 2).map((item) => {
+  const topItems = items.slice(0, 3).map((item) => {
     const qty = item.quantity && item.quantity > 1 ? `${item.quantity} ` : ''
-    return `${qty}${item.name || 'item'}`.trim()
+    return `${qty}${getItemName(item)}`.trim()
   })
   const remainingCount = Math.max(items.length - topItems.length, 0)
 
