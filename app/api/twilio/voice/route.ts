@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { buildOrderSpeechSummary, OrderForSpeech, OrderItemForSpeech } from '@/lib/twilio/order-summary'
+import { markOrderAcknowledgedByPhone } from '@/lib/twilio/order-fallback'
 
 const VOICE_TOKEN = process.env.TWILIO_VOICE_TOKEN
+const VOICE_BASE_URL = process.env.TWILIO_VOICE_BASE_URL
 
 interface OrderRow {
   id: number
@@ -86,6 +88,7 @@ export async function POST(request: NextRequest) {
 
     if (digits === '2') {
       console.log(`[Twilio Voice] Order ${order.order_number} confirmed by phone`)
+      await markOrderAcknowledgedByPhone(orderId)
       return new NextResponse(
         generateTwiML('Thank you! Order confirmed. Goodbye.'),
         { headers: { 'Content-Type': 'text/xml' } }
@@ -117,7 +120,8 @@ function generateTwiML(message: string): string {
 }
 
 function generateGatherTwiML(message: string, orderId: number): string {
-  const actionUrl = `/api/twilio/voice?orderId=${orderId}&token=${VOICE_TOKEN}`
+  const baseUrl = VOICE_BASE_URL || ''
+  const actionUrl = `${baseUrl}/api/twilio/voice?orderId=${orderId}&token=${VOICE_TOKEN}`
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Gather numDigits="1" action="${escapeXml(actionUrl)}" method="POST" timeout="10">

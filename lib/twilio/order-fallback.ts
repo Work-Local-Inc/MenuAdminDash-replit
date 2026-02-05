@@ -19,7 +19,12 @@ interface LocationRow {
   phone: string | null
 }
 
-const callAttemptedOrders = new Set<number>()
+interface OrderMetaRow {
+  id: number
+  special_instructions: string | null
+}
+
+const FALLBACK_CALL_MARKER = '[TWILIO_FALLBACK_CALL]'
 
 export async function getRestaurantPhoneForFallback(restaurantId: number): Promise<string | null> {
   const supabase = createAdminClient()
@@ -61,16 +66,80 @@ export async function logFallbackCallAttempt(
   success: boolean,
   error?: string
 ): Promise<void> {
+  const supabase = createAdminClient()
+  
   const note = success
-    ? `Twilio fallback call attempted to ${phone}. Call SID: ${callSid}`
-    : `Twilio fallback call failed to ${phone}. Error: ${error || 'Unknown'}`
+    ? `${FALLBACK_CALL_MARKER} Call placed to ${phone}. SID: ${callSid}`
+    : `${FALLBACK_CALL_MARKER} Call failed to ${phone}. Error: ${error || 'Unknown'}`
+  
+  const timestamp = new Date().toISOString()
+  const logEntry = `[${timestamp}] ${note}`
+  
+  const { data: order } = await supabase
+    .from('orders')
+    .select('id, special_instructions')
+    .eq('id', orderId)
+    .single() as { data: OrderMetaRow | null }
+  
+  if (order) {
+    const existingInstructions = order.special_instructions || ''
+    const newInstructions = existingInstructions 
+      ? `${existingInstructions}\n---\n${logEntry}`
+      : `---\n${logEntry}`
+    
+    await (supabase
+      .from('orders')
+      .update({ special_instructions: newInstructions } as never)
+      .eq('id', orderId))
+  }
   
   console.log(`[OrderFallback] Order ${orderId}: ${note}`)
-  callAttemptedOrders.add(orderId)
 }
 
-export function hasFallbackCallBeenAttempted(orderId: number): boolean {
-  return callAttemptedOrders.has(orderId)
+export async function hasFallbackCallBeenAttempted(orderId: number): Promise<boolean> {
+  const supabase = createAdminClient()
+  
+  const { data: order } = await supabase
+    .from('orders')
+    .select('id, special_instructions')
+    .eq('id', orderId)
+    .single() as { data: OrderMetaRow | null }
+  
+  if (!order || !order.special_instructions) {
+    return false
+  }
+  
+  return order.special_instructions.includes(FALLBACK_CALL_MARKER)
+}
+
+export async function markOrderAcknowledgedByPhone(orderId: number): Promise<void> {
+  const supabase = createAdminClient()
+  
+  const timestamp = new Date().toISOString()
+  const note = `${FALLBACK_CALL_MARKER} Order confirmed via phone at ${timestamp}`
+  
+  const { data: order } = await supabase
+    .from('orders')
+    .select('id, special_instructions, acknowledged_at')
+    .eq('id', orderId)
+    .single() as { data: (OrderMetaRow & { acknowledged_at: string | null }) | null }
+  
+  if (order && !order.acknowledged_at) {
+    const existingInstructions = order.special_instructions || ''
+    const newInstructions = existingInstructions 
+      ? `${existingInstructions}\n${note}`
+      : note
+    
+    await (supabase
+      .from('orders')
+      .update({ 
+        acknowledged_at: timestamp,
+        special_instructions: newInstructions 
+      } as never)
+      .eq('id', orderId))
+    
+    console.log(`[OrderFallback] Order ${orderId} acknowledged via phone`)
+  }
 }
 
 export async function attemptFallbackCall(
@@ -79,7 +148,8 @@ export async function attemptFallbackCall(
   restaurantId: number,
   restaurantName: string
 ): Promise<FallbackCallResult> {
-  if (hasFallbackCallBeenAttempted(orderId)) {
+  const alreadyCalled = await hasFallbackCallBeenAttempted(orderId)
+  if (alreadyCalled) {
     return {
       orderId,
       orderNumber,

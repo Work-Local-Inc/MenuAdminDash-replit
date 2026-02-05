@@ -66,8 +66,8 @@ export function formatPhoneForTwilio(phone: string): string | null {
     return `+${cleaned}`
   }
   
-  if (cleaned.length > 10 && cleaned.startsWith('+')) {
-    return phone
+  if (cleaned.length >= 10 && cleaned.length <= 15) {
+    return `+${cleaned}`
   }
   
   console.warn(`[Twilio] Invalid phone format: ${phone}`)
