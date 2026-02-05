@@ -167,7 +167,7 @@ async function fetchMappingsFromDatabase(): Promise<SubdomainMapping[] | null> {
 // ============================================
 
 /**
- * Get all subdomain mappings (cached, with database fallback to static)
+ * Get all subdomain mappings (cached, merges database + static)
  */
 export async function getAllMappings(): Promise<SubdomainMapping[]> {
   // Check cache first
@@ -178,12 +178,21 @@ export async function getAllMappings(): Promise<SubdomainMapping[]> {
   
   // Try database
   const dbMappings = await fetchMappingsFromDatabase();
-  if (dbMappings && dbMappings.length > 0) {
-    setCache(dbMappings);
-    return dbMappings;
+  
+  // Merge static mappings with database mappings (static takes priority for overrides)
+  const dbSubdomains = new Set((dbMappings || []).map(m => m.subdomain.toLowerCase()));
+  const staticNotInDb = STATIC_SUBDOMAIN_MAPPINGS.filter(
+    m => !dbSubdomains.has(m.subdomain.toLowerCase())
+  );
+  
+  const mergedMappings = [...(dbMappings || []), ...staticNotInDb];
+  
+  if (mergedMappings.length > 0) {
+    setCache(mergedMappings);
+    return mergedMappings;
   }
   
-  // Fall back to static mappings
+  // Fall back to static mappings only
   setCache(STATIC_SUBDOMAIN_MAPPINGS);
   return STATIC_SUBDOMAIN_MAPPINGS;
 }
