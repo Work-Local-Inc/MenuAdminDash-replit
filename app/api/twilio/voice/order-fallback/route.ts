@@ -23,9 +23,9 @@ function buildTwiml(message: string, orderId: number, token: string | null, repe
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Gather numDigits="1" action="${safeActionUrl}" method="POST" timeout="6">
-    <Say voice="alice">${safeMessage} Press 1 to repeat. Press 2 to confirm received.</Say>
+    <Say voice="Polly.Joanna">${safeMessage} Press 1 to repeat. Press 2 to confirm received.</Say>
   </Gather>
-  <Say voice="alice">No input received. Goodbye.</Say>
+  <Say voice="Polly.Joanna">No input received. Goodbye.</Say>
 </Response>`
 }
 
@@ -113,7 +113,7 @@ async function handleRequest(request: NextRequest) {
 
       const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="alice">Thank you. The order has been confirmed.</Say>
+  <Say voice="Polly.Joanna">Thank you. The order has been confirmed.</Say>
 </Response>`
 
       return new NextResponse(twiml, {
@@ -128,7 +128,7 @@ async function handleRequest(request: NextRequest) {
       const safeMessage = escapeForXml(message)
       const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="alice">${safeMessage}</Say>
+  <Say voice="Polly.Joanna">${safeMessage}</Say>
 </Response>`
 
       return new NextResponse(twiml, {
