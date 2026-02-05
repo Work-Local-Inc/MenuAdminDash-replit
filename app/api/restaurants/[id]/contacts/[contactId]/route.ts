@@ -43,38 +43,38 @@ export async function PATCH(
       console.log('[Update Contact] Edge function threw error, falling back to direct update:', edgeFnError)
     }
 
-    // Fallback: Update directly in the database
-    // restaurant_contacts table stores the contact data
-    const updateData: any = {}
-    if (body.first_name !== undefined) updateData.first_name = body.first_name
-    if (body.last_name !== undefined) updateData.last_name = body.last_name
-    if (body.email !== undefined) updateData.email = body.email || null
-    if (body.phone !== undefined) updateData.phone = body.phone || null
-    if (body.title !== undefined) updateData.title = body.title || null
-    if (body.preferred_language !== undefined) updateData.preferred_language = body.preferred_language
-    if (body.receives_orders !== undefined) updateData.receives_orders = body.receives_orders
-    if (body.receives_statements !== undefined) updateData.receives_statements = body.receives_statements
-    if (body.receives_marketing !== undefined) updateData.receives_marketing = body.receives_marketing
-    updateData.updated_at = new Date().toISOString()
+    // Fallback: Update restaurant_locations table for phone/email
+    // The contactId matches the location ID from restaurant_locations
+    const locationUpdateData: any = {}
+    if (body.phone !== undefined) locationUpdateData.phone = body.phone || null
+    if (body.email !== undefined) locationUpdateData.email = body.email || null
+    locationUpdateData.updated_at = new Date().toISOString()
 
-    console.log('[Update Contact] Direct update data:', updateData)
+    console.log('[Update Contact] Updating restaurant_locations with:', locationUpdateData)
 
-    const { data: updatedContact, error: updateError } = await supabase
-      .schema('menuca_v3')
-      .from('restaurant_contacts')
-      .update(updateData)
+    const { data: updatedLocation, error: updateError } = await supabase
+      .from('restaurant_locations')
+      .update(locationUpdateData)
       .eq('id', contactId)
       .eq('restaurant_id', restaurantId)
       .select()
       .single()
 
     if (updateError) {
-      console.error('[Update Contact] Direct update error:', updateError)
+      console.error('[Update Contact] Location update error:', updateError)
       throw updateError
     }
 
-    console.log('[Update Contact] Direct update success:', updatedContact)
-    return NextResponse.json({ success: true, contact: updatedContact })
+    console.log('[Update Contact] Location update success:', updatedLocation)
+    return NextResponse.json({ 
+      success: true, 
+      contact: {
+        id: updatedLocation.id,
+        phone: updatedLocation.phone,
+        email: updatedLocation.email,
+        type: 'location'
+      }
+    })
   } catch (error: any) {
     console.error('[Update Contact] Final error:', error)
     if (error instanceof AuthError) {

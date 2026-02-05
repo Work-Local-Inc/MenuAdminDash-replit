@@ -20,36 +20,17 @@ export async function GET(
     
     const supabase = createAdminClient() as any
     
-    // Fetch from restaurant_contacts table (primary source)
-    const { data: restaurantContacts, error: contactsError } = await supabase
-      .schema('menuca_v3')
-      .from('restaurant_contacts')
-      .select('*')
-      .eq('restaurant_id', restaurantId)
-      .eq('is_active', true)
-      .order('created_at', { ascending: true })
-    
-    if (contactsError) {
-      console.error('[Contacts API] restaurant_contacts query error:', contactsError)
-    }
-    
-    // If we have contacts in restaurant_contacts table, return those
-    if (restaurantContacts && restaurantContacts.length > 0) {
-      return NextResponse.json(restaurantContacts)
-    }
-    
-    // Fallback: Fetch from admin_user_restaurants and restaurant_locations for backwards compatibility
+    // Fetch from admin_user_restaurants and admin_users
     const { data: adminContacts, error: adminError } = await supabase
-      .schema('menuca_v3')
       .from('admin_user_restaurants')
       .select(`
         id,
-        role,
         admin_user:admin_users (
           id,
           email,
           first_name,
-          last_name
+          last_name,
+          phone
         )
       `)
       .eq('restaurant_id', restaurantId)
@@ -58,9 +39,8 @@ export async function GET(
       console.error('[Contacts API] Admin users query error:', adminError)
     }
     
-    // Fetch public contact info from restaurant_locations
+    // Fetch contact info from restaurant_locations
     const { data: locationContacts, error: locationError } = await supabase
-      .schema('menuca_v3')
       .from('restaurant_locations')
       .select('id, phone, email, is_primary')
       .eq('restaurant_id', restaurantId)
@@ -81,11 +61,11 @@ export async function GET(
           contacts.push({
             id: ac.id,
             type: 'admin',
-            role: ac.role || 'Owner',
-            first_name: ac.admin_user.first_name,
-            last_name: ac.admin_user.last_name,
-            email: ac.admin_user.email,
-            phone: null, // Admin users don't have phone in this table
+            role: 'Owner',
+            first_name: (ac.admin_user as any).first_name,
+            last_name: (ac.admin_user as any).last_name,
+            email: (ac.admin_user as any).email,
+            phone: (ac.admin_user as any).phone || null,
             is_primary: true
           })
         }
