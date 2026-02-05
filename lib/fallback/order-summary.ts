@@ -86,18 +86,25 @@ function getItemName(item: OrderItem): string {
   return item.dish_name || item.name || item.item_name || item.menu_item_name || 'item'
 }
 
+function getLastDigits(orderNumber: string, count: number = 5): string {
+  const digitsOnly = orderNumber.replace(/\D/g, '')
+  return digitsOnly.slice(-count)
+}
+
+function formatDigitsForSpeech(digits: string): string {
+  return digits.split('').join(' ')
+}
+
 function summarizeItems(items: OrderItem[]) {
   const totalCount = items.reduce((sum, item) => sum + (item.quantity || 1), 0)
-  const topItems = items.slice(0, 3).map((item) => {
+  const topItems = items.slice(0, 2).map((item) => {
     const qty = item.quantity && item.quantity > 1 ? `${item.quantity} ` : ''
     return `${qty}${getItemName(item)}`.trim()
   })
-  const remainingCount = Math.max(items.length - topItems.length, 0)
 
   return {
     totalCount,
     topItems,
-    remainingCount,
   }
 }
 
@@ -113,24 +120,37 @@ export function buildOrderFallbackMessage(order: {
   const items = parseItems(order.items)
   const deliveryAddress = parseDeliveryAddress(order.delivery_address)
   const serviceTime = getServiceTime(deliveryAddress, order.special_instructions)
-  const restaurantName = order.restaurants?.name || 'Menu.ca'
+  const restaurantName = order.restaurants?.name || 'your restaurant'
   const timeZone = order.restaurants?.timezone || undefined
   const orderType = order.order_type === 'delivery' ? 'delivery' : 'pickup'
-  const orderNumber = order.order_number ? `Order ${order.order_number}` : 'New order'
   const total = formatCurrency(order.total_amount)
+  
+  // Get last 5 digits of order number for easier reading
+  const orderDigits = order.order_number 
+    ? formatDigitsForSpeech(getLastDigits(order.order_number, 5))
+    : ''
 
-  const { totalCount, topItems, remainingCount } = summarizeItems(items)
+  const { totalCount, topItems } = summarizeItems(items)
 
   const serviceTimeText = serviceTime.type === 'scheduled' && serviceTime.scheduledTime
-    ? `Scheduled for ${formatScheduledTime(serviceTime.scheduledTime, timeZone)}.`
-    : 'ASAP.'
+    ? `scheduled for ${formatScheduledTime(serviceTime.scheduledTime, timeZone)}`
+    : 'A S A P'
 
-  const itemsText = totalCount > 0
-    ? `${totalCount} items: ${topItems.join(', ')}${remainingCount > 0 ? ` and ${remainingCount} more items.` : '.'}`
-    : 'No item details available.'
+  // Build item text - just mention top items if available
+  const itemsText = topItems.length > 0
+    ? `including ${topItems.join(' and ')}`
+    : ''
 
-  const message = `${restaurantName} order alert. ${orderNumber}. ${orderType}. ${serviceTimeText} ${itemsText} Total ${total}.`
-  const shortMessage = `${orderNumber}. ${orderType}. ${serviceTimeText}`
+  // Friendly template with natural pauses (commas create pauses in TTS)
+  const message = [
+    `Hi! This is Menu dot C A calling for ${restaurantName}.`,
+    `You have a new ${orderType} order, ${serviceTimeText}.`,
+    orderDigits ? `Order ending in ${orderDigits}.` : '',
+    totalCount > 0 ? `${totalCount} items ${itemsText}, totaling ${total}.` : `Total ${total}.`,
+    `Please check your tablet to accept this order.`
+  ].filter(Boolean).join(' ')
+
+  const shortMessage = `New ${orderType} order for ${restaurantName}. ${serviceTimeText}. ${total}.`
 
   return { message, shortMessage }
 }

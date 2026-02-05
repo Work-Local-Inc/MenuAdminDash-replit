@@ -20,10 +20,11 @@ function buildTwiml(message: string, orderId: number, token: string | null, repe
   }
   const safeActionUrl = escapeForXml(actionUrl.toString())
 
+  // Use SSML for better speech with pause at start
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Gather numDigits="1" action="${safeActionUrl}" method="POST" timeout="6">
-    <Say voice="Polly.Joanna">${safeMessage} Press 1 to repeat. Press 2 to confirm received.</Say>
+  <Gather numDigits="1" action="${safeActionUrl}" method="POST" timeout="8">
+    <Say voice="Polly.Joanna"><speak><break time="1s"/>${safeMessage} <break time="500ms"/>Press 1 to repeat. Press 2 to confirm received.</speak></Say>
   </Gather>
   <Say voice="Polly.Joanna">No input received. Goodbye.</Say>
 </Response>`
@@ -114,7 +115,7 @@ async function handleRequest(request: NextRequest) {
 
       const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Polly.Joanna">Thank you. The order has been confirmed.</Say>
+  <Say voice="Polly.Joanna"><speak>Perfect! The order has been confirmed. <break time="300ms"/>Thank you!</speak></Say>
 </Response>`
 
       return new NextResponse(twiml, {
@@ -129,7 +130,7 @@ async function handleRequest(request: NextRequest) {
       const safeMessage = escapeForXml(message)
       const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Polly.Joanna">${safeMessage}</Say>
+  <Say voice="Polly.Joanna"><speak><break time="500ms"/>${safeMessage}</speak></Say>
 </Response>`
 
       return new NextResponse(twiml, {
