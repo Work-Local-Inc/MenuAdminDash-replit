@@ -31,6 +31,7 @@ Preferred communication style: Simple, everyday language.
 -   **Provincial Tax System**: Dynamic provincial tax calculation with per-restaurant rates and itemized tax lines.
 -   **Delivery Providers System**: Extensible third-party integration system for delivery providers (e.g., RestoZone) for fee calculation and driver dispatch.
 -   **Bilingual Translations**: Support for French translations for promotional deals and coupons with English fallback, and bilingual dish names.
+-   **Twilio Order Fallback System**: Automated phone call notifications to restaurants when tablet orders aren't acknowledged within 3 minutes. Uses natural-sounding Polly.Joanna voice to read order details and accepts DTMF input (press 1 to repeat, press 2 to confirm).
 
 ### Technical Implementations
 -   **ID Mapping**: Handles `combo_groups.restaurant_id` (V3 IDs) vs. `dishes.restaurant_id` (legacy_v1_id) via API.
@@ -60,3 +61,63 @@ Preferred communication style: Simple, everyday language.
 -   **Stripe**: Payment processing.
 -   **Google Places API**: Address autocomplete and verification.
 -   **RestoZone**: Third-party delivery provider.
+-   **Twilio**: Voice calls for order fallback notifications.
+
+## Twilio Order Fallback System
+
+### Purpose
+Protects restaurants from missed orders when tablets aren't acknowledged. If an order isn't acknowledged within 3 minutes, the system automatically calls the restaurant to notify them.
+
+### How It Works
+1. **Cron Job** (`scripts/order-fallback-cron.ts`): Runs every 2 minutes via Replit Scheduled Deployment
+2. **Cron API** (`app/api/cron/order-fallback/route.ts`): Scans for unacknowledged orders older than 3 minutes
+3. **Call Initiation** (`lib/twilio/calls.ts`): Places outbound call to restaurant phone
+4. **Voice Webhook** (`app/api/twilio/voice/order-fallback/route.ts`): Twilio calls this to get TwiML response
+5. **Order Summary** (`lib/fallback/order-summary.ts`): Builds natural speech text for the call
+
+### Call Flow
+- Twilio calls restaurant phone number
+- Polly.Joanna voice reads: "Hello, this is Menu.ca calling about order [number] for [restaurant]. The order contains [items]. The total is [amount]. Press 1 to repeat. Press 2 to confirm received."
+- DTMF input: Press 1 repeats the message, Press 2 confirms receipt
+- Confirmation is logged to `order_status_history` table
+
+### Phone Number Lookup Priority
+1. `restaurant_twilio_config.phone` (menuca_v3 schema)
+2. `admin_users.phone` (restaurant admin's phone)
+3. `restaurant_locations.phone` (menuca_v3 schema)
+
+### Required Secrets
+- `TWILIO_ACCOUNT_SID`: Twilio account identifier
+- `TWILIO_AUTH_TOKEN`: Twilio authentication token
+- `TWILIO_FROM_NUMBER`: Outbound caller ID (e.g., +16135551234)
+- `TWILIO_VOICE_BASE_URL`: Public URL for voice webhooks (e.g., https://menuv3.replit.app)
+- `TWILIO_VOICE_TOKEN`: Security token for voice webhook authentication
+- `ORDER_FALLBACK_CRON_SECRET`: Secret for cron endpoint authorization
+
+### Configuration Environment Variables
+- `ORDER_FALLBACK_ACK_TIMEOUT_SECONDS`: Time before triggering call (default: 180)
+- `ORDER_FALLBACK_DEVICE_OFFLINE_SECONDS`: Tablet offline threshold (default: 180)
+- `ORDER_FALLBACK_ONLINE_GRACE_SECONDS`: Extra grace if tablet online (default: 180)
+- `ORDER_FALLBACK_CALL_IF_ONLINE`: Call even if tablet online (default: false)
+- `ORDER_FALLBACK_LOOKBACK_HOURS`: How far back to check orders (default: 24)
+- `ORDER_FALLBACK_MAX_ORDERS`: Max orders per cron run (default: 50)
+
+### Key Files
+- `app/api/twilio/voice/order-fallback/route.ts` - Voice webhook handler
+- `app/api/cron/order-fallback/route.ts` - Cron endpoint
+- `lib/twilio/calls.ts` - Twilio REST API wrapper
+- `lib/fallback/order-fallback.ts` - Phone lookup and call logging
+- `lib/fallback/order-summary.ts` - Speech text builder
+- `scripts/order-fallback-cron.ts` - Scheduled deployment script
+
+### Setting Up Replit Scheduled Deployment
+1. Go to "Publishing" tool in Replit workspace
+2. Select "Scheduled" deployment type
+3. Command: `npx ts-node scripts/order-fallback-cron.ts`
+4. Schedule: Every 2 minutes (cron: `*/2 * * * *`)
+5. Timeout: 60 seconds
+
+### Important Notes
+- XML in TwiML responses must escape `&` as `&amp;` in URLs
+- Voice uses Amazon Polly.Joanna for natural-sounding speech
+- Calls are logged to `order_status_history` with status 'fallback_call_placed' and 'fallback_call_confirmed'
