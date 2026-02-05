@@ -1,0 +1,748 @@
+diff --git a/app/api/cron/order-fallback/route.ts b/app/api/cron/order-fallback/route.ts
+new file mode 100644
+index 0000000..4e0a5a2
+--- /dev/null
++++ b/app/api/cron/order-fallback/route.ts
+@@ -0,0 +1,208 @@
++import { NextRequest, NextResponse } from 'next/server'
++import { createAdminClient } from '@/lib/supabase/admin'
++import { createTwilioCall } from '@/lib/twilio/calls'
++import { getRestaurantCallPhone, recordFallbackCallAttempt, wasOrderFallbackCalled } from '@/lib/fallback/order-fallback'
++
++export const runtime = 'nodejs'
++
++const DEFAULT_ACK_TIMEOUT_SECONDS = 180
++const DEFAULT_DEVICE_OFFLINE_SECONDS = 180
++const DEFAULT_ONLINE_GRACE_SECONDS = 180
++const DEFAULT_LOOKBACK_HOURS = 24
++const DEFAULT_MAX_ORDERS = 50
++
++function getCronSecret() {
++  return process.env.ORDER_FALLBACK_CRON_SECRET || process.env.CRON_SECRET || ''
++}
++
++function isAuthorized(request: NextRequest) {
++  const secret = getCronSecret()
++  if (!secret) return false
++
++  const authHeader = request.headers.get('authorization') || ''
++  if (authHeader.startsWith('Bearer ')) {
++    return authHeader.slice('Bearer '.length) === secret
++  }
++
++  const { searchParams } = new URL(request.url)
++  const token = searchParams.get('token') || searchParams.get('secret')
++  return token === secret
++}
++
++function getEnvNumber(name: string, fallback: number) {
++  const raw = process.env[name]
++  if (!raw) return fallback
++  const value = Number(raw)
++  return Number.isFinite(value) ? value : fallback
++}
++
++async function getLatestDeviceHeartbeat(restaurantId: number) {
++  const supabase = createAdminClient() as any
++  const { data, error } = await supabase
++    .from('devices')
++    .select('id, last_check_at, is_active')
++    .eq('restaurant_id', restaurantId)
++    .eq('is_active', true)
++    .order('last_check_at', { ascending: false })
++    .limit(1)
++    .maybeSingle()
++
++  if (error) {
++    console.warn('[Order Fallback] Failed to fetch device heartbeat:', error)
++    return null
++  }
++
++  return data
++}
++
++async function isRestaurantOpen(restaurantId: number, orderType: string) {
++  const supabase = createAdminClient() as any
++  const serviceType = orderType === 'delivery' ? 'delivery' : 'takeout'
++
++  const { data, error } = await supabase.rpc('is_restaurant_open_now', {
++    p_restaurant_id: restaurantId,
++    p_service_type: serviceType,
++    p_check_time: new Date().toISOString(),
++  })
++
++  if (error) {
++    console.warn('[Order Fallback] Failed to check restaurant open status:', error)
++    return false
++  }
++
++  return Boolean(data)
++}
++
++export async function GET(request: NextRequest) {
++  if (!isAuthorized(request)) {
++    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
++  }
++
++  const supabase = createAdminClient() as any
++
++  const ackTimeoutSeconds = getEnvNumber('ORDER_FALLBACK_ACK_TIMEOUT_SECONDS', DEFAULT_ACK_TIMEOUT_SECONDS)
++  const deviceOfflineSeconds = getEnvNumber('ORDER_FALLBACK_DEVICE_OFFLINE_SECONDS', DEFAULT_DEVICE_OFFLINE_SECONDS)
++  const onlineGraceSeconds = getEnvNumber('ORDER_FALLBACK_ONLINE_GRACE_SECONDS', DEFAULT_ONLINE_GRACE_SECONDS)
++  const lookbackHours = getEnvNumber('ORDER_FALLBACK_LOOKBACK_HOURS', DEFAULT_LOOKBACK_HOURS)
++  const maxOrders = getEnvNumber('ORDER_FALLBACK_MAX_ORDERS', DEFAULT_MAX_ORDERS)
++  const callIfOnline = process.env.ORDER_FALLBACK_CALL_IF_ONLINE === 'true'
++
++  const now = new Date()
++  const ackCutoff = new Date(now.getTime() - ackTimeoutSeconds * 1000)
++  const lookback = new Date(now.getTime() - lookbackHours * 60 * 60 * 1000)
++
++  const { data: orders, error } = await supabase
++    .from('orders')
++    .select('id, restaurant_id, order_type, order_status, created_at, acknowledged_at, payment_status')
++    .is('acknowledged_at', null)
++    .eq('payment_status', 'paid')
++    .gte('created_at', lookback.toISOString())
++    .lte('created_at', ackCutoff.toISOString())
++    .order('created_at', { ascending: true })
++    .limit(maxOrders)
++
++  if (error) {
++    console.error('[Order Fallback] Failed to fetch orders:', error)
++    return NextResponse.json({ error: 'Failed to fetch orders' }, { status: 500 })
++  }
++
++  const summary = {
++    scanned: orders?.length || 0,
++    called: 0,
++    skipped: {
++      already_called: 0,
++      offline_required: 0,
++      closed: 0,
++      no_phone: 0,
++      disabled: 0,
++      error: 0,
++    },
++    details: [] as Array<{ order_id: number; status: string; reason?: string }>,
++  }
++
++  for (const order of orders || []) {
++    try {
++      const alreadyCalled = await wasOrderFallbackCalled(order.id)
++      if (alreadyCalled) {
++        summary.skipped.already_called += 1
++        summary.details.push({ order_id: order.id, status: 'skipped', reason: 'already_called' })
++        continue
++      }
++
++      const deviceHeartbeat = await getLatestDeviceHeartbeat(order.restaurant_id)
++      const offlineCutoff = now.getTime() - deviceOfflineSeconds * 1000
++      const isOffline = !deviceHeartbeat?.last_check_at || new Date(deviceHeartbeat.last_check_at).getTime() < offlineCutoff
++
++      const createdAt = new Date(order.created_at)
++      if (Number.isNaN(createdAt.getTime())) {
++        summary.skipped.error += 1
++        summary.details.push({ order_id: order.id, status: 'error', reason: 'invalid_created_at' })
++        continue
++      }
++
++      if (!isOffline) {
++        if (!callIfOnline) {
++          summary.skipped.offline_required += 1
++          summary.details.push({ order_id: order.id, status: 'skipped', reason: 'device_online' })
++          continue
++        }
++
++        const onlineCutoff = now.getTime() - (ackTimeoutSeconds + onlineGraceSeconds) * 1000
++        if (createdAt.getTime() > onlineCutoff) {
++          summary.skipped.offline_required += 1
++          summary.details.push({ order_id: order.id, status: 'skipped', reason: 'online_grace' })
++          continue
++        }
++      }
++
++      const isOpen = await isRestaurantOpen(order.restaurant_id, order.order_type)
++      if (!isOpen) {
++        summary.skipped.closed += 1
++        summary.details.push({ order_id: order.id, status: 'skipped', reason: 'restaurant_closed' })
++        continue
++      }
++
++      const phoneResult = await getRestaurantCallPhone(order.restaurant_id)
++      if (phoneResult.source === 'disabled') {
++        summary.skipped.disabled += 1
++        summary.details.push({ order_id: order.id, status: 'skipped', reason: 'calls_disabled' })
++        continue
++      }
++
++      if (!phoneResult.phone) {
++        summary.skipped.no_phone += 1
++        summary.details.push({ order_id: order.id, status: 'skipped', reason: 'no_phone' })
++        continue
++      }
++
++      const callResult = await createTwilioCall({
++        to: phoneResult.phone,
++        orderId: order.id,
++      })
++
++      summary.called += 1
++      summary.details.push({ order_id: order.id, status: 'called' })
++
++      await recordFallbackCallAttempt({
++        orderId: order.id,
++        orderCreatedAt: order.created_at,
++        orderStatus: order.order_status,
++        notes: `Twilio fallback call attempted to ${callResult.to}. Call SID: ${callResult.sid}.`,
++      })
++    } catch (err: any) {
++      summary.skipped.error += 1
++      summary.details.push({ order_id: order.id, status: 'error', reason: err?.message || 'unknown' })
++      console.error('[Order Fallback] Failed for order', order.id, err)
++    }
++  }
++
++  return NextResponse.json({
++    ok: true,
++    timestamp: now.toISOString(),
++    ack_timeout_seconds: ackTimeoutSeconds,
++    device_offline_seconds: deviceOfflineSeconds,
++    online_grace_seconds: onlineGraceSeconds,
++    call_if_online: callIfOnline,
++    summary,
++  })
++}
+diff --git a/app/api/twilio/voice/order-fallback/route.ts b/app/api/twilio/voice/order-fallback/route.ts
+new file mode 100644
+index 0000000..5d5eb77
+--- /dev/null
++++ b/app/api/twilio/voice/order-fallback/route.ts
+@@ -0,0 +1,148 @@
++import { NextRequest, NextResponse } from 'next/server'
++import { createAdminClient } from '@/lib/supabase/admin'
++import { buildOrderFallbackMessage } from '@/lib/fallback/order-summary'
++import { recordFallbackCallAttempt } from '@/lib/fallback/order-fallback'
++
++export const runtime = 'nodejs'
++
++function getVoiceToken(): string | null {
++  return process.env.TWILIO_VOICE_TOKEN || null
++}
++
++function buildTwiml(message: string, orderId: number, token: string | null, repeatCount: number) {
++  const safeMessage = escapeForXml(message)
++  const baseUrl = process.env.TWILIO_VOICE_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://menu.ca'
++  const actionUrl = new URL('/api/twilio/voice/order-fallback', baseUrl)
++  actionUrl.searchParams.set('order_id', String(orderId))
++  actionUrl.searchParams.set('repeat', String(repeatCount))
++  if (token) {
++    actionUrl.searchParams.set('t', token)
++  }
++
++  return `<?xml version="1.0" encoding="UTF-8"?>
++<Response>
++  <Gather numDigits="1" action="${actionUrl.toString()}" method="POST" timeout="6">
++    <Say voice="alice">${safeMessage} Press 1 to repeat. Press 2 to confirm received.</Say>
++  </Gather>
++  <Say voice="alice">No input received. Goodbye.</Say>
++</Response>`
++}
++
++function escapeForXml(input: string) {
++  return input
++    .replace(/&/g, '&amp;')
++    .replace(/</g, '&lt;')
++    .replace(/>/g, '&gt;')
++    .replace(/\"/g, '&quot;')
++    .replace(/'/g, '&apos;')
++}
++
++async function fetchOrder(orderId: number) {
++  const supabase = createAdminClient() as any
++  const { data: order, error } = await supabase
++    .from('orders')
++    .select(`
++      id,
++      order_number,
++      order_type,
++      order_status,
++      created_at,
++      total_amount,
++      items,
++      delivery_address,
++      special_instructions,
++      restaurants (
++        name,
++        timezone
++      )
++    `)
++    .eq('id', orderId)
++    .single()
++
++  if (error || !order) {
++    throw new Error(error?.message || 'Order not found')
++  }
++
++  return order
++}
++
++export async function GET(request: NextRequest) {
++  return handleRequest(request)
++}
++
++export async function POST(request: NextRequest) {
++  return handleRequest(request)
++}
++
++async function handleRequest(request: NextRequest) {
++  try {
++    const { searchParams } = new URL(request.url)
++    const token = searchParams.get('t')
++    const expectedToken = getVoiceToken()
++
++    if (expectedToken && token !== expectedToken) {
++      return new NextResponse('Unauthorized', { status: 401 })
++    }
++
++    const orderIdParam = searchParams.get('order_id')
++    const orderId = orderIdParam ? Number(orderIdParam) : NaN
++    if (!orderId || Number.isNaN(orderId)) {
++      return new NextResponse('Invalid order_id', { status: 400 })
++    }
++
++    let digits: string | null = null
++    if (request.method === 'POST') {
++      const form = await request.formData()
++      const digitsValue = form.get('Digits')
++      if (typeof digitsValue === 'string') {
++        digits = digitsValue
++      }
++    }
++
++    const repeatCount = Number(searchParams.get('repeat') || '0')
++    const order = await fetchOrder(orderId)
++
++    if (digits === '2') {
++      await recordFallbackCallAttempt({
++        orderId: order.id,
++        orderCreatedAt: order.created_at,
++        orderStatus: order.order_status,
++        notes: 'Twilio fallback call confirmed by recipient (DTMF 2).',
++      })
++
++      const twiml = `<?xml version="1.0" encoding="UTF-8"?>
++<Response>
++  <Say voice="alice">Thank you. The order has been confirmed.</Say>
++</Response>`
++
++      return new NextResponse(twiml, {
++        status: 200,
++        headers: { 'Content-Type': 'text/xml' },
++      })
++    }
++
++    const { message } = buildOrderFallbackMessage(order)
++
++    if (digits === '1' && repeatCount >= 1) {
++      const safeMessage = escapeForXml(message)
++      const twiml = `<?xml version="1.0" encoding="UTF-8"?>
++<Response>
++  <Say voice="alice">${safeMessage}</Say>
++</Response>`
++
++      return new NextResponse(twiml, {
++        status: 200,
++        headers: { 'Content-Type': 'text/xml' },
++      })
++    }
++
++    const twiml = buildTwiml(message, orderId, expectedToken, repeatCount + 1)
++    return new NextResponse(twiml, {
++      status: 200,
++      headers: { 'Content-Type': 'text/xml' },
++    })
++  } catch (error: any) {
++    console.error('[Twilio Voice] Error:', error)
++    return new NextResponse('Error generating voice response', { status: 500 })
++  }
++}
+diff --git a/lib/fallback/order-fallback.ts b/lib/fallback/order-fallback.ts
+new file mode 100644
+index 0000000..61dd9cf
+--- /dev/null
++++ b/lib/fallback/order-fallback.ts
+@@ -0,0 +1,130 @@
++import { createAdminClient } from '@/lib/supabase/admin'
++
++export type CallPhoneResult = {
++  phone: string | null
++  source: 'twilio_config' | 'admin_user' | 'location' | 'disabled' | 'missing'
++}
++
++export async function getRestaurantCallPhone(restaurantId: number): Promise<CallPhoneResult> {
++  const supabase = createAdminClient() as any
++
++  const { data: twilioConfig, error: twilioError } = await supabase
++    .from('restaurant_twilio_config')
++    .select('phone, enables_calls')
++    .eq('restaurant_id', restaurantId)
++    .maybeSingle()
++
++  if (twilioError) {
++    console.warn('[Order Fallback] Failed to fetch restaurant_twilio_config:', twilioError)
++  }
++
++  if (twilioConfig?.enables_calls === false) {
++    return { phone: null, source: 'disabled' }
++  }
++
++  if (twilioConfig?.enables_calls && twilioConfig?.phone) {
++    return { phone: twilioConfig.phone, source: 'twilio_config' }
++  }
++
++  const { data: adminLinks, error: adminError } = await supabase
++    .from('admin_user_restaurants')
++    .select(`
++      id,
++      created_at,
++      admin_user:admin_users (
++        id,
++        first_name,
++        last_name,
++        phone,
++        email,
++        is_active
++      )
++    `)
++    .eq('restaurant_id', restaurantId)
++    .order('created_at', { ascending: true })
++    .limit(5)
++
++  if (adminError) {
++    console.warn('[Order Fallback] Failed to fetch admin_user_restaurants:', adminError)
++  }
++
++  if (adminLinks && adminLinks.length > 0) {
++    const adminWithPhone = adminLinks.find((link: any) => link.admin_user?.is_active && link.admin_user?.phone)
++    if (adminWithPhone?.admin_user?.phone) {
++      return { phone: adminWithPhone.admin_user.phone, source: 'admin_user' }
++    }
++  }
++
++  const { data: primaryLocation, error: primaryError } = await supabase
++    .from('restaurant_locations')
++    .select('phone, is_primary')
++    .eq('restaurant_id', restaurantId)
++    .eq('is_primary', true)
++    .maybeSingle()
++
++  if (primaryError) {
++    console.warn('[Order Fallback] Failed to fetch primary location phone:', primaryError)
++  }
++
++  if (primaryLocation?.phone) {
++    return { phone: primaryLocation.phone, source: 'location' }
++  }
++
++  const { data: anyLocation, error: locationError } = await supabase
++    .from('restaurant_locations')
++    .select('phone')
++    .eq('restaurant_id', restaurantId)
++    .not('phone', 'is', null)
++    .limit(1)
++    .maybeSingle()
++
++  if (locationError) {
++    console.warn('[Order Fallback] Failed to fetch fallback location phone:', locationError)
++  }
++
++  if (anyLocation?.phone) {
++    return { phone: anyLocation.phone, source: 'location' }
++  }
++
++  return { phone: null, source: 'missing' }
++}
++
++export async function wasOrderFallbackCalled(orderId: number): Promise<boolean> {
++  const supabase = createAdminClient() as any
++
++  const { data, error } = await supabase
++    .from('order_status_history')
++    .select('id')
++    .eq('order_id', orderId)
++    .ilike('notes', '%Twilio fallback call%')
++    .limit(1)
++
++  if (error) {
++    console.warn('[Order Fallback] Failed to query order_status_history:', error)
++    return false
++  }
++
++  return Array.isArray(data) && data.length > 0
++}
++
++export async function recordFallbackCallAttempt(params: {
++  orderId: number
++  orderCreatedAt: string
++  orderStatus: string
++  notes: string
++}) {
++  const supabase = createAdminClient() as any
++
++  const { error } = await supabase
++    .from('order_status_history')
++    .insert({
++      order_id: params.orderId,
++      order_created_at: params.orderCreatedAt,
++      status: params.orderStatus,
++      notes: params.notes,
++    })
++
++  if (error) {
++    console.warn('[Order Fallback] Failed to record fallback call attempt:', error)
++  }
++}
+diff --git a/lib/fallback/order-summary.ts b/lib/fallback/order-summary.ts
+new file mode 100644
+index 0000000..cbf6c8b
+--- /dev/null
++++ b/lib/fallback/order-summary.ts
+@@ -0,0 +1,129 @@
++export type OrderSummary = {
++  message: string
++  shortMessage: string
++}
++
++type OrderItem = {
++  name?: string
++  quantity?: number
++}
++
++type ServiceTime = {
++  type?: 'asap' | 'scheduled'
++  scheduledTime?: string
++}
++
++function parseItems(rawItems: any): OrderItem[] {
++  if (!rawItems) return []
++  if (Array.isArray(rawItems)) return rawItems
++  if (typeof rawItems === 'string') {
++    try {
++      const parsed = JSON.parse(rawItems)
++      return Array.isArray(parsed) ? parsed : []
++    } catch {
++      return []
++    }
++  }
++  return []
++}
++
++function parseDeliveryAddress(raw: any): any {
++  if (!raw) return null
++  if (typeof raw === 'string') {
++    try {
++      return JSON.parse(raw)
++    } catch {
++      return null
++    }
++  }
++  return raw
++}
++
++function getServiceTime(deliveryAddress: any, specialInstructions?: string | null): ServiceTime {
++  const fromAddress = deliveryAddress?.service_time
++  if (fromAddress?.type) return fromAddress
++
++  if (specialInstructions) {
++    const match = specialInstructions.match(/Scheduled for:\s*(.+)$/i)
++    if (match?.[1]) {
++      return { type: 'scheduled', scheduledTime: match[1] }
++    }
++  }
++
++  return { type: 'asap' }
++}
++
++function formatScheduledTime(iso: string, timeZone?: string): string {
++  const date = new Date(iso)
++  if (Number.isNaN(date.getTime())) return iso
++
++  const formatter = new Intl.DateTimeFormat('en-US', {
++    timeZone: timeZone || 'UTC',
++    month: 'short',
++    day: 'numeric',
++    hour: 'numeric',
++    minute: '2-digit',
++    hour12: true,
++  })
++
++  return formatter.format(date)
++}
++
++function formatCurrency(amount: any): string {
++  const num = typeof amount === 'string' ? parseFloat(amount) : Number(amount)
++  if (Number.isNaN(num)) return '$0.00'
++  return new Intl.NumberFormat('en-CA', {
++    style: 'currency',
++    currency: 'CAD',
++    maximumFractionDigits: 2,
++  }).format(num)
++}
++
++function summarizeItems(items: OrderItem[]) {
++  const totalCount = items.reduce((sum, item) => sum + (item.quantity || 1), 0)
++  const topItems = items.slice(0, 2).map((item) => {
++    const qty = item.quantity && item.quantity > 1 ? `${item.quantity} ` : ''
++    return `${qty}${item.name || 'item'}`.trim()
++  })
++  const remainingCount = Math.max(items.length - topItems.length, 0)
++
++  return {
++    totalCount,
++    topItems,
++    remainingCount,
++  }
++}
++
++export function buildOrderFallbackMessage(order: {
++  order_number?: string
++  order_type?: string
++  total_amount?: any
++  items?: any
++  delivery_address?: any
++  special_instructions?: string | null
++  restaurants?: { name?: string | null; timezone?: string | null }
++}) {
++  const items = parseItems(order.items)
++  const deliveryAddress = parseDeliveryAddress(order.delivery_address)
++  const serviceTime = getServiceTime(deliveryAddress, order.special_instructions)
++  const restaurantName = order.restaurants?.name || 'Menu.ca'
++  const timeZone = order.restaurants?.timezone || undefined
++  const orderType = order.order_type === 'delivery' ? 'delivery' : 'pickup'
++  const orderNumber = order.order_number ? `Order ${order.order_number}` : 'New order'
++  const total = formatCurrency(order.total_amount)
++
++  const { totalCount, topItems, remainingCount } = summarizeItems(items)
++
++  const serviceTimeText = serviceTime.type === 'scheduled' && serviceTime.scheduledTime
++    ? `Scheduled for ${formatScheduledTime(serviceTime.scheduledTime, timeZone)}.`
++    : 'ASAP.'
++
++  const itemsText = totalCount > 0
++    ? `${totalCount} items: ${topItems.join(', ')}${remainingCount > 0 ? ` and ${remainingCount} more items.` : '.'}`
++    : 'No item details available.'
++
++  const message = `${restaurantName} order alert. ${orderNumber}. ${orderType}. ${serviceTimeText} ${itemsText} Total ${total}.`
++  const shortMessage = `${orderNumber}. ${orderType}. ${serviceTimeText}`
++
++  return { message, shortMessage }
++}
+diff --git a/lib/twilio/calls.ts b/lib/twilio/calls.ts
+new file mode 100644
+index 0000000..9deaece
+--- /dev/null
++++ b/lib/twilio/calls.ts
+@@ -0,0 +1,103 @@
++import { URLSearchParams } from 'url'
++
++const TWILIO_API_BASE = 'https://api.twilio.com/2010-04-01'
++
++export type TwilioCallResult = {
++  sid: string
++  to: string
++}
++
++export type CreateTwilioCallParams = {
++  to: string
++  orderId: number
++  baseUrl?: string
++  voiceToken?: string
++  statusCallbackUrl?: string
++}
++
++function getRequiredEnv(name: string): string {
++  const value = process.env[name]
++  if (!value) {
++    throw new Error(`${name} is not configured`)
++  }
++  return value
++}
++
++export function getTwilioConfig() {
++  return {
++    accountSid: getRequiredEnv('TWILIO_ACCOUNT_SID'),
++    authToken: getRequiredEnv('TWILIO_AUTH_TOKEN'),
++    fromNumber: getRequiredEnv('TWILIO_FROM_NUMBER'),
++    voiceToken: process.env.TWILIO_VOICE_TOKEN || '',
++    baseUrl: process.env.TWILIO_VOICE_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://menu.ca',
++  }
++}
++
++export function normalizePhoneNumber(rawPhone: string): string {
++  if (!rawPhone) return ''
++  const trimmed = rawPhone.trim()
++  if (trimmed.startsWith('+')) return trimmed
++
++  const digits = trimmed.replace(/\D/g, '')
++  if (digits.length === 10) {
++    return `+1${digits}`
++  }
++  if (digits.length === 11 && digits.startsWith('1')) {
++    return `+${digits}`
++  }
++  return trimmed
++}
++
++export function buildTwilioVoiceUrl(orderId: number, baseUrl: string, token?: string) {
++  const url = new URL('/api/twilio/voice/order-fallback', baseUrl)
++  url.searchParams.set('order_id', String(orderId))
++  if (token) {
++    url.searchParams.set('t', token)
++  }
++  return url.toString()
++}
++
++export async function createTwilioCall(params: CreateTwilioCallParams): Promise<TwilioCallResult> {
++  const config = getTwilioConfig()
++  const to = normalizePhoneNumber(params.to)
++  if (!to) {
++    throw new Error('Destination phone number is missing')
++  }
++
++  const baseUrl = params.baseUrl || config.baseUrl
++  const voiceToken = params.voiceToken ?? config.voiceToken
++  const voiceUrl = buildTwilioVoiceUrl(params.orderId, baseUrl, voiceToken)
++
++  const body = new URLSearchParams()
++  body.set('To', to)
++  body.set('From', config.fromNumber)
++  body.set('Url', voiceUrl)
++
++  if (params.statusCallbackUrl) {
++    body.set('StatusCallback', params.statusCallbackUrl)
++    body.set('StatusCallbackEvent', 'initiated ringing answered completed')
++  }
++
++  const auth = Buffer.from(`${config.accountSid}:${config.authToken}`).toString('base64')
++
++  const response = await fetch(`${TWILIO_API_BASE}/Accounts/${config.accountSid}/Calls.json`, {
++    method: 'POST',
++    headers: {
++      Authorization: `Basic ${auth}`,
++      'Content-Type': 'application/x-www-form-urlencoded',
++    },
++    body: body.toString(),
++  })
++
++  if (!response.ok) {
++    const errorBody = await response.text()
++    throw new Error(`Twilio call failed (${response.status}): ${errorBody}`)
++  }
++
++  const data = await response.json() as { sid?: string }
++  if (!data.sid) {
++    throw new Error('Twilio call did not return a call SID')
++  }
++
++  return { sid: data.sid, to }
++}
