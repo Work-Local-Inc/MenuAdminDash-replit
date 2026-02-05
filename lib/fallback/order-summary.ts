@@ -147,7 +147,6 @@ export function buildOrderFallbackMessage(order: {
     `You have a new ${orderType} order, ${serviceTimeText}.`,
     orderDigits ? `Order ending in ${orderDigits}.` : '',
     totalCount > 0 ? `${totalCount} items ${itemsText}, totaling ${total}.` : `Total ${total}.`,
-    `Please check your tablet to accept this order.`
   ].filter(Boolean).join(' ')
 
   const shortMessage = `New ${orderType} order for ${restaurantName}. ${serviceTimeText}. ${total}.`
