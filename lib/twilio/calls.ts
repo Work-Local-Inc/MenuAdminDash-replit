@@ -28,7 +28,7 @@ export async function makeCall(
     const client = Twilio(accountSid, authToken)
     
     const voiceToken = process.env.TWILIO_VOICE_TOKEN
-    const voiceUrl = `${voiceBaseUrl}/api/twilio/voice?orderId=${orderId}&token=${voiceToken}`
+    const voiceUrl = `${voiceBaseUrl}/api/twilio/voice/order-fallback?order_id=${orderId}&t=${voiceToken}`
     
     const call = await client.calls.create({
       to: toNumber,
