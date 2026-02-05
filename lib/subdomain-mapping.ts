@@ -25,6 +25,12 @@ export interface SubdomainMapping {
 
 export const STATIC_SUBDOMAIN_MAPPINGS: SubdomainMapping[] = [
   {
+    subdomain: 'seasonspizzaottawa',
+    slug: 'seasons-pizza-83',
+    restaurantId: 83,
+    name: 'Seasons Pizza Ottawa',
+  },
+  {
     subdomain: 'centertowndonair',
     slug: 'centertown-donair-pizza-131',
     restaurantId: 131,
