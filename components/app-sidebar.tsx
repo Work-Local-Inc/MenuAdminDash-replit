@@ -111,6 +111,7 @@ const allMenuItems = [
     items: [
       { title: "Weekly Commission", url: "/admin/reporting/commission" },
       { title: "Restaurant Statements", url: "/admin/reporting/statements" },
+      { title: "Batch Statements", url: "/admin/reporting/batch-statements" },
       { title: "Daily Orders", url: "/admin/reporting/orders" },
     ],
   },
