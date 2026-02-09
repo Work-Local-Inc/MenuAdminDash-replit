@@ -35,6 +35,7 @@ interface RestaurantStatement {
   restaurant_id: number
   legacy_id: number | null
   restaurant_name: string
+  restaurant_address: string
   total_paid: number
   commission: number
   weekly_commission: number
@@ -42,6 +43,7 @@ interface RestaurantStatement {
   bank_fees: number
   delivery_commission: number
   delivery_tips: number
+  charges: number
   hst: number
   net_total: number
   cash_count: number
@@ -131,6 +133,37 @@ export async function GET(request: NextRequest) {
     const configs = (configsData || []) as CommissionConfig[]
     const configMap = new Map(configs.map(c => [c.restaurant_id, c]))
 
+    // Get all adjustments for the date range
+    const { data: adjustmentsData } = await (supabase as any)
+      .from('statement_adjustments')
+      .select('*')
+      .gte('applies_to_week_start', startDate)
+      .lte('applies_to_week_start', endDate)
+
+    const allAdjustments = (adjustmentsData || []) as any[]
+
+    // Group adjustments by restaurant_id
+    const adjustmentsByRestaurant = new Map<number, any[]>()
+    for (const adj of allAdjustments) {
+      const existing = adjustmentsByRestaurant.get(adj.restaurant_id) || []
+      existing.push(adj)
+      adjustmentsByRestaurant.set(adj.restaurant_id, existing)
+    }
+
+    // Get restaurant addresses from menuca_v3 schema
+    const { data: contactsData } = await supabase
+      .schema('menuca_v3')
+      .from('restaurant_contacts')
+      .select('restaurant_id, address, city, postal_code')
+
+    const addressMap = new Map<number, string>()
+    if (contactsData) {
+      for (const contact of contactsData as Array<{ restaurant_id: number; address: string | null; city: string | null; postal_code: string | null }>) {
+        const parts = [contact.address, contact.city, contact.postal_code].filter(Boolean)
+        addressMap.set(contact.restaurant_id, parts.join(', '))
+      }
+    }
+
     // Get last order date for each restaurant (for activity indicator)
     const { data: lastOrdersData } = await supabase
       .from('orders')
@@ -205,12 +238,24 @@ export async function GET(request: NextRequest) {
 
       const totalPaid = ccTotal + interacTotal
       const deliveryTips = restaurantOrders.reduce((sum, o) => sum + (o.tip_amount || 0), 0)
-      const netTotal = totalPaid - totalFees
+
+      // Calculate net charges from adjustments
+      const restaurantAdjustments = adjustmentsByRestaurant.get(restaurant.id) || []
+      const totalCharges = restaurantAdjustments
+        .filter((a: any) => a.adjustment_type === 'charge')
+        .reduce((sum: number, a: any) => sum + Math.round(parseFloat(a.amount) * 100) / 100, 0)
+      const totalCredits = restaurantAdjustments
+        .filter((a: any) => a.adjustment_type === 'credit')
+        .reduce((sum: number, a: any) => sum + Math.round(parseFloat(a.amount) * 100) / 100, 0)
+      const charges = totalCharges - totalCredits
+
+      const netTotal = totalPaid - totalFees - charges
 
       statements.push({
         restaurant_id: restaurant.id,
         legacy_id: restaurant.legacy_v1_id,
         restaurant_name: restaurant.name,
+        restaurant_address: addressMap.get(restaurant.id) || '',
         total_paid: Math.round(totalPaid * 100) / 100,
         commission: Math.round(commission * 100) / 100,
         weekly_commission: Math.round(weeklyCommission * 100) / 100,
@@ -218,6 +263,7 @@ export async function GET(request: NextRequest) {
         bank_fees: Math.round(bankFees * 100) / 100,
         delivery_commission: Math.round(deliveryCommission * 100) / 100,
         delivery_tips: Math.round(deliveryTips * 100) / 100,
+        charges: Math.round(charges * 100) / 100,
         hst: Math.round(hst * 100) / 100,
         net_total: Math.round(netTotal * 100) / 100,
         cash_count: cashOrders.length,
@@ -240,6 +286,7 @@ export async function GET(request: NextRequest) {
       bank_fees: Math.round(statements.reduce((sum, s) => sum + s.bank_fees, 0) * 100) / 100,
       delivery_commission: Math.round(statements.reduce((sum, s) => sum + s.delivery_commission, 0) * 100) / 100,
       delivery_tips: Math.round(statements.reduce((sum, s) => sum + s.delivery_tips, 0) * 100) / 100,
+      charges: Math.round(statements.reduce((sum, s) => sum + s.charges, 0) * 100) / 100,
       hst: Math.round(statements.reduce((sum, s) => sum + s.hst, 0) * 100) / 100,
       net_total: Math.round(statements.reduce((sum, s) => sum + s.net_total, 0) * 100) / 100,
     }

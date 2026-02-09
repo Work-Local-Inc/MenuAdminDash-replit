@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { format, startOfWeek, endOfWeek, subWeeks, addDays } from "date-fns"
+import { format, startOfWeek, endOfWeek, subWeeks, addDays, startOfMonth, endOfMonth, subMonths } from "date-fns"
 import { CalendarIcon, FileText, Printer, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -26,6 +26,14 @@ interface Restaurant {
   id: number
   name: string
   address?: string
+}
+
+interface AdjustmentItem {
+  id: number
+  category: string
+  description: string
+  amount: number
+  tax_exempt: boolean
 }
 
 interface StatementData {
@@ -58,24 +66,72 @@ interface StatementData {
     hst: number
     total_fees: number
   }
+  adjustments: {
+    credits: AdjustmentItem[]
+    charges: AdjustmentItem[]
+    total_credits: number
+    total_charges: number
+  }
   totals: {
     total_order_value: number
     total_unpaid: number
     delivery_tips: number
     delivery_fees: number
+    charges_owed: number
   }
   net_payable: number
 }
 
+type DatePreset = "last_week" | "this_week" | "last_month" | "this_month" | "custom"
+
+function formatCategoryLabel(category: string): string {
+  return category
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
+function getPresetDates(preset: DatePreset): { start: Date; end: Date } {
+  const now = new Date()
+  const thisMonday = startOfWeek(now, { weekStartsOn: 1 })
+
+  switch (preset) {
+    case "last_week": {
+      const prevMonday = subWeeks(thisMonday, 1)
+      return { start: prevMonday, end: addDays(prevMonday, 6) }
+    }
+    case "this_week": {
+      return { start: thisMonday, end: addDays(thisMonday, 6) }
+    }
+    case "last_month": {
+      const lastMonth = subMonths(now, 1)
+      return { start: startOfMonth(lastMonth), end: endOfMonth(lastMonth) }
+    }
+    case "this_month": {
+      return { start: startOfMonth(now), end: endOfMonth(now) }
+    }
+    default:
+      return { start: subWeeks(thisMonday, 1), end: addDays(subWeeks(thisMonday, 1), 6) }
+  }
+}
+
 export default function RestaurantStatementsPage() {
-  const lastMonday = startOfWeek(new Date(), { weekStartsOn: 1 })
-  const previousMonday = subWeeks(lastMonday, 1)
-  const previousSunday = addDays(previousMonday, 6)
-  
-  const [startDate, setStartDate] = useState<Date>(previousMonday)
-  const [endDate, setEndDate] = useState<Date>(previousSunday)
+  const defaultDates = getPresetDates("last_week")
+
+  const [datePreset, setDatePreset] = useState<DatePreset>("last_week")
+  const [startDate, setStartDate] = useState<Date>(defaultDates.start)
+  const [endDate, setEndDate] = useState<Date>(defaultDates.end)
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string>("")
   const [searchTerm, setSearchTerm] = useState("")
+
+  const handlePresetChange = (preset: DatePreset) => {
+    setDatePreset(preset)
+    if (preset !== "custom") {
+      const dates = getPresetDates(preset)
+      setStartDate(dates.start)
+      setEndDate(dates.end)
+    }
+  }
 
   const { data: restaurants = [] } = useQuery<Restaurant[]>({
     queryKey: ["/api/restaurants"],
@@ -132,6 +188,12 @@ export default function RestaurantStatementsPage() {
         .text-green-700 {
           color: #15803d !important;
         }
+        .text-green-600 {
+          color: #16a34a !important;
+        }
+        .text-red-600 {
+          color: #dc2626 !important;
+        }
         .border-green-200 {
           border-color: #bbf7d0 !important;
         }
@@ -146,6 +208,13 @@ export default function RestaurantStatementsPage() {
   }
 
   const dateRange = `${format(startDate, "yyyy-MM-dd")} - ${format(endDate, "yyyy-MM-dd")}`
+
+  const hasAdjustments = statement?.adjustments &&
+    (statement.adjustments.credits.length > 0 || statement.adjustments.charges.length > 0)
+
+  const netCharges = hasAdjustments
+    ? (statement?.adjustments?.total_charges ?? 0) - (statement?.adjustments?.total_credits ?? 0)
+    : 0
 
   return (
     <div className="p-6 space-y-6">
@@ -198,44 +267,70 @@ export default function RestaurantStatementsPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Period Start</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-start text-left font-normal">
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {format(startDate, "MMM d, yyyy")}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={startDate}
-                    onSelect={(date) => date && setStartDate(date)}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+              <Label>Date Range</Label>
+              <Select value={datePreset} onValueChange={(v) => handlePresetChange(v as DatePreset)}>
+                <SelectTrigger data-testid="select-date-preset">
+                  <SelectValue placeholder="Select date range" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="last_week">Last Week</SelectItem>
+                  <SelectItem value="this_week">This Week</SelectItem>
+                  <SelectItem value="last_month">Last Month</SelectItem>
+                  <SelectItem value="this_month">This Month</SelectItem>
+                  <SelectItem value="custom">Custom</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label>Period End</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-start text-left font-normal">
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {format(endDate, "MMM d, yyyy")}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={endDate}
-                    onSelect={(date) => date && setEndDate(date)}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
+            {datePreset === "custom" && (
+              <>
+                <div className="space-y-2">
+                  <Label>Period Start</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-start text-left font-normal" data-testid="button-start-date">
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {format(startDate, "MMM d, yyyy")}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={startDate}
+                        onSelect={(date) => date && setStartDate(date)}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Period End</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-start text-left font-normal" data-testid="button-end-date">
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {format(endDate, "MMM d, yyyy")}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={endDate}
+                        onSelect={(date) => date && setEndDate(date)}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </>
+            )}
+
+            {datePreset !== "custom" && (
+              <div className="text-sm text-muted-foreground" data-testid="text-date-range-preview">
+                {format(startDate, "MMM d, yyyy")} — {format(endDate, "MMM d, yyyy")}
+              </div>
+            )}
 
             {selectedRestaurantId && (
               <Button onClick={handlePrint} className="w-full" data-testid="button-print">
@@ -368,6 +463,46 @@ export default function RestaurantStatementsPage() {
                     </div>
                   </div>
 
+                  {/* Credits & Charges */}
+                  {hasAdjustments && (
+                    <div className="mb-6" data-testid="section-credits-charges">
+                      <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                        <span className="w-1 h-5 bg-red-600 rounded-full"></span>
+                        Credits and Charges
+                      </h2>
+                      <div className="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                        <div className="divide-y divide-gray-200 dark:divide-gray-700">
+                          <div className="flex justify-between py-3 px-4 bg-gray-100 dark:bg-gray-700">
+                            <span className="font-semibold text-gray-700 dark:text-gray-300">Description</span>
+                            <span className="font-semibold text-gray-700 dark:text-gray-300">Amount</span>
+                          </div>
+                          {statement.adjustments.credits.map((item) => (
+                            <div key={`credit-${item.id}`} className="flex justify-between py-3 px-4" data-testid={`row-adjustment-${item.id}`}>
+                              <span className="text-gray-600 dark:text-gray-300">
+                                {formatCategoryLabel(item.category)} — {item.description}
+                              </span>
+                              <span className="font-medium text-green-600 dark:text-green-400">-{formatCurrency(item.amount)}</span>
+                            </div>
+                          ))}
+                          {statement.adjustments.charges.map((item) => (
+                            <div key={`charge-${item.id}`} className="flex justify-between py-3 px-4" data-testid={`row-adjustment-${item.id}`}>
+                              <span className="text-gray-600 dark:text-gray-300">
+                                {formatCategoryLabel(item.category)} — {item.description}
+                              </span>
+                              <span className="font-medium text-red-600 dark:text-red-400">{formatCurrency(item.amount)}</span>
+                            </div>
+                          ))}
+                          <div className="flex justify-between py-3 px-4 bg-gray-100 dark:bg-gray-700 font-semibold">
+                            <span>Net Charges</span>
+                            <span className={netCharges <= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}>
+                              {netCharges < 0 ? `-${formatCurrency(Math.abs(netCharges))}` : formatCurrency(netCharges)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Fees & Deductions */}
                   <div className="mb-6">
                     <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
@@ -404,6 +539,12 @@ export default function RestaurantStatementsPage() {
                           <span className="text-gray-600 dark:text-gray-300">HST (13%)</span>
                           <span className="font-medium">-{formatCurrency(statement.fees.hst)}</span>
                         </div>
+                        {hasAdjustments && statement.totals.charges_owed > 0 && (
+                          <div className="flex justify-between py-3 px-4">
+                            <span className="text-gray-600 dark:text-gray-300">Charges Owed</span>
+                            <span className="font-medium text-red-600 dark:text-red-400">-{formatCurrency(statement.totals.charges_owed)}</span>
+                          </div>
+                        )}
                         <div className="flex justify-between py-3 px-4 bg-gray-100 dark:bg-gray-700 font-semibold">
                           <span>Total Fees</span>
                           <span className="text-red-600">-{formatCurrency(statement.fees.total_fees)}</span>
@@ -415,9 +556,13 @@ export default function RestaurantStatementsPage() {
                   {/* Net Payment */}
                   <div className="bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800 p-6 text-center">
                     <p className="text-sm text-green-700 dark:text-green-400 font-medium mb-1">NET PAYMENT</p>
-                    <p className="text-3xl font-bold text-green-700 dark:text-green-400">{formatCurrency(statement.net_payable)}</p>
-                    <p className="text-xs text-green-600 dark:text-green-500 mt-2">
-                      {statement.totals.total_unpaid > 0 ? `${formatCurrency(statement.totals.total_unpaid)} collected - ${formatCurrency(statement.fees.total_fees)} fees` : 'No credit card orders this period'}
+                    <p className="text-3xl font-bold text-green-700 dark:text-green-400" data-testid="text-net-payment">{formatCurrency(statement.net_payable)}</p>
+                    <p className="text-xs text-green-600 dark:text-green-500 mt-2" data-testid="text-net-payment-breakdown">
+                      {statement.totals.total_unpaid > 0 ? (
+                        hasAdjustments
+                          ? `${formatCurrency(statement.totals.total_unpaid)} collected - ${formatCurrency(statement.fees.total_fees)} fees - ${formatCurrency(statement.adjustments.total_charges)} charges + ${formatCurrency(statement.adjustments.total_credits)} credits`
+                          : `${formatCurrency(statement.totals.total_unpaid)} collected - ${formatCurrency(statement.fees.total_fees)} fees`
+                      ) : 'No credit card orders this period'}
                     </p>
                   </div>
 

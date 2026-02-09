@@ -137,6 +137,46 @@ export async function GET(request: NextRequest) {
 
     const config = configData as CommissionConfig | null
 
+    const { data: adjustmentsData } = await (supabase as any)
+      .from('statement_adjustments')
+      .select('*')
+      .eq('restaurant_id', restaurantId)
+      .gte('applies_to_week_start', startDate)
+      .lte('applies_to_week_start', endDate)
+
+    const adjustments = (adjustmentsData || []) as any[]
+
+    const creditAdjustments = adjustments
+      .filter((a: any) => a.adjustment_type === 'credit')
+      .map((a: any) => ({
+        id: a.id,
+        category: a.category,
+        description: a.description,
+        amount: Math.round(parseFloat(a.amount) * 100) / 100,
+        tax_exempt: a.tax_exempt,
+      }))
+
+    const chargeAdjustments = adjustments
+      .filter((a: any) => a.adjustment_type === 'charge')
+      .map((a: any) => ({
+        id: a.id,
+        category: a.category,
+        description: a.description,
+        amount: Math.round(parseFloat(a.amount) * 100) / 100,
+        tax_exempt: a.tax_exempt,
+      }))
+
+    const totalCredits = creditAdjustments.reduce((sum: number, a: any) => sum + a.amount, 0)
+    const totalCharges = chargeAdjustments.reduce((sum: number, a: any) => sum + a.amount, 0)
+
+    const taxableAdjustmentNet = adjustments.reduce((sum: number, a: any) => {
+      if (a.tax_exempt) return sum
+      const amt = Math.round(parseFloat(a.amount) * 100) / 100
+      if (a.adjustment_type === 'charge') return sum + amt
+      if (a.adjustment_type === 'credit') return sum - amt
+      return sum
+    }, 0)
+
     // Cash payments include cash and door payment methods (credit_at_door, debit_at_door, etc.)
     const cashPaymentMethods = ['cash', 'credit_at_door', 'debit_at_door', 'credit_or_debit_at_door']
     const cashOrders = orders.filter(o => cashPaymentMethods.includes(o.payment_method || ''))
@@ -172,12 +212,14 @@ export async function GET(request: NextRequest) {
     const bankFees = ccBankFees + interacBankFees
 
     const totalServiceFees = commission + weeklyCommission + transactionFees + bankFees + deliveryCommission
-    const hst = totalServiceFees * HST_RATE
+    const hstBase = totalServiceFees + taxableAdjustmentNet
+    const hst = hstBase * HST_RATE
     const totalFees = totalServiceFees + hst
 
     const totalUnpaid = ccTotal + interacTotal
     const totalOrderValue = cashTotal + ccTotal + interacTotal
-    const netPayable = totalUnpaid - totalFees
+    const chargesOwed = Math.round(totalCharges * 100) / 100
+    const netPayable = totalUnpaid - totalFees - totalCharges + totalCredits
 
     const deliveryTips = orders.reduce((sum, o) => sum + (o.tip_amount || 0), 0)
     const deliveryFees = orders.reduce((sum, o) => sum + (o.delivery_fee || 0), 0)
@@ -226,11 +268,18 @@ export async function GET(request: NextRequest) {
         hst: Math.round(hst * 100) / 100,
         total_fees: Math.round(totalFees * 100) / 100,
       },
+      adjustments: {
+        credits: creditAdjustments,
+        charges: chargeAdjustments,
+        total_credits: Math.round(totalCredits * 100) / 100,
+        total_charges: Math.round(totalCharges * 100) / 100,
+      },
       totals: {
         total_order_value: Math.round(totalOrderValue * 100) / 100,
         total_unpaid: Math.round(totalUnpaid * 100) / 100,
         delivery_tips: Math.round(deliveryTips * 100) / 100,
         delivery_fees: Math.round(deliveryFees * 100) / 100,
+        charges_owed: chargesOwed,
       },
       net_payable: Math.round(netPayable * 100) / 100,
     }

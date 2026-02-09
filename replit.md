@@ -63,6 +63,54 @@ Preferred communication style: Simple, everyday language.
 -   **RestoZone**: Third-party delivery provider.
 -   **Twilio**: Voice calls for order fallback notifications.
 
+## Accounting & Reporting System
+
+### Overview
+Full accounting system for Linda's weekly payment workflow: restaurant statements with adjustments, commission reports with carry-over balances, batch processing with ownership grouping, vendor commission tracking, and automated invoicing.
+
+### Database Tables (Custom - use `(supabase as any)` for queries)
+- `statement_adjustments` - Credits/charges for restaurant statements (refunds, domain renewals, etc.)
+- `commission_weekly_snapshots` - Weekly carry-over data for rolling commission balances
+- `vendor_configs` - Vendor partner configuration (name, company, tax rate, payment terms)
+- `vendor_restaurant_assignments` - Maps vendors to restaurants with commission rates and version (v1/v2)
+- `vendor_invoices` - Auto-numbered invoices for vendor billing
+- `restaurant_ownership_groups` - Groups restaurants by owner for batch reporting
+- `restaurant_group_memberships` - Restaurant-to-group assignments
+
+### HST Calculation Rule
+HST (13%) applies ONLY to service fees (commission, weekly commission, transaction fees, bank fees, delivery commission) and non-tax-exempt adjustments. Does NOT apply to tax-exempt adjustments like refunds.
+
+### Carry-over Commission Logic
+This Week + Prev Week + Carry Value - Net Paid = Next Week Balance. Snapshots saved to `commission_weekly_snapshots` for rolling forward week-to-week.
+
+### Vendor Invoice Numbers
+Auto-increment per vendor (max invoice_number + 1 for vendor_id). Menu's HST: "82804 8280 RT0001", Company: "Local Media Concepts Inc."
+
+### Linda's Workflow
+1. Weekly Mon-Sun statements → 2. Batch CSV export → 3. Commission report with carry-over → 4. Vendor monthly reports → 5. Vendor invoices
+
+### Key Admin Pages
+- `/admin/reporting/statements` - Individual restaurant statements with adjustments
+- `/admin/reporting/batch-statements` - Batch processing with ownership grouping and CSV export
+- `/admin/reporting/commission` - Weekly commission with carry-over balances and snapshot
+- `/admin/reporting/adjustments` - CRUD for statement credits/charges
+- `/admin/reporting/vendor-commissions` - Monthly vendor commission reports with assignment management
+- `/admin/reporting/vendor-invoices` - Vendor invoice CRUD with print-ready view
+
+### Key API Endpoints
+- `/api/reports/statement` - Single restaurant statement
+- `/api/reports/batch-statements` - All restaurants batch
+- `/api/reports/commission-report` - GET for report, POST for snapshot
+- `/api/reports/adjustments` - CRUD for adjustments
+- `/api/reports/vendor-commissions` - Vendor commission calculation
+- `/api/reports/vendor-configs` - Vendor configuration
+- `/api/reports/vendor-assignments` - Vendor-restaurant mappings
+- `/api/reports/vendor-invoices` - Invoice CRUD
+- `/api/reports/ownership-groups` - Restaurant ownership groups
+
+### Database Migration
+SQL file at `db/migrations/create_reporting_tables.sql` - run manually in Supabase SQL Editor.
+
 ## Twilio Order Fallback System
 
 ### Purpose
