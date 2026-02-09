@@ -5,6 +5,7 @@ The Menu.ca Admin Dashboard is a Next.js 14 application for managing a multi-ten
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
+CRITICAL: NEVER add postgresql-16 to .replit modules. This project uses external Supabase PostgreSQL, NOT the Replit built-in database. Adding postgresql-16 causes a database migration step during publishing that blocks deployment.
 
 ## System Architecture
 
