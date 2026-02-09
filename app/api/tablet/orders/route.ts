@@ -4,6 +4,7 @@ import { verifyDeviceAuth, isAuthError, checkRateLimit, rateLimitResponse } from
 import { ordersListQuerySchema } from '@/lib/validations/tablet'
 import { maskEmail, maskPhone } from '@/lib/tablet/auth'
 import type { TabletOrder, TabletOrderItem } from '@/types/tablet'
+export const dynamic = 'force-dynamic'
 
 /**
  * GET /api/tablet/orders

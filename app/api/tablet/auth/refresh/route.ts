@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { deviceRefreshSchema } from '@/lib/validations/tablet'
 import { refreshSessionToken } from '@/lib/tablet/auth'
+export const dynamic = 'force-dynamic'
 
 /**
  * POST /api/tablet/auth/refresh

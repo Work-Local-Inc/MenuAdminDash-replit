@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { buildOrderFallbackMessage } from '@/lib/fallback/order-summary'
 import { recordFallbackCallAttempt } from '@/lib/fallback/order-fallback'
+export const dynamic = 'force-dynamic'
 
 export const runtime = 'nodejs'
 

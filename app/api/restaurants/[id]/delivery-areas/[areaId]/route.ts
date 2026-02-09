@@ -4,6 +4,7 @@ import { verifyRestaurantAccess } from '@/lib/auth/restaurant-access'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AuthError } from '@/lib/errors'
 import { z } from 'zod'
+export const dynamic = 'force-dynamic'
 
 const updateDeliveryAreaSchema = z.object({
   name: z.string().min(1).max(100).optional(),

@@ -4,6 +4,7 @@ import { verifyRestaurantAccess } from '@/lib/auth/restaurant-access'
 import { AuthError } from '@/lib/errors'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { z } from 'zod'
+export const dynamic = 'force-dynamic'
 
 const seoSchema = z.object({
   meta_title: z.string().max(60, 'Meta title should be 60 characters or less').nullable().optional(),

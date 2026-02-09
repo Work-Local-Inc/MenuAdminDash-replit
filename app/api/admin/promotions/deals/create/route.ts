@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { createDealSchema, type CreateDealInput } from '@/lib/validation/promotions'
 import type { Database } from '@/types/supabase-database'
 import { z } from 'zod'
+export const dynamic = 'force-dynamic'
 
 type PromotionalDealInsert = Database['menuca_v3']['Tables']['promotional_deals']['Insert']
 

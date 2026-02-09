@@ -7,6 +7,7 @@ import {
   rateLimitResponse,
 } from '@/lib/tablet/verify-device';
 import { getDeliveryProviderConfig, getDeliveryProviderAdapter } from '@/lib/delivery-providers';
+export const dynamic = 'force-dynamic'
 
 /**
  * POST /api/tablet/orders/[id]/dispatch-driver

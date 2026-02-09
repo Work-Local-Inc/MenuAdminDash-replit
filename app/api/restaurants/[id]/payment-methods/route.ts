@@ -4,6 +4,7 @@ import { verifyRestaurantAccess } from '@/lib/auth/restaurant-access'
 import { AuthError } from '@/lib/errors'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { z } from 'zod'
+export const dynamic = 'force-dynamic'
 
 const paymentMethodSchema = z.object({
   payment_provider: z.enum(['stripe', 'square', 'paypal', 'cash', 'interac']),

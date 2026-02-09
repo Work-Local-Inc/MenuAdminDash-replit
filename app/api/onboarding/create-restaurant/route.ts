@@ -4,6 +4,7 @@ import { AuthError } from '@/lib/errors';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
+export const dynamic = 'force-dynamic'
 
 const createRestaurantSchema = z.object({
   name: z.string().min(1, 'Restaurant name is required'),

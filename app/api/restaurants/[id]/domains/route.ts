@@ -3,6 +3,7 @@ import { verifyAdminAuth } from '@/lib/auth/admin-check'
 import { verifyRestaurantAccess } from '@/lib/auth/restaurant-access'
 import { AuthError } from '@/lib/errors'
 import { createAdminClient } from '@/lib/supabase/admin'
+export const dynamic = 'force-dynamic'
 
 export async function GET(
   request: NextRequest,

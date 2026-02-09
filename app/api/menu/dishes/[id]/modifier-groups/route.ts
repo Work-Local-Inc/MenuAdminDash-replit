@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { verifyAdminAuth } from '@/lib/auth/admin-check';
 import { UnauthorizedError, ForbiddenError } from '@/lib/errors';
+export const dynamic = 'force-dynamic'
 
 export async function GET(
   request: NextRequest,

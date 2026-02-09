@@ -4,6 +4,7 @@ import { AuthError } from '@/lib/errors'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { z } from 'zod'
 import { checkLibraryLinkingMigrations } from '@/lib/supabase/check-migrations'
+export const dynamic = 'force-dynamic'
 
 const associateLibraryGroupSchema = z.object({
   course_id: z.number().int().positive('Course ID is required'),

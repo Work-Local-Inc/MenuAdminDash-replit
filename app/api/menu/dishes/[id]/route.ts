@@ -3,6 +3,7 @@ import { verifyAdminAuth } from '@/lib/auth/admin-check'
 import { AuthError } from '@/lib/errors'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { z } from 'zod'
+export const dynamic = 'force-dynamic'
 
 const updateDishSchema = z.object({
   course_id: z.number().nullable().optional(),

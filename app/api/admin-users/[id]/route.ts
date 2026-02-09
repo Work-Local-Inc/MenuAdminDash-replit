@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AuthError } from '@/lib/errors'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
+export const dynamic = 'force-dynamic'
 
 // GET /api/admin-users/[id] - Get single admin user
 // SECURITY: Super Admins can view any admin; Restaurant Admins can only view themselves

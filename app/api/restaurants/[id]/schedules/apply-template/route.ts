@@ -4,6 +4,7 @@ import { verifyRestaurantAccess } from '@/lib/auth/restaurant-access'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AuthError } from '@/lib/errors'
 import { z } from 'zod'
+export const dynamic = 'force-dynamic'
 
 const templateSchema = z.object({
   template_name: z.enum([

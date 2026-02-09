@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyDeviceAuth, isAuthError, checkRateLimit, rateLimitResponse } from '@/lib/tablet/verify-device'
 import { maskEmail, maskPhone } from '@/lib/tablet/auth'
 import type { TabletOrder, TabletOrderItem } from '@/types/tablet'
+export const dynamic = 'force-dynamic'
 
 /**
  * GET /api/tablet/orders/[id]

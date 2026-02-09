@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { extractIdFromSlug } from '@/lib/utils/slugify'
 import { PeakHour } from '@/types/supabase-database'
+export const dynamic = 'force-dynamic'
 
 function isCurrentlyPeakHour(peakHours: PeakHour[] | null, timezone?: string): boolean {
   if (!peakHours || peakHours.length === 0) return false

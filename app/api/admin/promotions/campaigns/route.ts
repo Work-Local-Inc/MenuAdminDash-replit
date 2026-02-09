@@ -7,6 +7,7 @@ import {
   CampaignFiltersSchema,
   type CreateCampaignInput 
 } from '@/lib/validations/promotions';
+export const dynamic = 'force-dynamic'
 
 /**
  * GET /api/admin/promotions/campaigns

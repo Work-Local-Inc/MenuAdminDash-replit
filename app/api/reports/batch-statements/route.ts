@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
 import { createClient } from '@/lib/supabase/server'
 import { getWeek, getYear } from 'date-fns'
+export const dynamic = 'force-dynamic'
 
 const SUPER_ADMIN_ROLE_ID = 1
 const HST_RATE = 0.13

@@ -4,6 +4,7 @@ import { verifyRestaurantAccess } from '@/lib/auth/restaurant-access'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AuthError } from '@/lib/errors'
 import { z } from 'zod'
+export const dynamic = 'force-dynamic'
 
 const responseSchema = z.object({
   admin_response: z.string().min(1, 'Response cannot be empty').max(1000, 'Response must be less than 1000 characters'),

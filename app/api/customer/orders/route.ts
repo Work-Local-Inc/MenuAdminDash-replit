@@ -7,6 +7,7 @@ import { sendOrderConfirmationEmail } from '@/lib/emails/service'
 import { fetchMenuForCustomer } from '@/lib/supabase/menu'
 import { TaxConfig, TaxLineItem, calculateTaxes, getTotalTax } from '@/lib/types/tax'
 import { getEffectivePrepTime, formatPrepTimeRange } from '@/lib/utils/prep-time'
+export const dynamic = 'force-dynamic'
 
 // Get Stripe instance based on payment mode (test or live)
 function getStripe(paymentMode: 'test' | 'live' = 'test') {

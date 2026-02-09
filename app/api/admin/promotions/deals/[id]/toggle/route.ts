@@ -4,6 +4,7 @@ import { verifyRestaurantPermission } from '@/lib/api/promotions'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { toggleDealStatusSchema } from '@/lib/validation/promotions'
 import { z } from 'zod'
+export const dynamic = 'force-dynamic'
 
 /**
  * PATCH /api/admin/promotions/deals/[id]/toggle

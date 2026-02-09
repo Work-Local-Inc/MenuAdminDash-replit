@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { AuthError } from '@/lib/errors'
 import { z } from 'zod'
 import { invalidateCache } from '@/lib/subdomain-mapping'
+export const dynamic = 'force-dynamic'
 
 const updateSubdomainSchema = z.object({
   subdomain: z.string().min(1).regex(/^[a-z0-9]+([\.\-][a-z0-9]+)*$/).optional(),

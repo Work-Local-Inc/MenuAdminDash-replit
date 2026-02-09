@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
+export const dynamic = 'force-dynamic'
 
 // Use service role key to bypass RLS (if available)
 const supabase = createClient(

@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { z } from 'zod'
 import Stripe from 'stripe'
 import { sendWelcomeEmail } from '@/lib/emails/service'
+export const dynamic = 'force-dynamic'
 
 // Use TEST Stripe keys to match payment intent creation
 const stripeSecretKey = process.env.TESTING_STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY

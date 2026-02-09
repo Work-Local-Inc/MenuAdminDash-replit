@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { ensureOAuthProfileForSession } from '@/lib/auth/oauth-profile'
 import { z } from 'zod'
+export const dynamic = 'force-dynamic'
 
 // OAuth profile creation schema (no password required)
 const oauthProfileSchema = z.object({

@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
 import { AuthError } from '@/lib/errors'
 import { generateDeviceKey, hashDeviceKey, generateQRCodeData } from '@/lib/tablet/auth'
+export const dynamic = 'force-dynamic'
 
 /**
  * POST /api/admin/devices/[id]/regenerate-key

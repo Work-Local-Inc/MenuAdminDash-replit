@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { AuthError } from '@/lib/errors'
 import { couponCreateSchema } from '@/lib/validations/coupon'
 import { z } from 'zod'
+export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   try {

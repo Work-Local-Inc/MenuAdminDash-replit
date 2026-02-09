@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { buildOrderSpeechSummary, OrderForSpeech, OrderItemForSpeech } from '@/lib/twilio/order-summary'
 import { markOrderAcknowledgedByPhone } from '@/lib/twilio/order-fallback'
+export const dynamic = 'force-dynamic'
 
 const VOICE_TOKEN = process.env.TWILIO_VOICE_TOKEN
 const VOICE_BASE_URL = process.env.TWILIO_VOICE_BASE_URL

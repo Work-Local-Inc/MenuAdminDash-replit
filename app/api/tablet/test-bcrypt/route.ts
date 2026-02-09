@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
+export const dynamic = 'force-dynamic'
 
 /**
  * POST /api/tablet/test-bcrypt

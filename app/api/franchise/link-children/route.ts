@@ -3,6 +3,7 @@ import { verifyAdminAuth } from '@/lib/auth/admin-check'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AuthError } from '@/lib/errors'
 import { z } from 'zod'
+export const dynamic = 'force-dynamic'
 
 const linkChildrenSchema = z.object({
   parent_restaurant_id: z.number().int().positive(),

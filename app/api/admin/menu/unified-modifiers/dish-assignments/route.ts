@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
+export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   try {

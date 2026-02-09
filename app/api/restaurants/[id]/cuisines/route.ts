@@ -4,6 +4,7 @@ import { verifyRestaurantAccess } from '@/lib/auth/restaurant-access'
 import { AuthError } from '@/lib/errors'
 import { createAdminClient } from '@/lib/supabase/admin';
 import { z } from 'zod';
+export const dynamic = 'force-dynamic'
 
 const addCuisineSchema = z.object({
   cuisine_name: z.string().min(1, 'Cuisine name is required'),

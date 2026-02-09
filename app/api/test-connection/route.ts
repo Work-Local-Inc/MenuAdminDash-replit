@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
+export const dynamic = 'force-dynamic'
 
 // Use direct Supabase client (bypass auth)
 const supabase = createClient(

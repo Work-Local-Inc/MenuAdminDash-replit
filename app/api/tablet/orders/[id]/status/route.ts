@@ -7,6 +7,7 @@ import {
   rateLimitResponse,
 } from "@/lib/tablet/verify-device";
 import { orderStatusUpdateSchema } from "@/lib/validations/tablet";
+export const dynamic = 'force-dynamic'
 
 /**
  * PATCH /api/tablet/orders/[id]/status

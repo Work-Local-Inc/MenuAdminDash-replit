@@ -3,6 +3,7 @@ import { verifyAdminAuth } from '@/lib/auth/admin-check'
 import { AuthError } from '@/lib/errors'
 import { getDashboardStats } from '@/lib/supabase/queries'
 import { createAdminClient } from '@/lib/supabase/admin'
+export const dynamic = 'force-dynamic'
 
 interface AdminUser {
   id: number

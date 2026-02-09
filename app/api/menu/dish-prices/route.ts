@@ -4,6 +4,7 @@ import { AuthError } from '@/lib/errors'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyRestaurantPermission } from '@/lib/api/promotions'
 import { z } from 'zod'
+export const dynamic = 'force-dynamic'
 
 const createPriceSchema = z.object({
   dish_id: z.number().int().positive(),

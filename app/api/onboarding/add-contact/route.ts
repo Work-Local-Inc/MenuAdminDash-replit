@@ -4,6 +4,7 @@ import { verifyAdminAuth } from '@/lib/auth/admin-check';
 import { AuthError } from '@/lib/errors';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
+export const dynamic = 'force-dynamic'
 
 const addContactSchema = z.object({
   restaurant_id: z.number(),

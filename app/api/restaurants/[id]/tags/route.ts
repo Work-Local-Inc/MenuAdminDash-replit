@@ -4,6 +4,7 @@ import { verifyRestaurantAccess } from '@/lib/auth/restaurant-access'
 import { AuthError } from '@/lib/errors'
 import { createAdminClient } from '@/lib/supabase/admin';
 import { z } from 'zod';
+export const dynamic = 'force-dynamic'
 
 const addTagSchema = z.object({
   tag_name: z.string().min(1, 'Tag name is required'),

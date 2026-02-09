@@ -3,6 +3,7 @@ import { verifyAdminAuth } from '@/lib/auth/admin-check';
 import { AuthError } from '@/lib/errors';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { z } from 'zod';
+export const dynamic = 'force-dynamic'
 
 const scheduleTemplateSchema = z.object({
   restaurant_id: z.number(),

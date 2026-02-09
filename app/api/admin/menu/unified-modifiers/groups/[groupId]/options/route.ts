@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { verifyAdminAuth } from "@/lib/auth/admin-check"
 import { createAdminClient } from "@/lib/supabase/admin"
+export const dynamic = 'force-dynamic'
 
 interface ModifierOption {
   id: number

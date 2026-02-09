@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { extractIdFromSlug } from '@/lib/utils/slugify';
 import { getDeliveryProviderConfig, getDeliveryProviderAdapter } from '@/lib/delivery-providers';
+export const dynamic = 'force-dynamic'
 
 /**
  * GET /api/customer/restaurants/[slug]/delivery-fee

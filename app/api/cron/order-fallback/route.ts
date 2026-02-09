@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { attemptFallbackCall, FallbackCallResult } from '@/lib/twilio/order-fallback'
+export const dynamic = 'force-dynamic'
 
 const ACK_TIMEOUT_SECONDS = parseInt(process.env.ORDER_FALLBACK_ACK_TIMEOUT_SECONDS || '180')
 const DEVICE_OFFLINE_SECONDS = parseInt(process.env.ORDER_FALLBACK_DEVICE_OFFLINE_SECONDS || '180')

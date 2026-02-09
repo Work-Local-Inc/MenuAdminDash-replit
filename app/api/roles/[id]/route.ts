@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { AuthError } from '@/lib/errors'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
 import { validatePermissionMatrix } from '@/lib/rbac'
+export const dynamic = 'force-dynamic'
 
 // GET /api/roles/[id] - Get role details
 export async function GET(

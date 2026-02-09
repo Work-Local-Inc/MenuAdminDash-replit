@@ -6,6 +6,7 @@ import {
   createDeviceSession,
   getDefaultDeviceConfig,
 } from '@/lib/tablet/auth'
+export const dynamic = 'force-dynamic'
 
 /**
  * POST /api/tablet/auth/login

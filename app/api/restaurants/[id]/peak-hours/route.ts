@@ -4,6 +4,7 @@ import { verifyRestaurantAccess } from '@/lib/auth/restaurant-access'
 import { AuthError } from '@/lib/errors'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { PeakHour } from '@/types/supabase-database'
+export const dynamic = 'force-dynamic'
 
 const WEEKS_TO_ANALYZE = 4
 const MIN_ORDERS_PER_HOUR_SLOT = 3

@@ -4,6 +4,7 @@ import { verifyDeviceAuth, isAuthError } from '@/lib/tablet/verify-device'
 import { heartbeatSchema } from '@/lib/validations/tablet'
 import { updateDeviceHeartbeat, getDefaultDeviceConfig } from '@/lib/tablet/auth'
 import type { DeviceConfig } from '@/types/tablet'
+export const dynamic = 'force-dynamic'
 
 /**
  * POST /api/tablet/heartbeat

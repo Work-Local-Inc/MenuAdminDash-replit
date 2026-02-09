@@ -9,6 +9,7 @@ import {
   hashDeviceKey,
   generateQRCodeData,
 } from '@/lib/tablet/auth'
+export const dynamic = 'force-dynamic'
 
 /**
  * POST /api/tablet/auth/register

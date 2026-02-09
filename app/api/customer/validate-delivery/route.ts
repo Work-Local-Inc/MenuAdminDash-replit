@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isPointInGeoJSON } from '@/lib/utils/point-in-polygon'
+export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   try {

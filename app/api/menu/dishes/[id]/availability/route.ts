@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { verifyAdminAuth, AuthError } from '@/lib/auth/admin-check'
+import { verifyAdminAuth } from '@/lib/auth/admin-check'
+import { AuthError } from '@/lib/errors'
 import { z } from 'zod'
+export const dynamic = 'force-dynamic'
 
 const updateAvailabilitySchema = z.object({
   hidden_days: z.array(z.number().int().min(0).max(6)),

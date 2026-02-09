@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyAdminAuth } from '@/lib/auth/admin-check';
 import { AuthError } from '@/lib/errors';
 import { z } from 'zod';
+export const dynamic = 'force-dynamic'
 
 const createDeliveryZoneSchema = z.object({
   restaurant_id: z.number(),

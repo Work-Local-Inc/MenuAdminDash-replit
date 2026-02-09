@@ -7,6 +7,7 @@ import { fetchMenuForCustomer } from '@/lib/supabase/menu'
 import { TaxConfig, TaxLineItem, calculateTaxes, getTotalTax } from '@/lib/types/tax'
 import { getEffectivePrepTime, formatPrepTimeRange } from '@/lib/utils/prep-time'
 import crypto from 'crypto'
+export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
   try {

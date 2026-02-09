@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { verifyAdminAuth } from '@/lib/auth/admin-check';
 import { UnauthorizedError, ForbiddenError } from '@/lib/errors';
 import { UpdateCampaignSchema } from '@/lib/validations/promotions';
+export const dynamic = 'force-dynamic'
 
 interface RouteParams {
   params: Promise<{ id: string }>;

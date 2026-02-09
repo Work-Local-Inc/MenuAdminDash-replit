@@ -4,6 +4,7 @@ import { verifyRestaurantPermission } from '@/lib/api/promotions'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { updateDealSchema } from '@/lib/validation/promotions'
 import { z } from 'zod'
+export const dynamic = 'force-dynamic'
 
 /**
  * GET /api/admin/promotions/deals/[id]

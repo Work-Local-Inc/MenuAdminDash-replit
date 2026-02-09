@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
 import { getDealsForAdmin } from '@/lib/api/promotions'
+export const dynamic = 'force-dynamic'
 
 /**
  * GET /api/admin/promotions/deals

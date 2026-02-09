@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { resend } from '@/lib/emails/client'
 import LoginInstructionsEmail from '@/lib/emails/templates/login-instructions'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
+export const dynamic = 'force-dynamic'
 
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
 const DEFAULT_PASSWORD = process.env.ONBOARDING_DEFAULT_PASSWORD || 'Menu123*'
