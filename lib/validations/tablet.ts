@@ -32,24 +32,24 @@ export const orderStatusEnum = z.enum([
 
 export const ordersListQuerySchema = z.object({
   status: orderStatusEnum.optional(),
-  since: z.string().datetime().optional(),
+  since: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).optional().default(50),
-})
+}).passthrough()
 
 export const orderStatusUpdateSchema = z.object({
   status: orderStatusEnum,
-  notes: z.string().max(500).optional(),
-  estimated_ready_minutes: z.number().int().min(1).max(180).optional(),
-})
+  notes: z.string().max(500).optional().nullable(),
+  estimated_ready_minutes: z.number().int().min(1).max(180).optional().nullable(),
+}).passthrough()
 
 // ==================== Heartbeat Schema ====================
 
 export const heartbeatSchema = z.object({
-  battery_level: z.number().min(0).max(100).optional(),
-  printer_status: z.enum(['online', 'offline', 'paper_low', 'error']).optional(),
-  app_version: z.string().min(1, 'App version is required'),
-  last_print_at: z.string().datetime().optional(),
-})
+  battery_level: z.number().min(0).max(100).optional().nullable(),
+  printer_status: z.enum(['online', 'offline', 'paper_low', 'error', 'unknown']).optional().nullable(),
+  app_version: z.string().optional().default('unknown'),
+  last_print_at: z.string().optional().nullable(),
+}).passthrough()
 
 // ==================== Type Exports ====================
 

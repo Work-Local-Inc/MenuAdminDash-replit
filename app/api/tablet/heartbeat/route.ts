@@ -36,8 +36,8 @@ export async function POST(request: NextRequest) {
 
     // Update device heartbeat
     await updateDeviceHeartbeat(deviceContext.device_id, {
-      battery_level,
-      printer_status,
+      battery_level: battery_level ?? undefined,
+      printer_status: printer_status ?? undefined,
       app_version,
     })
 
