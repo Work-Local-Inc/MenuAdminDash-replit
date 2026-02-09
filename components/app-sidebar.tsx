@@ -97,6 +97,7 @@ const allMenuItems = [
     items: [
       { title: "All Devices", url: "/admin/devices" },
       { title: "Register Device", url: "/admin/devices/register" },
+      { title: "Fallback Calls", url: "/admin/devices/fallback-calls" },
     ],
   },
   {
