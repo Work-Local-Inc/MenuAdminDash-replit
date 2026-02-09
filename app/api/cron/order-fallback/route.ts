@@ -82,10 +82,35 @@ export async function GET(request: NextRequest) {
     console.log(`[OrderFallback Cron] Found ${orders.length} unacknowledged orders`)
 
     const restaurantIds = Array.from(new Set(orders.map(o => o.restaurant_id)))
+
+    const { data: twilioConfigs } = await supabase
+      .from('delivery_and_pickup_configs')
+      .select('restaurant_id, twilio_call')
+      .in('restaurant_id', restaurantIds)
+      .eq('twilio_call', true) as { data: { restaurant_id: number; twilio_call: boolean }[] | null }
+
+    const twilioEnabledIds = new Set((twilioConfigs || []).map(c => c.restaurant_id))
+    const eligibleOrders = orders.filter(o => twilioEnabledIds.has(o.restaurant_id))
+
+    if (eligibleOrders.length === 0) {
+      console.log(`[OrderFallback Cron] No orders from restaurants with twilio_call enabled (${orders.length} orders skipped)`)
+      return NextResponse.json({
+        message: 'No orders from restaurants with twilio_call enabled',
+        processed: orders.length,
+        callsPlaced: 0,
+        callsFailed: 0,
+        callsSkipped: orders.length,
+        results: []
+      })
+    }
+
+    console.log(`[OrderFallback Cron] ${eligibleOrders.length} orders from restaurants with twilio_call enabled (${orders.length - eligibleOrders.length} skipped)`)
+
+    const eligibleRestaurantIds = Array.from(new Set(eligibleOrders.map(o => o.restaurant_id)))
     const { data: devices } = await supabase
       .from('devices')
       .select('restaurant_id, last_check_at')
-      .in('restaurant_id', restaurantIds)
+      .in('restaurant_id', eligibleRestaurantIds)
       .eq('device_type', 'tablet') as { data: DeviceRow[] | null }
 
     const deviceMap = new Map<number, Date | null>()
@@ -97,7 +122,7 @@ export async function GET(request: NextRequest) {
 
     const results: FallbackCallResult[] = []
 
-    for (const order of orders) {
+    for (const order of eligibleOrders) {
       const restaurant = Array.isArray(order.restaurant) ? order.restaurant[0] : order.restaurant
       if (!restaurant) {
         console.warn(`[OrderFallback Cron] No restaurant found for order ${order.id}`)
