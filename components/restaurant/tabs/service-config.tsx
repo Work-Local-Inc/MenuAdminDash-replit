@@ -12,7 +12,7 @@ import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { queryClient, apiRequest } from "@/lib/queryClient"
-import { Loader2, Truck, ShoppingBag, Clock, DollarSign, Phone, Zap, TrendingUp } from "lucide-react"
+import { Loader2, Truck, ShoppingBag, Clock, DollarSign, Phone, Zap, TrendingUp, Trash2 } from "lucide-react"
 import React from "react"
 import { PeakHour } from "@/types/supabase-database"
 
@@ -68,6 +68,173 @@ function formatPeakHour(peak: PeakHour): string {
 
 interface RestaurantServiceConfigProps {
   restaurantId: string
+}
+
+interface DeliveryFeeTier {
+  id?: number
+  distance_in_km: number
+  total_delivery_fee: number
+  driver_earning: number
+}
+
+function DistanceFeeTiersEditor({ restaurantId }: { restaurantId: string }) {
+  const { toast } = useToast()
+  const [tiers, setTiers] = React.useState<DeliveryFeeTier[]>([])
+  const [hasLoaded, setHasLoaded] = React.useState(false)
+
+  const { data: fetchedTiers, isLoading } = useQuery<DeliveryFeeTier[]>({
+    queryKey: ['/api/restaurants', restaurantId, 'delivery-fee-tiers'],
+    queryFn: async () => {
+      const res = await fetch(`/api/restaurants/${restaurantId}/delivery-fee-tiers`)
+      if (!res.ok) throw new Error('Failed to fetch delivery fee tiers')
+      return res.json()
+    },
+  })
+
+  React.useEffect(() => {
+    if (fetchedTiers && !hasLoaded) {
+      setTiers(fetchedTiers.map(t => ({
+        distance_in_km: t.distance_in_km,
+        total_delivery_fee: t.total_delivery_fee,
+        driver_earning: t.driver_earning,
+      })))
+      setHasLoaded(true)
+    }
+  }, [fetchedTiers, hasLoaded])
+
+  const saveTiers = useMutation({
+    mutationFn: async (tiersToSave: DeliveryFeeTier[]) => {
+      const res = await fetch(`/api/restaurants/${restaurantId}/delivery-fee-tiers`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tiers: tiersToSave }),
+      })
+      if (!res.ok) throw new Error(await res.text())
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/restaurants', restaurantId, 'delivery-fee-tiers'] })
+      setHasLoaded(false)
+      toast({ title: "Success", description: "Distance fee tiers saved successfully" })
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" })
+    },
+  })
+
+  const addTier = () => {
+    setTiers(prev => [...prev, { distance_in_km: 0, total_delivery_fee: 0, driver_earning: 0 }])
+  }
+
+  const removeTier = (index: number) => {
+    setTiers(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const updateTier = (index: number, field: keyof DeliveryFeeTier, value: number) => {
+    setTiers(prev => prev.map((t, i) => i === index ? { ...t, [field]: value } : t))
+  }
+
+  const handleSave = () => {
+    const sorted = [...tiers].sort((a, b) => a.distance_in_km - b.distance_in_km)
+    saveTiers.mutate(sorted)
+  }
+
+  if (isLoading) {
+    return (
+      <div className="rounded-lg border p-4">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading distance fee tiers...
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="rounded-lg border p-4 space-y-3" data-testid="distance-fee-tiers-editor">
+      <div className="space-y-1">
+        <label className="text-sm font-medium">Distance Fee Tiers</label>
+        <p className="text-xs text-muted-foreground">
+          Configure delivery fees based on distance. Each tier defines the fee for deliveries up to that distance.
+        </p>
+      </div>
+
+      {tiers.length === 0 ? (
+        <p className="text-sm text-muted-foreground py-2" data-testid="text-no-tiers">
+          No distance tiers configured. Add tiers to set delivery fees based on distance.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 text-xs font-medium text-muted-foreground px-1">
+            <span>Distance (km)</span>
+            <span>Delivery Fee ($)</span>
+            <span>Driver Earning ($)</span>
+            <span className="w-9" />
+          </div>
+          {tiers.map((tier, index) => (
+            <div key={index} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-center" data-testid={`tier-row-${index}`}>
+              <Input
+                type="number"
+                min={0}
+                step="0.1"
+                value={tier.distance_in_km}
+                onChange={(e) => updateTier(index, 'distance_in_km', parseFloat(e.target.value) || 0)}
+                data-testid={`input-distance-${index}`}
+              />
+              <Input
+                type="number"
+                min={0}
+                step="0.01"
+                value={tier.total_delivery_fee}
+                onChange={(e) => updateTier(index, 'total_delivery_fee', parseFloat(e.target.value) || 0)}
+                data-testid={`input-delivery-fee-${index}`}
+              />
+              <Input
+                type="number"
+                min={0}
+                step="0.01"
+                value={tier.driver_earning}
+                onChange={(e) => updateTier(index, 'driver_earning', parseFloat(e.target.value) || 0)}
+                data-testid={`input-driver-earning-${index}`}
+              />
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                onClick={() => removeTier(index)}
+                data-testid={`button-remove-tier-${index}`}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="flex items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={addTier}
+          data-testid="button-add-tier"
+        >
+          Add Tier
+        </Button>
+        <Button
+          type="button"
+          variant="default"
+          size="sm"
+          onClick={handleSave}
+          disabled={saveTiers.isPending}
+          data-testid="button-save-tiers"
+        >
+          {saveTiers.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Save Tiers
+        </Button>
+      </div>
+    </div>
+  )
 }
 
 function TwilioPhoneConfig({ restaurantId }: { restaurantId: string }) {
@@ -265,6 +432,7 @@ export function RestaurantServiceConfig({ restaurantId }: RestaurantServiceConfi
   }
 
   const deliveryEnabled = form.watch('has_delivery_enabled')
+  const distanceBasedEnabled = form.watch('distance_based_delivery_fee')
   const pickupEnabled = form.watch('pickup_enabled')
   const busyModeEnabled = form.watch('busy_mode_enabled')
   const twilioCallEnabled = form.watch('twilio_call')
@@ -302,27 +470,33 @@ export function RestaurantServiceConfig({ restaurantId }: RestaurantServiceConfi
             />
 
             {deliveryEnabled && (
-              <FormField
-                control={form.control}
-                name="distance_based_delivery_fee"
-                render={({ field }) => (
-                  <FormItem className="flex items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                      <FormLabel>Distance-Based Delivery Fee</FormLabel>
-                      <FormDescription>
-                        Calculate delivery fee based on distance tiers instead of flat delivery area fees
-                      </FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        data-testid="switch-distance-based-fee"
-                      />
-                    </FormControl>
-                  </FormItem>
+              <>
+                <FormField
+                  control={form.control}
+                  name="distance_based_delivery_fee"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                      <div className="space-y-0.5">
+                        <FormLabel>Distance-Based Delivery Fee</FormLabel>
+                        <FormDescription>
+                          Calculate delivery fee based on distance tiers instead of flat delivery area fees
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          data-testid="switch-distance-based-fee"
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                {distanceBasedEnabled && (
+                  <DistanceFeeTiersEditor restaurantId={restaurantId} />
                 )}
-              />
+              </>
             )}
           </CardContent>
         </Card>
