@@ -96,6 +96,34 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    const unacknowledgedIds = (orders || [])
+      .filter((o: any) => !o.acknowledged_at && o.payment_status === 'paid')
+      .map((o: any) => o.id)
+
+    if (unacknowledgedIds.length > 0) {
+      const ackTime = new Date().toISOString()
+      const { error: ackError } = await supabase
+        .from('orders')
+        .update({
+          acknowledged_at: ackTime,
+          acknowledged_by_device_id: deviceContext.device_id,
+        })
+        .in('id', unacknowledgedIds)
+        .eq('restaurant_id', deviceContext.restaurant_id)
+
+      if (ackError) {
+        console.error('[Tablet Orders] Auto-acknowledge error:', ackError)
+      } else {
+        console.log(`[Tablet Orders] Auto-acknowledged ${unacknowledgedIds.length} orders for device ${deviceContext.device_id}`)
+        orders?.forEach((o: any) => {
+          if (unacknowledgedIds.includes(o.id)) {
+            o.acknowledged_at = ackTime
+            o.acknowledged_by_device_id = deviceContext.device_id
+          }
+        })
+      }
+    }
+
     // Transform orders for tablet consumption
     const transformedOrders: TabletOrder[] = (orders || []).map((order: any) => {
       // Get customer info from user or guest fields
