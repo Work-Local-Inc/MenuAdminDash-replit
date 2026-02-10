@@ -264,8 +264,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to validate dishes' }, { status: 500 })
     }
 
-    // Build a map of all valid dishes from the menu
+    // Build a map of all valid dishes from the menu AND extract dish prices from menu data
+    // This is critical: the menu RPC returns modifier_size_variant_id on dish prices,
+    // which maps dish sizes to the correct modifier price tiers.
+    // The dish_prices TABLE does not have this column, so we must use menu data.
     const dishMap = new Map<number, { id: number; restaurant_id: number; name: string }>()
+    const dishPriceMap = new Map<string, { price: number; size_variant: string | null; modifierSizeVariantId: number | null; sizeIndex: number }>()
+    const dishPriceOptions = new Map<number, { size_variant: string | null; price: string }[]>()
     menuData?.courses?.forEach((course: any) => {
       course.dishes?.forEach((dish: any) => {
         dishMap.set(dish.id, {
@@ -273,6 +278,20 @@ export async function POST(request: NextRequest) {
           restaurant_id: restaurant.id,
           name: dish.name || 'Unknown'
         })
+        if (dish.prices && Array.isArray(dish.prices)) {
+          dish.prices.forEach((p: any, idx: number) => {
+            const key = `${dish.id}-${p.size_variant}`
+            dishPriceMap.set(key, {
+              price: parseFloat(p.price),
+              size_variant: p.size_variant,
+              modifierSizeVariantId: p.modifier_size_variant_id ?? null,
+              sizeIndex: idx,
+            })
+            const existing = dishPriceOptions.get(dish.id) || []
+            existing.push({ size_variant: p.size_variant, price: String(p.price) })
+            dishPriceOptions.set(dish.id, existing)
+          })
+        }
       })
     })
 
@@ -282,36 +301,6 @@ export async function POST(request: NextRequest) {
       console.error('[Order API] Dishes not found in menu:', missingDishes)
       return NextResponse.json({ error: 'Some dishes are not available' }, { status: 400 })
     }
-
-    const { data: dishPricesData, error: dishPricesError } = await (adminSupabase as any)
-      .schema('menuca_v3')
-      .from('dish_prices')
-      .select('dish_id, size_variant, price, display_order')
-      .in('dish_id', dishIds)
-      .eq('is_active', true)
-      .order('display_order', { ascending: true })
-
-    if (dishPricesError) {
-      console.error('[Order API] Dish price preload error:', dishPricesError)
-      return NextResponse.json({ error: 'Failed to load dish prices' }, { status: 500 })
-    }
-
-    const dishPriceMap = new Map<string, { price: number; size_variant: string | null; sizeIndex: number }>()
-    const dishPriceOptions = new Map<number, { size_variant: string | null; price: string }[]>()
-    const dishSizeCounters = new Map<number, number>()
-    dishPricesData?.forEach((priceRow: any) => {
-      const currentIndex = dishSizeCounters.get(priceRow.dish_id) || 0
-      dishSizeCounters.set(priceRow.dish_id, currentIndex + 1)
-      const key = `${priceRow.dish_id}-${priceRow.size_variant}`
-      dishPriceMap.set(key, {
-        price: parseFloat(priceRow.price),
-        size_variant: priceRow.size_variant,
-        sizeIndex: currentIndex,
-      })
-      const existing = dishPriceOptions.get(priceRow.dish_id) || []
-      existing.push({ size_variant: priceRow.size_variant, price: priceRow.price })
-      dishPriceOptions.set(priceRow.dish_id, existing)
-    })
 
     // Maps for simple modifiers - built from menu data
     // Note: No dish_id in modifier_group - validation uses dishModifierIndex instead
@@ -386,11 +375,10 @@ export async function POST(request: NextRequest) {
         }
 
         simpleModifierPricesData?.forEach((priceRow: any) => {
-          // Store ALL prices with compound key: modifier_id-size_variant_id
-          // This enables looking up size-specific prices (e.g., Hot Peppers for Large = $3.25)
           const sizeVariantId = priceRow.modifier_size_variant_id || 1
           const key = `${priceRow.modifier_id}-${sizeVariantId}`
           simpleModifierPriceMap.set(key, parseFloat(priceRow.price))
+          console.log(`[Order API] Modifier price: mod=${priceRow.modifier_id} size_variant_id=${sizeVariantId} price=${priceRow.price}`)
         })
       }
 
@@ -575,7 +563,7 @@ export async function POST(request: NextRequest) {
               }, { status: 400 })
             }
             
-            const targetSizeVariantId = (dishPrice.sizeIndex || 0) + 1
+            const targetSizeVariantId = dishPrice.modifierSizeVariantId || 1
             let modPrice = simpleModifierPriceMap.get(`${mod.id}-${targetSizeVariantId}`)
             if (modPrice === undefined) {
               modPrice = simpleModifierPriceMap.get(`${mod.id}-1`) ?? 0
