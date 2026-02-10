@@ -105,32 +105,33 @@ const allMenuItems = [
     icon: Megaphone,
   },
   {
-    title: "Billing",
-    icon: FileText,
-    superAdminOnly: true,
-    items: [
-      { title: "Restaurant Statements", url: "/admin/accounting/statements" },
-      { title: "Batch Statements", url: "/admin/accounting/batch-statements" },
-      { title: "Weekly Commission", url: "/admin/accounting/commission" },
-      { title: "Adjustments", url: "/admin/accounting/adjustments" },
-    ],
-  },
-  {
-    title: "Transactions",
+    title: "Accounting",
     icon: Calculator,
     superAdminOnly: true,
-    items: [
-      { title: "Daily Orders", url: "/admin/accounting/orders" },
-      { title: "Refunds", url: "/admin/accounting/refunds" },
-    ],
-  },
-  {
-    title: "Vendors",
-    icon: Building2,
-    superAdminOnly: true,
-    items: [
-      { title: "Commissions", url: "/admin/accounting/vendor-commissions" },
-      { title: "Invoices", url: "/admin/accounting/vendor-invoices" },
+    subgroups: [
+      {
+        label: "Billing",
+        items: [
+          { title: "Restaurant Statements", url: "/admin/accounting/statements" },
+          { title: "Batch Statements", url: "/admin/accounting/batch-statements" },
+          { title: "Weekly Commission", url: "/admin/accounting/commission" },
+          { title: "Adjustments", url: "/admin/accounting/adjustments" },
+        ],
+      },
+      {
+        label: "Transactions",
+        items: [
+          { title: "Daily Orders", url: "/admin/accounting/orders" },
+          { title: "Refunds", url: "/admin/accounting/refunds" },
+        ],
+      },
+      {
+        label: "Vendors",
+        items: [
+          { title: "Commissions", url: "/admin/accounting/vendor-commissions" },
+          { title: "Invoices", url: "/admin/accounting/vendor-invoices" },
+        ],
+      },
     ],
   },
   {
@@ -163,23 +164,25 @@ export function AppSidebar({ className }: AppSidebarProps = {}) {
     return allMenuItems
       .filter(item => !('superAdminOnly' in item && item.superAdminOnly) || isSuperAdmin)
       .map(item => {
-        // For Restaurant Admins, just show "All Restaurants" - no individual restaurant links
-        if (item.title === "Restaurants" && !isSuperAdmin && item.items) {
+        if (item.title === "Restaurants" && !isSuperAdmin && 'items' in item && item.items) {
           return {
             ...item,
             items: [{ title: "All Restaurants", url: "/admin/restaurants" }]
           }
         }
         
-        if (item.items) {
+        if ('items' in item && item.items) {
           return {
             ...item,
-            items: item.items.filter(subItem => !('superAdminOnly' in subItem && subItem.superAdminOnly) || isSuperAdmin)
+            items: item.items.filter((subItem: any) => !('superAdminOnly' in subItem && subItem.superAdminOnly) || isSuperAdmin)
           }
         }
         return item
       })
-      .filter(item => !item.items || item.items.length > 0)
+      .filter(item => {
+        if ('items' in item) return !item.items || (item.items as any[]).length > 0
+        return true
+      })
   }, [isSuperAdmin, restaurants])
 
   return (
@@ -198,9 +201,48 @@ export function AppSidebar({ className }: AppSidebarProps = {}) {
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => (
+              {menuItems.map((item: any) => (
                 <SidebarMenuItem key={item.title}>
-                  {item.items ? (
+                  {item.subgroups ? (
+                    <Collapsible 
+                      className="group/collapsible"
+                      defaultOpen={item.subgroups.some((sg: any) => 
+                        sg.items.some((sub: any) => pathname.startsWith(sub.url))
+                      )}
+                    >
+                      <CollapsibleTrigger asChild>
+                        <SidebarMenuButton data-testid={`button-nav-${item.title.toLowerCase()}`}>
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.title}</span>
+                          <ChevronRight className="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                        </SidebarMenuButton>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <SidebarMenuSub>
+                          {item.subgroups.map((sg: any) => (
+                            <div key={sg.label}>
+                              <p className="px-2 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+                                {sg.label}
+                              </p>
+                              {sg.items.map((subItem: any) => (
+                                <SidebarMenuSubItem key={subItem.title}>
+                                  <SidebarMenuSubButton 
+                                    asChild
+                                    isActive={pathname === subItem.url}
+                                    data-testid={`link-${subItem.title.toLowerCase().replace(/ /g, '-')}`}
+                                  >
+                                    <Link href={subItem.url}>
+                                      {subItem.title}
+                                    </Link>
+                                  </SidebarMenuSubButton>
+                                </SidebarMenuSubItem>
+                              ))}
+                            </div>
+                          ))}
+                        </SidebarMenuSub>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  ) : item.items ? (
                     <Collapsible 
                       className="group/collapsible"
                       defaultOpen={item.items.some((sub: { url: string }) => pathname.startsWith(sub.url))}
