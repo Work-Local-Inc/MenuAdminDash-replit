@@ -286,23 +286,27 @@ export async function POST(request: NextRequest) {
     const { data: dishPricesData, error: dishPricesError } = await (adminSupabase as any)
       .schema('menuca_v3')
       .from('dish_prices')
-      .select('dish_id, size_variant, price, modifier_size_variant_id')
+      .select('dish_id, size_variant, price, display_order')
       .in('dish_id', dishIds)
       .eq('is_active', true)
+      .order('display_order', { ascending: true })
 
     if (dishPricesError) {
       console.error('[Order API] Dish price preload error:', dishPricesError)
       return NextResponse.json({ error: 'Failed to load dish prices' }, { status: 500 })
     }
 
-    const dishPriceMap = new Map<string, { price: number; size_variant: string | null; modifier_size_variant_id: number | null }>()
+    const dishPriceMap = new Map<string, { price: number; size_variant: string | null; sizeIndex: number }>()
     const dishPriceOptions = new Map<number, { size_variant: string | null; price: string }[]>()
+    const dishSizeCounters = new Map<number, number>()
     dishPricesData?.forEach((priceRow: any) => {
+      const currentIndex = dishSizeCounters.get(priceRow.dish_id) || 0
+      dishSizeCounters.set(priceRow.dish_id, currentIndex + 1)
       const key = `${priceRow.dish_id}-${priceRow.size_variant}`
       dishPriceMap.set(key, {
         price: parseFloat(priceRow.price),
         size_variant: priceRow.size_variant,
-        modifier_size_variant_id: priceRow.modifier_size_variant_id ?? null,
+        sizeIndex: currentIndex,
       })
       const existing = dishPriceOptions.get(priceRow.dish_id) || []
       existing.push({ size_variant: priceRow.size_variant, price: priceRow.price })
@@ -571,11 +575,8 @@ export async function POST(request: NextRequest) {
               }, { status: 400 })
             }
             
-            // Get server-side price using the dish's size variant for modifier pricing
-            // dishPrice.modifier_size_variant_id maps the dish size to the correct modifier price
-            const targetSizeVariantId = dishPrice.modifier_size_variant_id || 1
+            const targetSizeVariantId = (dishPrice.sizeIndex || 0) + 1
             let modPrice = simpleModifierPriceMap.get(`${mod.id}-${targetSizeVariantId}`)
-            // Fallback to base price (variant 1) if size-specific price not found
             if (modPrice === undefined) {
               modPrice = simpleModifierPriceMap.get(`${mod.id}-1`) ?? 0
             }

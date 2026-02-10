@@ -129,17 +129,21 @@ export async function POST(request: NextRequest) {
     const { data: dishPricesData } = await (adminSupabase as any)
       .schema('menuca_v3')
       .from('dish_prices')
-      .select('dish_id, size_variant, price, modifier_size_variant_id')
+      .select('dish_id, size_variant, price, display_order')
       .in('dish_id', dishIds)
       .eq('is_active', true)
+      .order('display_order', { ascending: true })
 
-    const dishPriceMap = new Map<string, { price: number; size_variant: string | null; modifier_size_variant_id: number | null }>()
+    const dishPriceMap = new Map<string, { price: number; size_variant: string | null; sizeIndex: number }>()
+    const dishSizeCounters = new Map<number, number>()
     dishPricesData?.forEach((priceRow: any) => {
+      const currentIndex = dishSizeCounters.get(priceRow.dish_id) || 0
+      dishSizeCounters.set(priceRow.dish_id, currentIndex + 1)
       const key = `${priceRow.dish_id}-${priceRow.size_variant}`
       dishPriceMap.set(key, {
         price: parseFloat(priceRow.price),
         size_variant: priceRow.size_variant,
-        modifier_size_variant_id: priceRow.modifier_size_variant_id ?? null,
+        sizeIndex: currentIndex,
       })
     })
 
@@ -212,12 +216,9 @@ export async function POST(request: NextRequest) {
 
       if (item.modifiers && item.modifiers.length > 0) {
         for (const mod of item.modifiers) {
-          // Get the modifier_size_variant_id from the dish price for this item's size
-          const targetSizeVariantId = dishPrice.modifier_size_variant_id || 1
+          const targetSizeVariantId = (dishPrice.sizeIndex || 0) + 1
 
-          // First check simple modifier price with size variant
           let modPrice: number | undefined = simpleModifierPriceMap.get(`${mod.id}-${targetSizeVariantId}`)
-          // Fallback to base price (variant 1) if size-specific price not found
           if (modPrice === undefined) {
             modPrice = simpleModifierPriceMap.get(`${mod.id}-1`)
           }
