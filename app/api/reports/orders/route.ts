@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { format } from 'date-fns'
 export const dynamic = 'force-dynamic'
 
@@ -54,9 +54,10 @@ export async function GET(request: NextRequest) {
 
     console.log('[Orders Report] Fetching orders for', { startDate, endDate })
 
-    const supabase = await createClient()
+    const adminSupabase = createAdminClient() as any
 
-    const { data: ordersData, error: ordersError } = await supabase
+    const { data: ordersData, error: ordersError } = await (adminSupabase as any)
+      .schema('menuca_v3')
       .from('orders')
       .select(`
         id,
@@ -92,7 +93,8 @@ export async function GET(request: NextRequest) {
     const orders = (ordersData || []) as OrderRow[]
     const restaurantIds = Array.from(new Set(orders.map(o => o.restaurant_id)))
     
-    const { data: restaurantsData } = await supabase
+    const { data: restaurantsData } = await (adminSupabase as any)
+      .schema('menuca_v3')
       .from('restaurants')
       .select('id, name')
       .in('id', restaurantIds.length > 0 ? restaurantIds : [0])
