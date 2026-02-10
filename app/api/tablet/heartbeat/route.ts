@@ -43,28 +43,28 @@ export async function POST(request: NextRequest) {
       app_version,
     })
 
-    const supabase = createAdminClient() as any
-
-    // Check if there's a config update for this device
     let configUpdate: Partial<DeviceConfig> | undefined = undefined
 
-    const { data: deviceConfig } = await supabase
-      .from('device_configs')
-      .select('*')
-      .eq('device_id', deviceContext.device_id)
-      .single()
+    try {
+      const supabase = createAdminClient() as any
+      const { data: deviceConfig } = await supabase
+        .from('device_configs')
+        .select('*')
+        .eq('device_id', deviceContext.device_id)
+        .single()
 
-    // If device has custom config, check if we need to push an update
-    // For now, we always return the config so device can sync
-    if (deviceConfig) {
-      configUpdate = {
-        poll_interval_ms: deviceConfig.poll_interval_ms,
-        auto_print: deviceConfig.auto_print,
-        sound_enabled: deviceConfig.sound_enabled,
-        notification_tone: deviceConfig.notification_tone,
-        print_customer_copy: deviceConfig.print_customer_copy,
-        print_kitchen_copy: deviceConfig.print_kitchen_copy,
+      if (deviceConfig) {
+        configUpdate = {
+          poll_interval_ms: deviceConfig.poll_interval_ms,
+          auto_print: deviceConfig.auto_print,
+          sound_enabled: deviceConfig.sound_enabled,
+          notification_tone: deviceConfig.notification_tone,
+          print_customer_copy: deviceConfig.print_customer_copy,
+          print_kitchen_copy: deviceConfig.print_kitchen_copy,
+        }
       }
+    } catch (configError) {
+      console.warn(`[Device Heartbeat] Config lookup failed for device ${deviceContext.device_id}, continuing without config`)
     }
 
     // Log heartbeat (useful for debugging connectivity issues)

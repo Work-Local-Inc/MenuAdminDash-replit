@@ -62,7 +62,7 @@ export async function createDeviceSession(deviceId: number): Promise<{
   session_token: string
   expires_at: string
 }> {
-  const supabase = createAdminClient()
+  const supabase = createAdminClient() as any
   const sessionToken = generateSessionToken()
   const expiresAt = getSessionExpiry()
 
@@ -103,7 +103,7 @@ export async function validateSessionToken(sessionToken: string): Promise<{
   restaurant_id: number
   session_id: number
 } | null> {
-  const supabase = createAdminClient()
+  const supabase = createAdminClient() as any
 
   // Get session with device info
   const { data: session, error } = await supabase
@@ -163,7 +163,7 @@ export async function refreshSessionToken(oldSessionToken: string): Promise<{
   session_token: string
   expires_at: string
 } | null> {
-  const supabase = createAdminClient()
+  const supabase = createAdminClient() as any
 
   // Validate current session
   const validation = await validateSessionToken(oldSessionToken)
@@ -209,7 +209,7 @@ export async function updateDeviceHeartbeat(
     app_version?: string
   }
 ): Promise<void> {
-  const supabase = createAdminClient()
+  const supabase = createAdminClient() as any
 
   const updateData: Record<string, any> = {
     last_check_at: new Date().toISOString(),
