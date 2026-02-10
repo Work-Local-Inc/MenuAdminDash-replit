@@ -57,6 +57,45 @@ export async function getRestaurantPhoneForFallback(restaurantId: number): Promi
   return null
 }
 
+async function insertStatusHistory(
+  orderId: number,
+  orderCreatedAt: string,
+  status: string,
+  notes: string
+): Promise<boolean> {
+  const supabase = createAdminClient() as any
+
+  const { error } = await supabase
+    .from('order_status_history')
+    .insert({
+      order_id: orderId,
+      order_created_at: orderCreatedAt,
+      status,
+      notes,
+    })
+
+  if (error) {
+    console.error(`[OrderFallback] CRITICAL: Failed to insert status history for order ${orderId}:`, error)
+    return false
+  }
+  return true
+}
+
+async function getOrderCreatedAt(orderId: number): Promise<string | null> {
+  const supabase = createAdminClient() as any
+  const { data, error } = await supabase
+    .from('orders')
+    .select('created_at')
+    .eq('id', orderId)
+    .single()
+
+  if (error || !data) {
+    console.error(`[OrderFallback] Failed to fetch created_at for order ${orderId}:`, error)
+    return null
+  }
+  return data.created_at
+}
+
 export async function logFallbackCallAttempt(
   orderId: number,
   phone: string,
@@ -64,42 +103,27 @@ export async function logFallbackCallAttempt(
   success: boolean,
   error?: string
 ): Promise<boolean> {
-  const supabase = createAdminClient() as any
-  
+  const timestamp = new Date().toISOString()
   const note = success
     ? `${FALLBACK_CALL_MARKER} Call placed to ${phone}. SID: ${callSid}`
     : `${FALLBACK_CALL_MARKER} Call failed to ${phone}. Error: ${error || 'Unknown'}`
-  
-  const timestamp = new Date().toISOString()
+
   const logEntry = `[${timestamp}] ${note}`
-  
-  const { data: order, error: fetchError } = await supabase
-    .from('orders')
-    .select('id, special_instructions')
-    .eq('id', orderId)
-    .single()
-  
-  if (fetchError || !order) {
-    console.error(`[OrderFallback] CRITICAL: Failed to fetch order ${orderId} for logging:`, fetchError)
+
+  const orderCreatedAt = await getOrderCreatedAt(orderId)
+  if (!orderCreatedAt) {
+    console.error(`[OrderFallback] CRITICAL: Cannot log attempt — order ${orderId} not found`)
     return false
   }
 
-  const existingInstructions = order.special_instructions || ''
-  const newInstructions = existingInstructions 
-    ? `${existingInstructions}\n---\n${logEntry}`
-    : `---\n${logEntry}`
-  
-  const { error: updateError } = await supabase
-    .from('orders')
-    .update({ special_instructions: newInstructions })
-    .eq('id', orderId)
+  const historyOk = await insertStatusHistory(orderId, orderCreatedAt, 'twilio_fallback_call', logEntry)
 
-  if (updateError) {
-    console.error(`[OrderFallback] CRITICAL: Failed to update special_instructions for order ${orderId}:`, updateError)
+  if (!historyOk) {
+    console.error(`[OrderFallback] CRITICAL: Failed to write history row for order ${orderId}. Call tracking may be broken!`)
     return false
   }
-  
-  console.log(`[OrderFallback] Order ${orderId}: ${note}`)
+
+  console.log(`[OrderFallback] Order ${orderId}: ${note} (logged to order_status_history)`)
   return true
 }
 
@@ -112,43 +136,68 @@ export interface FallbackCallStatus {
 
 export async function getFallbackCallStatus(orderId: number): Promise<FallbackCallStatus> {
   const supabase = createAdminClient() as any
-  
-  const { data: order, error: fetchError } = await supabase
+
+  const { data: order, error: orderError } = await supabase
     .from('orders')
-    .select('id, special_instructions, acknowledged_at')
+    .select('id, acknowledged_at')
     .eq('id', orderId)
     .single()
-  
-  if (fetchError || !order) {
-    console.error(`[OrderFallback] CRITICAL: Failed to fetch order ${orderId} for status check:`, fetchError)
+
+  if (orderError || !order) {
+    console.error(`[OrderFallback] CRITICAL: Failed to fetch order ${orderId} for status check:`, orderError)
     return { attemptCount: 0, isConfirmed: false, lastAttemptTime: null, canRetry: false }
   }
 
-  const isConfirmed = !!order.acknowledged_at || 
-    (order.special_instructions || '').includes(FALLBACK_CONFIRMED_MARKER)
-  
-  if (isConfirmed) {
-    console.log(`[OrderFallback] Order ${orderId} is already confirmed (acknowledged_at: ${order.acknowledged_at})`)
+  if (order.acknowledged_at) {
+    console.log(`[OrderFallback] Order ${orderId} already acknowledged (acknowledged_at: ${order.acknowledged_at})`)
     return { attemptCount: 0, isConfirmed: true, lastAttemptTime: null, canRetry: false }
   }
 
-  const instructions = order.special_instructions || ''
-  const callAttempts = (instructions.match(/\[TWILIO_FALLBACK_CALL\] Call (placed|failed) to/g) || []).length
-  
-  console.log(`[OrderFallback] Order ${orderId} status: ${callAttempts} attempts found, acknowledged_at=${order.acknowledged_at}, instructions length=${instructions.length}`)
-  
+  const { data: historyRows, error: historyError } = await supabase
+    .from('order_status_history')
+    .select('created_at, notes')
+    .eq('order_id', orderId)
+    .ilike('notes', `%${FALLBACK_CALL_MARKER}%`)
+    .order('created_at', { ascending: true })
+
+  if (historyError) {
+    console.error(`[OrderFallback] Error fetching history for order ${orderId}:`, historyError)
+  }
+
+  let attemptCount = 0
   let lastAttemptTime: Date | null = null
-  const timestampMatches = instructions.match(/\[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z)\] \[TWILIO_FALLBACK_CALL\] Call (?:placed|failed)/g)
-  if (timestampMatches && timestampMatches.length > 0) {
-    const lastMatch = timestampMatches[timestampMatches.length - 1]
-    const dateMatch = lastMatch.match(/\[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z)\]/)
-    if (dateMatch) {
-      lastAttemptTime = new Date(dateMatch[1])
+
+  if (historyRows && historyRows.length > 0) {
+    attemptCount = historyRows.length
+    lastAttemptTime = new Date(historyRows[historyRows.length - 1].created_at)
+    console.log(`[OrderFallback] Order ${orderId} status (from history): ${attemptCount} attempts, last at ${lastAttemptTime.toISOString()}`)
+  } else {
+    const { data: orderFull } = await supabase
+      .from('orders')
+      .select('special_instructions')
+      .eq('id', orderId)
+      .single()
+
+    const instructions = orderFull?.special_instructions || ''
+    const legacyMatches = instructions.match(/\[TWILIO_FALLBACK_CALL\] Call (placed|failed) to/g)
+    if (legacyMatches && legacyMatches.length > 0) {
+      attemptCount = legacyMatches.length
+      const timestampMatches = instructions.match(/\[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z)\] \[TWILIO_FALLBACK_CALL\] Call (?:placed|failed)/g)
+      if (timestampMatches && timestampMatches.length > 0) {
+        const lastMatch = timestampMatches[timestampMatches.length - 1]
+        const dateMatch = lastMatch.match(/\[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z)\]/)
+        if (dateMatch) {
+          lastAttemptTime = new Date(dateMatch[1])
+        }
+      }
+      console.log(`[OrderFallback] Order ${orderId} status (legacy fallback): ${attemptCount} attempts from special_instructions`)
+    } else {
+      console.log(`[OrderFallback] Order ${orderId} status: 0 attempts found`)
     }
   }
-  
+
   let canRetry = false
-  if (callAttempts < MAX_CALL_ATTEMPTS) {
+  if (attemptCount < MAX_CALL_ATTEMPTS) {
     if (!lastAttemptTime) {
       canRetry = true
     } else {
@@ -156,10 +205,10 @@ export async function getFallbackCallStatus(orderId: number): Promise<FallbackCa
       canRetry = timeSinceLastAttempt >= RETRY_INTERVAL_MS
     }
   }
-  
+
   return {
-    attemptCount: callAttempts,
-    isConfirmed,
+    attemptCount,
+    isConfirmed: false,
     lastAttemptTime,
     canRetry
   }
@@ -174,11 +223,10 @@ export async function markOrderAcknowledgedByPhone(orderId: number): Promise<boo
   const supabase = createAdminClient() as any
   
   const timestamp = new Date().toISOString()
-  const note = `[${timestamp}] ${FALLBACK_CONFIRMED_MARKER} Order confirmed via phone (pressed 2)`
   
   const { data: order, error: fetchError } = await supabase
     .from('orders')
-    .select('id, special_instructions, acknowledged_at')
+    .select('id, acknowledged_at, created_at')
     .eq('id', orderId)
     .single()
   
@@ -192,17 +240,9 @@ export async function markOrderAcknowledgedByPhone(orderId: number): Promise<boo
     return true
   }
 
-  const existingInstructions = order.special_instructions || ''
-  const newInstructions = existingInstructions 
-    ? `${existingInstructions}\n${note}`
-    : note
-  
   const { error: updateError } = await supabase
     .from('orders')
-    .update({ 
-      acknowledged_at: timestamp,
-      special_instructions: newInstructions 
-    })
+    .update({ acknowledged_at: timestamp })
     .eq('id', orderId)
 
   if (updateError) {
@@ -221,6 +261,9 @@ export async function markOrderAcknowledgedByPhone(orderId: number): Promise<boo
     return false
   }
 
+  const confirmNote = `[${timestamp}] ${FALLBACK_CONFIRMED_MARKER} Order confirmed via phone (pressed 2)`
+  await insertStatusHistory(orderId, order.created_at, 'twilio_fallback_confirmed', confirmNote)
+
   console.log(`[OrderFallback] Order ${orderId} acknowledged via phone. Verified: acknowledged_at=${verify.acknowledged_at}`)
   return true
 }
@@ -228,11 +271,10 @@ export async function markOrderAcknowledgedByPhone(orderId: number): Promise<boo
 async function forceAcknowledgeAfterMaxCalls(orderId: number, attemptCount: number): Promise<boolean> {
   const supabase = createAdminClient() as any
   const timestamp = new Date().toISOString()
-  const note = `[${timestamp}] [TWILIO_FALLBACK_MAX_REACHED] Auto-acknowledged after ${attemptCount} call attempts (max ${MAX_CALL_ATTEMPTS}). No confirmation received.`
 
   const { data: order, error: fetchError } = await supabase
     .from('orders')
-    .select('id, special_instructions, acknowledged_at')
+    .select('id, acknowledged_at, created_at')
     .eq('id', orderId)
     .single()
 
@@ -246,17 +288,9 @@ async function forceAcknowledgeAfterMaxCalls(orderId: number, attemptCount: numb
     return true
   }
 
-  const existingInstructions = order.special_instructions || ''
-  const newInstructions = existingInstructions
-    ? `${existingInstructions}\n${note}`
-    : note
-
   const { error: updateError } = await supabase
     .from('orders')
-    .update({
-      acknowledged_at: timestamp,
-      special_instructions: newInstructions
-    })
+    .update({ acknowledged_at: timestamp })
     .eq('id', orderId)
 
   if (updateError) {
@@ -274,6 +308,9 @@ async function forceAcknowledgeAfterMaxCalls(orderId: number, attemptCount: numb
     console.error(`[OrderFallback] CRITICAL: Force-acknowledge verification FAILED for order ${orderId}!`, verifyError)
     return false
   }
+
+  const maxNote = `[${timestamp}] [TWILIO_FALLBACK_MAX_REACHED] Auto-acknowledged after ${attemptCount} call attempts (max ${MAX_CALL_ATTEMPTS}). No confirmation received.`
+  await insertStatusHistory(orderId, order.created_at, 'twilio_fallback_max_reached', maxNote)
 
   console.log(`[OrderFallback] Order ${orderId} force-acknowledged after ${attemptCount} call attempts. Verified: acknowledged_at=${verify.acknowledged_at}`)
   return true
