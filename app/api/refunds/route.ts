@@ -123,16 +123,28 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createClient()
 
-    const { data: orderData, error: orderError } = await (supabase as any)
+    const orderSelect = 'id, order_number, restaurant_id, subtotal, total_amount, delivery_fee, tip_amount, payment_method, payment_status, order_status, stripe_payment_intent_id, created_at'
+
+    let { data: orderData, error: orderError } = await (supabase as any)
       .from('orders')
-      .select('id, order_number, restaurant_id, subtotal, total_amount, delivery_fee, tip_amount, payment_method, payment_status, order_status, stripe_payment_intent_id, created_at')
+      .select(orderSelect)
       .eq('id', order_id)
       .single()
+
+    if (orderError || !orderData) {
+      const fallback = await (supabase as any)
+        .from('orders')
+        .select(orderSelect)
+        .eq('order_number', order_id)
+        .single()
+      orderData = fallback.data
+      orderError = fallback.error
+    }
 
     const order = orderData as any
 
     if (orderError || !order) {
-      console.error('[Refunds] Order not found:', orderError)
+      console.error('[Refunds] Order not found by id or order_number:', order_id, orderError)
       return NextResponse.json(
         { error: 'Order not found' },
         { status: 404 }
