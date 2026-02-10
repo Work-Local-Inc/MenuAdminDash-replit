@@ -8,6 +8,11 @@ export function startOrderFallbackScheduler() {
     return
   }
 
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[Cron Scheduler] Skipping in development - production cron handles fallback calls')
+    return
+  }
+
   const cronSecret = process.env.ORDER_FALLBACK_CRON_SECRET
   const baseUrl = process.env.TWILIO_VOICE_BASE_URL || 
                   process.env.REPLIT_DEPLOYMENT_URL ||
