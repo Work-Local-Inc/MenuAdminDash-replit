@@ -113,7 +113,7 @@ const allMenuItems = [
       { title: "Restaurant Statements", url: "/admin/accounting/statements" },
       { title: "Batch Statements", url: "/admin/accounting/batch-statements" },
       { title: "Statement Adjustments", url: "/admin/accounting/adjustments" },
-      { title: "Refunds", url: "/admin/accounting/refunds" },
+      { title: "Transactions", url: "/admin/accounting/refunds" },
       { title: "Vendor Commissions", url: "/admin/accounting/vendor-commissions" },
       { title: "Vendor Invoices", url: "/admin/accounting/vendor-invoices" },
       { title: "Daily Orders", url: "/admin/accounting/orders" },
