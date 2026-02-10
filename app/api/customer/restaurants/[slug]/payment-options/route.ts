@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 export const dynamic = 'force-dynamic'
 
 const DEFAULT_PAYMENT_OPTIONS = [
   {
     payment_type: 'credit_card',
     enabled: true,
+    applies_to: 'both',
     label_en: 'Credit Card',
     label_fr: 'Carte de crédit',
+    instructions_en: null,
+    instructions_fr: null,
     display_order: 0,
   }
 ]
@@ -25,49 +28,44 @@ export async function GET(
   { params }: { params: { slug: string } }
 ) {
   try {
-    const supabase = await createClient() as any
+    const supabase = createAdminClient() as any
+    const orderType = request.nextUrl.searchParams.get('order_type') || 'both'
     
     const restaurantId = extractIdFromSlug(params.slug)
-    console.log('[Customer Payment Options] Slug:', params.slug, 'Restaurant ID:', restaurantId)
     
     if (!restaurantId) {
-      console.log('[Customer Payment Options] No restaurant ID found, returning defaults')
       return NextResponse.json(DEFAULT_PAYMENT_OPTIONS)
     }
     
     const { data, error } = await supabase
+      .schema('menuca_v3')
       .from('restaurant_payment_options')
-      .select('payment_method, is_enabled, english_label, french_label, display_order')
+      .select('payment_type, enabled, applies_to, label_en, label_fr, instructions_en, instructions_fr, display_order')
       .eq('restaurant_id', restaurantId)
-      .eq('is_enabled', true)
+      .eq('enabled', true)
       .order('display_order', { ascending: true })
 
     if (error) {
       console.error('[Customer Payment Options] Database error:', error)
-      if (error.message?.includes('does not exist')) {
-        return NextResponse.json(DEFAULT_PAYMENT_OPTIONS)
-      }
-      throw error
-    }
-
-    console.log('[Customer Payment Options] Raw data from DB:', data)
-
-    if (!data || data.length === 0) {
-      console.log('[Customer Payment Options] No enabled payment options found, returning defaults')
       return NextResponse.json(DEFAULT_PAYMENT_OPTIONS)
     }
 
-    const transformedOptions = data.map((row: any) => ({
-      payment_type: row.payment_method,
-      enabled: row.is_enabled,
-      label_en: row.english_label,
-      label_fr: row.french_label,
-      display_order: row.display_order,
-    }))
+    if (!data || data.length === 0) {
+      return NextResponse.json(DEFAULT_PAYMENT_OPTIONS)
+    }
 
-    console.log('[Customer Payment Options] Transformed options:', transformedOptions)
+    const filteredOptions = data.filter((row: any) => {
+      if (row.applies_to === 'both') return true
+      if (orderType === 'pickup' && row.applies_to === 'pickup') return true
+      if (orderType === 'delivery' && row.applies_to === 'delivery') return true
+      return false
+    })
 
-    return NextResponse.json(transformedOptions)
+    if (filteredOptions.length === 0) {
+      return NextResponse.json(DEFAULT_PAYMENT_OPTIONS)
+    }
+
+    return NextResponse.json(filteredOptions)
   } catch (error: any) {
     console.error('[Customer Payment Options GET] Error:', error)
     return NextResponse.json(DEFAULT_PAYMENT_OPTIONS)

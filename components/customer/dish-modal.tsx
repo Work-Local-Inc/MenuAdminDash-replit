@@ -182,20 +182,29 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
       setComboGroups(transformedComboGroups);
       
       if (dish.is_combo && transformedComboGroups.length > 0) {
-        const comboModifierIds = new Set<number>();
+        const comboGroupNames = new Set<string>();
+        const comboSourceIds = new Set<number>();
         transformedComboGroups.forEach((cg: any) => {
           cg.sections?.forEach((section: any) => {
             section.modifier_groups?.forEach((mg: any) => {
-              mg.modifiers?.forEach((mod: any) => {
-                comboModifierIds.add(mod.id);
-              });
+              if (mg.name) comboGroupNames.add(mg.name.toLowerCase().trim());
+              if (mg.source_id) comboSourceIds.add(mg.source_id);
             });
           });
         });
+        console.log('[DishModal] Combo group names:', Array.from(comboGroupNames));
+        console.log('[DishModal] Simple modifier groups:', dishModifierGroups.map((g: any) => ({ id: g.id, name: g.name, source_id: g.source_id })));
         const filteredGroups = dishModifierGroups.filter((group: any) => {
-          const groupModIds = (group.modifiers || []).map((m: any) => m.id);
-          const allInCombo = groupModIds.length > 0 && groupModIds.every((id: number) => comboModifierIds.has(id));
-          return !allInCombo;
+          const groupName = (group.name || '').toLowerCase().trim();
+          if (comboGroupNames.has(groupName)) {
+            console.log(`[DishModal] Filtering out simple group "${group.name}" (id: ${group.id}) - duplicate of combo group`);
+            return false;
+          }
+          if (group.source_id && comboSourceIds.has(group.source_id)) {
+            console.log(`[DishModal] Filtering out simple group "${group.name}" (source_id: ${group.source_id}) - duplicate of combo group`);
+            return false;
+          }
+          return true;
         });
         setModifierGroups(filteredGroups);
       }
