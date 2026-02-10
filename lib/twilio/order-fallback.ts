@@ -26,7 +26,7 @@ interface OrderMetaRow {
 
 const FALLBACK_CALL_MARKER = '[TWILIO_FALLBACK_CALL]'
 const FALLBACK_CONFIRMED_MARKER = '[TWILIO_FALLBACK_CONFIRMED]'
-const MAX_CALL_ATTEMPTS = 1 // Temporarily disabled retry until AMD is implemented
+const MAX_CALL_ATTEMPTS = 3
 const RETRY_INTERVAL_MS = 3 * 60 * 1000 // 3 minutes between retries
 
 export async function getRestaurantPhoneForFallback(restaurantId: number): Promise<string | null> {
@@ -115,19 +115,22 @@ export async function getFallbackCallStatus(orderId: number): Promise<FallbackCa
     .eq('id', orderId)
     .single() as { data: (OrderMetaRow & { acknowledged_at: string | null }) | null }
   
-  if (!order || !order.special_instructions) {
-    return { attemptCount: 0, isConfirmed: false, lastAttemptTime: null, canRetry: true }
+  if (!order) {
+    return { attemptCount: 0, isConfirmed: false, lastAttemptTime: null, canRetry: false }
   }
+
+  const isConfirmed = !!order.acknowledged_at || 
+    (order.special_instructions || '').includes(FALLBACK_CONFIRMED_MARKER)
   
-  // Check if confirmed via phone (press 2)
-  const isConfirmed = order.special_instructions.includes(FALLBACK_CONFIRMED_MARKER) || !!order.acknowledged_at
+  if (isConfirmed) {
+    return { attemptCount: 0, isConfirmed: true, lastAttemptTime: null, canRetry: false }
+  }
+
+  const instructions = order.special_instructions || ''
+  const callAttempts = (instructions.match(/\[TWILIO_FALLBACK_CALL\] Call placed to/g) || []).length
   
-  // Count call attempts (each "Call placed to" line is an attempt)
-  const callAttempts = (order.special_instructions.match(/\[TWILIO_FALLBACK_CALL\] Call placed to/g) || []).length
-  
-  // Find the last attempt timestamp
   let lastAttemptTime: Date | null = null
-  const timestampMatches = order.special_instructions.match(/\[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z)\] \[TWILIO_FALLBACK_CALL\] Call placed/g)
+  const timestampMatches = instructions.match(/\[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z)\] \[TWILIO_FALLBACK_CALL\] Call placed/g)
   if (timestampMatches && timestampMatches.length > 0) {
     const lastMatch = timestampMatches[timestampMatches.length - 1]
     const dateMatch = lastMatch.match(/\[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z)\]/)
@@ -136,9 +139,8 @@ export async function getFallbackCallStatus(orderId: number): Promise<FallbackCa
     }
   }
   
-  // Determine if we can retry
   let canRetry = false
-  if (!isConfirmed && callAttempts < MAX_CALL_ATTEMPTS) {
+  if (callAttempts < MAX_CALL_ATTEMPTS) {
     if (!lastAttemptTime) {
       canRetry = true
     } else {
@@ -155,10 +157,8 @@ export async function getFallbackCallStatus(orderId: number): Promise<FallbackCa
   }
 }
 
-// Keep backward compatibility
 export async function hasFallbackCallBeenAttempted(orderId: number): Promise<boolean> {
   const status = await getFallbackCallStatus(orderId)
-  // Only consider "fully attempted" if confirmed OR max attempts reached
   return status.isConfirmed || (status.attemptCount >= MAX_CALL_ATTEMPTS)
 }
 
@@ -166,7 +166,6 @@ export async function markOrderAcknowledgedByPhone(orderId: number): Promise<voi
   const supabase = createAdminClient()
   
   const timestamp = new Date().toISOString()
-  // Use CONFIRMED marker so retry logic knows to stop
   const note = `[${timestamp}] ${FALLBACK_CONFIRMED_MARKER} Order confirmed via phone (pressed 2)`
   
   const { data: order } = await supabase
@@ -190,6 +189,8 @@ export async function markOrderAcknowledgedByPhone(orderId: number): Promise<voi
       .eq('id', orderId))
     
     console.log(`[OrderFallback] Order ${orderId} acknowledged via phone`)
+  } else if (order?.acknowledged_at) {
+    console.log(`[OrderFallback] Order ${orderId} already acknowledged, skipping`)
   }
 }
 
@@ -201,7 +202,6 @@ export async function attemptFallbackCall(
 ): Promise<FallbackCallResult> {
   const status = await getFallbackCallStatus(orderId)
   
-  // Already confirmed via phone - no more calls needed
   if (status.isConfirmed) {
     return {
       orderId,
@@ -214,7 +214,6 @@ export async function attemptFallbackCall(
     }
   }
   
-  // Max attempts reached (3 calls)
   if (status.attemptCount >= MAX_CALL_ATTEMPTS) {
     return {
       orderId,
@@ -227,7 +226,6 @@ export async function attemptFallbackCall(
     }
   }
   
-  // Need to wait before retrying (3 min between calls)
   if (!status.canRetry && status.lastAttemptTime) {
     const waitTimeMs = RETRY_INTERVAL_MS - (Date.now() - status.lastAttemptTime.getTime())
     const waitTimeSec = Math.ceil(waitTimeMs / 1000)

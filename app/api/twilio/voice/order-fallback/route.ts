@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { buildOrderFallbackMessage } from '@/lib/fallback/order-summary'
-import { recordFallbackCallAttempt } from '@/lib/fallback/order-fallback'
+import { markOrderAcknowledgedByPhone } from '@/lib/twilio/order-fallback'
 export const dynamic = 'force-dynamic'
 
 export const runtime = 'nodejs'
@@ -117,12 +117,7 @@ async function handleRequest(request: NextRequest) {
     console.log('[Twilio Voice] Raw items:', JSON.stringify(order.items, null, 2))
 
     if (digits === '2') {
-      await recordFallbackCallAttempt({
-        orderId: order.id,
-        orderCreatedAt: order.created_at,
-        orderStatus: order.order_status,
-        notes: 'Twilio fallback call confirmed by recipient (DTMF 2).',
-      })
+      await markOrderAcknowledgedByPhone(orderId)
 
       const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>

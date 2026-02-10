@@ -122,8 +122,15 @@ export async function GET(request: NextRequest) {
     })
 
     const results: FallbackCallResult[] = []
+    const processedOrderIds = new Set<number>()
 
     for (const order of eligibleOrders) {
+      if (processedOrderIds.has(order.id)) {
+        console.log(`[OrderFallback Cron] Order ${order.order_number} already processed in this run, skipping`)
+        continue
+      }
+      processedOrderIds.add(order.id)
+
       const restaurant = Array.isArray(order.restaurant) ? order.restaurant[0] : order.restaurant
       if (!restaurant) {
         console.warn(`[OrderFallback Cron] No restaurant found for order ${order.id}`)
