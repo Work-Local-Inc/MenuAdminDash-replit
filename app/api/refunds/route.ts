@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import Stripe from 'stripe'
 
 export const dynamic = 'force-dynamic'
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get('endDate')
     const reasonCode = searchParams.get('reasonCode')
 
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     let query = (supabase as any)
       .from('order_refunds')
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     const orderSelect = 'id, order_number, restaurant_id, subtotal, total_amount, delivery_fee, tip_amount, payment_method, payment_status, order_status, stripe_payment_intent_id, created_at'
 
