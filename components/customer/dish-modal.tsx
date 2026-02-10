@@ -389,11 +389,24 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
     const price = getModifierPrice(modifier);
 
     if (checked) {
-      setSelectedModifiers([...selectedModifiers, {
-        id: modifier.id,
-        name: modifier.name,
-        price,
-      }]);
+      if (group.max_selections === 1) {
+        const groupModifierIds = new Set(group.modifiers.map(m => m.id));
+        const withoutOldFromGroup = selectedModifiers.filter(m => !groupModifierIds.has(m.id));
+        setSelectedModifiers([...withoutOldFromGroup, {
+          id: modifier.id,
+          name: modifier.name,
+          price,
+        }]);
+        const newPlacements = { ...modifierPlacements };
+        group.modifiers.forEach(m => { if (m.id !== modifier.id) delete newPlacements[m.id]; });
+        setModifierPlacements(newPlacements);
+      } else {
+        setSelectedModifiers([...selectedModifiers, {
+          id: modifier.id,
+          name: modifier.name,
+          price,
+        }]);
+      }
     } else {
       setSelectedModifiers(selectedModifiers.filter(m => m.id !== modifier.id));
       const newPlacements = { ...modifierPlacements };
