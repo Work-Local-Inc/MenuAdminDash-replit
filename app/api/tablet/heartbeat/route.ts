@@ -27,6 +27,7 @@ export async function POST(request: NextRequest) {
     const validation = heartbeatSchema.safeParse(body)
 
     if (!validation.success) {
+      console.error(`[Device Heartbeat] Validation FAILED for device ${deviceContext.device_id}. Raw body:`, JSON.stringify(body), 'Errors:', JSON.stringify(validation.error.flatten()))
       return NextResponse.json(
         { error: 'Validation failed', details: validation.error.flatten() },
         { status: 400 }

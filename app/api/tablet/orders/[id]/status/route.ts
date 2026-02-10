@@ -45,6 +45,7 @@ export async function PATCH(
     const validation = orderStatusUpdateSchema.safeParse(body);
 
     if (!validation.success) {
+      console.error(`[Tablet Order Status] Validation FAILED for device ${deviceContext.device_id}, order ${orderId}. Raw body:`, JSON.stringify(body), 'Errors:', JSON.stringify(validation.error.flatten()))
       return NextResponse.json(
         { error: "Validation failed", details: validation.error.flatten() },
         { status: 400 },
