@@ -600,21 +600,29 @@ export default function OrderConfirmationPage() {
               </Card>
 
               {/* Order Notes */}
-              {order.special_instructions && (
-                <Card data-testid="card-order-notes" className="border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
-                      <MessageSquare className="w-5 h-5" />
-                      Your Order Notes
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-amber-700 dark:text-amber-300" data-testid="text-order-notes">
-                      {order.special_instructions}
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
+              {(() => {
+                const raw = order.special_instructions || ''
+                const cleaned = raw
+                  .split('\n')
+                  .filter(line => !line.includes('[TWILIO_FALLBACK_CALL]') && !line.includes('[TWILIO_FALLBACK_CONFIRMED]') && !line.includes('[TWILIO_FALLBACK_MAX_REACHED]') && line.trim() !== '---')
+                  .join('\n')
+                  .trim()
+                return cleaned ? (
+                  <Card data-testid="card-order-notes" className="border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
+                        <MessageSquare className="w-5 h-5" />
+                        Your Order Notes
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-amber-700 dark:text-amber-300" data-testid="text-order-notes">
+                        {cleaned}
+                      </p>
+                    </CardContent>
+                  </Card>
+                ) : null
+              })()}
 
               {/* Price Breakdown */}
               <Card data-testid="card-price-breakdown">
