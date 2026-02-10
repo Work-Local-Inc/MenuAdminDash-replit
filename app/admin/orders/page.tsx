@@ -8,15 +8,42 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { useOrders } from "@/lib/hooks/use-orders"
+import { useQueryClient } from "@tanstack/react-query"
 import { formatCurrency, formatDate, formatTime } from "@/lib/utils"
-import { Search, Filter, Download, Eye } from "lucide-react"
+import { Search, Filter, Download, Eye, Loader2 } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 
 export default function OrdersPage() {
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [selectedOrder, setSelectedOrder] = useState<any>(null)
+
+  const [showRefundForm, setShowRefundForm] = useState(false)
+  const [refundType, setRefundType] = useState<'full' | 'partial'>('full')
+  const [refundAmount, setRefundAmount] = useState<string>("")
+  const [reasonCode, setReasonCode] = useState<string>("")
+  const [refundNotes, setRefundNotes] = useState<string>("")
+  const [isRefunding, setIsRefunding] = useState(false)
+  const [refundError, setRefundError] = useState<string | null>(null)
+  const [refundSuccess, setRefundSuccess] = useState(false)
+  const [refundResultId, setRefundResultId] = useState<string | null>(null)
+  const [showConfirmation, setShowConfirmation] = useState(false)
+
+  const queryClient = useQueryClient()
 
   const { data: orders = [], isLoading } = useOrders({
     status: statusFilter !== "all" ? statusFilter : undefined,
@@ -47,6 +74,86 @@ export default function OrdersPage() {
     }
   }
 
+  const canRefund = (order: any) => {
+    return (
+      order.stripe_payment_intent_id &&
+      ['paid', 'succeeded'].includes(order.payment_status)
+    )
+  }
+
+  const resetRefundForm = () => {
+    setShowRefundForm(false)
+    setRefundType('full')
+    setRefundAmount("")
+    setReasonCode("")
+    setRefundNotes("")
+    setIsRefunding(false)
+    setRefundError(null)
+    setRefundSuccess(false)
+    setRefundResultId(null)
+    setShowConfirmation(false)
+  }
+
+  const getRefundAmountValue = () => {
+    if (refundType === 'full') {
+      return selectedOrder?.total || 0
+    }
+    return parseFloat(refundAmount) || 0
+  }
+
+  const handleRefundSubmit = () => {
+    if (!reasonCode) {
+      setRefundError("Please select a reason code")
+      return
+    }
+    if (refundType === 'partial' && (!refundAmount || parseFloat(refundAmount) <= 0)) {
+      setRefundError("Please enter a valid refund amount")
+      return
+    }
+    if (refundType === 'partial' && parseFloat(refundAmount) > (selectedOrder?.total || 0)) {
+      setRefundError("Refund amount cannot exceed order total")
+      return
+    }
+    setRefundError(null)
+    setShowConfirmation(true)
+  }
+
+  const processRefund = async () => {
+    if (!selectedOrder) return
+    setShowConfirmation(false)
+    setIsRefunding(true)
+    setRefundError(null)
+
+    try {
+      const res = await fetch('/api/refunds', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          order_id: selectedOrder.id,
+          refund_amount: refundType === 'full' ? selectedOrder.total : parseFloat(refundAmount),
+          refund_type: refundType,
+          reason_code: reasonCode,
+          notes: refundNotes || null,
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        setRefundError(data.error || 'Failed to process refund')
+        return
+      }
+
+      setRefundSuccess(true)
+      setRefundResultId(data.stripe_refund_id || data.id)
+      queryClient.invalidateQueries({ queryKey: ['/api/orders'] })
+    } catch (err: any) {
+      setRefundError(err.message || 'Network error occurred')
+    } finally {
+      setIsRefunding(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -60,7 +167,6 @@ export default function OrdersPage() {
         </Button>
       </div>
 
-      {/* Filters */}
       <Card>
         <CardHeader>
           <CardTitle>Filters</CardTitle>
@@ -98,7 +204,6 @@ export default function OrdersPage() {
         </CardContent>
       </Card>
 
-      {/* Orders Table */}
       <Card>
         <CardHeader>
           <CardTitle>Recent Orders</CardTitle>
@@ -149,12 +254,21 @@ export default function OrdersPage() {
                         {formatCurrency(order.total || 0, 'CAD')}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={getStatusBadgeVariant(order.status)} data-testid={`badge-${order.id}-status`}>
-                          {order.status?.replace(/_/g, ' ') || 'pending'}
-                        </Badge>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge variant={getStatusBadgeVariant(order.status)} data-testid={`badge-${order.id}-status`}>
+                            {order.status?.replace(/_/g, ' ') || 'pending'}
+                          </Badge>
+                          {order.payment_status === 'refunded' && (
+                            <Badge variant="destructive" data-testid={`badge-${order.id}-refunded`}>
+                              Refunded
+                            </Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Dialog>
+                        <Dialog onOpenChange={(open) => {
+                          if (!open) resetRefundForm()
+                        }}>
                           <DialogTrigger asChild>
                             <Button 
                               variant="ghost" 
@@ -165,7 +279,7 @@ export default function OrdersPage() {
                               <Eye className="h-4 w-4" />
                             </Button>
                           </DialogTrigger>
-                          <DialogContent className="max-w-2xl">
+                          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                             <DialogHeader>
                               <DialogTitle>Order #{order.id}</DialogTitle>
                               <DialogDescription>
@@ -201,13 +315,154 @@ export default function OrdersPage() {
                               </div>
                               <div>
                                 <p className="text-sm font-medium mb-2">Status</p>
-                                <Badge variant={getStatusBadgeVariant(order.status)}>
-                                  {order.status?.replace(/_/g, ' ') || 'pending'}
-                                </Badge>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <Badge variant={getStatusBadgeVariant(order.status)}>
+                                    {order.status?.replace(/_/g, ' ') || 'pending'}
+                                  </Badge>
+                                  {order.payment_status === 'refunded' && (
+                                    <Badge variant="destructive" data-testid="badge-order-refunded">
+                                      Refunded
+                                    </Badge>
+                                  )}
+                                </div>
                               </div>
-                              <p className="text-sm text-muted-foreground">
-                                Full order management with status workflow coming soon...
-                              </p>
+
+                              {canRefund(order) && !showRefundForm && !refundSuccess && (
+                                <div className="pt-2">
+                                  <Button
+                                    variant="destructive"
+                                    onClick={() => {
+                                      setSelectedOrder(order)
+                                      setShowRefundForm(true)
+                                      setRefundAmount(String(order.total || 0))
+                                    }}
+                                    data-testid="button-refund"
+                                  >
+                                    Refund
+                                  </Button>
+                                </div>
+                              )}
+
+                              {refundSuccess && (
+                                <div className="rounded-md border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950 p-4" data-testid="refund-success-message">
+                                  <p className="text-sm font-medium text-green-800 dark:text-green-200">
+                                    Refund processed successfully
+                                  </p>
+                                  {refundResultId && (
+                                    <p className="text-sm text-green-700 dark:text-green-300 mt-1">
+                                      Stripe Refund ID: <span className="font-mono">{refundResultId}</span>
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+
+                              {showRefundForm && !refundSuccess && (
+                                <div className="space-y-4 border rounded-md p-4" data-testid="refund-form">
+                                  <h3 className="text-sm font-semibold">Process Refund</h3>
+
+                                  <div className="space-y-2">
+                                    <Label>Refund Type</Label>
+                                    <RadioGroup
+                                      value={refundType}
+                                      onValueChange={(val) => {
+                                        setRefundType(val as 'full' | 'partial')
+                                        if (val === 'full') {
+                                          setRefundAmount(String(order.total || 0))
+                                        } else {
+                                          setRefundAmount("")
+                                        }
+                                      }}
+                                      className="flex gap-4"
+                                      data-testid="radio-refund-type"
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <RadioGroupItem value="full" id="refund-full" data-testid="radio-full-refund" />
+                                        <Label htmlFor="refund-full" className="cursor-pointer">Full Refund</Label>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <RadioGroupItem value="partial" id="refund-partial" data-testid="radio-partial-refund" />
+                                        <Label htmlFor="refund-partial" className="cursor-pointer">Partial Refund</Label>
+                                      </div>
+                                    </RadioGroup>
+                                  </div>
+
+                                  <div className="space-y-2">
+                                    <Label htmlFor="refund-amount">Refund Amount</Label>
+                                    <Input
+                                      id="refund-amount"
+                                      type="number"
+                                      step="0.01"
+                                      min="0.01"
+                                      max={order.total || 0}
+                                      value={refundType === 'full' ? String(order.total || 0) : refundAmount}
+                                      onChange={(e) => setRefundAmount(e.target.value)}
+                                      disabled={refundType === 'full'}
+                                      data-testid="input-refund-amount"
+                                    />
+                                  </div>
+
+                                  <div className="space-y-2">
+                                    <Label htmlFor="reason-code">Reason</Label>
+                                    <Select value={reasonCode} onValueChange={setReasonCode}>
+                                      <SelectTrigger data-testid="select-reason-code">
+                                        <SelectValue placeholder="Select a reason..." />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="customer_cancellation">Customer Cancellation</SelectItem>
+                                        <SelectItem value="restaurant_issue">Restaurant Issue</SelectItem>
+                                        <SelectItem value="platform_issue">Platform Issue</SelectItem>
+                                        <SelectItem value="fraud_chargeback">Fraud / Chargeback</SelectItem>
+                                        <SelectItem value="goodwill">Goodwill</SelectItem>
+                                        <SelectItem value="duplicate_order">Duplicate Order</SelectItem>
+                                        <SelectItem value="other">Other</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+
+                                  <div className="space-y-2">
+                                    <Label htmlFor="refund-notes">Notes (optional)</Label>
+                                    <Textarea
+                                      id="refund-notes"
+                                      value={refundNotes}
+                                      onChange={(e) => setRefundNotes(e.target.value)}
+                                      placeholder="Additional notes about this refund..."
+                                      data-testid="textarea-refund-notes"
+                                    />
+                                  </div>
+
+                                  {refundError && (
+                                    <div className="rounded-md border border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950 p-3" data-testid="refund-error-message">
+                                      <p className="text-sm text-red-800 dark:text-red-200">{refundError}</p>
+                                    </div>
+                                  )}
+
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <Button
+                                      variant="destructive"
+                                      onClick={handleRefundSubmit}
+                                      disabled={isRefunding}
+                                      data-testid="button-process-refund"
+                                    >
+                                      {isRefunding && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                                      Process Refund
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      onClick={resetRefundForm}
+                                      disabled={isRefunding}
+                                      data-testid="button-cancel-refund"
+                                    >
+                                      Cancel
+                                    </Button>
+                                  </div>
+                                </div>
+                              )}
+
+                              {!showRefundForm && !refundSuccess && (
+                                <p className="text-sm text-muted-foreground">
+                                  Full order management with status workflow coming soon...
+                                </p>
+                              )}
                             </div>
                           </DialogContent>
                         </Dialog>
@@ -220,6 +475,27 @@ export default function OrdersPage() {
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog open={showConfirmation} onOpenChange={setShowConfirmation}>
+        <AlertDialogContent data-testid="refund-confirmation-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Refund</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure? This will refund {formatCurrency(getRefundAmountValue(), 'CAD')} to the customer&apos;s payment method and create an accounting adjustment.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-confirmation">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={processRefund}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-refund"
+            >
+              Confirm Refund
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

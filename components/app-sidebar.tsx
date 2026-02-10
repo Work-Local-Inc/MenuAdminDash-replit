@@ -26,7 +26,6 @@ import {
   MapPin,
   Rocket,
   Wrench,
-  BarChart3,
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -106,17 +105,18 @@ const allMenuItems = [
     icon: Megaphone,
   },
   {
-    title: "Reporting",
-    icon: BarChart3,
+    title: "Accounting",
+    icon: Calculator,
     superAdminOnly: true,
     items: [
-      { title: "Weekly Commission", url: "/admin/reporting/commission" },
-      { title: "Restaurant Statements", url: "/admin/reporting/statements" },
-      { title: "Batch Statements", url: "/admin/reporting/batch-statements" },
-      { title: "Statement Adjustments", url: "/admin/reporting/adjustments" },
-      { title: "Vendor Commissions", url: "/admin/reporting/vendor-commissions" },
-      { title: "Vendor Invoices", url: "/admin/reporting/vendor-invoices" },
-      { title: "Daily Orders", url: "/admin/reporting/orders" },
+      { title: "Weekly Commission", url: "/admin/accounting/commission" },
+      { title: "Restaurant Statements", url: "/admin/accounting/statements" },
+      { title: "Batch Statements", url: "/admin/accounting/batch-statements" },
+      { title: "Statement Adjustments", url: "/admin/accounting/adjustments" },
+      { title: "Refunds", url: "/admin/accounting/refunds" },
+      { title: "Vendor Commissions", url: "/admin/accounting/vendor-commissions" },
+      { title: "Vendor Invoices", url: "/admin/accounting/vendor-invoices" },
+      { title: "Daily Orders", url: "/admin/accounting/orders" },
     ],
   },
   {

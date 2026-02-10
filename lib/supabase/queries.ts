@@ -96,6 +96,7 @@ export async function getOrders(filters?: {
       payment_method,
       delivery_address,
       special_instructions,
+      stripe_payment_intent_id,
       restaurants(id, name)
     `
     
@@ -161,6 +162,8 @@ export async function getOrders(filters?: {
       tip: order.tip_amount,
       delivery_address: order.delivery_address,
       special_instructions: order.special_instructions,
+      stripe_payment_intent_id: order.stripe_payment_intent_id || null,
+      payment_status: order.payment_status || null,
       restaurant: order.restaurants || { id: order.restaurant_id, name: 'Unknown Restaurant' },
       user: order.is_guest_order 
         ? { id: null, email: order.guest_email || 'Guest', first_name: order.guest_name || 'Guest', last_name: '' }
