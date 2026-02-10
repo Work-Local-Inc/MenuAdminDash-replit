@@ -300,7 +300,16 @@ export async function POST(request: NextRequest) {
 
     console.log(`[Refunds] Refund completed successfully: refund_id=${refundRecord.id}, stripe_refund=${stripeRefund.id}`)
 
-    return NextResponse.json(refundRecord, { status: 201 })
+    return NextResponse.json({
+      ...refundRecord,
+      stripe_refund_id: stripeRefund.id,
+      fee_breakdown: {
+        commission_reversed: commissionReversed,
+        bank_fee_reversed: bankFeeReversed,
+        transaction_fee_reversed: transactionFeeReversed,
+        hst_reversed: hstReversed,
+      },
+    }, { status: 201 })
   } catch (error) {
     console.error('[Refunds] Error:', error)
     return NextResponse.json(
