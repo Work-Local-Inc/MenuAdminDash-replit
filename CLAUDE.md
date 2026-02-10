@@ -1,7 +1,7 @@
 <!-- MEMORY:START -->
 # MenuAdminDash-replit
 
-_Last updated: 2026-02-10 | 19 active memories, 31 total_
+_Last updated: 2026-02-10 | 12 active memories, 33 total_
 
 ## Architecture
 - Memory tracking system (memory-mcp) initialized with global hooks and project-level configuration in `.memory/` and `... [setup, tooling]
@@ -16,18 +16,11 @@ _Last updated: 2026-02-10 | 19 active memories, 31 total_
 
 ## Patterns & Conventions
 - Created a standardized BACKLOG.md tracking file in AI-AGENTS-START-HERE folder with predefined sections and usage tem... [documentation, workflow]
-- Created heartbeat system with `POST /api/tablet/heartbeat` endpoint tracking `last_check_at` to monitor tablet connec... [monitoring, reliability]
-- Generated SSH keys for Replit connection with different naming conventions and troubleshooting approaches [ssh, replit, connection]
-- Implemented comprehensive price lookup refactoring in both credit card and cash order routes to support compound key ... [pricing, database-mapping]
-- Discovered precise pricing structure for Hot Peppers Modifiers and Meat Lovers Pizza with size-specific pricing varia... [pricing, menu]
-- Implemented price lookup refactoring in order routes to support dynamic modifier pricing across different pizza sizes [orders, pricing]
+- Implemented comprehensive price lookup refactoring in order routes with dynamic modifier pricing, supporting compound... [pricing, order-route, refactoring]
 
 ## Gotchas & Pitfalls
 - Stripe error logging requires external dashboard access (Stripe, Replit, Supabase), not just local log files [debugging, logging, payments]
-- Replit SSH configuration requires careful management: manual UI setup generates dynamic connection credentials, publi... [ssh, deployment, replit]
-- Modifier price lookup in order creation routes failed to handle size-based pricing variants, causing prices to defaul... [pricing, order-processing]
-- Price lookup requires careful mapping of `modifier_size_variant_id` with specific price tiers for each dish and modif... [data-mapping, pricing]
-- Order processing routes require careful modifier price lookup with compound keys including both modifier ID and size ... [pricing, orders]
+- Modifier price lookup in order creation routes requires careful mapping of modifier size variants, using compound key... [pricing, order-processing, error-handling]
 
 _For deeper context, use memory_search, memory_related, or memory_ask tools._
 <!-- MEMORY:END -->
