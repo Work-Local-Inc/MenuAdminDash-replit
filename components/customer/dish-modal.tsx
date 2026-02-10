@@ -180,6 +180,26 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
       }));
       
       setComboGroups(transformedComboGroups);
+      
+      if (dish.is_combo && transformedComboGroups.length > 0) {
+        const comboModifierIds = new Set<number>();
+        transformedComboGroups.forEach((cg: any) => {
+          cg.sections?.forEach((section: any) => {
+            section.modifier_groups?.forEach((mg: any) => {
+              mg.modifiers?.forEach((mod: any) => {
+                comboModifierIds.add(mod.id);
+              });
+            });
+          });
+        });
+        const filteredGroups = dishModifierGroups.filter((group: any) => {
+          const groupModIds = (group.modifiers || []).map((m: any) => m.id);
+          const allInCombo = groupModIds.length > 0 && groupModIds.every((id: number) => comboModifierIds.has(id));
+          return !allInCombo;
+        });
+        setModifierGroups(filteredGroups);
+      }
+      
       setIsLoadingModifiers(false);
     }
   }, [isOpen, dish]);
