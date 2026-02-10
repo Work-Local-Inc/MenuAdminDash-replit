@@ -127,10 +127,10 @@ export async function getFallbackCallStatus(orderId: number): Promise<FallbackCa
   }
 
   const instructions = order.special_instructions || ''
-  const callAttempts = (instructions.match(/\[TWILIO_FALLBACK_CALL\] Call placed to/g) || []).length
+  const callAttempts = (instructions.match(/\[TWILIO_FALLBACK_CALL\] Call (placed|failed) to/g) || []).length
   
   let lastAttemptTime: Date | null = null
-  const timestampMatches = instructions.match(/\[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z)\] \[TWILIO_FALLBACK_CALL\] Call placed/g)
+  const timestampMatches = instructions.match(/\[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z)\] \[TWILIO_FALLBACK_CALL\] Call (?:placed|failed)/g)
   if (timestampMatches && timestampMatches.length > 0) {
     const lastMatch = timestampMatches[timestampMatches.length - 1]
     const dateMatch = lastMatch.match(/\[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z)\]/)
@@ -194,6 +194,35 @@ export async function markOrderAcknowledgedByPhone(orderId: number): Promise<voi
   }
 }
 
+async function forceAcknowledgeAfterMaxCalls(orderId: number, attemptCount: number): Promise<void> {
+  const supabase = createAdminClient()
+  const timestamp = new Date().toISOString()
+  const note = `[${timestamp}] [TWILIO_FALLBACK_MAX_REACHED] Auto-acknowledged after ${attemptCount} call attempts (max ${MAX_CALL_ATTEMPTS}). No confirmation received.`
+
+  const { data: order } = await supabase
+    .from('orders')
+    .select('id, special_instructions, acknowledged_at')
+    .eq('id', orderId)
+    .single() as { data: (OrderMetaRow & { acknowledged_at: string | null }) | null }
+
+  if (order && !order.acknowledged_at) {
+    const existingInstructions = order.special_instructions || ''
+    const newInstructions = existingInstructions
+      ? `${existingInstructions}\n${note}`
+      : note
+
+    await (supabase
+      .from('orders')
+      .update({
+        acknowledged_at: timestamp,
+        special_instructions: newInstructions
+      } as never)
+      .eq('id', orderId))
+
+    console.log(`[OrderFallback] Order ${orderId} force-acknowledged after ${attemptCount} call attempts`)
+  }
+}
+
 export async function attemptFallbackCall(
   orderId: number,
   orderNumber: string,
@@ -215,6 +244,7 @@ export async function attemptFallbackCall(
   }
   
   if (status.attemptCount >= MAX_CALL_ATTEMPTS) {
+    await forceAcknowledgeAfterMaxCalls(orderId, status.attemptCount)
     return {
       orderId,
       orderNumber,
@@ -222,7 +252,7 @@ export async function attemptFallbackCall(
       restaurantName,
       phoneUsed: null,
       callResult: null,
-      skippedReason: `Max attempts reached (${MAX_CALL_ATTEMPTS} calls made)`
+      skippedReason: `Max attempts reached (${MAX_CALL_ATTEMPTS} calls). Order auto-acknowledged to stop calls.`
     }
   }
   
