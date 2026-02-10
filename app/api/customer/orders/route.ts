@@ -286,7 +286,7 @@ export async function POST(request: NextRequest) {
     const { data: dishPricesData, error: dishPricesError } = await (adminSupabase as any)
       .schema('menuca_v3')
       .from('dish_prices')
-      .select('dish_id, size_variant, price')
+      .select('dish_id, size_variant, price, modifier_size_variant_id')
       .in('dish_id', dishIds)
       .eq('is_active', true)
 
@@ -295,13 +295,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to load dish prices' }, { status: 500 })
     }
 
-    const dishPriceMap = new Map<string, { price: number; size_variant: string | null }>()
+    const dishPriceMap = new Map<string, { price: number; size_variant: string | null; modifier_size_variant_id: number | null }>()
     const dishPriceOptions = new Map<number, { size_variant: string | null; price: string }[]>()
     dishPricesData?.forEach((priceRow: any) => {
       const key = `${priceRow.dish_id}-${priceRow.size_variant}`
       dishPriceMap.set(key, {
         price: parseFloat(priceRow.price),
         size_variant: priceRow.size_variant,
+        modifier_size_variant_id: priceRow.modifier_size_variant_id ?? null,
       })
       const existing = dishPriceOptions.get(priceRow.dish_id) || []
       existing.push({ size_variant: priceRow.size_variant, price: priceRow.price })
@@ -311,11 +312,13 @@ export async function POST(request: NextRequest) {
     // Maps for simple modifiers - built from menu data
     // Note: No dish_id in modifier_group - validation uses dishModifierIndex instead
     let simpleModifierMap = new Map<number, { id: number; name: string; modifier_group: { id: number } }>()
-    let simpleModifierPriceMap = new Map<number, number>()
+    // Key format: `${modifier_id}-${modifier_size_variant_id}` to support size-variant pricing
+    let simpleModifierPriceMap = new Map<string, number>()
     
     // Maps for combo modifiers (from combo_modifiers table)
     let comboModifierMap = new Map<number, { id: number; name: string; combo_modifier_group_id: number }>()
-    let comboModifierPriceMap = new Map<number, number>()
+    // Key format: `${combo_modifier_id}-${size_variant}` to support size-variant pricing
+    let comboModifierPriceMap = new Map<string, number>()
     let dishComboGroupLinks = new Map<number, Set<number>>() // dish_id -> set of combo_group_ids
     let comboModifierLoadingFailed = false // Flag to track if combo modifier loading failed
 
@@ -379,13 +382,11 @@ export async function POST(request: NextRequest) {
         }
 
         simpleModifierPricesData?.forEach((priceRow: any) => {
-          // Store prices by modifier_id (modifier_prices table is modifier-centric, not dish-centric)
-          // Base price has null/1 modifier_size_variant_id
-          const isBasePrice = !priceRow.modifier_size_variant_id || priceRow.modifier_size_variant_id === 1
-          if (isBasePrice) {
-            // Store just by modifier_id - will look up by modifier ID only
-            simpleModifierPriceMap.set(priceRow.modifier_id, parseFloat(priceRow.price))
-          }
+          // Store ALL prices with compound key: modifier_id-size_variant_id
+          // This enables looking up size-specific prices (e.g., Hot Peppers for Large = $3.25)
+          const sizeVariantId = priceRow.modifier_size_variant_id || 1
+          const key = `${priceRow.modifier_id}-${sizeVariantId}`
+          simpleModifierPriceMap.set(key, parseFloat(priceRow.price))
         })
       }
 
@@ -430,11 +431,11 @@ export async function POST(request: NextRequest) {
         }
 
         comboPricesData?.forEach((priceRow: any) => {
-          // Store price by modifier ID (may need size matching later)
-          // For now, use the first price found (or base price without size_variant)
-          if (!comboModifierPriceMap.has(priceRow.combo_modifier_id)) {
-            comboModifierPriceMap.set(priceRow.combo_modifier_id, parseFloat(priceRow.price))
-          }
+          // Store ALL prices with compound key: combo_modifier_id-size_variant
+          // This enables looking up size-specific prices for combo modifiers
+          const sizeVariant = priceRow.size_variant || 'base'
+          const key = `${priceRow.combo_modifier_id}-${sizeVariant}`
+          comboModifierPriceMap.set(key, parseFloat(priceRow.price))
         })
 
         // Load dish -> combo_group links to validate that combo modifiers belong to this dish
@@ -570,8 +571,14 @@ export async function POST(request: NextRequest) {
               }, { status: 400 })
             }
             
-            // Get server-side price (modifiers now have dish-independent pricing)
-            const modPrice = simpleModifierPriceMap.get(mod.id) ?? 0
+            // Get server-side price using the dish's size variant for modifier pricing
+            // dishPrice.modifier_size_variant_id maps the dish size to the correct modifier price
+            const targetSizeVariantId = dishPrice.modifier_size_variant_id || 1
+            let modPrice = simpleModifierPriceMap.get(`${mod.id}-${targetSizeVariantId}`)
+            // Fallback to base price (variant 1) if size-specific price not found
+            if (modPrice === undefined) {
+              modPrice = simpleModifierPriceMap.get(`${mod.id}-1`) ?? 0
+            }
 
             const modQuantity = mod.quantity || 1
             itemTotal += modPrice * modQuantity * item.quantity
@@ -635,8 +642,14 @@ export async function POST(request: NextRequest) {
               }, { status: 400 })
             }
 
-            // Use price from combo modifier or from cart (free items have price 0)
-            const modPrice = comboModifierPriceMap.get(mod.id) ?? 0
+            // Use price from combo modifier with size variant lookup
+            // Combo modifiers use size_variant string (e.g., "Large") rather than modifier_size_variant_id
+            const sizeForCombo = item.size || 'base'
+            let modPrice = comboModifierPriceMap.get(`${mod.id}-${sizeForCombo}`)
+            // Fallback to base price if size-specific price not found
+            if (modPrice === undefined) {
+              modPrice = comboModifierPriceMap.get(`${mod.id}-base`) ?? 0
+            }
             // Use the client price for free items logic (server will use client-submitted price)
             const effectivePrice = mod.price ?? modPrice
 
