@@ -195,7 +195,8 @@ export async function GET(request: NextRequest) {
     const ccBankFees = ccTotal * 0.029 + ccOrders.length * 0.30
     const interacBankFees = interacTotal * 0.015
 
-    const commissionRate = config?.commission_rate || 0.10
+    const commissionRateRaw = config?.commission_rate ?? 10
+    const commissionRate = commissionRateRaw > 1 ? commissionRateRaw / 100 : commissionRateRaw
     const commissionType = config?.commission_type || 'percentage'
 
     let commission = 0
@@ -261,7 +262,7 @@ export async function GET(request: NextRequest) {
       },
       fees: {
         commission: Math.round(commission * 100) / 100,
-        commission_rate: commissionRate,
+        commission_rate: commissionRateRaw,
         delivery_commission: Math.round(deliveryCommission * 100) / 100,
         weekly_commission: Math.round(weeklyCommission * 100) / 100,
         transaction_fees: Math.round(transactionFees * 100) / 100,

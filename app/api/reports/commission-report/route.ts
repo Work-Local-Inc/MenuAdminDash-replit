@@ -65,7 +65,8 @@ function calculateRestaurantFees(
   const ccBankFees = ccTotal * 0.029 + ccOrders.length * 0.30
   const interacBankFees = interacTotal * 0.015
 
-  const commissionRate = config?.commission_rate || 0.10
+  const commissionRateRaw = config?.commission_rate ?? 10
+  const commissionRate = commissionRateRaw > 1 ? commissionRateRaw / 100 : commissionRateRaw
   const commissionType = config?.commission_type || 'percentage'
 
   let commission = 0

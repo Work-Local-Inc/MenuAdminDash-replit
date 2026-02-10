@@ -235,7 +235,8 @@ export async function POST(request: NextRequest) {
       .eq('restaurant_id', order.restaurant_id)
       .single()
 
-    const commissionRate = (commConfig as any)?.commission_rate || 0.10
+    const commissionRateRaw = (commConfig as any)?.commission_rate ?? 10
+    const commissionRate = commissionRateRaw > 1 ? commissionRateRaw / 100 : commissionRateRaw
     const orderSubtotal = order.subtotal || 0
 
     const commissionReversed = Math.round((orderSubtotal * commissionRate * refundRatio) * 100) / 100
