@@ -281,6 +281,7 @@ export async function POST(request: NextRequest) {
         if (dish.prices && Array.isArray(dish.prices)) {
           dish.prices.forEach((p: any, idx: number) => {
             const key = `${dish.id}-${p.size_variant}`
+            console.log(`[Order API] Menu dish price: dish=${dish.id} "${dish.name}" size="${p.size_variant}" price=${p.price} modifier_size_variant_id=${p.modifier_size_variant_id} dish_size_variant_id=${p.dish_size_variant_id} idx=${idx} ALL_KEYS=${JSON.stringify(Object.keys(p))}`)
             dishPriceMap.set(key, {
               price: parseFloat(p.price),
               size_variant: p.size_variant,
@@ -564,10 +565,13 @@ export async function POST(request: NextRequest) {
             }
             
             const targetSizeVariantId = dishPrice.modifierSizeVariantId || 1
+            console.log(`[Order API] Modifier price lookup: mod=${mod.id} "${mod.name}" targetSizeVariantId=${targetSizeVariantId} (from dishPrice.modifierSizeVariantId=${dishPrice.modifierSizeVariantId}, dishPrice.size_variant="${dishPrice.size_variant}")`)
             let modPrice = simpleModifierPriceMap.get(`${mod.id}-${targetSizeVariantId}`)
             if (modPrice === undefined) {
+              console.log(`[Order API] No price for mod=${mod.id} at tier ${targetSizeVariantId}, falling back to tier 1`)
               modPrice = simpleModifierPriceMap.get(`${mod.id}-1`) ?? 0
             }
+            console.log(`[Order API] Final modifier price: mod=${mod.id} price=${modPrice}`)
 
             const modQuantity = mod.quantity || 1
             itemTotal += modPrice * modQuantity * item.quantity
