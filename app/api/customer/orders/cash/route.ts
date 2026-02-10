@@ -237,12 +237,13 @@ export async function POST(request: NextRequest) {
             modPrice = mod.price ?? 0
           }
           
+          const finalModPrice = modPrice ?? 0
           const modQuantity = mod.quantity || 1
-          itemTotal += modPrice * modQuantity * item.quantity
+          itemTotal += finalModPrice * modQuantity * item.quantity
           validatedModifiers.push({
             modifier_id: mod.id,
             modifier_name: mod.name,
-            modifier_price: modPrice.toString(),
+            modifier_price: finalModPrice.toString(),
             quantity: modQuantity,
             placement: mod.placement || null
           })
