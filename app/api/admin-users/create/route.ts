@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { createClient as createSupabaseAdmin } from '@supabase/supabase-js'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
 import { AuthError } from '@/lib/errors'
 export const dynamic = 'force-dynamic'
@@ -31,11 +32,10 @@ async function createRestaurantAdminAutomated({
   restaurant_ids: number[]
 }) {
   try {
-    // Create admin client with service role key
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
     
-    const adminClient = createAdminClient(supabaseUrl, serviceRoleKey, {
+    const adminClient = createSupabaseAdmin(supabaseUrl, serviceRoleKey, {
       auth: {
         autoRefreshToken: false,
         persistSession: false
@@ -158,7 +158,6 @@ async function createRestaurantAdminAutomated({
 export async function POST(request: NextRequest) {
   try {
     const { adminUser } = await verifyAdminAuth(request)
-    const supabase = await createClient() as any
     const body = await request.json()
 
     const { email, first_name, last_name, phone, role_id, restaurant_ids } = body
@@ -208,10 +207,9 @@ export async function POST(request: NextRequest) {
     }
 
     // MANUAL FLOW: Super Admin (role_id = 1) - requires manual Supabase auth creation
-    // Create admin user directly (bypassing broken RPC function)
-    // Note: auth_user_id will be NULL until manual auth creation step
-    const { data: result, error } = await supabase
-      .schema('menuca_v3')
+    // Use admin client to bypass RLS sequence permissions
+    const adminSupabase = createAdminClient() as any
+    const { data: result, error } = await adminSupabase
       .from('admin_users')
       .insert({
         email,
