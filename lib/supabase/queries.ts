@@ -1,4 +1,3 @@
-import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function getRestaurants(filters?: {
@@ -8,7 +7,7 @@ export async function getRestaurants(filters?: {
   search?: string
   allowedRestaurantIds?: number[]
 }) {
-  const supabase = await createClient()
+  const supabase = createAdminClient() as any
   
   try {
     let query = supabase
@@ -57,7 +56,7 @@ export async function getRestaurants(filters?: {
 }
 
 export async function getRestaurantById(id: string) {
-  const supabase = await createClient()
+  const supabase = createAdminClient() as any
   
   const { data, error } = await supabase
     .from('restaurants')
@@ -176,7 +175,7 @@ export async function getOrders(filters?: {
 }
 
 export async function getDashboardStats(allowedRestaurantIds?: number[]) {
-  const supabase = await createClient()
+  const supabase = createAdminClient() as any
   
   try {
     const thirtyDaysAgo = new Date()
@@ -267,7 +266,7 @@ export async function getDashboardStats(allowedRestaurantIds?: number[]) {
 }
 
 export async function getRevenueHistory(timeRange: 'daily' | 'weekly' | 'monthly' = 'daily', allowedRestaurantIds?: number[]) {
-  const supabase = await createClient()
+  const supabase = createAdminClient() as any
   
   const now = new Date()
   let startDate = new Date()
@@ -385,7 +384,7 @@ export async function getRevenueHistory(timeRange: 'daily' | 'weekly' | 'monthly
 }
 
 export async function getCoupons() {
-  const supabase = await createClient()
+  const supabase = createAdminClient() as any
   
   const { data, error } = await supabase
     .from('promotional_coupons')
@@ -400,7 +399,7 @@ export async function getUsers(filters?: {
   role?: string
   search?: string
 }) {
-  const supabase = await createClient()
+  const supabase = createAdminClient() as any
   
   let query = supabase
     .from('users')
