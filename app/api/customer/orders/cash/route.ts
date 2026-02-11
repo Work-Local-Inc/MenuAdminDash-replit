@@ -355,6 +355,14 @@ export async function POST(request: NextRequest) {
     // Generate unique order number (same format as credit card orders)
     const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
 
+    const { data: paymentConfig } = await (adminSupabase as any)
+      .schema('menuca_v3')
+      .from('delivery_and_pickup_configs')
+      .select('payment_mode')
+      .eq('restaurant_id', restaurant.id)
+      .maybeSingle()
+    const paymentMode = paymentConfig?.payment_mode || 'test'
+
     const orderData = {
       order_number: orderNumber,
       restaurant_id: restaurant.id,
@@ -385,6 +393,7 @@ export async function POST(request: NextRequest) {
         return parts.length > 0 ? parts.join(' | ') : null
       })(),
       stripe_payment_intent_id: cashOrderReference,
+      is_test_order: paymentMode === 'test',
     }
 
     console.log('[Cash Order API] Creating order:', orderData)

@@ -71,7 +71,8 @@ export async function GET(request: NextRequest) {
         payment_status,
         special_instructions,
         acknowledged_at,
-        acknowledged_by_device_id
+        acknowledged_by_device_id,
+        is_test_order
       `)
       .eq('restaurant_id', deviceContext.restaurant_id)
       .order('created_at', { ascending: false })
@@ -97,7 +98,15 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const unacknowledgedIds = (orders || [])
+    const TEST_ORDER_EXPIRY_MS = 10 * 60 * 1000
+    const now = Date.now()
+    const filteredOrders = (orders || []).filter((order: any) => {
+      if (!order.is_test_order) return true
+      const orderAge = now - new Date(order.created_at).getTime()
+      return orderAge < TEST_ORDER_EXPIRY_MS
+    })
+
+    const unacknowledgedIds = filteredOrders
       .filter((o: any) => !o.acknowledged_at && o.payment_status === 'paid')
       .map((o: any) => o.id)
 
@@ -116,7 +125,7 @@ export async function GET(request: NextRequest) {
         console.error('[Tablet Orders] Auto-acknowledge error:', ackError)
       } else {
         console.log(`[Tablet Orders] Auto-acknowledged ${unacknowledgedIds.length} orders for device ${deviceContext.device_id}`)
-        orders?.forEach((o: any) => {
+        filteredOrders.forEach((o: any) => {
           if (unacknowledgedIds.includes(o.id)) {
             o.acknowledged_at = ackTime
             o.acknowledged_by_device_id = deviceContext.device_id
@@ -126,7 +135,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Transform orders for tablet consumption
-    const transformedOrders: TabletOrder[] = (orders || []).map((order: any) => {
+    const transformedOrders: TabletOrder[] = filteredOrders.map((order: any) => {
       // Get customer info from user or guest fields
       let customerName = 'Unknown Customer'
       let customerPhone = ''
