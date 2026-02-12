@@ -107,12 +107,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to validate dishes' }, { status: 500 })
     }
 
-    // Build a map of all valid dishes from the menu AND extract dish prices from menu data
-    // This is critical: the menu RPC returns modifier_size_variant_id on dish prices,
-    // which maps dish sizes to the correct modifier price tiers via the two-tier FK system:
-    // dish_prices.dish_size_variant_id -> dish_size_variants.modifier_size_variant_id -> modifier_prices.modifier_size_variant_id
     const dishMap = new Map<number, { id: number; restaurant_id: number; name: string }>()
     const dishPriceMap = new Map<string, { price: number; size_variant: string | null; modifierSizeVariantId: number | null; sizeIndex: number }>()
+    const modifierIdToGroupId = new Map<number, number>()
+    const modifierGroupNameMap = new Map<number, string>()
     menuData?.courses?.forEach((course: any) => {
       course.dishes?.forEach((dish: any) => {
         dishMap.set(dish.id, {
@@ -131,6 +129,14 @@ export async function POST(request: NextRequest) {
             })
           })
         }
+        dish.modifier_groups?.forEach((mg: any) => {
+          if (mg.name) {
+            modifierGroupNameMap.set(mg.id, mg.name)
+          }
+          mg.modifiers?.forEach((mod: any) => {
+            modifierIdToGroupId.set(mod.id, mg.id)
+          })
+        })
       })
     })
 
@@ -235,12 +241,14 @@ export async function POST(request: NextRequest) {
           const finalModPrice = modPrice ?? 0
           const modQuantity = mod.quantity || 1
           itemTotal += finalModPrice * modQuantity * item.quantity
+          const groupId = modifierIdToGroupId.get(mod.id)
           validatedModifiers.push({
             modifier_id: mod.id,
             modifier_name: mod.name,
             modifier_price: finalModPrice.toString(),
             quantity: modQuantity,
-            placement: mod.placement || null
+            placement: mod.placement || null,
+            group_name: groupId ? (modifierGroupNameMap.get(groupId) || null) : null
           })
         }
       }

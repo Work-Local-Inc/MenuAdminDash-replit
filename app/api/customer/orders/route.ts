@@ -322,17 +322,19 @@ export async function POST(request: NextRequest) {
     // Format: dishId -> Set<modifierId>
     const dishModifierIndex = new Map<number, Set<number>>()
     const modifierIdToInfo = new Map<number, { name: string; modifier_group_id: number }>()
+    const modifierGroupNameMap = new Map<number, string>()
     
     menuData?.courses?.forEach((course: any) => {
       course.dishes?.forEach((dish: any) => {
-        // Initialize the set for this dish
         if (!dishModifierIndex.has(dish.id)) {
           dishModifierIndex.set(dish.id, new Set<number>())
         }
         const dishModifiers = dishModifierIndex.get(dish.id)!
         
         dish.modifier_groups?.forEach((mg: any) => {
-          // Add each modifier to this dish's valid modifier set
+          if (mg.name) {
+            modifierGroupNameMap.set(mg.id, mg.name)
+          }
           mg.modifiers?.forEach((mod: any) => {
             dishModifiers.add(mod.id)
             modifierIdToInfo.set(mod.id, {
@@ -458,7 +460,7 @@ export async function POST(request: NextRequest) {
           const { data: comboModGroups, error: comboModGroupsError } = await (adminSupabase as any)
             .schema('menuca_v3')
             .from('combo_modifier_groups')
-            .select('id, combo_group_section_id')
+            .select('id, name, combo_group_section_id')
             .in('id', comboModGroupIds)
 
           if (!comboModGroupsError && comboModGroups) {
@@ -471,25 +473,27 @@ export async function POST(request: NextRequest) {
               .in('id', sectionIds)
 
             if (!sectionsError && sections) {
-              // Build mapping: combo_modifier_group_id -> combo_group_id
               const sectionToComboGroup = new Map<number, number>()
               sections.forEach((s: any) => {
                 sectionToComboGroup.set(s.id, s.combo_group_id)
               })
 
               const modGroupToSection = new Map<number, number>()
+              const comboModGroupNameMap = new Map<number, string>()
               comboModGroups.forEach((g: any) => {
                 modGroupToSection.set(g.id, g.combo_group_section_id)
+                if (g.name) {
+                  comboModGroupNameMap.set(g.id, g.name)
+                }
               })
 
-              // Store the combo_group_id for each combo modifier for validation
               comboModifiersData?.forEach((mod: any) => {
                 const sectionId = modGroupToSection.get(mod.combo_modifier_group_id)
                 if (sectionId) {
                   const comboGroupId = sectionToComboGroup.get(sectionId)
                   if (comboGroupId) {
-                    // Store for validation: combo_modifier_id -> combo_group_id
                     (mod as any)._comboGroupId = comboGroupId
+                    (mod as any)._groupName = comboModGroupNameMap.get(mod.combo_modifier_group_id) || null
                     comboModifierMap.set(mod.id, mod)
                   }
                 }
@@ -580,7 +584,8 @@ export async function POST(request: NextRequest) {
               name: simpleModifier.name,
               price: modPrice,
               quantity: modQuantity,
-              placement: mod.placement || null
+              placement: mod.placement || null,
+              group_name: modifierGroupNameMap.get(simpleModifier.modifier_group.id) || null
             })
           } else {
             // Check if it's a combo modifier
@@ -598,7 +603,8 @@ export async function POST(request: NextRequest) {
                   name: mod.name || `Modifier ${mod.id}`,
                   price: modPrice,
                   quantity: modQuantity,
-                  placement: mod.placement || null
+                  placement: mod.placement || null,
+                  group_name: null
                 })
                 continue
               }
@@ -624,7 +630,8 @@ export async function POST(request: NextRequest) {
                   name: comboModifier.name || mod.name || `Modifier ${mod.id}`,
                   price: modPrice,
                   quantity: modQuantity,
-                  placement: mod.placement || null
+                  placement: mod.placement || null,
+                  group_name: (comboModifier as any)._groupName || null
                 })
                 continue
               }
@@ -653,7 +660,8 @@ export async function POST(request: NextRequest) {
               name: comboModifier.name,
               price: effectivePrice,
               quantity: modQuantity,
-              placement: mod.placement || null
+              placement: mod.placement || null,
+              group_name: (comboModifier as any)._groupName || null
             })
           }
         }
