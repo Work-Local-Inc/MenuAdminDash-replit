@@ -175,7 +175,6 @@ export async function POST(request: NextRequest) {
       const potentialComboIds = (modifierIds as number[]).filter(id => !simpleModIds.has(id))
       
       if (potentialComboIds.length > 0) {
-        // Load combo modifier prices from separate table (combo_modifiers doesn't have price column)
         const { data: comboPricesData } = await (adminSupabase as any)
           .schema('menuca_v3')
           .from('combo_modifier_prices')
@@ -183,12 +182,35 @@ export async function POST(request: NextRequest) {
           .in('combo_modifier_id', potentialComboIds)
 
         comboPricesData?.forEach((priceRow: any) => {
-          // Store ALL prices with compound key: combo_modifier_id-size_variant
-          // This enables looking up size-specific prices for combo modifiers
           const sizeVariant = priceRow.size_variant || 'base'
           const key = `${priceRow.combo_modifier_id}-${sizeVariant}`
           comboModifierPriceMap.set(key, parseFloat(priceRow.price))
         })
+
+        const { data: comboModifiersData } = await (adminSupabase as any)
+          .schema('menuca_v3')
+          .from('combo_modifiers')
+          .select('id, combo_modifier_group_id')
+          .in('id', potentialComboIds)
+
+        const comboModGroupIds = comboModifiersData?.map((m: any) => m.combo_modifier_group_id).filter(Boolean) || []
+        if (comboModGroupIds.length > 0) {
+          const { data: comboModGroups } = await (adminSupabase as any)
+            .schema('menuca_v3')
+            .from('combo_modifier_groups')
+            .select('id, name')
+            .in('id', comboModGroupIds)
+
+          const comboGroupNameMap = new Map<number, string>()
+          comboModGroups?.forEach((g: any) => {
+            if (g.name) comboGroupNameMap.set(g.id, g.name)
+          })
+          comboModifiersData?.forEach((mod: any) => {
+            modifierIdToGroupId.set(mod.id, mod.combo_modifier_group_id)
+            const gName = comboGroupNameMap.get(mod.combo_modifier_group_id)
+            if (gName) modifierGroupNameMap.set(mod.combo_modifier_group_id, gName)
+          })
+        }
       }
     }
 
@@ -353,9 +375,10 @@ export async function POST(request: NextRequest) {
         modifiers: item.modifiers.map(mod => ({
           id: mod.modifier_id,
           name: mod.modifier_name,
-          price: parseFloat(mod.modifier_price) || 0,  // Unit price per modifier
+          price: parseFloat(mod.modifier_price) || 0,
           quantity: mod.quantity || 1,
           placement: mod.placement || null,
+          group_name: mod.group_name || null,
         })),
       }
     })
