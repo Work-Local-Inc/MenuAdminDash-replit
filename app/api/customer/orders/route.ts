@@ -504,6 +504,44 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // DB fallback: for any cart modifier IDs not found via menu data, query DB directly
+    const allCartModIds = cart_items.flatMap((item: any) => (item.modifiers || []).map((m: any) => m.id))
+    const unmappedModIds = allCartModIds.filter((id: number) => !modifierIdToInfo.has(id) && !comboModifierMap.has(id))
+    if (unmappedModIds.length > 0) {
+      console.log('[Order API] DB fallback for unmapped modifier group names:', unmappedModIds)
+      const { data: dbModData } = await (adminSupabase as any)
+        .schema('menuca_v3')
+        .from('modifiers')
+        .select('id, modifier_group_id')
+        .in('id', unmappedModIds)
+
+      if (dbModData && dbModData.length > 0) {
+        const dbGroupIds = Array.from(new Set(dbModData.map((m: any) => m.modifier_group_id).filter(Boolean))) as number[]
+        const missingGroupIds = dbGroupIds.filter((gid: number) => !modifierGroupNameMap.has(gid))
+        
+        if (missingGroupIds.length > 0) {
+          const { data: dbGroupData } = await (adminSupabase as any)
+            .schema('menuca_v3')
+            .from('modifier_groups')
+            .select('id, name_en')
+            .in('id', missingGroupIds)
+
+          dbGroupData?.forEach((g: any) => {
+            if (g.name_en) modifierGroupNameMap.set(g.id, g.name_en)
+          })
+        }
+
+        dbModData.forEach((m: any) => {
+          if (m.modifier_group_id) {
+            modifierIdToInfo.set(m.id, {
+              name: '',
+              modifier_group_id: m.modifier_group_id
+            })
+          }
+        })
+      }
+    }
+
     // SECURITY: Recompute totals on server to prevent client manipulation
     let serverSubtotal = 0
     const validatedItems = []
