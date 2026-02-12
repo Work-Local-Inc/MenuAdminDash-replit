@@ -158,9 +158,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (!['paid', 'succeeded'].includes(order.payment_status)) {
+    if (!['paid', 'succeeded', 'partially_refunded'].includes(order.payment_status)) {
       return NextResponse.json(
-        { error: `Cannot refund order with payment status "${order.payment_status}". Must be "paid" or "succeeded"` },
+        { error: `Cannot refund order with payment status "${order.payment_status}". Must be "paid", "succeeded", or "partially_refunded"` },
         { status: 400 }
       )
     }
@@ -309,6 +309,18 @@ export async function POST(request: NextRequest) {
         { error: 'Refund was processed in Stripe but failed to save record. Please contact support.', stripe_refund_id: stripeRefund.id },
         { status: 500 }
       )
+    }
+
+    const newPaymentStatus = (totalAlreadyRefunded + refund_amount >= order.total_amount) ? 'refunded' : 'partially_refunded'
+    const { error: statusUpdateError } = await (supabase as any)
+      .from('orders')
+      .update({ payment_status: newPaymentStatus })
+      .eq('id', order.id)
+
+    if (statusUpdateError) {
+      console.error('[Refunds] WARNING: Failed to update order payment_status:', statusUpdateError)
+    } else {
+      console.log(`[Refunds] Updated order #${order.id} payment_status to "${newPaymentStatus}"`)
     }
 
     console.log(`[Refunds] Refund completed successfully: refund_id=${refundRecord.id}, stripe_refund=${stripeRefund.id}`)
