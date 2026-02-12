@@ -182,10 +182,10 @@ export async function getDashboardStats(allowedRestaurantIds?: number[]) {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
     
     // Build queries with optional restaurant filtering for RBAC
-    let ordersCountQuery = supabase.from('orders').select('*', { count: 'exact', head: true })
-    let ordersQuery = supabase.from('orders').select('total_amount')
+    let ordersCountQuery = supabase.from('orders').select('*', { count: 'exact', head: true }).or('is_test_order.is.null,is_test_order.eq.false')
+    let ordersQuery = supabase.from('orders').select('total_amount').or('is_test_order.is.null,is_test_order.eq.false')
     let restaurantsCountQuery = supabase.from('restaurants').select('*', { count: 'exact', head: true }).eq('status', 'active')
-    let recentOrdersQuery = supabase.from('orders').select('restaurant_id, total_amount, created_at').gte('created_at', thirtyDaysAgo.toISOString())
+    let recentOrdersQuery = supabase.from('orders').select('restaurant_id, total_amount, created_at').gte('created_at', thirtyDaysAgo.toISOString()).or('is_test_order.is.null,is_test_order.eq.false')
     
     // Apply restaurant filtering for Restaurant Admins
     if (allowedRestaurantIds && allowedRestaurantIds.length > 0) {
@@ -326,6 +326,7 @@ export async function getRevenueHistory(timeRange: 'daily' | 'weekly' | 'monthly
       .from('orders')
       .select('created_at, total_amount')
       .gte('created_at', startDate.toISOString())
+      .or('is_test_order.is.null,is_test_order.eq.false')
       .order('created_at', { ascending: true })
     
     // Apply restaurant filtering for Restaurant Admins

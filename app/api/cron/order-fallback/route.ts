@@ -62,6 +62,7 @@ export async function GET(request: NextRequest) {
       `)
       .eq('payment_status', 'paid')
       .is('acknowledged_at', null)
+      .or('is_test_order.is.null,is_test_order.eq.false')
       .gte('created_at', lookbackTime.toISOString())
       .lte('created_at', ackCutoffTime.toISOString())
       .limit(MAX_ORDERS)

@@ -38,6 +38,7 @@ export async function GET(request: NextRequest) {
       payment_method,
       created_at,
       restaurant_id,
+      is_test_order,
       restaurants(id, name)
     `
 
@@ -135,6 +136,7 @@ export async function GET(request: NextRequest) {
       restaurant_name: order.restaurants?.name || 'Unknown Restaurant',
       customer_email: order.guest_email || null,
       customer_name: order.guest_name || null,
+      is_test_order: order.is_test_order || false,
     }))
 
     return NextResponse.json({ transactions, total })

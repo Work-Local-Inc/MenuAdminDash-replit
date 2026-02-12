@@ -63,6 +63,7 @@ interface Transaction {
   restaurant_name: string
   customer_email: string | null
   customer_name: string | null
+  is_test_order: boolean
 }
 
 const REASON_OPTIONS = [
@@ -343,6 +344,9 @@ export default function TransactionsPage() {
                       </TableCell>
                       <TableCell data-testid={`text-description-${tx.id}`}>
                         Order #{tx.order_number || tx.id}
+                        {tx.is_test_order && (
+                          <Badge variant="outline" className="text-xs ml-1 no-default-hover-elevate no-default-active-elevate" data-testid={`badge-test-${tx.id}`}>Test</Badge>
+                        )}
                       </TableCell>
                       <TableCell className="text-muted-foreground" data-testid={`text-customer-${tx.id}`}>
                         {tx.customer_email || "N/A"}
