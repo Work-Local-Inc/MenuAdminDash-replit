@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
 
     const supabase = createAdminClient()
 
-    const orderSelect = 'id, order_number, restaurant_id, subtotal, total_amount, delivery_fee, tip_amount, payment_method, payment_status, order_status, stripe_payment_intent_id, created_at'
+    const orderSelect = 'id, order_number, restaurant_id, subtotal, total_amount, delivery_fee, tip_amount, payment_method, payment_status, order_status, stripe_payment_intent_id, created_at, is_test_order'
 
     let { data: orderData, error: orderError } = await (supabase as any)
       .from('orders')
@@ -148,6 +148,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Order not found' },
         { status: 404 }
+      )
+    }
+
+    if (order.is_test_order) {
+      return NextResponse.json(
+        { error: 'Cannot refund a test order — no real money was charged' },
+        { status: 400 }
       )
     }
 
