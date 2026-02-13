@@ -80,10 +80,15 @@ export async function GET(
     }
 
     // AUTHORIZATION: Verify access rights
-    if (user) {
-      // Authenticated user: must own the order
-      // Note: user.id is the Supabase Auth UUID, order.user_id is the numeric ID from users table
-      // We need to look up the user's numeric ID from their auth_user_id
+    const { searchParams } = new URL(request.url)
+    const providedToken = searchParams.get('token')
+    let hasAccess = false
+
+    if (providedToken && providedToken === order.stripe_payment_intent_id) {
+      hasAccess = true
+    }
+
+    if (!hasAccess && user) {
       const { data: userData } = await supabase
         .from('users')
         .select('id')
@@ -91,30 +96,18 @@ export async function GET(
         .single()
       
       const userNumericId = userData?.id
-      
-      if (!userNumericId || order.user_id !== userNumericId) {
-        console.error('[Order API] Access denied: User does not own order', { 
-          authUserId: user.id, 
-          userNumericId,
-          orderUserId: order.user_id 
-        })
-        return NextResponse.json({ error: 'Access denied. Please check your link.' }, { status: 403 })
+      if (userNumericId && order.user_id === userNumericId) {
+        hasAccess = true
       }
-    } else {
-      // Guest user: must be guest order AND provide matching payment intent ID
-      if (!order.is_guest_order) {
-        console.error('[Order API] Access denied: Not a guest order')
-        return NextResponse.json({ error: 'Access denied' }, { status: 403 })
-      }
-      
-      // Require payment_intent_id as secure token (non-sequential, hard to guess)
-      const { searchParams } = new URL(request.url)
-      const providedToken = searchParams.get('token')
-      
-      if (!providedToken || providedToken !== order.stripe_payment_intent_id) {
-        console.error('[Order API] Access denied: Invalid access token')
-        return NextResponse.json({ error: 'Access denied' }, { status: 403 })
-      }
+    }
+
+    if (!hasAccess) {
+      console.error('[Order API] Access denied', { 
+        hasUser: !!user,
+        hasToken: !!providedToken,
+        orderUserId: order.user_id 
+      })
+      return NextResponse.json({ error: 'Access denied. Please check your link.' }, { status: 403 })
     }
 
     // Fetch current order status from order_status_history
