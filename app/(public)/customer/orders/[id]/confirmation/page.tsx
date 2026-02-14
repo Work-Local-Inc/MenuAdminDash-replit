@@ -166,11 +166,25 @@ export default function OrderConfirmationPage() {
         }
       }
 
-      // Show signup modal for guest orders after a short delay
-      if (data.is_guest_order && data.guest_email) {
-        setTimeout(() => {
-          setShowSignupModal(true)
-        }, 2000)
+      // Show signup modal only for true guest orders (not phone-authenticated users)
+      // If user_id is set, user already has an account (signed in via phone/email)
+      if (data.is_guest_order && data.guest_email && !data.user_id) {
+        // Also check if user is currently authenticated (e.g. phone OTP session still active)
+        try {
+          const profileRes = await fetch('/api/customer/profile')
+          const profileData = await profileRes.json()
+          if (profileData?.user?.id) {
+            console.log('[Confirmation] User already authenticated, skipping signup modal')
+          } else {
+            setTimeout(() => {
+              setShowSignupModal(true)
+            }, 2000)
+          }
+        } catch {
+          setTimeout(() => {
+            setShowSignupModal(true)
+          }, 2000)
+        }
       }
     } catch (error: any) {
       console.error('Error loading order:', error)
