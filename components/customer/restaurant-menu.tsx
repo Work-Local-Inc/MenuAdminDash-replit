@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Store, MapPin, Clock, Phone, ShoppingCart, GripVertical, Pencil, Trash2, Plus, Eye, EyeOff, MoreVertical, Layers, DollarSign, AlertCircle } from 'lucide-react';
+import { Store, MapPin, Clock, Phone, ShoppingCart, GripVertical, Pencil, Trash2, Plus, Eye, EyeOff, MoreVertical, Layers, DollarSign, AlertCircle, AlertTriangle } from 'lucide-react';
+import { getDay, setHours, setMinutes, format } from 'date-fns';
+import { getApiBaseUrl } from '@/lib/api-utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -141,6 +143,75 @@ export default function RestaurantMenu({
     }
   }, [editorMode, restaurant.id, restaurant.name, restaurant.restaurant_delivery_areas, serviceConfig, setRestaurant, streetAddress, postalCode, restaurant.primary_color, restaurantSlug]);
   
+  const [schedules, setSchedules] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (editorMode || !restaurantSlug) return;
+    fetch(`${getApiBaseUrl()}/api/customer/restaurants/${restaurantSlug}/schedules`)
+      .then(res => res.ok ? res.json() : { schedules: [] })
+      .then(data => { if (data?.schedules) setSchedules(data.schedules); })
+      .catch(() => {});
+  }, [editorMode, restaurantSlug]);
+
+  const closedBannerInfo = useMemo(() => {
+    if (editorMode || !schedules || schedules.length === 0) return null;
+
+    const enabledSchedules = schedules.filter((s: any) => s.is_enabled);
+    if (enabledSchedules.length === 0) return null;
+
+    const now = new Date();
+    const currentDay = getDay(now);
+    const previousDay = (currentDay + 6) % 7;
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+    const matchesDay = (schedule: any, day: number): boolean => {
+      if (schedule.day_start <= schedule.day_stop) {
+        return day >= schedule.day_start && day <= schedule.day_stop;
+      }
+      return day >= schedule.day_start || day <= schedule.day_stop;
+    };
+
+    for (const schedule of enabledSchedules) {
+      if (!matchesDay(schedule, currentDay)) continue;
+      const [openHour, openMin] = schedule.time_start.split(':').map(Number);
+      const [closeHour, closeMin] = schedule.time_stop.split(':').map(Number);
+      const openMinutes = openHour * 60 + openMin;
+      const closeMinutes = closeHour * 60 + closeMin;
+      if (closeMinutes > openMinutes) {
+        if (currentMinutes >= openMinutes && currentMinutes < closeMinutes) return null;
+      } else if (closeMinutes <= openMinutes) {
+        if (currentMinutes >= openMinutes) return null;
+      }
+    }
+
+    if (currentMinutes < 6 * 60) {
+      for (const schedule of enabledSchedules) {
+        if (!matchesDay(schedule, previousDay)) continue;
+        const [openHour, openMin] = schedule.time_start.split(':').map(Number);
+        const [closeHour, closeMin] = schedule.time_stop.split(':').map(Number);
+        const openMinutes = openHour * 60 + openMin;
+        const closeMinutes = closeHour * 60 + closeMin;
+        if (closeMinutes <= openMinutes && currentMinutes < closeMinutes) return null;
+      }
+    }
+
+    const todaySchedules = enabledSchedules
+      .filter((s: any) => matchesDay(s, currentDay))
+      .sort((a: any, b: any) => a.time_start.localeCompare(b.time_start));
+    const futureSchedule = todaySchedules.find((s: any) => {
+      const [h, m] = s.time_start.split(':').map(Number);
+      return (h * 60 + m) > currentMinutes;
+    });
+
+    let opensAtFormatted: string | null = null;
+    if (futureSchedule) {
+      const [h, m] = futureSchedule.time_start.split(':').map(Number);
+      opensAtFormatted = format(setMinutes(setHours(new Date(), h), m), 'h:mm a');
+    }
+
+    return { opensAt: opensAtFormatted };
+  }, [editorMode, schedules]);
+
   // Scroll to category section
   const scrollToCategory = (courseId: string) => {
     const element = document.getElementById(`category-${courseId}`);
@@ -275,23 +346,46 @@ export default function RestaurantMenu({
         </div>
       </div>
       
+      {/* Closed Banner - Customer mode only */}
+      {!editorMode && closedBannerInfo && (
+        <div
+          data-testid="banner-restaurant-closed"
+          className="bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-800"
+        >
+          <div className="container mx-auto px-3 sm:px-4 py-3">
+            <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
+              <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+              <span className="font-semibold">Currently Closed</span>
+              {closedBannerInfo.opensAt && (
+                <span className="text-amber-700 dark:text-amber-300">
+                  &middot; Opens at {closedBannerInfo.opensAt}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Category Navigation - Quick Jump Links */}
       {!editorMode && courses && courses.length > 1 && (
         <div className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
           <div className="container mx-auto px-3 sm:px-4">
-            <div className="flex gap-2 py-2 sm:py-3 overflow-x-auto scrollbar-hide">
-              {courses.map((course) => (
-                <Button
-                  key={course.id}
-                  variant="ghost"
-                  onClick={() => scrollToCategory(course.id.toString())}
-                  size="sm"
-                  className="whitespace-nowrap"
-                  data-testid={`button-category-${course.id}`}
-                >
-                  {course.name}
-                </Button>
-              ))}
+            <div className="relative">
+              <div className="flex gap-2 py-2 sm:py-3 overflow-x-auto scrollbar-hide">
+                {courses.map((course) => (
+                  <Button
+                    key={course.id}
+                    variant="ghost"
+                    onClick={() => scrollToCategory(course.id.toString())}
+                    size="sm"
+                    className="whitespace-nowrap"
+                    data-testid={`button-category-${course.id}`}
+                  >
+                    {course.name}
+                  </Button>
+                ))}
+              </div>
+              <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-background to-transparent pointer-events-none sm:hidden" />
             </div>
           </div>
         </div>
@@ -652,7 +746,7 @@ export default function RestaurantMenu({
                 <div className="flex items-center gap-2">
                   <ShoppingCart className="w-5 h-5" />
                   <span className="font-semibold">
-                    {isCartOpen && displayCartCount > 0 ? 'Place Order' : `Basket • ${displayCartCount} ${displayCartCount === 1 ? 'Item' : 'Items'}`}
+                    {isCartOpen && displayCartCount > 0 ? 'Place Order' : `Cart • ${displayCartCount} ${displayCartCount === 1 ? 'Item' : 'Items'}`}
                   </span>
                 </div>
                 <span className="font-bold text-lg">

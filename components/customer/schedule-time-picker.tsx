@@ -341,8 +341,8 @@ export function ScheduleTimePicker({
           type="button"
           variant={pickupTime.type === 'asap' && !isServiceClosed ? 'default' : 'outline'}
           className={cn(
-            "h-auto py-4 flex flex-col items-center gap-1",
-            isServiceClosed && "opacity-50 cursor-not-allowed"
+            "h-auto py-4 flex flex-col items-center gap-1 relative",
+            isServiceClosed && "opacity-40 cursor-not-allowed border-dashed"
           )}
           onClick={handleAsapClick}
           disabled={isServiceClosed}
@@ -351,7 +351,14 @@ export function ScheduleTimePicker({
         >
           <Zap className="w-5 h-5" />
           <span className="font-medium">ASAP</span>
-          <span className="text-xs opacity-80">{asapSubtext}</span>
+          {isServiceClosed ? (
+            <span className="text-sm font-medium flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
+              <Clock className="w-3.5 h-3.5" />
+              {serviceOpensAt ? `Opens ${formatTimeDisplay(serviceOpensAt)}` : 'Closed now'}
+            </span>
+          ) : (
+            <span className="text-xs opacity-80">{asapSubtext}</span>
+          )}
         </Button>
         
         <Button

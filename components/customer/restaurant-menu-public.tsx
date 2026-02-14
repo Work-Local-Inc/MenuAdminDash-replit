@@ -455,7 +455,7 @@ export default function RestaurantMenuPublic({
               <div className="flex items-center gap-2">
                 <ShoppingCart className="w-5 h-5" />
                 <span className="font-semibold">
-                  {isCartOpen && displayCartCount > 0 ? 'Place Order' : `Basket • ${displayCartCount} ${displayCartCount === 1 ? 'Item' : 'Items'}`}
+                  {isCartOpen && displayCartCount > 0 ? 'Place Order' : `Cart • ${displayCartCount} ${displayCartCount === 1 ? 'Item' : 'Items'}`}
                 </span>
               </div>
               <span className="font-bold text-lg">

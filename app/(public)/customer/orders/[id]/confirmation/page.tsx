@@ -459,67 +459,79 @@ export default function OrderConfirmationPage() {
           <div className="grid gap-6 md:grid-cols-2">
             {/* Left Column */}
             <div className="space-y-6">
-              {/* Restaurant Details */}
-              <Card data-testid="card-restaurant-details">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Store className="w-5 h-5" />
-                    Restaurant
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <p className="font-medium text-lg" data-testid="text-restaurant-name">
-                    {order.restaurant.name}
-                  </p>
-                  {order.restaurant.phone && (
-                    <p className="text-sm text-muted-foreground flex items-center gap-2">
-                      <Phone className="w-4 h-4" />
-                      {order.restaurant.phone}
+              {isPickup ? (
+                <Card data-testid="card-restaurant-details">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Store className="w-5 h-5" />
+                      Restaurant
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground flex items-center gap-1">
+                      <MapPin className="w-3.5 h-3.5" />
+                      Pickup Location
                     </p>
-                  )}
-                  {order.restaurant.address && (
-                    <p className="text-sm text-muted-foreground">
-                      {order.restaurant.address}
-                      {order.restaurant.city && `, ${order.restaurant.city}`}
-                      {order.restaurant.province && ` ${order.restaurant.province}`}
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <p className="font-medium text-lg" data-testid="text-restaurant-name">
+                      {order.restaurant.name}
                     </p>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Delivery/Pickup Information */}
-              <Card data-testid="card-delivery-info">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    {isPickup ? <Store className="w-5 h-5" /> : <MapPin className="w-5 h-5" />}
-                    {isPickup ? 'Pickup Location' : 'Delivery Address'}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {isPickup ? (
-                    <>
-                      <p className="font-medium text-lg">{order.restaurant.name}</p>
-                      {order.restaurant.address && (
-                        <p className="text-sm">
-                          {order.restaurant.address}
-                        </p>
-                      )}
-                      {(order.restaurant.city || order.restaurant.province) && (
-                        <p className="text-sm text-muted-foreground">
-                          {order.restaurant.city && order.restaurant.city}
-                          {order.restaurant.province && `, ${order.restaurant.province}`}
-                          {order.restaurant.postal_code && ` ${order.restaurant.postal_code}`}
-                        </p>
-                      )}
+                    {order.restaurant.address && (
+                      <p className="text-sm">
+                        {order.restaurant.address}
+                      </p>
+                    )}
+                    {(order.restaurant.city || order.restaurant.province) && (
+                      <p className="text-sm text-muted-foreground">
+                        {order.restaurant.city && order.restaurant.city}
+                        {order.restaurant.province && `, ${order.restaurant.province}`}
+                        {order.restaurant.postal_code && ` ${order.restaurant.postal_code}`}
+                      </p>
+                    )}
+                    {order.restaurant.phone && (
+                      <p className="text-sm text-muted-foreground flex items-center gap-2 mt-2">
+                        <Phone className="w-4 h-4" />
+                        {order.restaurant.phone}
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              ) : (
+                <>
+                  <Card data-testid="card-restaurant-details">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Store className="w-5 h-5" />
+                        Restaurant
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      <p className="font-medium text-lg" data-testid="text-restaurant-name">
+                        {order.restaurant.name}
+                      </p>
                       {order.restaurant.phone && (
-                        <p className="text-sm text-muted-foreground flex items-center gap-2 mt-2">
+                        <p className="text-sm text-muted-foreground flex items-center gap-2">
                           <Phone className="w-4 h-4" />
                           {order.restaurant.phone}
                         </p>
                       )}
-                    </>
-                  ) : (
-                    <>
+                      {order.restaurant.address && (
+                        <p className="text-sm text-muted-foreground">
+                          {order.restaurant.address}
+                          {order.restaurant.city && `, ${order.restaurant.city}`}
+                          {order.restaurant.province && ` ${order.restaurant.province}`}
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  <Card data-testid="card-delivery-info">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <MapPin className="w-5 h-5" />
+                        Delivery Address
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
                       {deliveryAddress.name && (
                         <p className="font-medium">{deliveryAddress.name}</p>
                       )}
@@ -538,10 +550,10 @@ export default function OrderConfirmationPage() {
                           </p>
                         </div>
                       )}
-                    </>
-                  )}
-                </CardContent>
-              </Card>
+                    </CardContent>
+                  </Card>
+                </>
+              )}
 
               {/* Order Status */}
               <Card data-testid="card-order-status">

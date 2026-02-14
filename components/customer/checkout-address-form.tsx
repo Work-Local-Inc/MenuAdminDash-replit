@@ -54,7 +54,7 @@ interface CheckoutAddressFormProps {
 export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick, brandedButtonStyle }: CheckoutAddressFormProps) {
   const { toast } = useToast()
   const [supabase] = useState(() => createClient())
-  const { restaurantId, setDeliveryFee, setMinOrder } = useCartStore()
+  const { restaurantId, setDeliveryFee, setMinOrder, getTotal } = useCartStore()
   
   // Load Google Maps script for geocoding saved addresses
   const { isLoaded: googleMapsLoaded } = useLoadScript({
@@ -670,7 +670,7 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick,
             data-testid="button-continue-to-payment"
             style={brandedButtonStyle}
           >
-            Continue to Payment
+            {getTotal() > 0 ? `Continue to Pay $${getTotal().toFixed(2)}` : 'Continue to Payment'}
           </Button>
         )}
 
@@ -866,7 +866,7 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick,
               style={brandedButtonStyle}
             >
               <Check className="w-4 h-4 mr-2" />
-              {submitting ? "Processing..." : (isGuest ? "Continue to Payment" : "Save & Continue to Payment")}
+              {submitting ? "Processing..." : (isGuest ? (getTotal() > 0 ? `Continue to Pay $${getTotal().toFixed(2)}` : "Continue to Payment") : (getTotal() > 0 ? `Save & Pay $${getTotal().toFixed(2)}` : "Save & Continue to Payment"))}
             </Button>
           </div>
         )}

@@ -933,28 +933,35 @@ export default function CheckoutPage() {
             {/* Progress Steps */}
             <Card>
               <CardContent className="p-6">
-                <div className="flex items-center gap-4">
-                  <div className={`flex items-center gap-2 ${step === 'address' ? 'text-primary' : 'text-muted-foreground'}`}>
+                <p className="text-xs text-muted-foreground mb-3" data-testid="text-step-indicator">
+                  Step {step === 'address' ? '1' : step === 'payment-method' ? '2' : '3'} of 3
+                </p>
+                <div className="flex items-center gap-2 sm:gap-4">
+                  <div className="flex flex-col items-center gap-1 min-w-0">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'address' ? 'bg-primary text-primary-foreground' : 'bg-green-500 text-white'}`}>
                       {effectiveOrderType === 'pickup' ? <ShoppingBag className="w-4 h-4" /> : <MapPin className="w-4 h-4" />}
                     </div>
-                    <span className="font-medium hidden sm:inline">
-                      {effectiveOrderType === 'pickup' ? 'Pickup' : 'Address'}
+                    <span className={`text-[11px] sm:text-xs font-medium truncate max-w-[70px] sm:max-w-none text-center ${step === 'address' ? 'text-primary' : 'text-muted-foreground'}`}>
+                      {effectiveOrderType === 'pickup' ? 'Details' : 'Address'}
                     </span>
                   </div>
                   <Separator className="flex-1" />
-                  <div className={`flex items-center gap-2 ${step === 'payment-method' ? 'text-primary' : 'text-muted-foreground'}`}>
+                  <div className="flex flex-col items-center gap-1 min-w-0">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'payment-method' ? 'bg-primary text-primary-foreground' : step === 'payment' ? 'bg-green-500 text-white' : 'bg-muted'}`}>
                       <Wallet className="w-4 h-4" />
                     </div>
-                    <span className="font-medium hidden sm:inline">Method</span>
+                    <span className={`text-[11px] sm:text-xs font-medium truncate max-w-[70px] sm:max-w-none text-center ${step === 'payment-method' ? 'text-primary' : 'text-muted-foreground'}`}>
+                      Method
+                    </span>
                   </div>
                   <Separator className="flex-1" />
-                  <div className={`flex items-center gap-2 ${step === 'payment' ? 'text-primary' : 'text-muted-foreground'}`}>
+                  <div className="flex flex-col items-center gap-1 min-w-0">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'payment' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                       <CreditCard className="w-4 h-4" />
                     </div>
-                    <span className="font-medium hidden sm:inline">Payment</span>
+                    <span className={`text-[11px] sm:text-xs font-medium truncate max-w-[70px] sm:max-w-none text-center ${step === 'payment' ? 'text-primary' : 'text-muted-foreground'}`}>
+                      Payment
+                    </span>
                   </div>
                 </div>
               </CardContent>
@@ -985,7 +992,7 @@ export default function CheckoutPage() {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {/* Restaurant Address */}
-                  <div className="bg-muted/50 rounded-lg p-4">
+                  <div className="bg-muted/50 rounded-lg p-4" data-testid="text-pickup-address">
                     <div className="flex items-start gap-3">
                       <MapPin className="w-5 h-5 text-primary mt-0.5" />
                       <div>
@@ -993,7 +1000,7 @@ export default function CheckoutPage() {
                         {restaurantAddress ? (
                           <p className="text-sm text-muted-foreground">{restaurantAddress}</p>
                         ) : (
-                          <p className="text-sm text-muted-foreground">Address will be provided after ordering</p>
+                          <p className="text-sm text-muted-foreground italic">Pickup address not available yet. Please contact the restaurant.</p>
                         )}
                       </div>
                     </div>
@@ -1160,7 +1167,7 @@ export default function CheckoutPage() {
                     data-testid="button-continue-pickup"
                     style={brandedButtonStyle}
                   >
-                    Continue to Payment
+                    {total > 0 ? `Continue to Pay $${total.toFixed(2)}` : 'Continue to Payment'}
                   </Button>
                   
                   {/* Sign In Prompt for Guests */}
@@ -1238,7 +1245,11 @@ export default function CheckoutPage() {
                     <div key={item.id} className="flex justify-between text-sm" data-testid={`order-item-${item.id}`}>
                       <div className="flex-1">
                         <p className="font-medium">{item.quantity}x {item.dishName}</p>
-                        <p className="text-xs text-muted-foreground">{item.size}</p>
+                        {item.size && item.size !== 'Regular' && (
+                          <p className="text-xs text-muted-foreground" data-testid={`text-order-item-size-${item.id}`}>
+                            {item.size}
+                          </p>
+                        )}
                         {item.modifiers.length > 0 && (
                           <p className="text-xs text-muted-foreground">
                             + {item.modifiers.map(m => m.name).join(', ')}

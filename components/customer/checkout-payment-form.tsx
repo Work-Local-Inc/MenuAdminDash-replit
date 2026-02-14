@@ -14,6 +14,7 @@ import { CardScannerModal } from '@/components/customer/card-scanner-modal'
 import { isMobileDevice, hasCamera } from '@/lib/utils/device'
 import { ScannedCardData } from '@/lib/utils/card-scanner'
 import { ArrowLeft, CreditCard, Camera, Shield, MapPin, ShoppingBag } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { trackPurchase } from '@/lib/analytics'
 import { getApiBaseUrl } from '@/lib/api-utils'
 
@@ -101,6 +102,7 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
   
   const [processing, setProcessing] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [isPaymentComplete, setIsPaymentComplete] = useState(false)
   const [creatingOrder, setCreatingOrder] = useState(false)
   const [showSignupModal, setShowSignupModal] = useState(false)
   const [completedOrderId, setCompletedOrderId] = useState<number | null>(null)
@@ -306,6 +308,9 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
 
           <PaymentElement 
             onReady={() => setIsLoading(false)}
+            onChange={(event) => {
+              setIsPaymentComplete(event.complete)
+            }}
             options={{
               defaultValues: {
                 billingDetails: {
@@ -368,11 +373,14 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
             </Button>
             <Button
               type="submit"
-              disabled={!stripe || processing || isLoading}
-              className="flex-1"
+              disabled={!stripe || processing || isLoading || !isPaymentComplete}
+              className={cn(
+                "flex-1",
+                (!isPaymentComplete && !isLoading && !processing) && "opacity-50 cursor-not-allowed"
+              )}
               size="lg"
               data-testid="button-place-order"
-              style={buttonStyle}
+              style={(!isPaymentComplete && !isLoading && !processing) ? undefined : buttonStyle}
             >
               {isLoading ? "Loading..." : processing ? "Processing..." : "Place Order"}
             </Button>
