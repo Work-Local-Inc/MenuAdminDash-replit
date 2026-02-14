@@ -223,8 +223,15 @@ export async function POST(request: NextRequest) {
     }
     
     // SECURITY: Verify payment belongs to this user/guest
+    // For authenticated users who were resolved via email/phone fallback,
+    // the payment intent may have been created with user_id='guest' (before a users record existed)
+    // or with a different user_id (if the record was just created). Allow both cases for authenticated users.
     const expectedUserId = user_id ? String(user_id) : 'guest'
-    if (paymentIntent.metadata.user_id !== expectedUserId) {
+    const piUserId = paymentIntent.metadata.user_id
+    const userIdMatches = piUserId === expectedUserId
+    const isAuthenticatedNewUser = user && piUserId === 'guest' && user_id
+    if (!userIdMatches && !isAuthenticatedNewUser) {
+      console.error('[Order API] Payment mismatch:', { piUserId, expectedUserId, isAuthenticated: !!user })
       return NextResponse.json({ error: 'Payment mismatch' }, { status: 401 })
     }
 
