@@ -43,29 +43,67 @@ export async function POST(request: NextRequest) {
       
       if (existingProfile) {
         user_id = String(existingProfile.id)
-        console.log('[Cash Order API] Found existing user profile:', user_id)
+        console.log('[Cash Order API] Found existing user profile by auth_user_id:', user_id)
       } else {
-        const checkoutName = delivery_address?.name?.trim()
-        const nameParts = checkoutName ? checkoutName.split(' ') : []
-        const insertData: Record<string, any> = {
-          auth_user_id: user.id,
-          email: delivery_address?.email || user.email || null,
-          first_name: nameParts[0] || null,
-          last_name: nameParts.length > 1 ? nameParts.slice(1).join(' ') : null,
-          phone: user.phone || delivery_address?.phone || null,
+        // No record linked to this auth account yet - check by email or phone
+        const userEmail = delivery_address?.email || user.email
+        const userPhone = user.phone || delivery_address?.phone
+        let matchedProfile: any = null
+
+        if (userEmail) {
+          const { data } = await (adminSupabase as any)
+            .schema('menuca_v3')
+            .from('users')
+            .select('id, auth_user_id')
+            .eq('email', userEmail)
+            .maybeSingle()
+          if (data) matchedProfile = data
         }
-        const { data: newProfile, error: insertErr } = await (adminSupabase as any)
-          .schema('menuca_v3')
-          .from('users')
-          .insert(insertData)
-          .select('id')
-          .single()
-        
-        if (newProfile) {
-          user_id = String(newProfile.id)
-          console.log('[Cash Order API] Created new user profile for phone user:', user_id)
+        if (!matchedProfile && userPhone) {
+          const { data } = await (adminSupabase as any)
+            .schema('menuca_v3')
+            .from('users')
+            .select('id, auth_user_id')
+            .eq('phone', userPhone)
+            .maybeSingle()
+          if (data) matchedProfile = data
+        }
+
+        if (matchedProfile) {
+          user_id = String(matchedProfile.id)
+          if (!matchedProfile.auth_user_id) {
+            await (adminSupabase as any)
+              .schema('menuca_v3')
+              .from('users')
+              .update({ auth_user_id: user.id })
+              .eq('id', matchedProfile.id)
+            console.log('[Cash Order API] Linked auth account to existing user profile:', user_id)
+          } else {
+            console.log('[Cash Order API] Found existing user profile by email/phone:', user_id)
+          }
         } else {
-          console.error('[Cash Order API] Failed to create user profile:', insertErr?.message)
+          const checkoutName = delivery_address?.name?.trim()
+          const nameParts = checkoutName ? checkoutName.split(' ') : []
+          const insertData: Record<string, any> = {
+            auth_user_id: user.id,
+            email: userEmail || null,
+            first_name: nameParts[0] || null,
+            last_name: nameParts.length > 1 ? nameParts.slice(1).join(' ') : null,
+            phone: userPhone || null,
+          }
+          const { data: newProfile, error: insertErr } = await (adminSupabase as any)
+            .schema('menuca_v3')
+            .from('users')
+            .insert(insertData)
+            .select('id')
+            .single()
+          
+          if (newProfile) {
+            user_id = String(newProfile.id)
+            console.log('[Cash Order API] Created new user profile for phone user:', user_id)
+          } else {
+            console.error('[Cash Order API] Failed to create user profile:', insertErr?.message)
+          }
         }
       }
     }

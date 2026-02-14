@@ -75,30 +75,69 @@ export async function POST(request: NextRequest) {
       
       if (existingProfile) {
         user_id = existingProfile.id
-        console.log('[Order API] Found existing user profile:', user_id)
+        console.log('[Order API] Found existing user profile by auth_user_id:', user_id)
       } else {
-        // Create a new users record for this phone-authenticated user
-        const checkoutName = delivery_address?.name?.trim()
-        const nameParts = checkoutName ? checkoutName.split(' ') : []
-        const insertData: Record<string, any> = {
-          auth_user_id: user.id,
-          email: delivery_address?.email || user.email || null,
-          first_name: nameParts[0] || null,
-          last_name: nameParts.length > 1 ? nameParts.slice(1).join(' ') : null,
-          phone: user.phone || delivery_address?.phone || null,
+        // No record linked to this auth account yet - check by email or phone
+        const userEmail = delivery_address?.email || user.email
+        const userPhone = user.phone || delivery_address?.phone
+        let matchedProfile = null
+
+        if (userEmail) {
+          const { data } = await (adminSupabase as any)
+            .schema('menuca_v3')
+            .from('users')
+            .select('id, auth_user_id')
+            .eq('email', userEmail)
+            .maybeSingle()
+          if (data) matchedProfile = data
         }
-        const { data: newProfile, error: insertErr } = await (adminSupabase as any)
-          .schema('menuca_v3')
-          .from('users')
-          .insert(insertData)
-          .select('id')
-          .single()
-        
-        if (newProfile) {
-          user_id = newProfile.id
-          console.log('[Order API] Created new user profile for phone user:', user_id)
+        if (!matchedProfile && userPhone) {
+          const { data } = await (adminSupabase as any)
+            .schema('menuca_v3')
+            .from('users')
+            .select('id, auth_user_id')
+            .eq('phone', userPhone)
+            .maybeSingle()
+          if (data) matchedProfile = data
+        }
+
+        if (matchedProfile) {
+          user_id = matchedProfile.id
+          // Link auth account to this existing user record if not already linked
+          if (!matchedProfile.auth_user_id) {
+            await (adminSupabase as any)
+              .schema('menuca_v3')
+              .from('users')
+              .update({ auth_user_id: user.id })
+              .eq('id', matchedProfile.id)
+            console.log('[Order API] Linked auth account to existing user profile:', user_id)
+          } else {
+            console.log('[Order API] Found existing user profile by email/phone:', user_id)
+          }
         } else {
-          console.error('[Order API] Failed to create user profile:', insertErr?.message)
+          // No existing record - create a new one
+          const checkoutName = delivery_address?.name?.trim()
+          const nameParts = checkoutName ? checkoutName.split(' ') : []
+          const insertData: Record<string, any> = {
+            auth_user_id: user.id,
+            email: userEmail || null,
+            first_name: nameParts[0] || null,
+            last_name: nameParts.length > 1 ? nameParts.slice(1).join(' ') : null,
+            phone: userPhone || null,
+          }
+          const { data: newProfile, error: insertErr } = await (adminSupabase as any)
+            .schema('menuca_v3')
+            .from('users')
+            .insert(insertData)
+            .select('id')
+            .single()
+          
+          if (newProfile) {
+            user_id = newProfile.id
+            console.log('[Order API] Created new user profile for phone user:', user_id)
+          } else {
+            console.error('[Order API] Failed to create user profile:', insertErr?.message)
+          }
         }
       }
     }

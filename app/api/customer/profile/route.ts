@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { NextRequest, NextResponse } from 'next/server'
 export const dynamic = 'force-dynamic'
 
@@ -46,7 +47,46 @@ export async function GET() {
     }
 
     if (!userData) {
-      console.log('[Profile API] No user record - possibly new auth user')
+      // Fallback: check by email or phone to find existing user from previous sign-up method
+      console.log('[Profile API] No user record by auth_user_id - checking email/phone fallback')
+      const adminSupabase = createAdminClient() as any
+      let fallbackUser = null
+
+      if (user.email) {
+        const { data } = await adminSupabase
+          .schema('menuca_v3')
+          .from('users')
+          .select('id, email, first_name, last_name, phone, stripe_customer_id, auth_user_id')
+          .eq('email', user.email)
+          .maybeSingle()
+        if (data) fallbackUser = data
+      }
+      if (!fallbackUser && user.phone) {
+        const { data } = await adminSupabase
+          .schema('menuca_v3')
+          .from('users')
+          .select('id, email, first_name, last_name, phone, stripe_customer_id, auth_user_id')
+          .eq('phone', user.phone)
+          .maybeSingle()
+        if (data) fallbackUser = data
+      }
+
+      if (fallbackUser) {
+        // Link this auth account to the existing user record
+        if (!fallbackUser.auth_user_id) {
+          await adminSupabase
+            .schema('menuca_v3')
+            .from('users')
+            .update({ auth_user_id: user.id })
+            .eq('id', fallbackUser.id)
+          console.log('[Profile API] Linked auth account to existing user:', fallbackUser.id)
+        }
+        const { auth_user_id: _, ...safeUser } = fallbackUser
+        console.log('[Profile API] Found user by email/phone fallback:', fallbackUser.id)
+        return NextResponse.json({ user: safeUser }, { status: 200 })
+      }
+
+      console.log('[Profile API] No user record found - new auth user')
       return NextResponse.json({ user: null }, { status: 200 })
     }
 
