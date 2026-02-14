@@ -408,10 +408,10 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
               },
               wallets: {
                 link: 'never',
-                applePay: 'auto',
-                googlePay: 'auto',
+                applePay: 'never',
+                googlePay: 'never',
               },
-              paymentMethodOrder: ['apple_pay', 'google_pay', 'card'],
+              paymentMethodOrder: ['card'],
               terms: {
                 card: 'never'
               }
