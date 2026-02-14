@@ -395,6 +395,8 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
         }
       }}
       guestEmail={guestEmail}
+      guestName={deliveryAddress.name}
+      guestPhone={deliveryAddress.phone}
       onSuccess={handleSignupModalClose}
     />
 

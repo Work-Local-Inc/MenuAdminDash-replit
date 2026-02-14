@@ -43,6 +43,8 @@ interface PostOrderSignupModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   guestEmail: string
+  guestName?: string | null
+  guestPhone?: string | null
   onSuccess?: () => void
 }
 
@@ -50,33 +52,37 @@ export function PostOrderSignupModal({
   open,
   onOpenChange,
   guestEmail,
+  guestName,
+  guestPhone,
   onSuccess,
 }: PostOrderSignupModalProps) {
   const { toast } = useToast()
   const [isSuccess, setIsSuccess] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  const hasName = !!guestName
+  const hasPhone = !!guestPhone
+
   const form = useForm<SignupFormData>({
     resolver: zodResolver(signupFormSchema) as any,
     defaultValues: {
       email: guestEmail,
       password: '',
-      name: '',
-      phone: '',
+      name: guestName || '',
+      phone: guestPhone || '',
     },
   })
 
-  // BUG FIX 1: Update form when guestEmail prop changes
   useEffect(() => {
     if (guestEmail) {
       form.reset({ 
         email: guestEmail, 
         password: '', 
-        name: '', 
-        phone: '' 
+        name: guestName || '', 
+        phone: guestPhone || '' 
       })
     }
-  }, [guestEmail, form])
+  }, [guestEmail, guestName, guestPhone, form])
 
   const onSubmit = async (data: SignupFormData) => {
     setIsSubmitting(true)
@@ -176,32 +182,19 @@ export function PostOrderSignupModal({
                 </DialogTitle>
               </div>
               <DialogDescription className="text-base">
-                Create an account to save your info for faster checkout next time. It only takes a moment!
+                {hasName && hasPhone
+                  ? "Just create a password to save your info for faster checkout next time!"
+                  : "Create an account to save your info for faster checkout next time. It only takes a moment!"}
               </DialogDescription>
             </DialogHeader>
 
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 mt-4">
-                {/* Email (readonly) */}
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          type="email"
-                          readOnly
-                          className="bg-muted"
-                          data-testid="input-signup-email"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {/* Email (readonly, shown as context) */}
+                <div className="rounded-md bg-muted px-3 py-2">
+                  <p className="text-xs text-muted-foreground">Account email</p>
+                  <p className="text-sm font-medium" data-testid="text-signup-email">{guestEmail}</p>
+                </div>
 
                 {/* Password (required) */}
                 <FormField
@@ -217,6 +210,7 @@ export function PostOrderSignupModal({
                           {...field}
                           type="password"
                           placeholder="Create a strong password"
+                          autoFocus
                           data-testid="input-signup-password"
                         />
                       </FormControl>
@@ -228,44 +222,48 @@ export function PostOrderSignupModal({
                   )}
                 />
 
-                {/* Name (optional) */}
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Full Name (Optional)</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          placeholder="John Doe"
-                          data-testid="input-signup-name"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {/* Name - only show if not already provided */}
+                {!hasName && (
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Full Name (Optional)</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            placeholder="John Doe"
+                            data-testid="input-signup-name"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
 
-                {/* Phone (optional) */}
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Phone Number (Optional)</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          type="tel"
-                          placeholder="(555) 123-4567"
-                          data-testid="input-signup-phone"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {/* Phone - only show if not already provided */}
+                {!hasPhone && (
+                  <FormField
+                    control={form.control}
+                    name="phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Phone Number (Optional)</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            type="tel"
+                            placeholder="(555) 123-4567"
+                            data-testid="input-signup-phone"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
 
                 {/* Action Buttons */}
                 <div className="flex flex-col-reverse sm:flex-row gap-3 pt-2">

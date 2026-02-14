@@ -723,6 +723,8 @@ export default function OrderConfirmationPage() {
           open={showSignupModal}
           onOpenChange={setShowSignupModal}
           guestEmail={order.guest_email}
+          guestName={order.guest_name}
+          guestPhone={order.phone}
           onSuccess={() => {
             toast({
               title: "Account Created!",
