@@ -45,7 +45,7 @@ function generatePlainText(firstName: string, resetLink: string, expiresIn: stri
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { email, redirectUrl } = body
+    const { email, redirectUrl, returnTo } = body
 
     if (!email || typeof email !== 'string') {
       return NextResponse.json(
@@ -145,13 +145,21 @@ export async function POST(request: NextRequest) {
     console.log('[Forgot Password] Supabase action_link:', supabaseActionLink)
     console.log('[Forgot Password] hashed_token available:', !!hashedToken)
 
+    const nextPath = (returnTo && typeof returnTo === 'string' && returnTo.startsWith('/'))
+      ? returnTo
+      : '/customer/login?reset_password=true'
+
     let resetLink: string
     if (redirectUrl && hashedToken) {
-      const baseOrigin = new URL(redirectUrl).origin
+      const parsedOrigin = redirectUrl.startsWith('http') ? new URL(redirectUrl).origin : redirectUrl
+      const allowedDomains = ['menu.ca', 'replit.dev', 'replit.app', 'localhost']
+      const hostname = new URL(parsedOrigin).hostname
+      const isAllowed = allowedDomains.some(d => hostname === d || hostname.endsWith('.' + d))
+      const baseOrigin = isAllowed ? parsedOrigin : 'https://orders.menu.ca'
       const verifyUrl = new URL('/auth/confirm', baseOrigin)
       verifyUrl.searchParams.set('token_hash', hashedToken)
       verifyUrl.searchParams.set('type', 'recovery')
-      verifyUrl.searchParams.set('next', '/customer/reset-password')
+      verifyUrl.searchParams.set('next', nextPath)
       resetLink = verifyUrl.toString()
       console.log('[Forgot Password] Constructed reset link:', resetLink)
     } else {

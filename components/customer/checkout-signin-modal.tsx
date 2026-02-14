@@ -107,14 +107,16 @@ export function CheckoutSignInModal({
     setSendingReset(true)
 
     try {
-      const returnTo = window.location.pathname + window.location.search
-      const next = '/customer/reset-password?redirect=' + encodeURIComponent(returnTo)
+      const currentPath = window.location.pathname + window.location.search
+      const separator = currentPath.includes('?') ? '&' : '?'
+      const returnTo = currentPath + separator + 'reset_password=true'
       const response = await fetch('/api/customer/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: forgotEmail,
-          redirectUrl: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+          returnTo,
+          redirectUrl: window.location.origin,
         }),
       })
       const result = await response.json()

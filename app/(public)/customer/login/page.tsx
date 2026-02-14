@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast'
 import { Eye, EyeOff, ArrowLeft, KeyRound } from 'lucide-react'
 import Link from 'next/link'
 import { getApiBaseUrl } from '@/lib/api-utils'
+import { ResetPasswordModal } from '@/components/customer/reset-password-modal'
 
 export default function CustomerLoginPage() {
   const router = useRouter()
@@ -51,13 +52,16 @@ export default function CustomerLoginPage() {
     setSendingReset(true)
 
     try {
-      const next = '/customer/reset-password?redirect=' + encodeURIComponent(redirect)
+      const currentPath = window.location.pathname + window.location.search
+      const separator = currentPath.includes('?') ? '&' : '?'
+      const returnTo = currentPath + separator + 'reset_password=true'
       const response = await fetch('/api/customer/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: forgotEmail,
-          redirectUrl: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+          returnTo,
+          redirectUrl: window.location.origin,
         }),
       })
       const result = await response.json()
@@ -451,6 +455,11 @@ export default function CustomerLoginPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Password Reset Modal - shown when user clicks reset link from email */}
+      <ResetPasswordModal onPasswordReset={() => {
+        router.push(redirect)
+      }} />
     </div>
   )
 }

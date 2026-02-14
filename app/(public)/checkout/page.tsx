@@ -16,6 +16,7 @@ import { CheckoutAddressForm } from '@/components/customer/checkout-address-form
 import { CheckoutPaymentForm } from '@/components/customer/checkout-payment-form'
 import { CheckoutPaymentSelection } from '@/components/customer/checkout-payment-selection'
 import { CheckoutSignInModal } from '@/components/customer/checkout-signin-modal'
+import { ResetPasswordModal } from '@/components/customer/reset-password-modal'
 import { OrderTypeSelector } from '@/components/customer/order-type-selector'
 import { Schedule } from '@/components/customer/schedule-time-picker'
 import { PromoCodeInput } from '@/components/customer/promo-code-input'
@@ -1197,6 +1198,9 @@ export default function CheckoutPage() {
         onOpenChange={setShowSignInModal}
         onSuccess={handleSignInSuccess}
       />
+
+      {/* Password Reset Modal - shown when user clicks reset link from email */}
+      <ResetPasswordModal onPasswordReset={handleSignInSuccess} />
     </div>
     </AnalyticsProvider>
   )
