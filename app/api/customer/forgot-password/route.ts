@@ -140,7 +140,26 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const resetLink = linkData.properties.action_link
+    const supabaseActionLink = linkData.properties.action_link
+    console.log('[Forgot Password] Supabase action_link:', supabaseActionLink)
+
+    const actionUrl = new URL(supabaseActionLink)
+    const tokenHash = actionUrl.searchParams.get('token_hash') || actionUrl.searchParams.get('token')
+    const type = actionUrl.searchParams.get('type') || 'recovery'
+
+    let resetLink: string
+    if (redirectUrl && tokenHash) {
+      const baseOrigin = new URL(redirectUrl).origin
+      const verifyUrl = new URL('/auth/confirm', baseOrigin)
+      verifyUrl.searchParams.set('token_hash', tokenHash)
+      verifyUrl.searchParams.set('type', type)
+      verifyUrl.searchParams.set('next', '/customer/reset-password')
+      resetLink = verifyUrl.toString()
+      console.log('[Forgot Password] Constructed reset link:', resetLink)
+    } else {
+      resetLink = supabaseActionLink
+      console.log('[Forgot Password] Using Supabase action_link as fallback')
+    }
 
     const firstName = linkData.user?.user_metadata?.first_name
       || linkData.user?.user_metadata?.firstName
