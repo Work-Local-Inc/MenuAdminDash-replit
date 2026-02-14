@@ -680,19 +680,6 @@ export default function CustomerLoginPage() {
               </TabsContent>
             </Tabs>
 
-            <div className="relative my-6">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
-              </div>
-            </div>
-
-            <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={googleLoading} data-testid="button-google-signin">
-              <SiGoogle className="w-4 h-4 mr-2" />
-              {googleLoading ? "Redirecting..." : "Continue with Google"}
-            </Button>
           </CardContent>
         </Card>
       </div>
