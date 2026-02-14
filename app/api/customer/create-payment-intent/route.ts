@@ -359,7 +359,6 @@ function getStripe(paymentMode: 'test' | 'live' = 'test') {
   return new Stripe(stripeSecretKey, {})
 }
 
-// Get restaurant's payment mode (test or live)
 async function getRestaurantPaymentMode(restaurantSlug: string): Promise<'test' | 'live'> {
   try {
     const adminSupabase = createAdminClient() as any
@@ -370,11 +369,15 @@ async function getRestaurantPaymentMode(restaurantSlug: string): Promise<'test' 
       return 'test'
     }
     
-    const { data: config } = await adminSupabase
-      .from('delivery_and_pickup_configs')
-      .select('payment_mode')
-      .eq('restaurant_id', restaurantId)
-      .maybeSingle()
+    const { data: restaurant } = await adminSupabase
+      .from('restaurants')
+      .select('id, delivery_and_pickup_configs(payment_mode)')
+      .eq('id', restaurantId)
+      .single()
+    
+    const config = Array.isArray(restaurant?.delivery_and_pickup_configs)
+      ? restaurant.delivery_and_pickup_configs[0]
+      : restaurant?.delivery_and_pickup_configs
     
     const paymentMode = config?.payment_mode || 'test'
     console.log(`[PaymentMode] Restaurant ${restaurantId}: mode=${paymentMode}`)

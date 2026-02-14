@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { extractIdFromSlug } from '@/lib/utils/slugify'
 
-// Force dynamic - never cache this route
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
@@ -20,23 +19,23 @@ export async function GET(
     
     const adminSupabase = createAdminClient() as any
     
-    // Fetch restaurant's payment mode from service config
-    console.log(`[PaymentConfig] Querying delivery_and_pickup_configs for restaurant_id: ${restaurantId}`)
-    const { data: config, error } = await adminSupabase
-      .from('delivery_and_pickup_configs')
-      .select('payment_mode')
-      .eq('restaurant_id', restaurantId)
-      .maybeSingle()
-    
-    console.log(`[PaymentConfig] DB Query Result - config:`, JSON.stringify(config), 'error:', error?.message || 'none')
+    console.log(`[PaymentConfig] Querying restaurants.id=${restaurantId} with FK join to delivery_and_pickup_configs`)
+    const { data: restaurant, error } = await adminSupabase
+      .from('restaurants')
+      .select('id, delivery_and_pickup_configs(payment_mode)')
+      .eq('id', restaurantId)
+      .single()
     
     if (error) {
-      console.error('[PaymentConfig] Error fetching config:', error)
+      console.error('[PaymentConfig] Error fetching restaurant config:', error)
     }
     
-    // Default to test mode if not set
+    const config = Array.isArray(restaurant?.delivery_and_pickup_configs)
+      ? restaurant.delivery_and_pickup_configs[0]
+      : restaurant?.delivery_and_pickup_configs
+    
     const paymentMode = config?.payment_mode || 'test'
-    console.log(`[PaymentConfig] Final paymentMode for restaurant ${restaurantId}: ${paymentMode} (raw from DB: ${config?.payment_mode || 'undefined'})`)
+    console.log(`[PaymentConfig] Restaurant ${restaurantId} - paymentMode: ${paymentMode} (raw: ${config?.payment_mode || 'undefined'})`)
     
     // Return the appropriate publishable key based on payment mode
     // SIMPLIFIED: Direct env var access, no fallback chains
