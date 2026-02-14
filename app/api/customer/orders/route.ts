@@ -835,19 +835,46 @@ export async function POST(request: NextRequest) {
     // For logged-in users, ensure we have their name for the kitchen receipt
     // If delivery_address.name is empty but user_id exists, look up the user's name
     let customerName = delivery_address?.name
-    if (!customerName && user_id) {
+    if (user_id) {
       const { data: userData } = await (adminSupabase as any)
         .schema('menuca_v3')
         .from('users')
-        .select('first_name, last_name, email')
+        .select('first_name, last_name, email, phone')
         .eq('id', user_id)
         .maybeSingle()
       
       if (userData) {
-        customerName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim()
         if (!customerName) {
-          // Fallback to email prefix if no name
-          customerName = userData.email?.split('@')[0] || 'Customer'
+          customerName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim()
+          if (!customerName) {
+            customerName = userData.email?.split('@')[0] || 'Customer'
+          }
+        }
+
+        // Update user profile with checkout details they provided (e.g. phone-only users adding name/email)
+        const profileUpdates: Record<string, string> = {}
+        const checkoutName = delivery_address?.name?.trim()
+        if (checkoutName && !userData.first_name && !userData.last_name) {
+          const nameParts = checkoutName.split(' ')
+          profileUpdates.first_name = nameParts[0]
+          if (nameParts.length > 1) {
+            profileUpdates.last_name = nameParts.slice(1).join(' ')
+          }
+        }
+        if (delivery_address?.email && !userData.email) {
+          profileUpdates.email = delivery_address.email
+        }
+        if (delivery_address?.phone && !userData.phone) {
+          profileUpdates.phone = delivery_address.phone
+        }
+
+        if (Object.keys(profileUpdates).length > 0) {
+          console.log('[Order] Updating user profile with checkout details:', { user_id, updates: Object.keys(profileUpdates) })
+          await (adminSupabase as any)
+            .schema('menuca_v3')
+            .from('users')
+            .update(profileUpdates)
+            .eq('id', user_id)
         }
       }
     }
