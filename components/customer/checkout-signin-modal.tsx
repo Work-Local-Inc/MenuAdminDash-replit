@@ -27,6 +27,7 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useToast } from '@/hooks/use-toast'
@@ -306,7 +307,7 @@ export function CheckoutSignInModal({
                       </p>
                     </div>
                     <div className="space-y-2">
-                      <FormLabel>Email</FormLabel>
+                      <Label>Email</Label>
                       <Input
                         type="email"
                         placeholder="you@example.com"
