@@ -59,11 +59,54 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
 
     const body = await request.json()
-    const { payment_intent_id, delivery_address, cart_items, user_id, guest_email, restaurant_slug: requestRestaurantSlug } = body
+    const { payment_intent_id, delivery_address, cart_items, user_id: requestUserId, guest_email, restaurant_slug: requestRestaurantSlug } = body
+
+    // Resolve user_id: If authenticated but no user_id provided (phone-only users),
+    // find or create their users table record so their profile persists across orders
+    let user_id = requestUserId
+    if (!user_id && user) {
+      console.log('[Order API] Authenticated user without user_id - resolving profile for:', user.id)
+      const { data: existingProfile } = await (adminSupabase as any)
+        .schema('menuca_v3')
+        .from('users')
+        .select('id')
+        .eq('auth_user_id', user.id)
+        .maybeSingle()
+      
+      if (existingProfile) {
+        user_id = existingProfile.id
+        console.log('[Order API] Found existing user profile:', user_id)
+      } else {
+        // Create a new users record for this phone-authenticated user
+        const checkoutName = delivery_address?.name?.trim()
+        const nameParts = checkoutName ? checkoutName.split(' ') : []
+        const insertData: Record<string, any> = {
+          auth_user_id: user.id,
+          email: delivery_address?.email || user.email || null,
+          first_name: nameParts[0] || null,
+          last_name: nameParts.length > 1 ? nameParts.slice(1).join(' ') : null,
+          phone: user.phone || delivery_address?.phone || null,
+        }
+        const { data: newProfile, error: insertErr } = await (adminSupabase as any)
+          .schema('menuca_v3')
+          .from('users')
+          .insert(insertData)
+          .select('id')
+          .single()
+        
+        if (newProfile) {
+          user_id = newProfile.id
+          console.log('[Order API] Created new user profile for phone user:', user_id)
+        } else {
+          console.error('[Order API] Failed to create user profile:', insertErr?.message)
+        }
+      }
+    }
 
     console.log('[Order API] Request:', { 
       payment_intent_id: payment_intent_id?.substring(0, 20) + '...', 
       has_user: !!user,
+      resolved_user_id: user_id,
       guest_email,
       cart_items_count: cart_items?.length,
       restaurant_slug: requestRestaurantSlug

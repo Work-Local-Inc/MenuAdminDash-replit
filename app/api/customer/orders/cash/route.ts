@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
       payment_type,
       delivery_address, 
       cart_items, 
-      user_id, 
+      user_id: requestUserId, 
       guest_email,
       restaurant_slug,
       order_type,
@@ -29,9 +29,51 @@ export async function POST(request: NextRequest) {
       order_notes
     } = body
 
+    // Resolve user_id: If authenticated but no user_id provided (phone-only users),
+    // find or create their users table record so their profile persists across orders
+    let user_id = requestUserId
+    if (!user_id && user) {
+      console.log('[Cash Order API] Authenticated user without user_id - resolving profile for:', user.id)
+      const { data: existingProfile } = await (adminSupabase as any)
+        .schema('menuca_v3')
+        .from('users')
+        .select('id')
+        .eq('auth_user_id', user.id)
+        .maybeSingle()
+      
+      if (existingProfile) {
+        user_id = String(existingProfile.id)
+        console.log('[Cash Order API] Found existing user profile:', user_id)
+      } else {
+        const checkoutName = delivery_address?.name?.trim()
+        const nameParts = checkoutName ? checkoutName.split(' ') : []
+        const insertData: Record<string, any> = {
+          auth_user_id: user.id,
+          email: delivery_address?.email || user.email || null,
+          first_name: nameParts[0] || null,
+          last_name: nameParts.length > 1 ? nameParts.slice(1).join(' ') : null,
+          phone: user.phone || delivery_address?.phone || null,
+        }
+        const { data: newProfile, error: insertErr } = await (adminSupabase as any)
+          .schema('menuca_v3')
+          .from('users')
+          .insert(insertData)
+          .select('id')
+          .single()
+        
+        if (newProfile) {
+          user_id = String(newProfile.id)
+          console.log('[Cash Order API] Created new user profile for phone user:', user_id)
+        } else {
+          console.error('[Cash Order API] Failed to create user profile:', insertErr?.message)
+        }
+      }
+    }
+
     console.log('[Cash Order API] Request:', { 
       payment_type,
       has_user: !!user,
+      resolved_user_id: user_id,
       guest_email,
       cart_items_count: cart_items?.length,
       order_type
