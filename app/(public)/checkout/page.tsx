@@ -744,10 +744,11 @@ export default function CheckoutPage() {
   }
 
   if (isResettingPassword && items.length === 0) {
+    const returnRestaurant = searchParams.get('restaurant')
     return (
       <div className="min-h-screen bg-muted/30 flex items-center justify-center">
         <ResetPasswordModal onPasswordReset={() => {
-          router.replace('/')
+          router.replace(returnRestaurant ? `/r/${returnRestaurant}` : '/')
         }} />
       </div>
     )

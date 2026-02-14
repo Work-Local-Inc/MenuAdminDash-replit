@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/client'
+import { useCartStore } from '@/lib/stores/cart-store'
 import {
   Dialog,
   DialogContent,
@@ -107,7 +108,10 @@ export function CheckoutSignInModal({
     setSendingReset(true)
 
     try {
-      const returnTo = '/checkout?reset_password=true'
+      const slug = useCartStore.getState().restaurantSlug
+      const returnTo = slug
+        ? `/checkout?reset_password=true&restaurant=${slug}`
+        : '/checkout?reset_password=true'
       const response = await fetch('/api/customer/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
