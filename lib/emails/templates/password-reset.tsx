@@ -41,7 +41,13 @@ export default function PasswordResetEmail({
           </Section>
 
           <Section style={heroSection}>
-            <div style={lockIcon}>&#128274;</div>
+            <table cellPadding="0" cellSpacing="0" border={0} style={{ margin: '0 auto 20px' }}>
+              <tbody>
+                <tr>
+                  <td style={lockIcon}>&#128274;</td>
+                </tr>
+              </tbody>
+            </table>
             <Heading style={h1}>Reset Your Password</Heading>
             <Text style={heroText}>
               We received a request to reset the password for your account.
@@ -140,10 +146,8 @@ const lockIcon = {
   borderRadius: '50%',
   width: '60px',
   height: '60px',
-  margin: '0 auto 20px',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
+  textAlign: 'center' as const,
+  lineHeight: '60px',
   fontSize: '28px',
 }
 
