@@ -55,6 +55,17 @@ export async function GET(request: NextRequest) {
     console.error('[Auth Confirm] OTP verification failed:', error.message, 'code:', error.status)
   }
 
-  console.error('[Auth Confirm] Redirecting to login with error')
-  return NextResponse.redirect(new URL('/customer/login?error=invalid_link', baseUrl))
+  let errorRedirect = '/customer/login?error=invalid_link'
+  if (rawNext) {
+    try {
+      const nextUrl = new URL(rawNext, 'http://placeholder')
+      const restaurant = nextUrl.searchParams.get('restaurant')
+      if (restaurant) {
+        errorRedirect = `/r/${restaurant}?error=invalid_link`
+      }
+    } catch {}
+  }
+
+  console.error('[Auth Confirm] Redirecting to:', errorRedirect)
+  return NextResponse.redirect(new URL(errorRedirect, baseUrl))
 }
