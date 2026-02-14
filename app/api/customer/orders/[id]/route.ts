@@ -22,8 +22,6 @@ export async function GET(
     // Use admin client to fetch order (bypasses RLS, but we validate access below)
     const supabase = createAdminClient() as any
 
-    // Fetch order with restaurant details (include address info for pickup and brand color)
-    // Note: restaurant_locations uses city_id/province_id foreign keys, so we just get basic info
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .select(`
@@ -34,8 +32,12 @@ export async function GET(
           primary_color,
           restaurant_locations(
             street_address,
+            city_id,
+            province_id,
             postal_code,
-            phone
+            phone,
+            is_primary,
+            is_active
           )
         )
       `)
@@ -66,8 +68,12 @@ export async function GET(
             primary_color?: string | null
             restaurant_locations?: Array<{
               street_address?: string
+              city_id?: number
+              province_id?: number
               postal_code?: string
               phone?: string
+              is_primary?: boolean
+              is_active?: boolean
             }>
           }
         } | null
@@ -131,6 +137,37 @@ export async function GET(
     if (statusError && statusError.code !== 'PGRST116') { // PGRST116 = no rows returned
       console.error('[Order API] Error fetching status:', statusError)
     }
+
+    const loc = order.restaurant?.restaurant_locations?.find((l: any) => l.is_primary && l.is_active)
+      || order.restaurant?.restaurant_locations?.find((l: any) => l.is_active)
+      || order.restaurant?.restaurant_locations?.[0];
+    
+    if (loc) {
+      const cityIds = loc.city_id ? [loc.city_id] : [];
+      const provinceIds = loc.province_id ? [loc.province_id] : [];
+      
+      const [citiesResult, provincesResult] = await Promise.all([
+        cityIds.length > 0
+          ? supabase.from('cities').select('id, name').in('id', cityIds)
+          : { data: [] },
+        provinceIds.length > 0
+          ? supabase.from('provinces').select('id, name').in('id', provinceIds)
+          : { data: [] },
+      ]);
+      
+      const cityName = citiesResult.data?.[0]?.name || null;
+      const provinceName = provincesResult.data?.[0]?.name || null;
+      
+      order.restaurant = {
+        ...order.restaurant,
+        address: loc.street_address || null,
+        city: cityName,
+        province: provinceName,
+        postal_code: loc.postal_code || null,
+        phone: loc.phone || order.restaurant.phone || null,
+      };
+    }
+    delete order.restaurant?.restaurant_locations;
 
     // Parse JSON fields if they're strings
     const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items
