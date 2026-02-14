@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
-import { UtensilsCrossed, MapPin, Clock, Phone, ShoppingCart, AlertTriangle } from 'lucide-react'
+import { UtensilsCrossed, MapPin, Clock, Phone, ShoppingCart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -364,26 +364,6 @@ export default function RestaurantMenuPublic({
         brandColor={brandColors.primary}
       />
 
-      {/* Closed Banner */}
-      {closedBannerInfo && (
-        <div
-          data-testid="banner-restaurant-closed"
-          className="bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-800"
-        >
-          <div className="container mx-auto px-3 sm:px-4 py-3">
-            <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
-              <AlertTriangle className="w-5 h-5 flex-shrink-0" />
-              <span className="font-semibold">Currently Closed</span>
-              {closedBannerInfo.opensAt && (
-                <span className="text-amber-700 dark:text-amber-300">
-                  &middot; Opens at {closedBannerInfo.opensAt}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
       {courses && courses.length > 1 && (
         <div className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
           <div className="container mx-auto px-3 sm:px-4">
@@ -579,15 +559,17 @@ export default function RestaurantMenuPublic({
         <DialogContent className="sm:max-w-md" data-testid="modal-restaurant-closed">
           <DialogHeader>
             <div className="flex items-center gap-3 mb-1">
-              <div className="flex items-center justify-center w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/40">
-                <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+              <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10">
+                <Clock className="w-5 h-5 text-primary" />
               </div>
-              <DialogTitle>We're Currently Closed</DialogTitle>
+              <DialogTitle>
+                {closedBannerInfo?.opensAt
+                  ? `Opening at ${closedBannerInfo.opensAt}`
+                  : `Opening Soon`}
+              </DialogTitle>
             </div>
             <DialogDescription className="text-left pt-1">
-              {closedBannerInfo?.opensAt
-                ? `We open again at ${closedBannerInfo.opensAt} today. Feel free to browse the menu and place an order for a later time.`
-                : `We're not open right now, but feel free to browse the menu and place an order for a later time.`}
+              Feel free to browse the menu and schedule an order for then!
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -596,7 +578,7 @@ export default function RestaurantMenuPublic({
               className="w-full"
               data-testid="button-dismiss-closed-modal"
             >
-              Got it, browse menu
+              Browse Menu
             </Button>
           </DialogFooter>
         </DialogContent>
