@@ -141,18 +141,16 @@ export async function POST(request: NextRequest) {
     }
 
     const supabaseActionLink = linkData.properties.action_link
+    const hashedToken = linkData.properties.hashed_token
     console.log('[Forgot Password] Supabase action_link:', supabaseActionLink)
-
-    const actionUrl = new URL(supabaseActionLink)
-    const tokenHash = actionUrl.searchParams.get('token_hash') || actionUrl.searchParams.get('token')
-    const type = actionUrl.searchParams.get('type') || 'recovery'
+    console.log('[Forgot Password] hashed_token available:', !!hashedToken)
 
     let resetLink: string
-    if (redirectUrl && tokenHash) {
+    if (redirectUrl && hashedToken) {
       const baseOrigin = new URL(redirectUrl).origin
       const verifyUrl = new URL('/auth/confirm', baseOrigin)
-      verifyUrl.searchParams.set('token_hash', tokenHash)
-      verifyUrl.searchParams.set('type', type)
+      verifyUrl.searchParams.set('token_hash', hashedToken)
+      verifyUrl.searchParams.set('type', 'recovery')
       verifyUrl.searchParams.set('next', '/customer/reset-password')
       resetLink = verifyUrl.toString()
       console.log('[Forgot Password] Constructed reset link:', resetLink)

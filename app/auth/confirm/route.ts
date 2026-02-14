@@ -2,11 +2,20 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 
+function getBaseUrl(request: NextRequest): string {
+  const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'localhost:5000'
+  const proto = request.headers.get('x-forwarded-proto') || 'https'
+  return `${proto}://${host}`
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const token_hash = searchParams.get('token_hash')
   const type = searchParams.get('type') as 'recovery' | 'signup' | 'email' | 'invite' | null
   const rawNext = searchParams.get('next')
+  const baseUrl = getBaseUrl(request)
+
+  console.log('[Auth Confirm] Received request - token_hash:', !!token_hash, 'type:', type, 'next:', rawNext, 'baseUrl:', baseUrl)
 
   const safeNext = (rawNext && rawNext.startsWith('/') && !rawNext.startsWith('//'))
     ? rawNext
@@ -33,17 +42,19 @@ export async function GET(request: NextRequest) {
       }
     )
 
-    const { error } = await supabase.auth.verifyOtp({
+    const { data, error } = await supabase.auth.verifyOtp({
       type,
       token_hash,
     })
 
     if (!error) {
-      return NextResponse.redirect(new URL(safeNext, request.url))
+      console.log('[Auth Confirm] OTP verified successfully, user:', data?.user?.email, '- redirecting to:', safeNext)
+      return NextResponse.redirect(new URL(safeNext, baseUrl))
     }
 
-    console.error('[Auth Confirm] OTP verification failed:', error.message)
+    console.error('[Auth Confirm] OTP verification failed:', error.message, 'code:', error.status)
   }
 
-  return NextResponse.redirect(new URL('/customer/login?error=invalid_link', request.url))
+  console.error('[Auth Confirm] Redirecting to login with error')
+  return NextResponse.redirect(new URL('/customer/login?error=invalid_link', baseUrl))
 }
