@@ -51,7 +51,12 @@ interface DeliveryAddress {
 export default function CheckoutPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const isResettingPassword = searchParams.get('reset_password') === 'true'
+  const isResettingPasswordFromParams = searchParams.get('reset_password') === 'true'
+  const isResettingPasswordRef = useRef(false)
+  if (isResettingPasswordFromParams) {
+    isResettingPasswordRef.current = true
+  }
+  const isResettingPassword = isResettingPasswordRef.current
   const { toast } = useToast()
   const [supabase] = useState(() => createClient())
   
@@ -340,16 +345,16 @@ export default function CheckoutPage() {
   }, [restaurantSlug])
 
   useEffect(() => {
-    // Redirect if cart is empty (but NOT if order was just placed successfully or resetting password)
     if (!loading && items.length === 0 && !orderPlacedSuccessfully && !isResettingPassword) {
+      const restSlug = restaurantSlug || searchParams.get('restaurant')
       toast({
         title: "Cart is empty",
         description: "Add items to your cart before checking out",
         variant: "destructive",
       })
-      router.push(restaurantSlug ? `/r/${restaurantSlug}` : '/')
+      router.push(restSlug ? `/r/${restSlug}` : '/customer/login')
     }
-  }, [items, loading, restaurantSlug, router, toast, orderPlacedSuccessfully, isResettingPassword])
+  }, [items, loading, restaurantSlug, router, toast, orderPlacedSuccessfully, isResettingPassword, searchParams])
 
   // Hydrate gaMeasurementId if missing (handles direct checkout entry from saved cart)
   const { setGaMeasurementId } = useCartStore()
