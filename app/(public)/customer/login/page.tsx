@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/hooks/use-toast'
 import { Eye, EyeOff, ArrowLeft, KeyRound, Smartphone, LogIn, UserPlus } from 'lucide-react'
+import { SiGoogle } from 'react-icons/si'
 import Link from 'next/link'
 import { getApiBaseUrl } from '@/lib/api-utils'
 import { ResetPasswordModal } from '@/components/customer/reset-password-modal'
@@ -59,6 +60,7 @@ export default function CustomerLoginPage() {
   const [sendingOtp, setSendingOtp] = useState(false)
   const [verifyingOtp, setVerifyingOtp] = useState(false)
   const [resendCountdown, setResendCountdown] = useState(0)
+  const [googleLoading, setGoogleLoading] = useState(false)
 
   useEffect(() => {
     if (resendCountdown <= 0) return
@@ -152,6 +154,27 @@ export default function CustomerLoginPage() {
       setSendingOtp(false)
     }
   }, [resendCountdown, phoneNumber, supabase, toast])
+
+  const handleGoogleSignIn = async () => {
+    setGoogleLoading(true)
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin + '/auth/callback?next=' + encodeURIComponent(redirect),
+        },
+      })
+      if (error) throw error
+    } catch (error: any) {
+      console.error('Google sign-in error:', error)
+      toast({
+        variant: "destructive",
+        title: "Google Sign In Failed",
+        description: error.message || "Could not sign in with Google. Please try again.",
+      })
+      setGoogleLoading(false)
+    }
+  }
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -655,6 +678,20 @@ export default function CustomerLoginPage() {
 
               </TabsContent>
             </Tabs>
+
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
+              </div>
+            </div>
+
+            <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={googleLoading} data-testid="button-google-signin">
+              <SiGoogle className="w-4 h-4 mr-2" />
+              {googleLoading ? "Redirecting..." : "Continue with Google"}
+            </Button>
           </CardContent>
         </Card>
       </div>

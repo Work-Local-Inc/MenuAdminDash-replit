@@ -33,6 +33,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useToast } from '@/hooks/use-toast'
 import { Eye, EyeOff, LogIn, UserPlus, KeyRound, Smartphone } from 'lucide-react'
+import { SiGoogle } from 'react-icons/si'
 import { getApiBaseUrl } from '@/lib/api-utils'
 
 const signInSchema = z.object({
@@ -93,6 +94,7 @@ export function CheckoutSignInModal({
   const [sendingOtp, setSendingOtp] = useState(false)
   const [verifyingOtp, setVerifyingOtp] = useState(false)
   const [resendCountdown, setResendCountdown] = useState(0)
+  const [googleLoading, setGoogleLoading] = useState(false)
 
   useEffect(() => {
     if (!open) {
@@ -215,6 +217,28 @@ export function CheckoutSignInModal({
       phone: '',
     },
   })
+
+  const handleGoogleSignIn = async () => {
+    setGoogleLoading(true)
+    try {
+      const slug = useCartStore.getState().restaurantSlug
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin + '/auth/callback?next=' + encodeURIComponent('/checkout' + (slug ? '?restaurant=' + slug : '')),
+        },
+      })
+      if (error) throw error
+    } catch (error: any) {
+      console.error('Google sign-in error:', error)
+      toast({
+        variant: "destructive",
+        title: "Google Sign In Failed",
+        description: error.message || "Could not sign in with Google. Please try again.",
+      })
+      setGoogleLoading(false)
+    }
+  }
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -786,6 +810,20 @@ export function CheckoutSignInModal({
 
           </TabsContent>
         </Tabs>
+
+        <div className="relative my-6">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
+          </div>
+        </div>
+
+        <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={googleLoading} data-testid="button-google-signin">
+          <SiGoogle className="w-4 h-4 mr-2" />
+          {googleLoading ? "Redirecting..." : "Continue with Google"}
+        </Button>
       </DialogContent>
     </Dialog>
   )
