@@ -314,8 +314,11 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
             options={{
               defaultValues: {
                 billingDetails: {
+                  name: deliveryAddress.name || undefined,
+                  email: deliveryAddress.email || undefined,
+                  phone: deliveryAddress.phone || undefined,
                   address: {
-                    country: 'CA', // Canada - this makes it show "Postal code" instead of "ZIP code"
+                    country: 'CA',
                     postal_code: deliveryAddress.postal_code,
                   }
                 }
