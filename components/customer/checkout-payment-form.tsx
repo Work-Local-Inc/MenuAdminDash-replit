@@ -309,17 +309,16 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
                 console.log('[Express Checkout] No payment methods available - element will be hidden')
               }
             }}
+            onLoadError={(event) => {
+              console.error('[Express Checkout] Load error:', JSON.stringify(event.error))
+            }}
             onConfirm={handleExpressCheckoutConfirm}
             onClick={({ resolve }) => {
               resolve()
             }}
             options={{
-              wallets: {
-                applePay: 'auto',
-                googlePay: 'auto',
-              },
               buttonType: {
-                applePay: 'plain' as any,
+                applePay: 'plain',
                 googlePay: 'pay',
               },
               buttonHeight: 48,
@@ -329,6 +328,8 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
                 overflow: 'never',
               },
               paymentMethods: {
+                applePay: 'always',
+                googlePay: 'always',
                 link: 'never',
                 amazonPay: 'never',
                 paypal: 'never',
