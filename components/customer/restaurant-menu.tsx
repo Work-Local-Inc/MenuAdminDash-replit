@@ -113,8 +113,8 @@ export default function RestaurantMenu({
   const serviceConfig = restaurant.delivery_and_pickup_configs?.[0];
   
   // Initialize cart with restaurant details (only in customer mode)
-  const streetAddress = location?.street_address;
-  const postalCode = location?.postal_code;
+  const streetAddress = location?.street_address || restaurant.street_address;
+  const postalCode = location?.postal_code || restaurant.postal_code;
   
   // Compute restaurant slug (used for cart drawer and checkout)
   const restaurantSlug = useMemo(() => {
@@ -298,16 +298,18 @@ export default function RestaurantMenu({
                 )}
               </div>
               
-              {location && (
+              {(location || streetAddress) && (
                 <div className="flex flex-col gap-2 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4" />
-                    <span data-testid="text-restaurant-address">
-                      {location.street_address}, {location.postal_code}
-                    </span>
-                  </div>
+                  {streetAddress && (
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-4 h-4" />
+                      <span data-testid="text-restaurant-address">
+                        {streetAddress}{postalCode ? `, ${postalCode}` : ''}
+                      </span>
+                    </div>
+                  )}
                   
-                  {location.phone && (
+                  {location?.phone && (
                     <div className="flex items-center gap-2">
                       <Phone className="w-4 h-4" />
                       <span data-testid="text-restaurant-phone">{location.phone}</span>

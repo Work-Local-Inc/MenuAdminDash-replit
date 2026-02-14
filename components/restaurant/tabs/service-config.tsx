@@ -333,6 +333,17 @@ export function RestaurantServiceConfig({ restaurantId }: RestaurantServiceConfi
     },
   })
 
+  const { data: locations, isLoading: locationsLoading } = useQuery<any[]>({
+    queryKey: ['/api/restaurants', restaurantId, 'locations'],
+    queryFn: async () => {
+      const res = await fetch(`/api/restaurants/${restaurantId}/locations`)
+      if (!res.ok) return []
+      return res.json()
+    },
+  })
+
+  const hasValidAddress = locationsLoading || (locations || []).some((loc: any) => loc.street_address && loc.street_address.trim() !== '')
+
   const form = useForm<ConfigFormValues>({
     resolver: zodResolver(configSchema) as any,
     defaultValues: {
@@ -461,10 +472,25 @@ export function RestaurantServiceConfig({ restaurantId }: RestaurantServiceConfi
                   <FormControl>
                     <Switch
                       checked={field.value}
-                      onCheckedChange={field.onChange}
+                      onCheckedChange={(checked) => {
+                        if (checked && !hasValidAddress) {
+                          toast({
+                            title: "Address Required",
+                            description: "Please add a restaurant address in the Location tab before enabling delivery.",
+                            variant: "destructive"
+                          })
+                          return
+                        }
+                        field.onChange(checked)
+                      }}
                       data-testid="switch-delivery-enabled"
                     />
                   </FormControl>
+                  {!hasValidAddress && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                      No restaurant address found. Add an address in the Location tab first.
+                    </p>
+                  )}
                 </FormItem>
               )}
             />
@@ -522,10 +548,25 @@ export function RestaurantServiceConfig({ restaurantId }: RestaurantServiceConfi
                   <FormControl>
                     <Switch
                       checked={field.value}
-                      onCheckedChange={field.onChange}
+                      onCheckedChange={(checked) => {
+                        if (checked && !hasValidAddress) {
+                          toast({
+                            title: "Address Required",
+                            description: "Please add a restaurant address in the Location tab before enabling pickup.",
+                            variant: "destructive"
+                          })
+                          return
+                        }
+                        field.onChange(checked)
+                      }}
                       data-testid="switch-pickup-enabled"
                     />
                   </FormControl>
+                  {!hasValidAddress && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                      No restaurant address found. Add an address in the Location tab first.
+                    </p>
+                  )}
                 </FormItem>
               )}
             />

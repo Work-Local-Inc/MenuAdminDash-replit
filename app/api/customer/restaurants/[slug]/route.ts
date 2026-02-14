@@ -22,9 +22,11 @@ export async function GET(
     }
     
     // Fetch restaurant with nested related data
-    const { data: restaurant, error: restaurantError } = await supabase
-      .from('restaurants')
-      .select(`
+    // Try with street_address/city/province/postal_code first (direct columns on restaurants)
+    let restaurant: any = null;
+    let restaurantError: any = null;
+    
+    const baseSelect = `
         id,
         name,
         status,
@@ -58,10 +60,28 @@ export async function GET(
           has_delivery_enabled,
           pickup_enabled
         )
-      `)
+    `;
+    
+    // Try with address columns on restaurants table
+    const extendedResult = await supabase
+      .from('restaurants')
+      .select(`${baseSelect}, street_address, city, province, postal_code`)
       .eq('id', restaurantId)
-      // No status filter - show all restaurants with menus regardless of admin status
       .single();
+    
+    if (extendedResult.error?.code === '42703') {
+      // Address columns don't exist on restaurants table - fall back to base query
+      const baseResult = await supabase
+        .from('restaurants')
+        .select(baseSelect)
+        .eq('id', restaurantId)
+        .single();
+      restaurant = baseResult.data;
+      restaurantError = baseResult.error;
+    } else {
+      restaurant = extendedResult.data;
+      restaurantError = extendedResult.error;
+    }
     
     if (restaurantError || !restaurant) {
       return NextResponse.json(

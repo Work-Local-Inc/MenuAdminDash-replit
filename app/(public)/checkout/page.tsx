@@ -290,6 +290,24 @@ export default function CheckoutPage() {
           } else {
             console.log('[Checkout] ⚠️ No service config found - delivery/pickup will default to enabled')
           }
+
+          const cartAddress = useCartStore.getState().restaurantAddress;
+          if (!cartAddress && restaurantData) {
+            const loc = restaurantData.restaurant_locations?.find((l: any) => l.is_primary) 
+              || restaurantData.restaurant_locations?.[0];
+            let fallbackAddress = '';
+            if (loc?.street_address) {
+              fallbackAddress = `${loc.street_address}${loc.postal_code ? `, ${loc.postal_code}` : ''}`;
+            } else if (restaurantData.street_address) {
+              fallbackAddress = restaurantData.street_address;
+              if (restaurantData.city) fallbackAddress += `, ${restaurantData.city}`;
+              if (restaurantData.postal_code) fallbackAddress += ` ${restaurantData.postal_code}`;
+            }
+            if (fallbackAddress) {
+              useCartStore.getState().setRestaurantAddress(fallbackAddress);
+              console.log('[Checkout] Set restaurant address from API:', fallbackAddress);
+            }
+          }
         }
       } catch (error) {
         console.error('[Checkout] Error fetching data:', error)
