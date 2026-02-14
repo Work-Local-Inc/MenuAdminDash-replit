@@ -45,8 +45,8 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline' https://api.mapbox.com https://fonts.googleapis.com",
               "img-src 'self' data: blob: https://*.supabase.co https://api.mapbox.com https://maps.gstatic.com https://maps.googleapis.com",
               "font-src 'self' data: https://fonts.gstatic.com",
-              "connect-src 'self' blob: https://*.supabase.co https://api.stripe.com https://api.mapbox.com https://events.mapbox.com https://maps.googleapis.com wss://*.supabase.co https://orders.menu.ca https://*.menu.ca",
-              "frame-src https://js.stripe.com",
+              "connect-src 'self' blob: https://*.supabase.co https://api.stripe.com https://api.mapbox.com https://events.mapbox.com https://maps.googleapis.com wss://*.supabase.co https://orders.menu.ca https://*.menu.ca https://apple-pay-gateway.apple.com https://*.apple-pay-gateway.apple.com",
+              "frame-src https://js.stripe.com https://pay.google.com",
               "worker-src 'self' blob:",
               "base-uri 'self'",
               "form-action 'self'",
@@ -71,7 +71,7 @@ const nextConfig = {
           // Permissions policy
           {
             key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=(self), interest-cohort=()'
+            value: 'camera=(), microphone=(), geolocation=(self), payment=(self "https://js.stripe.com"), interest-cohort=()'
           },
           // Strict Transport Security (HTTPS only)
           {
