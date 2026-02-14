@@ -277,16 +277,24 @@ export default function CheckoutPage() {
       console.log('[Checkout] Auth state changed:', event, session?.user?.id)
       
       if (event === 'SIGNED_IN' && session?.user) {
-        // User just signed in - refresh user data only
-        try {
-          const response = await fetch(`${getApiBaseUrl()}/api/customer/profile`, { credentials: 'include' })
-          if (response.ok) {
-            const { user: userData } = await response.json()
-            setCurrentUser(userData)
+        // User just signed in - refresh user data (retry if profile not ready yet after signup)
+        const fetchProfile = async (retries = 3): Promise<void> => {
+          try {
+            const response = await fetch(`${getApiBaseUrl()}/api/customer/profile`, { credentials: 'include' })
+            if (response.ok) {
+              const { user: userData } = await response.json()
+              if (userData) {
+                setCurrentUser(userData)
+              } else if (retries > 0) {
+                await new Promise(r => setTimeout(r, 1000))
+                return fetchProfile(retries - 1)
+              }
+            }
+          } catch (error) {
+            console.error('[Checkout] Auth refresh error:', error)
           }
-        } catch (error) {
-          console.error('[Checkout] Auth refresh error:', error)
         }
+        await fetchProfile()
       } else if (event === 'SIGNED_OUT') {
         setCurrentUser(null)
       }
