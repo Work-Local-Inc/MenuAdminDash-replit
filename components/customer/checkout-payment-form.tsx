@@ -300,10 +300,13 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
         <div className={showExpressCheckout ? '' : 'hidden'}>
           <ExpressCheckoutElement
             onReady={({ availablePaymentMethods }) => {
+              console.log('[Express Checkout] onReady fired, availablePaymentMethods:', JSON.stringify(availablePaymentMethods))
               if (availablePaymentMethods) {
                 const hasWallet = availablePaymentMethods.applePay || availablePaymentMethods.googlePay
                 setShowExpressCheckout(!!hasWallet)
-                console.log('[Express Checkout] Available methods:', availablePaymentMethods)
+                console.log('[Express Checkout] hasWallet:', hasWallet, 'applePay:', availablePaymentMethods.applePay, 'googlePay:', availablePaymentMethods.googlePay)
+              } else {
+                console.log('[Express Checkout] No payment methods available - element will be hidden')
               }
             }}
             onConfirm={handleExpressCheckoutConfirm}
@@ -370,7 +373,7 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
                   <span className="bg-background px-2 text-muted-foreground">
-                    Or enter manually
+                    Or enter card details
                   </span>
                 </div>
               </div>
