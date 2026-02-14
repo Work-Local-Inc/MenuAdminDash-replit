@@ -8,9 +8,11 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get('code')
   const rawNext = searchParams.get('next')
 
+  console.log('[Auth Callback] code:', !!code, 'rawNext:', rawNext, 'full URL:', request.url)
+
   const safeNext = (rawNext && rawNext.startsWith('/') && !rawNext.startsWith('//'))
     ? rawNext
-    : '/'
+    : '/customer/account'
 
   if (code) {
     const cookieStore = await cookies()
