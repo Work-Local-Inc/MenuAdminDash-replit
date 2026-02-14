@@ -106,22 +106,20 @@ export default function CustomerLoginPage() {
       })
       if (error) throw error
 
-      if (data.user?.email) {
-        try {
-          await fetch(`${getApiBaseUrl()}/api/customer/oauth-profile`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              auth_user_id: data.user.id,
-              email: data.user.email || '',
-              first_name: data.user.user_metadata?.first_name,
-              last_name: data.user.user_metadata?.last_name,
-              phone: '+1' + digits,
-            }),
-          })
-        } catch (err) {
-          console.error('Exception calling OAuth profile API:', err)
-        }
+      try {
+        await fetch(`${getApiBaseUrl()}/api/customer/ensure-profile`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            auth_user_id: data.user.id,
+            email: data.user.email || null,
+            phone: '+1' + digits,
+            first_name: data.user.user_metadata?.first_name || null,
+            last_name: data.user.user_metadata?.last_name || null,
+          }),
+        })
+      } catch (err) {
+        console.error('Exception calling ensure-profile API:', err)
       }
 
       toast({ title: "Welcome!", description: "You've successfully signed in" })

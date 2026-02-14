@@ -39,21 +39,42 @@ export async function POST(request: NextRequest) {
       .eq('auth_user_id', user.id)
       .single()
 
-    // FALLBACK: If not found, try by email (legacy users without auth_user_id)
+    // FALLBACK: If not found, try by email or phone
     if (userError || !userData) {
-      console.log('[Customer Address API] User not found by auth_user_id, trying email fallback')
-      const { data: emailData, error: emailError } = await adminSupabase
-        .from('users')
-        .select('id, email, auth_user_id')
-        .eq('email', user.email || '')
-        .single()
-
-      if (emailError || !emailData) {
-        console.error('[Customer Address API] User not found by email either:', user.email)
-        return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      console.log('[Customer Address API] User not found by auth_user_id, trying email/phone fallback')
+      
+      if (user.email) {
+        const { data: emailData } = await adminSupabase
+          .from('users')
+          .select('id, email, auth_user_id')
+          .eq('email', user.email)
+          .maybeSingle()
+        if (emailData) userData = emailData
       }
 
-      userData = emailData
+      if (!userData && user.phone) {
+        const cleanPhone = user.phone.replace(/\D/g, '')
+        const phoneVariants = [user.phone, cleanPhone, '+' + cleanPhone]
+        if (cleanPhone.startsWith('1') && cleanPhone.length === 11) {
+          phoneVariants.push(cleanPhone.substring(1))
+        }
+        for (const pv of phoneVariants) {
+          const { data: phoneData } = await adminSupabase
+            .from('users')
+            .select('id, email, auth_user_id')
+            .eq('phone', pv)
+            .maybeSingle()
+          if (phoneData) {
+            userData = phoneData
+            break
+          }
+        }
+      }
+
+      if (!userData) {
+        console.error('[Customer Address API] User not found by any method:', user.email, user.phone)
+        return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      }
 
       // Backfill auth_user_id for legacy users
       if (!userData.auth_user_id) {
@@ -124,21 +145,42 @@ export async function GET(request: NextRequest) {
       .eq('auth_user_id', user.id)
       .single()
 
-    // FALLBACK: If not found, try by email (legacy users without auth_user_id)
+    // FALLBACK: If not found, try by email or phone
     if (userError || !userData) {
-      console.log('[Customer Address API GET] User not found by auth_user_id, trying email fallback')
-      const { data: emailData, error: emailError } = await adminSupabase
-        .from('users')
-        .select('id, email, auth_user_id')
-        .eq('email', user.email || '')
-        .single()
-
-      if (emailError || !emailData) {
-        console.error('[Customer Address API GET] User not found by email either:', user.email)
-        return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      console.log('[Customer Address API GET] User not found by auth_user_id, trying email/phone fallback')
+      
+      if (user.email) {
+        const { data: emailData } = await adminSupabase
+          .from('users')
+          .select('id, email, auth_user_id')
+          .eq('email', user.email)
+          .maybeSingle()
+        if (emailData) userData = emailData
       }
 
-      userData = emailData
+      if (!userData && user.phone) {
+        const cleanPhone = user.phone.replace(/\D/g, '')
+        const phoneVariants = [user.phone, cleanPhone, '+' + cleanPhone]
+        if (cleanPhone.startsWith('1') && cleanPhone.length === 11) {
+          phoneVariants.push(cleanPhone.substring(1))
+        }
+        for (const pv of phoneVariants) {
+          const { data: phoneData } = await adminSupabase
+            .from('users')
+            .select('id, email, auth_user_id')
+            .eq('phone', pv)
+            .maybeSingle()
+          if (phoneData) {
+            userData = phoneData
+            break
+          }
+        }
+      }
+
+      if (!userData) {
+        console.error('[Customer Address API GET] User not found by any method:', user.email, user.phone)
+        return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      }
 
       // Backfill auth_user_id for legacy users
       if (!userData.auth_user_id) {
