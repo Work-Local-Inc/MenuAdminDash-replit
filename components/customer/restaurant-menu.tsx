@@ -769,12 +769,14 @@ export default function RestaurantMenu({
                 </div>
                 <DialogTitle>
                   {closedBannerInfo?.opensAt
-                    ? `Opening at ${closedBannerInfo.opensAt}`
-                    : `Opening Soon`}
+                    ? `Opens at ${closedBannerInfo.opensAt}`
+                    : `Currently Unavailable`}
                 </DialogTitle>
               </div>
               <DialogDescription className="text-left pt-1">
-                Feel free to browse the menu and schedule an order for then!
+                {closedBannerInfo?.opensAt
+                  ? `You can still browse the menu and schedule your order ahead of time.`
+                  : `You can still browse the menu and place an order for later.`}
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
