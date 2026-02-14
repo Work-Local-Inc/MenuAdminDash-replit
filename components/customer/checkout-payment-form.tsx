@@ -5,8 +5,6 @@ import { useRouter } from 'next/navigation'
 import { useStripe, useElements, PaymentElement } from '@stripe/react-stripe-js'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
 import { useCartStore } from '@/lib/stores/cart-store'
 import { PostOrderSignupModal } from '@/components/customer/post-order-signup-modal'
@@ -107,7 +105,6 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
   const [showSignupModal, setShowSignupModal] = useState(false)
   const [completedOrderId, setCompletedOrderId] = useState<number | null>(null)
   const [guestEmail, setGuestEmail] = useState<string>('')
-  const [saveCard, setSaveCard] = useState(false)
   const [showScanModal, setShowScanModal] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [hasCameraAccess, setHasCameraAccess] = useState(false)
@@ -176,17 +173,6 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
         })
         setProcessing(false)
       } else if (paymentIntent && paymentIntent.status === 'succeeded') {
-        // If user wants to save card, set it up for future use
-        if (saveCard && userId) {
-          try {
-            console.log('[Payment] User opted to save card')
-            // Note: Stripe automatically saves payment methods when setup_future_usage is set
-            // This is handled in the payment intent creation on the backend
-          } catch (error) {
-            console.error('[Payment] Error saving card:', error)
-            // Don't fail the order if card saving fails
-          }
-        }
         // Payment succeeded, show loading state while creating order
         setCreatingOrder(true)
         
@@ -340,30 +326,6 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
               }
             }}
           />
-
-          {/* Save Card Checkbox (Only for logged-in users) */}
-          {userId && (
-            <div className="flex items-start space-x-3 p-4 bg-primary/5 border border-primary/20 rounded-lg">
-              <Checkbox
-                id="save-card"
-                checked={saveCard}
-                onCheckedChange={(checked) => setSaveCard(checked as boolean)}
-                data-testid="checkbox-save-card"
-              />
-              <div className="flex-1 space-y-1">
-                <Label
-                  htmlFor="save-card"
-                  className="text-sm font-medium leading-none cursor-pointer flex items-center gap-2"
-                >
-                  <Shield className="w-4 h-4 text-primary" />
-                  Save card for faster checkout
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  Securely save this card with Stripe for quicker future purchases
-                </p>
-              </div>
-            </div>
-          )}
 
           <div className="flex gap-3">
             <Button
