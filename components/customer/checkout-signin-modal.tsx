@@ -106,8 +106,10 @@ export function CheckoutSignInModal({
     setSendingReset(true)
 
     try {
+      const returnTo = window.location.pathname + window.location.search
+      const next = '/customer/reset-password?redirect=' + encodeURIComponent(returnTo)
       const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
-        redirectTo: `${window.location.origin}/auth/callback?next=/customer/reset-password`,
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
       })
 
       if (error) throw error

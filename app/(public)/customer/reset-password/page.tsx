@@ -2,7 +2,7 @@
 export const dynamic = 'force-dynamic';
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,8 +14,14 @@ import Link from 'next/link'
 
 export default function ResetPasswordPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { toast } = useToast()
   const supabase = createClient()
+  
+  const rawRedirect = searchParams.get('redirect')
+  const redirectTo = (rawRedirect && rawRedirect.startsWith('/') && !rawRedirect.startsWith('//'))
+    ? rawRedirect
+    : '/customer/login'
   
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -55,12 +61,12 @@ export default function ResetPasswordPage() {
 
       toast({
         title: "Password Updated",
-        description: "Your password has been updated successfully. Redirecting to login...",
+        description: "Your password has been updated successfully. Redirecting you now...",
       })
 
       setTimeout(() => {
-        router.push('/customer/login')
-      }, 2000)
+        window.location.href = redirectTo
+      }, 1500)
     } catch (error: any) {
       console.error('Password reset error:', error)
       toast({
