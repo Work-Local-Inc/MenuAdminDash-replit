@@ -21,6 +21,14 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -93,6 +101,7 @@ export default function RestaurantMenu({
 }: RestaurantMenuProps) {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [showClosedModal, setShowClosedModal] = useState(false);
   
   const cartItemCount = useCartStore((state) => 
     state.items.reduce((sum, item) => sum + item.quantity, 0)
@@ -214,6 +223,12 @@ export default function RestaurantMenu({
 
     return { opensAt: opensAtFormatted };
   }, [editorMode, schedules]);
+
+  useEffect(() => {
+    if (!editorMode && closedBannerInfo) {
+      setShowClosedModal(true);
+    }
+  }, [editorMode, closedBannerInfo]);
 
   // Scroll to category section
   const scrollToCategory = (courseId: string) => {
@@ -763,6 +778,36 @@ export default function RestaurantMenu({
         </div>
       )}
       
+      {/* Currently Closed Modal - Shows once when customer lands on a closed restaurant */}
+      {!editorMode && (
+        <Dialog open={showClosedModal} onOpenChange={setShowClosedModal}>
+          <DialogContent className="sm:max-w-md" data-testid="modal-restaurant-closed">
+            <DialogHeader>
+              <div className="flex items-center gap-3 mb-1">
+                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/40">
+                  <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                </div>
+                <DialogTitle>We're Currently Closed</DialogTitle>
+              </div>
+              <DialogDescription className="text-left pt-1">
+                {closedBannerInfo?.opensAt
+                  ? `We open again at ${closedBannerInfo.opensAt} today. Feel free to browse the menu and place an order for a later time.`
+                  : `We're not open right now, but feel free to browse the menu and place an order for a later time.`}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                onClick={() => setShowClosedModal(false)}
+                className="w-full"
+                data-testid="button-dismiss-closed-modal"
+              >
+                Got it, browse menu
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
       {/* Cart Drawer - Only in customer mode */}
       {!editorMode && (
         <CartDrawer
