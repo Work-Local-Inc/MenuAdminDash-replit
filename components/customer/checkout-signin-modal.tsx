@@ -30,9 +30,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useToast } from '@/hooks/use-toast'
-import { Eye, EyeOff, LogIn, UserPlus } from 'lucide-react'
-import { FcGoogle } from 'react-icons/fc'
-import { Separator } from '@/components/ui/separator'
+import { Eye, EyeOff, LogIn, UserPlus, KeyRound } from 'lucide-react'
 import { getApiBaseUrl } from '@/lib/api-utils'
 
 const signInSchema = z.object({
@@ -75,6 +73,10 @@ export function CheckoutSignInModal({
   const [showSignInPassword, setShowSignInPassword] = useState(false)
   const [showSignUpPassword, setShowSignUpPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showForgotPassword, setShowForgotPassword] = useState(false)
+  const [forgotEmail, setForgotEmail] = useState('')
+  const [sendingReset, setSendingReset] = useState(false)
+  const [resetSent, setResetSent] = useState(false)
 
   // Sign In Form
   const signInForm = useForm<SignInFormData>({
@@ -98,23 +100,32 @@ export function CheckoutSignInModal({
     },
   })
 
-  const handleGoogleSignIn = async () => {
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!forgotEmail) return
+    setSendingReset(true)
+
     try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback?redirect=/checkout`,
-        },
+      const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+        redirectTo: `${window.location.origin}/auth/callback?next=/customer/reset-password`,
       })
 
       if (error) throw error
+
+      setResetSent(true)
+      toast({
+        title: "Reset Link Sent",
+        description: "Check your email for a password reset link.",
+      })
     } catch (error: any) {
-      console.error('Google sign in error:', error)
+      console.error('Password reset error:', error)
       toast({
         variant: "destructive",
-        title: "Google Sign In Failed",
-        description: error.message || "Failed to sign in with Google",
+        title: "Reset Failed",
+        description: error.message || "Failed to send reset link. Please try again.",
       })
+    } finally {
+      setSendingReset(false)
     }
   }
 
@@ -259,90 +270,169 @@ export function CheckoutSignInModal({
           
           {/* Sign In Tab */}
           <TabsContent value="signin" className="space-y-4 mt-4">
-            <Form {...signInForm}>
-              <form onSubmit={signInForm.handleSubmit(handleSignIn)} className="space-y-4">
-                <FormField
-                  control={signInForm.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
+            {showForgotPassword ? (
+              <div className="space-y-4">
+                {resetSent ? (
+                  <div className="text-center space-y-3 py-4">
+                    <div className="mx-auto w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                      <KeyRound className="w-6 h-6 text-green-600 dark:text-green-400" />
+                    </div>
+                    <h3 className="font-medium text-lg">Check Your Email</h3>
+                    <p className="text-sm text-muted-foreground">
+                      We sent a password reset link to <strong>{forgotEmail}</strong>. Click the link in the email to set a new password.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full mt-2"
+                      onClick={() => {
+                        setShowForgotPassword(false)
+                        setResetSent(false)
+                        setForgotEmail('')
+                      }}
+                      data-testid="button-back-to-signin"
+                    >
+                      Back to Sign In
+                    </Button>
+                  </div>
+                ) : (
+                  <form onSubmit={handleForgotPassword} className="space-y-4">
+                    <div className="space-y-2">
+                      <h3 className="font-medium">Reset Your Password</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Enter your email address and we'll send you a link to reset your password.
+                      </p>
+                    </div>
+                    <div className="space-y-2">
                       <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          type="email"
-                          placeholder="you@example.com"
-                          data-testid="input-signin-email"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={signInForm.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Password</FormLabel>
-                      <FormControl>
-                        <div className="relative">
+                      <Input
+                        type="email"
+                        placeholder="you@example.com"
+                        value={forgotEmail}
+                        onChange={(e) => setForgotEmail(e.target.value)}
+                        required
+                        data-testid="input-forgot-email"
+                      />
+                    </div>
+                    <Button 
+                      type="submit" 
+                      className="w-full" 
+                      disabled={sendingReset}
+                      data-testid="button-send-reset-link"
+                    >
+                      {sendingReset ? "Sending..." : "Send Reset Link"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="w-full"
+                      onClick={() => setShowForgotPassword(false)}
+                      data-testid="button-cancel-forgot"
+                    >
+                      Back to Sign In
+                    </Button>
+                  </form>
+                )}
+              </div>
+            ) : (
+              <Form {...signInForm}>
+                <form onSubmit={signInForm.handleSubmit(handleSignIn)} className="space-y-4">
+                  <FormField
+                    control={signInForm.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
                           <Input
                             {...field}
-                            type={showSignInPassword ? "text" : "password"}
-                            placeholder="••••••••"
-                            data-testid="input-signin-password"
+                            type="email"
+                            placeholder="you@example.com"
+                            data-testid="input-signin-email"
                           />
-                          <Button
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={signInForm.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <div className="flex items-center justify-between flex-wrap gap-1">
+                          <FormLabel>Password</FormLabel>
+                          <button
                             type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="absolute right-0 top-0 h-full px-3"
-                            onClick={() => setShowSignInPassword(!showSignInPassword)}
-                            data-testid="button-toggle-signin-password"
+                            className="text-xs text-primary hover:underline"
+                            onClick={() => {
+                              setShowForgotPassword(true)
+                              setForgotEmail(signInForm.getValues('email') || '')
+                            }}
+                            data-testid="button-forgot-password"
                           >
-                            {showSignInPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                          </Button>
+                            Forgot password?
+                          </button>
                         </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                        <FormControl>
+                          <div className="relative">
+                            <Input
+                              {...field}
+                              type={showSignInPassword ? "text" : "password"}
+                              placeholder="••••••••"
+                              data-testid="input-signin-password"
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="absolute right-0 top-0 h-full px-3"
+                              onClick={() => setShowSignInPassword(!showSignInPassword)}
+                              data-testid="button-toggle-signin-password"
+                            >
+                              {showSignInPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </Button>
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                <FormField
-                  control={signInForm.control}
-                  name="rememberMe"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                          data-testid="checkbox-remember-me"
-                        />
-                      </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel className="text-sm font-normal cursor-pointer">
-                          Remember me
-                        </FormLabel>
-                      </div>
-                    </FormItem>
-                  )}
-                />
-                
-                <Button 
-                  type="submit" 
-                  className="w-full" 
-                  disabled={isSubmitting}
-                  data-testid="button-submit-signin"
-                >
-                  <LogIn className="w-4 h-4 mr-2" />
-                  {isSubmitting ? "Signing in..." : "Sign In"}
-                </Button>
-              </form>
-            </Form>
+                  <FormField
+                    control={signInForm.control}
+                    name="rememberMe"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="checkbox-remember-me"
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="text-sm font-normal cursor-pointer">
+                            Remember me
+                          </FormLabel>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <Button 
+                    type="submit" 
+                    className="w-full" 
+                    disabled={isSubmitting}
+                    data-testid="button-submit-signin"
+                  >
+                    <LogIn className="w-4 h-4 mr-2" />
+                    {isSubmitting ? "Signing in..." : "Sign In"}
+                  </Button>
+                </form>
+              </Form>
+            )}
 
           </TabsContent>
           

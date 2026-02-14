@@ -11,10 +11,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/hooks/use-toast'
-import { Eye, EyeOff, ArrowLeft } from 'lucide-react'
-import { FcGoogle } from 'react-icons/fc'
+import { Eye, EyeOff, ArrowLeft, KeyRound } from 'lucide-react'
 import Link from 'next/link'
-import { Separator } from '@/components/ui/separator'
 import { getApiBaseUrl } from '@/lib/api-utils'
 
 export default function CustomerLoginPage() {
@@ -32,6 +30,12 @@ export default function CustomerLoginPage() {
   const [showLoginPassword, setShowLoginPassword] = useState(false)
   const [loggingIn, setLoggingIn] = useState(false)
   
+  // Forgot password state
+  const [showForgotPassword, setShowForgotPassword] = useState(false)
+  const [forgotEmail, setForgotEmail] = useState('')
+  const [sendingReset, setSendingReset] = useState(false)
+  const [resetSent, setResetSent] = useState(false)
+  
   // Signup state
   const [signupEmail, setSignupEmail] = useState('')
   const [signupPassword, setSignupPassword] = useState('')
@@ -41,22 +45,32 @@ export default function CustomerLoginPage() {
   const [showSignupPassword, setShowSignupPassword] = useState(false)
   const [signingUp, setSigningUp] = useState(false)
 
-  const handleGoogleSignIn = async () => {
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!forgotEmail) return
+    setSendingReset(true)
+
     try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirect)}`,
-        },
+      const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+        redirectTo: `${window.location.origin}/auth/callback?next=/customer/reset-password`,
       })
 
       if (error) throw error
+
+      setResetSent(true)
+      toast({
+        title: "Reset Link Sent",
+        description: "Check your email for a password reset link.",
+      })
     } catch (error: any) {
+      console.error('Password reset error:', error)
       toast({
         variant: "destructive",
-        title: "Google Sign In Failed",
-        description: error.message || "Failed to sign in with Google",
+        title: "Reset Failed",
+        description: error.message || "Failed to send reset link. Please try again.",
       })
+    } finally {
+      setSendingReset(false)
     }
   }
 
@@ -204,54 +218,134 @@ export default function CustomerLoginPage() {
               </TabsList>
               
               <TabsContent value="login" className="space-y-4">
-                <form onSubmit={handleLogin} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="login-email">Email</Label>
-                    <Input
-                      id="login-email"
-                      type="email"
-                      placeholder="you@example.com"
-                      value={loginEmail}
-                      onChange={(e) => setLoginEmail(e.target.value)}
-                      required
-                      data-testid="input-login-email"
-                    />
+                {showForgotPassword ? (
+                  <div className="space-y-4">
+                    {resetSent ? (
+                      <div className="text-center space-y-3 py-4">
+                        <div className="mx-auto w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                          <KeyRound className="w-6 h-6 text-green-600 dark:text-green-400" />
+                        </div>
+                        <h3 className="font-medium text-lg">Check Your Email</h3>
+                        <p className="text-sm text-muted-foreground">
+                          We sent a password reset link to <strong>{forgotEmail}</strong>. Click the link in the email to set a new password.
+                        </p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full mt-2"
+                          onClick={() => {
+                            setShowForgotPassword(false)
+                            setResetSent(false)
+                            setForgotEmail('')
+                          }}
+                          data-testid="button-back-to-login"
+                        >
+                          Back to Login
+                        </Button>
+                      </div>
+                    ) : (
+                      <form onSubmit={handleForgotPassword} className="space-y-4">
+                        <div className="space-y-2">
+                          <h3 className="font-medium">Reset Your Password</h3>
+                          <p className="text-sm text-muted-foreground">
+                            Enter your email address and we'll send you a link to reset your password.
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="forgot-email">Email</Label>
+                          <Input
+                            id="forgot-email"
+                            type="email"
+                            placeholder="you@example.com"
+                            value={forgotEmail}
+                            onChange={(e) => setForgotEmail(e.target.value)}
+                            required
+                            data-testid="input-forgot-email"
+                          />
+                        </div>
+                        <Button 
+                          type="submit" 
+                          className="w-full" 
+                          disabled={sendingReset}
+                          data-testid="button-send-reset-link"
+                        >
+                          {sendingReset ? "Sending..." : "Send Reset Link"}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="w-full"
+                          onClick={() => setShowForgotPassword(false)}
+                          data-testid="button-cancel-forgot"
+                        >
+                          Back to Login
+                        </Button>
+                      </form>
+                    )}
                   </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="login-password">Password</Label>
-                    <div className="relative">
+                ) : (
+                  <form onSubmit={handleLogin} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="login-email">Email</Label>
                       <Input
-                        id="login-password"
-                        type={showLoginPassword ? "text" : "password"}
-                        placeholder="••••••••"
-                        value={loginPassword}
-                        onChange={(e) => setLoginPassword(e.target.value)}
+                        id="login-email"
+                        type="email"
+                        placeholder="you@example.com"
+                        value={loginEmail}
+                        onChange={(e) => setLoginEmail(e.target.value)}
                         required
-                        data-testid="input-login-password"
+                        data-testid="input-login-email"
                       />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-0 top-0 h-full px-3"
-                        onClick={() => setShowLoginPassword(!showLoginPassword)}
-                        data-testid="button-toggle-login-password"
-                      >
-                        {showLoginPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </Button>
                     </div>
-                  </div>
-                  
-                  <Button 
-                    type="submit" 
-                    className="w-full" 
-                    disabled={loggingIn}
-                    data-testid="button-submit-login"
-                  >
-                    {loggingIn ? "Logging in..." : "Log In"}
-                  </Button>
-                </form>
+                    
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between flex-wrap gap-1">
+                        <Label htmlFor="login-password">Password</Label>
+                        <button
+                          type="button"
+                          className="text-xs text-primary hover:underline"
+                          onClick={() => {
+                            setShowForgotPassword(true)
+                            setForgotEmail(loginEmail)
+                          }}
+                          data-testid="button-forgot-password"
+                        >
+                          Forgot password?
+                        </button>
+                      </div>
+                      <div className="relative">
+                        <Input
+                          id="login-password"
+                          type={showLoginPassword ? "text" : "password"}
+                          placeholder="••••••••"
+                          value={loginPassword}
+                          onChange={(e) => setLoginPassword(e.target.value)}
+                          required
+                          data-testid="input-login-password"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-0 top-0 h-full px-3"
+                          onClick={() => setShowLoginPassword(!showLoginPassword)}
+                          data-testid="button-toggle-login-password"
+                        >
+                          {showLoginPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    <Button 
+                      type="submit" 
+                      className="w-full" 
+                      disabled={loggingIn}
+                      data-testid="button-submit-login"
+                    >
+                      {loggingIn ? "Logging in..." : "Log In"}
+                    </Button>
+                  </form>
+                )}
 
               </TabsContent>
               
