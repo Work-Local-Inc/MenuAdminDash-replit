@@ -13,6 +13,7 @@ import { format } from 'date-fns'
 import { PostOrderSignupModal } from '@/components/customer/post-order-signup-modal'
 import { useCartStore } from '@/lib/stores/cart-store'
 import { createRestaurantSlug } from '@/lib/utils/slugify'
+import { createClient } from '@/lib/supabase/client'
 
 interface OrderItem {
   dish_id: number
@@ -169,12 +170,13 @@ export default function OrderConfirmationPage() {
       // Show signup modal only for true guest orders (not phone-authenticated users)
       // If user_id is set, user already has an account (signed in via phone/email)
       if (data.is_guest_order && data.guest_email && !data.user_id) {
-        // Also check if user is currently authenticated (e.g. phone OTP session still active)
+        // Check Supabase auth session directly — phone-only users may not have a profile
+        // record in the users table yet, but they DO have an active auth session
         try {
-          const profileRes = await fetch('/api/customer/profile')
-          const profileData = await profileRes.json()
-          if (profileData?.user?.id) {
-            console.log('[Confirmation] User already authenticated, skipping signup modal')
+          const supabase = createClient()
+          const { data: { user: authUser } } = await supabase.auth.getUser()
+          if (authUser) {
+            console.log('[Confirmation] User authenticated via Supabase auth (phone/email), skipping signup modal')
           } else {
             setTimeout(() => {
               setShowSignupModal(true)

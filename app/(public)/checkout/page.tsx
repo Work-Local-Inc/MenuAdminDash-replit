@@ -816,29 +816,30 @@ export default function CheckoutPage() {
 
   return (
     <AnalyticsProvider measurementId={gaMeasurementId}>
-    <div className="min-h-screen bg-muted/30">
+    <div className="min-h-screen bg-muted/30 overflow-x-hidden">
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         {/* Header */}
         <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
             <Button variant="ghost" asChild data-testid="button-back-to-menu">
               <Link href={`/r/${restaurantSlug}`}>
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to {restaurantName}
+                <span className="hidden sm:inline">Back to {restaurantName}</span>
+                <span className="sm:hidden">Back</span>
               </Link>
             </Button>
             
             {/* Auth Section */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 min-w-0">
               {currentUser ? (
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 min-w-0">
                   <Link 
                     href="/customer/account?from=checkout" 
-                    className="flex items-center gap-2 text-sm hover:text-primary transition-colors"
+                    className="flex items-center gap-1.5 text-sm hover:text-primary transition-colors min-w-0"
                     data-testid="link-account"
                   >
-                    <User className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-muted-foreground hover:text-primary">
+                    <User className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
+                    <span className="text-muted-foreground hover:text-primary truncate max-w-[120px] sm:max-w-[200px]">
                       {currentUser.email || currentUser.first_name || 'Account'}
                     </span>
                   </Link>
@@ -848,8 +849,8 @@ export default function CheckoutPage() {
                     onClick={handleSignOut}
                     data-testid="button-sign-out"
                   >
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Sign Out
+                    <LogOut className="w-4 h-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Sign Out</span>
                   </Button>
                 </div>
               ) : (
