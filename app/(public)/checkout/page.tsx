@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useCartStore, AppliedPromo } from '@/lib/stores/cart-store'
 import { createClient } from '@/lib/supabase/client'
 import { Elements } from '@stripe/react-stripe-js'
@@ -50,6 +50,8 @@ interface DeliveryAddress {
 
 export default function CheckoutPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const isResettingPassword = searchParams.get('reset_password') === 'true'
   const { toast } = useToast()
   const [supabase] = useState(() => createClient())
   
@@ -307,8 +309,8 @@ export default function CheckoutPage() {
   }, [restaurantSlug])
 
   useEffect(() => {
-    // Redirect if cart is empty (but NOT if order was just placed successfully)
-    if (!loading && items.length === 0 && !orderPlacedSuccessfully) {
+    // Redirect if cart is empty (but NOT if order was just placed successfully or resetting password)
+    if (!loading && items.length === 0 && !orderPlacedSuccessfully && !isResettingPassword) {
       toast({
         title: "Cart is empty",
         description: "Add items to your cart before checking out",
@@ -316,7 +318,7 @@ export default function CheckoutPage() {
       })
       router.push(restaurantSlug ? `/r/${restaurantSlug}` : '/')
     }
-  }, [items, loading, restaurantSlug, router, toast, orderPlacedSuccessfully])
+  }, [items, loading, restaurantSlug, router, toast, orderPlacedSuccessfully, isResettingPassword])
 
   // Hydrate gaMeasurementId if missing (handles direct checkout entry from saved cart)
   const { setGaMeasurementId } = useCartStore()
@@ -737,8 +739,18 @@ export default function CheckoutPage() {
     )
   }
 
-  if (items.length === 0 && !orderPlacedSuccessfully) {
+  if (items.length === 0 && !orderPlacedSuccessfully && !isResettingPassword) {
     return null // Will redirect to restaurant menu
+  }
+
+  if (isResettingPassword && items.length === 0) {
+    return (
+      <div className="min-h-screen bg-muted/30 flex items-center justify-center">
+        <ResetPasswordModal onPasswordReset={() => {
+          router.replace('/checkout')
+        }} />
+      </div>
+    )
   }
 
   // Compute minimum order violation for delivery (inline warning, not blocking redirect)
