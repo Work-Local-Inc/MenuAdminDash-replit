@@ -224,24 +224,15 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick,
   const loadSavedAddresses = async () => {
     if (!userId) return
     try {
-      // Fetch addresses and user profile in parallel
-      const [addressesResult, profileResult] = await Promise.all([
-        supabase
-          .from('user_delivery_addresses')
-          .select(`
-            *,
-            city:cities(name)
-          `)
-          .eq('user_id', userId)
-          .order('is_default', { ascending: false }),
-        // Also fetch user profile for name/phone (needed for receipts)
+      const [addressesResponse, profileResult] = await Promise.all([
+        fetch(`${getApiBaseUrl()}/api/customer/addresses`, { credentials: 'include' }).then(r => {
+          if (!r.ok) throw new Error('Failed to fetch addresses')
+          return r.json()
+        }),
         fetch(`${getApiBaseUrl()}/api/customer/profile`, { credentials: 'include' }).then(r => r.json()).catch(() => null)
       ])
 
-      const { data, error } = addressesResult
-      if (error) throw error
-
-      const addresses = (data || []).map((addr: any) => ({
+      const addresses = (addressesResponse || []).map((addr: any) => ({
         id: addr.id,
         address_label: addr.address_label,
         street_address: addr.street_address,
@@ -278,7 +269,7 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick,
       }
       
       // Auto-select default address and geocode it
-      const defaultAddr = addresses.find((a: any) => (data as any[]).find((d: any) => d.id === a.id)?.is_default)
+      const defaultAddr = addresses.find((a: any) => (addressesResponse as any[]).find((d: any) => d.id === a.id)?.is_default)
       if (defaultAddr?.id) {
         setSelectedAddressId(defaultAddr.id)
         // Pre-populate delivery instructions from default address
