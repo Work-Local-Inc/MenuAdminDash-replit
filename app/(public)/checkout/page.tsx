@@ -52,7 +52,9 @@ export default function CheckoutPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const isResettingPasswordFromParams = searchParams.get('reset_password') === 'true'
-  const isResettingPasswordRef = useRef(false)
+  const isResettingPasswordRef = useRef(
+    isResettingPasswordFromParams || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('reset_password') === 'true')
+  )
   if (isResettingPasswordFromParams) {
     isResettingPasswordRef.current = true
   }
@@ -801,7 +803,8 @@ export default function CheckoutPage() {
     return (
       <div className="min-h-screen bg-muted/30 flex items-center justify-center">
         <ResetPasswordModal onPasswordReset={() => {
-          router.replace(returnRestaurant ? `/r/${returnRestaurant}` : '/')
+          isResettingPasswordRef.current = false
+          router.replace(returnRestaurant ? `/r/${returnRestaurant}` : '/customer/login')
         }} />
       </div>
     )
