@@ -1,9 +1,17 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
-import { UtensilsCrossed, MapPin, Clock, Phone, ShoppingCart } from 'lucide-react'
+import { UtensilsCrossed, MapPin, Clock, Phone, ShoppingCart, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { DishCard } from './dish-card'
 import { DishImageCard } from './dish-image-card'
 import { DishListRow } from './dish-list-row'
@@ -14,6 +22,7 @@ import { useCartStore } from '@/lib/stores/cart-store'
 import { useLanguage } from '@/lib/contexts/language-context'
 import { resolveBrandingColors, MENUCA_RED } from '@/lib/utils'
 import { getApiBaseUrl } from '@/lib/api-utils'
+import { getDay, setHours, setMinutes, format } from 'date-fns'
 
 // Dish availability filter: hide dishes on specific days of the week
 // hidden_days: array of day numbers (0=Sunday, 1=Monday, ..., 6=Saturday)
@@ -46,6 +55,8 @@ export default function RestaurantMenuPublic({
   const [isLoadingMenu, setIsLoadingMenu] = useState(false)
   const { language } = useLanguage()
   const [currentLanguage, setCurrentLanguage] = useState<string | null>(null)
+  const [schedules, setSchedules] = useState<any[]>([])
+  const [showClosedModal, setShowClosedModal] = useState(false)
 
   const cartItemCount = useCartStore((state) =>
     state.items.reduce((sum, item) => sum + item.quantity, 0)
@@ -114,6 +125,79 @@ export default function RestaurantMenuPublic({
       fetchTaxConfig()
     }
   }, [restaurantSlug, setTaxConfig])
+
+  useEffect(() => {
+    if (!restaurantSlug) return
+    fetch(`${getApiBaseUrl()}/api/customer/restaurants/${restaurantSlug}/schedules`)
+      .then(res => res.ok ? res.json() : { schedules: [] })
+      .then(data => { if (data?.schedules) setSchedules(data.schedules) })
+      .catch(() => {})
+  }, [restaurantSlug])
+
+  const closedBannerInfo = useMemo(() => {
+    if (!schedules || schedules.length === 0) return null
+
+    const enabledSchedules = schedules.filter((s: any) => s.is_enabled)
+    if (enabledSchedules.length === 0) return null
+
+    const now = new Date()
+    const currentDay = getDay(now)
+    const previousDay = (currentDay + 6) % 7
+    const currentMinutes = now.getHours() * 60 + now.getMinutes()
+
+    const matchesDay = (schedule: any, day: number): boolean => {
+      if (schedule.day_start <= schedule.day_stop) {
+        return day >= schedule.day_start && day <= schedule.day_stop
+      }
+      return day >= schedule.day_start || day <= schedule.day_stop
+    }
+
+    for (const schedule of enabledSchedules) {
+      if (!matchesDay(schedule, currentDay)) continue
+      const [openHour, openMin] = schedule.time_start.split(':').map(Number)
+      const [closeHour, closeMin] = schedule.time_stop.split(':').map(Number)
+      const openMinutes = openHour * 60 + openMin
+      const closeMinutes = closeHour * 60 + closeMin
+      if (closeMinutes > openMinutes) {
+        if (currentMinutes >= openMinutes && currentMinutes < closeMinutes) return null
+      } else if (closeMinutes <= openMinutes) {
+        if (currentMinutes >= openMinutes) return null
+      }
+    }
+
+    if (currentMinutes < 6 * 60) {
+      for (const schedule of enabledSchedules) {
+        if (!matchesDay(schedule, previousDay)) continue
+        const [openHour, openMin] = schedule.time_start.split(':').map(Number)
+        const [closeHour, closeMin] = schedule.time_stop.split(':').map(Number)
+        const openMinutes = openHour * 60 + openMin
+        const closeMinutes = closeHour * 60 + closeMin
+        if (closeMinutes <= openMinutes && currentMinutes < closeMinutes) return null
+      }
+    }
+
+    const todaySchedules = enabledSchedules
+      .filter((s: any) => matchesDay(s, currentDay))
+      .sort((a: any, b: any) => a.time_start.localeCompare(b.time_start))
+    const futureSchedule = todaySchedules.find((s: any) => {
+      const [h, m] = s.time_start.split(':').map(Number)
+      return (h * 60 + m) > currentMinutes
+    })
+
+    let opensAtFormatted: string | null = null
+    if (futureSchedule) {
+      const [h, m] = futureSchedule.time_start.split(':').map(Number)
+      opensAtFormatted = format(setMinutes(setHours(new Date(), h), m), 'h:mm a')
+    }
+
+    return { opensAt: opensAtFormatted }
+  }, [schedules])
+
+  useEffect(() => {
+    if (closedBannerInfo) {
+      setShowClosedModal(true)
+    }
+  }, [closedBannerInfo])
 
   useEffect(() => {
     if (!mounted || !restaurantSlug) return
@@ -279,6 +363,26 @@ export default function RestaurantMenuPublic({
         restaurantSlug={restaurantSlug}
         brandColor={brandColors.primary}
       />
+
+      {/* Closed Banner */}
+      {closedBannerInfo && (
+        <div
+          data-testid="banner-restaurant-closed"
+          className="bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-800"
+        >
+          <div className="container mx-auto px-3 sm:px-4 py-3">
+            <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
+              <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+              <span className="font-semibold">Currently Closed</span>
+              {closedBannerInfo.opensAt && (
+                <span className="text-amber-700 dark:text-amber-300">
+                  &middot; Opens at {closedBannerInfo.opensAt}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {courses && courses.length > 1 && (
         <div className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
@@ -469,6 +573,34 @@ export default function RestaurantMenuPublic({
           </Button>
         </div>
       </div>
+
+      {/* Currently Closed Modal */}
+      <Dialog open={showClosedModal} onOpenChange={setShowClosedModal}>
+        <DialogContent className="sm:max-w-md" data-testid="modal-restaurant-closed">
+          <DialogHeader>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="flex items-center justify-center w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/40">
+                <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+              </div>
+              <DialogTitle>We're Currently Closed</DialogTitle>
+            </div>
+            <DialogDescription className="text-left pt-1">
+              {closedBannerInfo?.opensAt
+                ? `We open again at ${closedBannerInfo.opensAt} today. Feel free to browse the menu and place an order for a later time.`
+                : `We're not open right now, but feel free to browse the menu and place an order for a later time.`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              onClick={() => setShowClosedModal(false)}
+              className="w-full"
+              data-testid="button-dismiss-closed-modal"
+            >
+              Got it, browse menu
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <CartDrawer
         isOpen={isCartOpen}
