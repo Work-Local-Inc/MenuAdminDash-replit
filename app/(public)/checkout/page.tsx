@@ -679,7 +679,7 @@ export default function CheckoutPage() {
               delivery_address: JSON.stringify(selectedAddress),
               restaurant_slug: restaurantSlug,
               guest_email: selectedAddress?.email,
-              order_type: orderType,
+              order_type: effectiveOrderType,
               service_time: JSON.stringify(pickupTime),
               order_notes: orderNotes.trim() || undefined,
               coupon_code: appliedPromo?.code || undefined,
@@ -723,7 +723,7 @@ export default function CheckoutPage() {
         }))
 
         // Calculate delivery fee and tax for non-card orders
-        const cashDeliveryFee = orderType === 'delivery' ? effectiveDeliveryFee : 0
+        const cashDeliveryFee = effectiveOrderType === 'delivery' ? effectiveDeliveryFee : 0
         const cashTax = tax
 
         const response = await fetch(`${getApiBaseUrl()}/api/customer/orders/cash`, {
@@ -736,7 +736,7 @@ export default function CheckoutPage() {
             user_id: currentUser?.id ? String(currentUser.id) : undefined,
             guest_email: selectedAddress?.email,
             restaurant_slug: restaurantSlug,
-            order_type: orderType,
+            order_type: effectiveOrderType,
             service_time: pickupTime,
             delivery_fee: cashDeliveryFee,
             tax_amount: cashTax,
