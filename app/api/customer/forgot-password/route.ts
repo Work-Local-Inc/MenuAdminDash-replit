@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { resend } from '@/lib/emails/client'
 import PasswordResetEmail from '@/lib/emails/templates/password-reset'
+import crypto from 'crypto'
 
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
 
@@ -69,17 +70,51 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log('[Forgot Password] Password reset requested for:', email)
+    const normalizedEmail = email.toLowerCase().trim()
+    console.log('[Forgot Password] Password reset requested for:', normalizedEmail)
 
     const supabaseAdmin = createAdminClient()
 
-    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+    let { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'recovery',
-      email,
+      email: normalizedEmail,
       options: {
         redirectTo: redirectUrl || undefined,
       },
     })
+
+    if (linkError && (linkError.message?.includes('not found') || linkError.message?.includes('User not found') || linkError.message?.includes('Unable to find'))) {
+      console.log('[Forgot Password] User not found in Supabase Auth, auto-creating account for:', normalizedEmail)
+
+      const tempPassword = crypto.randomBytes(32).toString('hex')
+
+      const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+        email: normalizedEmail,
+        password: tempPassword,
+        email_confirm: true,
+      })
+
+      if (createError) {
+        console.error('[Forgot Password] Failed to auto-create user:', createError.message)
+        return NextResponse.json(
+          { error: 'Failed to process password reset' },
+          { status: 500 }
+        )
+      }
+
+      console.log('[Forgot Password] Auto-created user:', newUser.user.id)
+
+      const retryResult = await supabaseAdmin.auth.admin.generateLink({
+        type: 'recovery',
+        email: normalizedEmail,
+        options: {
+          redirectTo: redirectUrl || undefined,
+        },
+      })
+
+      linkData = retryResult.data
+      linkError = retryResult.error
+    }
 
     if (linkError) {
       console.error('[Forgot Password] Error generating reset link:', linkError.message)
@@ -91,11 +126,14 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      if (linkError.message?.includes('not found') || linkError.message?.includes('User not found')) {
-        console.log('[Forgot Password] User not found, returning success to prevent email enumeration')
-        return NextResponse.json({ success: true })
-      }
+      return NextResponse.json(
+        { error: 'Failed to generate reset link' },
+        { status: 500 }
+      )
+    }
 
+    if (!linkData?.properties?.action_link) {
+      console.error('[Forgot Password] No action link returned from Supabase')
       return NextResponse.json(
         { error: 'Failed to generate reset link' },
         { status: 500 }
@@ -115,9 +153,11 @@ export async function POST(request: NextRequest) {
     const fromAddress = `Menu.ca <${rawEmail}>`
     const plainText = generatePlainText(firstName, resetLink, expiresIn)
 
-    const { error: emailError } = await resend.emails.send({
+    console.log('[Forgot Password] Sending email via Resend to:', normalizedEmail, 'from:', fromAddress)
+
+    const { data: emailData, error: emailError } = await resend.emails.send({
       from: fromAddress,
-      to: email,
+      to: normalizedEmail,
       subject: 'Reset Your Menu.ca Password',
       react: PasswordResetEmail({ firstName, resetLink, expiresIn }),
       text: plainText,
@@ -131,7 +171,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log('[Forgot Password] Password reset email sent successfully to:', email)
+    console.log('[Forgot Password] Password reset email sent successfully to:', normalizedEmail, 'Resend ID:', emailData?.id)
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
