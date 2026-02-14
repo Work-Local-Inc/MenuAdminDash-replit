@@ -74,7 +74,7 @@ interface Order {
   guest_name: string | null
   guest_phone: string | null
   restaurant_id: number
-  order_type: 'delivery' | 'pickup'
+  order_type: 'delivery' | 'pickup' | 'takeout'
   payment_status: string
   payment_method: string | null
   stripe_payment_intent_id: string
@@ -153,7 +153,7 @@ export default function OrderConfirmationPage() {
           const prepTimeRes = await fetch(`/api/customer/restaurants/${restaurantSlug}/prep-time`)
           if (prepTimeRes.ok) {
             const prepTimeData = await prepTimeRes.json()
-            const isPickupOrder = data.order_type === 'pickup'
+            const isPickupOrder = data.order_type === 'pickup' || data.order_type === 'takeout'
             const prepMinutes = prepTimeData.prep_time_minutes || 30
             if (isPickupOrder) {
               setDynamicPrepTime(`${prepMinutes}-${prepMinutes + 10} minutes`)
@@ -253,7 +253,7 @@ export default function OrderConfirmationPage() {
   }
 
   const deliveryAddress = order.delivery_address
-  const isPickup = order.order_type === 'pickup'
+  const isPickup = order.order_type === 'pickup' || order.order_type === 'takeout'
   const serviceTime = deliveryAddress?.service_time
   const brandColor = order.restaurant.primary_color || null
   
