@@ -107,7 +107,7 @@ export function CheckoutSignInModal({
     setSendingReset(true)
 
     try {
-      const returnTo = '/checkout?reset_password=true'
+      const returnTo = '/customer/login?reset_password=true'
       const response = await fetch('/api/customer/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
