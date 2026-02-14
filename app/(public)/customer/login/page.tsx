@@ -253,24 +253,6 @@ export default function CustomerLoginPage() {
                   </Button>
                 </form>
 
-                <div className="relative my-4">
-                  <Separator />
-                  <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs text-muted-foreground">
-                    OR
-                  </span>
-                </div>
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full"
-                  onClick={handleGoogleSignIn}
-                  disabled={loggingIn}
-                  data-testid="button-google-signin"
-                >
-                  <FcGoogle className="w-5 h-5 mr-2" />
-                  Continue with Google
-                </Button>
               </TabsContent>
               
               <TabsContent value="signup" className="space-y-4">
@@ -364,24 +346,6 @@ export default function CustomerLoginPage() {
                   </Button>
                 </form>
 
-                <div className="relative my-4">
-                  <Separator />
-                  <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs text-muted-foreground">
-                    OR
-                  </span>
-                </div>
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full"
-                  onClick={handleGoogleSignIn}
-                  disabled={signingUp}
-                  data-testid="button-google-signup"
-                >
-                  <FcGoogle className="w-5 h-5 mr-2" />
-                  Continue with Google
-                </Button>
               </TabsContent>
             </Tabs>
           </CardContent>
