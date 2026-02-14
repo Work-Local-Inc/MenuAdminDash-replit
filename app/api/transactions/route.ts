@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
         : supabase.from('orders').select(selectClause)
 
       query = query.not('stripe_payment_intent_id', 'is', null)
-      query = query.or('is_test_order.is.null,is_test_order.eq.false')
+      query = query.eq('is_test_order', false)
 
       if (search) {
         const searchTrimmed = search.trim()
