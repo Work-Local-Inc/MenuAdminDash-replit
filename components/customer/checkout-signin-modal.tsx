@@ -107,9 +107,7 @@ export function CheckoutSignInModal({
     setSendingReset(true)
 
     try {
-      const currentPath = window.location.pathname + window.location.search
-      const separator = currentPath.includes('?') ? '&' : '?'
-      const returnTo = currentPath + separator + 'reset_password=true'
+      const returnTo = '/checkout?reset_password=true'
       const response = await fetch('/api/customer/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

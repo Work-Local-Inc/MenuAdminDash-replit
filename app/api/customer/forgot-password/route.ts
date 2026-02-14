@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { email, redirectUrl, returnTo } = body
+    console.log('[Forgot Password] Received body - email:', email, 'returnTo:', returnTo, 'redirectUrl:', redirectUrl)
 
     if (!email || typeof email !== 'string') {
       return NextResponse.json(
