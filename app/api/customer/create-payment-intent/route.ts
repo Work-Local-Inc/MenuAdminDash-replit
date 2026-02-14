@@ -587,9 +587,7 @@ export async function POST(request: NextRequest) {
       customer: stripeCustomerId,
       shipping: stripeShipping, // Include shipping address for Canadian origin detection
       metadata: paymentMetadata,
-      automatic_payment_methods: {
-        enabled: true,
-      },
+      payment_method_types: ['card'],
     })
 
     return NextResponse.json({
