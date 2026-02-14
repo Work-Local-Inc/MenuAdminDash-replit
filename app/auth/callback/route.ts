@@ -8,14 +8,22 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get('code')
   const rawNext = searchParams.get('next')
 
-  console.log('[Auth Callback] code:', !!code, 'rawNext:', rawNext, 'full URL:', request.url)
+  const cookieStore = await cookies()
+  const savedRedirect = cookieStore.get('oauth_redirect_to')?.value
 
-  const safeNext = (rawNext && rawNext.startsWith('/') && !rawNext.startsWith('//'))
+  console.log('[Auth Callback] code:', !!code, 'rawNext:', rawNext, 'savedRedirect:', savedRedirect, 'full URL:', request.url)
+
+  const nextFromParam = (rawNext && rawNext.startsWith('/') && !rawNext.startsWith('//'))
     ? rawNext
-    : '/customer/account'
+    : null
+
+  const nextFromCookie = (savedRedirect && savedRedirect.startsWith('/') && !savedRedirect.startsWith('//'))
+    ? savedRedirect
+    : null
+
+  const safeNext = nextFromParam || nextFromCookie || '/checkout'
 
   if (code) {
-    const cookieStore = await cookies()
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -52,9 +60,14 @@ export async function GET(request: NextRequest) {
       } catch (profileError) {
         console.error('[Auth Callback] Failed to create OAuth profile:', profileError)
       }
-      return NextResponse.redirect(new URL(safeNext, request.url))
+
+      const response = NextResponse.redirect(new URL(safeNext, request.url))
+      response.cookies.delete('oauth_redirect_to')
+      return response
     }
   }
 
-  return NextResponse.redirect(new URL('/customer/login', request.url))
+  const response = NextResponse.redirect(new URL('/customer/login', request.url))
+  response.cookies.delete('oauth_redirect_to')
+  return response
 }

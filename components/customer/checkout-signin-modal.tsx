@@ -222,10 +222,12 @@ export function CheckoutSignInModal({
     setGoogleLoading(true)
     try {
       const slug = useCartStore.getState().restaurantSlug
+      const redirectPath = '/checkout' + (slug ? '?restaurant=' + slug : '')
+      document.cookie = `oauth_redirect_to=${encodeURIComponent(redirectPath)};path=/;max-age=600;samesite=lax`
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin + '/auth/callback?next=' + encodeURIComponent('/checkout' + (slug ? '?restaurant=' + slug : '')),
+          redirectTo: window.location.origin + '/auth/callback?next=' + encodeURIComponent(redirectPath),
         },
       })
       if (error) throw error

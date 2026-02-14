@@ -158,6 +158,7 @@ export default function CustomerLoginPage() {
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true)
     try {
+      document.cookie = `oauth_redirect_to=${encodeURIComponent(redirect)};path=/;max-age=600;samesite=lax`
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
