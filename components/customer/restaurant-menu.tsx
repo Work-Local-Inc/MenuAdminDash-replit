@@ -207,21 +207,35 @@ export default function RestaurantMenu({
       }
     }
 
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
     const todaySchedules = enabledSchedules
       .filter((s: any) => matchesDay(s, currentDay))
       .sort((a: any, b: any) => a.time_start.localeCompare(b.time_start));
-    const futureSchedule = todaySchedules.find((s: any) => {
+    const futureToday = todaySchedules.find((s: any) => {
       const [h, m] = s.time_start.split(':').map(Number);
       return (h * 60 + m) > currentMinutes;
     });
 
-    let opensAtFormatted: string | null = null;
-    if (futureSchedule) {
-      const [h, m] = futureSchedule.time_start.split(':').map(Number);
-      opensAtFormatted = format(setMinutes(setHours(new Date(), h), m), 'h:mm a');
+    if (futureToday) {
+      const [h, m] = futureToday.time_start.split(':').map(Number);
+      return { opensAt: `today at ${format(setMinutes(setHours(new Date(), h), m), 'h:mm a')}` };
     }
 
-    return { opensAt: opensAtFormatted };
+    for (let offset = 1; offset <= 7; offset++) {
+      const checkDay = (currentDay + offset) % 7;
+      const daySchedules = enabledSchedules
+        .filter((s: any) => matchesDay(s, checkDay))
+        .sort((a: any, b: any) => a.time_start.localeCompare(b.time_start));
+      if (daySchedules.length > 0) {
+        const [h, m] = daySchedules[0].time_start.split(':').map(Number);
+        const timeStr = format(setMinutes(setHours(new Date(), h), m), 'h:mm a');
+        const dayLabel = offset === 1 ? 'tomorrow' : dayNames[checkDay];
+        return { opensAt: `${dayLabel} at ${timeStr}` };
+      }
+    }
+
+    return { opensAt: null };
   }, [editorMode, schedules]);
 
   useEffect(() => {
@@ -769,7 +783,7 @@ export default function RestaurantMenu({
                 </div>
                 <DialogTitle>
                   {closedBannerInfo?.opensAt
-                    ? `Opens at ${closedBannerInfo.opensAt}`
+                    ? `Opens ${closedBannerInfo.opensAt}`
                     : `Currently Unavailable`}
                 </DialogTitle>
               </div>
@@ -782,7 +796,7 @@ export default function RestaurantMenu({
             <DialogFooter>
               <Button
                 onClick={() => setShowClosedModal(false)}
-                className="w-full"
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600"
                 data-testid="button-dismiss-closed-modal"
               >
                 Browse Menu
