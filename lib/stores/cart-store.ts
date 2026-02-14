@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { trackAddToCart, trackRemoveFromCart } from '@/lib/analytics';
@@ -164,6 +165,22 @@ const getStorage = () => {
   }
   return localStorage;
 };
+
+// Track whether the store has been hydrated from localStorage
+// This prevents race conditions where checkout redirects before cart data loads
+export const useHasCartHydrated = () => {
+  const [hydrated, setHydrated] = useState(false)
+  useEffect(() => {
+    const unsub = useCartStore.persist.onFinishHydration(() => {
+      setHydrated(true)
+    })
+    if (useCartStore.persist.hasHydrated()) {
+      setHydrated(true)
+    }
+    return unsub
+  }, [])
+  return hydrated
+}
 
 export const useCartStore = create<CartStore>()(
   persist(

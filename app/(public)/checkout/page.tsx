@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useCartStore, AppliedPromo } from '@/lib/stores/cart-store'
+import { useCartStore, useHasCartHydrated, AppliedPromo } from '@/lib/stores/cart-store'
 import { createClient } from '@/lib/supabase/client'
 import { Elements } from '@stripe/react-stripe-js'
 import { loadStripe, Stripe } from '@stripe/stripe-js'
@@ -83,6 +83,8 @@ export default function CheckoutPage() {
     appliedPromo,
     applyPromo
   } = useCartStore()
+  
+  const cartHydrated = useHasCartHydrated()
   
   // Debug: Log what slug the cart has stored
   useEffect(() => {
@@ -347,7 +349,7 @@ export default function CheckoutPage() {
   }, [restaurantSlug])
 
   useEffect(() => {
-    if (!loading && items.length === 0 && !orderPlacedSuccessfully && !isResettingPassword) {
+    if (!loading && cartHydrated && items.length === 0 && !orderPlacedSuccessfully && !isResettingPassword) {
       const restSlug = restaurantSlug || searchParams.get('restaurant')
       toast({
         title: "Cart is empty",
@@ -356,7 +358,7 @@ export default function CheckoutPage() {
       })
       router.push(restSlug ? `/r/${restSlug}` : '/customer/login')
     }
-  }, [items, loading, restaurantSlug, router, toast, orderPlacedSuccessfully, isResettingPassword, searchParams])
+  }, [items, loading, cartHydrated, restaurantSlug, router, toast, orderPlacedSuccessfully, isResettingPassword, searchParams])
 
   // Hydrate gaMeasurementId if missing (handles direct checkout entry from saved cart)
   const { setGaMeasurementId } = useCartStore()
