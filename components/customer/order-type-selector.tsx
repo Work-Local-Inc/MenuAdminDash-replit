@@ -119,7 +119,7 @@ function formatTimeForDisplay(time: string): string {
 }
 
 export function OrderTypeSelector({ className, schedules = [], onDeliveryBlocked, brandedColor, serviceConfig }: OrderTypeSelectorProps) {
-  const { orderType, setOrderType, getEffectiveDeliveryFee, pickupTime } = useCartStore()
+  const { orderType, setOrderType, getEffectiveDeliveryFee, pickupTime, orderTypeSelected } = useCartStore()
   const effectiveDeliveryFee = getEffectiveDeliveryFee()
   
   // Check if services are enabled in config (default to true if not configured)
@@ -156,14 +156,18 @@ export function OrderTypeSelector({ className, schedules = [], onDeliveryBlocked
   // Check if user has scheduled a future time - if so, they can proceed even when closed
   const hasScheduledFutureTime = pickupTime?.type === 'scheduled' && !!pickupTime.scheduledTime;
   
-  // Auto-switch to available service if current one is disabled in config
+  // Auto-switch to available service if current one is disabled or closed
   useEffect(() => {
     if (orderType === 'delivery' && !isDeliveryEnabledInConfig && isPickupEnabledInConfig) {
       setOrderType('pickup');
     } else if (orderType === 'pickup' && !isPickupEnabledInConfig && isDeliveryEnabledInConfig) {
       setOrderType('delivery');
     }
-  }, [orderType, isDeliveryEnabledInConfig, isPickupEnabledInConfig, setOrderType]);
+    // Auto-switch to pickup when delivery is closed by schedule and user hasn't explicitly chosen delivery
+    if (orderType === 'delivery' && isDeliveryClosed && !orderTypeSelected && isPickupEnabledInConfig && !isPickupClosed) {
+      setOrderType('pickup');
+    }
+  }, [orderType, isDeliveryEnabledInConfig, isPickupEnabledInConfig, isDeliveryClosed, isPickupClosed, orderTypeSelected, setOrderType]);
   
   // Notify parent about delivery blocked status - use effect to avoid render-time state updates
   // Block if disabled in config OR (closed AND user hasn't scheduled a future time)
