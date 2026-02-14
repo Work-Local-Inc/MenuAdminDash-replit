@@ -97,23 +97,64 @@ export async function POST(request: NextRequest) {
         .eq('is_default', true)
     }
 
-    const { data, error } = await adminSupabase
-      .from('user_delivery_addresses')
-      .insert({
-        user_id: userId,
-        street_address,
-        unit: unit || null,
-        city_id: city_id || null,
-        postal_code: postal_code.toUpperCase().replace(/\s/g, ''),
-        delivery_instructions: delivery_instructions || null,
-        address_label: address_label || null,
-        is_default: is_default || false,
-      } as any)
-      .select()
-      .single()
+    const addressData = {
+      user_id: userId,
+      street_address,
+      unit: unit || null,
+      city_id: city_id || null,
+      postal_code: postal_code.toUpperCase().replace(/\s/g, ''),
+      delivery_instructions: delivery_instructions || null,
+      address_label: address_label || null,
+      is_default: is_default || false,
+    } as any
+
+    let data, error
+
+    if (address_label) {
+      const { data: existing } = await adminSupabase
+        .from('user_delivery_addresses')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('address_label', address_label)
+        .maybeSingle()
+
+      if (existing) {
+        const result = await adminSupabase
+          .from('user_delivery_addresses')
+          .update({
+            street_address: addressData.street_address,
+            unit: addressData.unit,
+            city_id: addressData.city_id,
+            postal_code: addressData.postal_code,
+            delivery_instructions: addressData.delivery_instructions,
+            is_default: addressData.is_default,
+          } as any)
+          .eq('id', existing.id)
+          .select()
+          .single()
+        data = result.data
+        error = result.error
+      } else {
+        const result = await adminSupabase
+          .from('user_delivery_addresses')
+          .insert(addressData)
+          .select()
+          .single()
+        data = result.data
+        error = result.error
+      }
+    } else {
+      const result = await adminSupabase
+        .from('user_delivery_addresses')
+        .insert(addressData)
+        .select()
+        .single()
+      data = result.data
+      error = result.error
+    }
 
     if (error) {
-      console.error('[Customer Address API] Insert error:', error)
+      console.error('[Customer Address API] Save error:', error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
