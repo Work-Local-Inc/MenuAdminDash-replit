@@ -71,6 +71,7 @@ interface Order {
   is_guest_order: boolean
   guest_email: string | null
   guest_name: string | null
+  guest_phone: string | null
   restaurant_id: number
   order_type: 'delivery' | 'pickup'
   payment_status: string
@@ -724,7 +725,7 @@ export default function OrderConfirmationPage() {
           onOpenChange={setShowSignupModal}
           guestEmail={order.guest_email}
           guestName={order.guest_name}
-          guestPhone={order.phone}
+          guestPhone={order.guest_phone}
           onSuccess={() => {
             toast({
               title: "Account Created!",
