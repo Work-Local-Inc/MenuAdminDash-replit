@@ -109,11 +109,13 @@ export default function RestaurantMenu({
   const displayCartCount = mounted ? cartItemCount : 0;
   const displayCartTotal = mounted ? cartTotal : 0;
   
-  const location = restaurant.restaurant_locations?.[0];
+  const location = restaurant.restaurant_locations?.find((l: any) => l.is_primary && l.is_active) 
+    || restaurant.restaurant_locations?.find((l: any) => l.is_active)
+    || restaurant.restaurant_locations?.[0];
   const serviceConfig = restaurant.delivery_and_pickup_configs?.[0];
   
-  // Initialize cart with restaurant details (only in customer mode)
   const streetAddress = location?.street_address || restaurant.street_address;
+  const cityName = location?.city_name || '';
   const postalCode = location?.postal_code || restaurant.postal_code;
   
   // Compute restaurant slug (used for cart drawer and checkout)
@@ -131,17 +133,18 @@ export default function RestaurantMenu({
       const deliveryFee = activeArea?.delivery_fee ?? 0;
       const minOrder = activeArea?.delivery_min_order || serviceConfig?.delivery_min_order || 0;
       
-      // Build restaurant address for pickup display
-      const address = streetAddress 
-        ? `${streetAddress}${postalCode ? `, ${postalCode}` : ''}`
-        : undefined;
+      const addressParts = [];
+      if (streetAddress) addressParts.push(streetAddress);
+      if (cityName) addressParts.push(cityName);
+      if (postalCode) addressParts.push(postalCode);
+      const address = addressParts.length > 0 ? addressParts.join(', ') : undefined;
       
       // Pass restaurant's primary color for branded checkout
       const primaryColor = restaurant.primary_color || undefined;
       
       setRestaurant(restaurant.id, restaurant.name, restaurantSlug, deliveryFee, minOrder, address, primaryColor);
     }
-  }, [editorMode, restaurant.id, restaurant.name, restaurant.restaurant_delivery_areas, serviceConfig, setRestaurant, streetAddress, postalCode, restaurant.primary_color, restaurantSlug]);
+  }, [editorMode, restaurant.id, restaurant.name, restaurant.restaurant_delivery_areas, serviceConfig, setRestaurant, streetAddress, cityName, postalCode, restaurant.primary_color, restaurantSlug]);
   
   const [schedules, setSchedules] = useState<any[]>([]);
 
@@ -304,7 +307,7 @@ export default function RestaurantMenu({
                     <div className="flex items-center gap-2">
                       <MapPin className="w-4 h-4" />
                       <span data-testid="text-restaurant-address">
-                        {streetAddress}{postalCode ? `, ${postalCode}` : ''}
+                        {streetAddress}{cityName ? `, ${cityName}` : ''}{postalCode ? `, ${postalCode}` : ''}
                       </span>
                     </div>
                   )}

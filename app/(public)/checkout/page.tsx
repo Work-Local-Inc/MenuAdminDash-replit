@@ -293,11 +293,16 @@ export default function CheckoutPage() {
 
           const cartAddress = useCartStore.getState().restaurantAddress;
           if (!cartAddress && restaurantData) {
-            const loc = restaurantData.restaurant_locations?.find((l: any) => l.is_primary) 
+            const loc = restaurantData.restaurant_locations?.find((l: any) => l.is_primary && l.is_active) 
+              || restaurantData.restaurant_locations?.find((l: any) => l.is_active)
               || restaurantData.restaurant_locations?.[0];
             let fallbackAddress = '';
             if (loc?.street_address) {
-              fallbackAddress = `${loc.street_address}${loc.postal_code ? `, ${loc.postal_code}` : ''}`;
+              const parts = [loc.street_address];
+              if (loc.city_name) parts.push(loc.city_name);
+              if (loc.province_name) parts.push(loc.province_name);
+              if (loc.postal_code) parts.push(loc.postal_code);
+              fallbackAddress = parts.join(', ');
             } else if (restaurantData.street_address) {
               fallbackAddress = restaurantData.street_address;
               if (restaurantData.city) fallbackAddress += `, ${restaurantData.city}`;
