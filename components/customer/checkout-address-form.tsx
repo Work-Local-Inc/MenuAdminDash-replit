@@ -254,14 +254,27 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick,
 
       setSavedAddresses(addresses)
       
-      // Store user profile for later use (name/phone for receipts)
       if (profileResult?.user) {
         const user = profileResult.user
+        let phone = user.phone || ''
+        if (!phone) {
+          const { data: { user: authUser } } = await supabase.auth.getUser()
+          if (authUser?.phone) phone = authUser.phone
+        }
         setUserProfile({
           name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Customer',
-          phone: user.phone || '',
+          phone,
           email: user.email || '',
         })
+      } else {
+        const { data: { user: authUser } } = await supabase.auth.getUser()
+        if (authUser) {
+          setUserProfile({
+            name: `${authUser.user_metadata?.first_name || ''} ${authUser.user_metadata?.last_name || ''}`.trim() || 'Customer',
+            phone: authUser.phone || '',
+            email: authUser.email || '',
+          })
+        }
       }
       
       // Auto-select default address and geocode it

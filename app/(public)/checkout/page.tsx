@@ -102,6 +102,8 @@ export default function CheckoutPage() {
   const [guestPickupName, setGuestPickupName] = useState('')
   const [guestPickupPhone, setGuestPickupPhone] = useState('')
   const [loggedInPickupPhone, setLoggedInPickupPhone] = useState('') // For logged-in users missing phone
+  const [loggedInPickupName, setLoggedInPickupName] = useState('') // For phone-only users missing name
+  const [loggedInPickupEmail, setLoggedInPickupEmail] = useState('') // For phone-only users missing email
   const [schedules, setSchedules] = useState<Schedule[]>([])
   const [schedulesLoading, setSchedulesLoading] = useState(false)
   const [isDeliveryBlocked, setIsDeliveryBlocked] = useState(false)
@@ -235,10 +237,27 @@ export default function CheckoutPage() {
         // Process profile
         if (profileData?.user) {
           console.log('[Checkout] User profile loaded:', profileData.user.id, profileData.user.email)
+          const { data: { user: authUser } } = await supabase.auth.getUser()
+          if (!profileData.user.phone && authUser?.phone) {
+            profileData.user.phone = authUser.phone
+          }
           setCurrentUser(profileData.user)
         } else {
-          console.log('[Checkout] No user profile - Guest checkout mode')
-          setCurrentUser(null)
+          const { data: { user: authUser } } = await supabase.auth.getUser()
+          if (authUser) {
+            console.log('[Checkout] No profile but authenticated - using auth data (phone-only user)')
+            setCurrentUser({
+              id: null,
+              auth_user_id: authUser.id,
+              email: authUser.email || '',
+              first_name: authUser.user_metadata?.first_name || '',
+              last_name: authUser.user_metadata?.last_name || '',
+              phone: authUser.phone || '',
+            })
+          } else {
+            console.log('[Checkout] No user profile - Guest checkout mode')
+            setCurrentUser(null)
+          }
         }
         
         // Process schedules (only if we fetched them)
@@ -280,17 +299,29 @@ export default function CheckoutPage() {
       console.log('[Checkout] Auth state changed:', event, session?.user?.id)
       
       if (event === 'SIGNED_IN' && session?.user) {
-        // User just signed in - refresh user data (retry if profile not ready yet after signup)
+        const authUser = session.user
         const fetchProfile = async (retries = 3): Promise<void> => {
           try {
             const response = await fetch(`${getApiBaseUrl()}/api/customer/profile`, { credentials: 'include' })
             if (response.ok) {
               const { user: userData } = await response.json()
               if (userData) {
+                if (!userData.phone && authUser.phone) {
+                  userData.phone = authUser.phone
+                }
                 setCurrentUser(userData)
               } else if (retries > 0) {
                 await new Promise(r => setTimeout(r, 1000))
                 return fetchProfile(retries - 1)
+              } else {
+                setCurrentUser({
+                  id: null,
+                  auth_user_id: authUser.id,
+                  email: authUser.email || '',
+                  first_name: authUser.user_metadata?.first_name || '',
+                  last_name: authUser.user_metadata?.last_name || '',
+                  phone: authUser.phone || '',
+                })
               }
             }
           } catch (error) {
@@ -529,8 +560,6 @@ export default function CheckoutPage() {
         return
       }
     } else {
-      // For logged-in users, phone is still required
-      // Prefer inline entry if provided, otherwise fall back to profile phone
       const userPhone = loggedInPickupPhone.trim() || currentUser.phone || ''
       if (!userPhone || userPhone.length < 7) {
         toast({
@@ -540,14 +569,33 @@ export default function CheckoutPage() {
         })
         return
       }
+      const userEmail = currentUser.email || loggedInPickupEmail.trim()
+      if (!userEmail) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        if (!loggedInPickupEmail.trim() || !emailRegex.test(loggedInPickupEmail.trim())) {
+          toast({
+            title: "Email required",
+            description: "Please enter a valid email address for your order confirmation",
+            variant: "destructive",
+          })
+          return
+        }
+      }
+      const userName = loggedInPickupName.trim() || `${currentUser.first_name || ''} ${currentUser.last_name || ''}`.trim()
+      if (!userName || userName.length < 2) {
+        toast({
+          title: "Name required",
+          description: "Please enter your name for the order",
+          variant: "destructive",
+        })
+        return
+      }
     }
     
-    const email = currentUser?.email || guestPickupEmail
-    // Build full name from first_name and last_name if available
+    const email = currentUser?.email || loggedInPickupEmail.trim() || guestPickupEmail
     const userName = currentUser 
-      ? `${currentUser.first_name || ''} ${currentUser.last_name || ''}`.trim() || 'Customer'
+      ? loggedInPickupName.trim() || `${currentUser.first_name || ''} ${currentUser.last_name || ''}`.trim() || 'Customer'
       : guestPickupName.trim()
-    // Prefer inline phone entry if provided, otherwise fall back to profile/guest phone
     const phone = loggedInPickupPhone.trim() || currentUser?.phone || guestPickupPhone.trim()
     
     // For pickup, we don't need a delivery address - just the restaurant address
@@ -945,29 +993,77 @@ export default function CheckoutPage() {
                     <div className="space-y-4">
                       <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
                         <p className="text-sm font-medium text-green-800 dark:text-green-200">
-                          Ordering as {currentUser.first_name || currentUser.email}
+                          Ordering as {currentUser.first_name || currentUser.email || currentUser.phone || 'Signed in user'}
                         </p>
-                        <p className="text-xs text-green-600 dark:text-green-400">{currentUser.email}</p>
+                        {currentUser.email ? (
+                          <p className="text-xs text-green-600 dark:text-green-400">{currentUser.email}</p>
+                        ) : currentUser.phone ? (
+                          <p className="text-xs text-green-600 dark:text-green-400">{currentUser.phone}</p>
+                        ) : null}
                       </div>
                       
-                      {/* Phone input for logged-in users missing phone */}
-                      {(!currentUser.phone || currentUser.phone.trim().length < 7) && (
-                        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 space-y-3">
-                          <div>
-                            <p className="font-semibold text-sm text-amber-800 dark:text-amber-200">Phone number required</p>
-                            <p className="text-xs text-amber-600 dark:text-amber-400">
-                              The restaurant needs your phone number to contact you about your order.
-                            </p>
-                          </div>
-                          <input
-                            type="tel"
-                            placeholder="(613) 555-1234"
-                            autoComplete="tel"
-                            className="w-full px-3 py-2 border rounded-md"
-                            data-testid="input-loggedin-pickup-phone"
-                            value={loggedInPickupPhone}
-                            onChange={(e) => setLoggedInPickupPhone(e.target.value)}
-                          />
+                      {/* Name/Email/Phone inputs for users missing details */}
+                      {((!currentUser.first_name && !currentUser.last_name) || !currentUser.email || !currentUser.phone || currentUser.phone.trim().length < 7) && (
+                        <div className="space-y-4">
+                          {/* Name input if missing */}
+                          {!currentUser.first_name && !currentUser.last_name && (
+                            <div className="space-y-2">
+                              <label htmlFor="loggedin-pickup-name" className="text-sm font-medium">
+                                Your Name *
+                              </label>
+                              <input
+                                type="text"
+                                id="loggedin-pickup-name"
+                                placeholder="John Smith"
+                                autoComplete="name"
+                                className="w-full px-3 py-2 border rounded-md"
+                                data-testid="input-loggedin-pickup-name"
+                                value={loggedInPickupName}
+                                onChange={(e) => setLoggedInPickupName(e.target.value)}
+                              />
+                            </div>
+                          )}
+                          
+                          {/* Phone input if missing */}
+                          {(!currentUser.phone || currentUser.phone.trim().length < 7) && (
+                            <div className="space-y-2">
+                              <label htmlFor="loggedin-pickup-phone" className="text-sm font-medium">
+                                Phone Number *
+                              </label>
+                              <input
+                                type="tel"
+                                id="loggedin-pickup-phone"
+                                placeholder="(613) 555-1234"
+                                autoComplete="tel"
+                                className="w-full px-3 py-2 border rounded-md"
+                                data-testid="input-loggedin-pickup-phone"
+                                value={loggedInPickupPhone}
+                                onChange={(e) => setLoggedInPickupPhone(e.target.value)}
+                              />
+                            </div>
+                          )}
+                          
+                          {/* Email input if missing */}
+                          {!currentUser.email && (
+                            <div className="space-y-2">
+                              <label htmlFor="loggedin-pickup-email" className="text-sm font-medium">
+                                Email Address *
+                              </label>
+                              <input
+                                type="email"
+                                id="loggedin-pickup-email"
+                                placeholder="your@email.com"
+                                autoComplete="email"
+                                className="w-full px-3 py-2 border rounded-md"
+                                data-testid="input-loggedin-pickup-email"
+                                value={loggedInPickupEmail}
+                                onChange={(e) => setLoggedInPickupEmail(e.target.value)}
+                              />
+                              <p className="text-xs text-muted-foreground">
+                                We'll send your order confirmation here
+                              </p>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
