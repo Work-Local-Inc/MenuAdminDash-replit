@@ -320,7 +320,10 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
               },
               wallets: {
                 link: 'never',
+                applePay: 'auto',
+                googlePay: 'auto',
               },
+              paymentMethodOrder: ['card', 'apple_pay', 'google_pay'],
               terms: {
                 card: 'never'
               }
