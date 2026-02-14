@@ -332,6 +332,9 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
                   }
                 }
               },
+              wallets: {
+                link: 'never',
+              },
               terms: {
                 card: 'never'
               }
