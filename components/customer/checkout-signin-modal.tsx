@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -32,7 +32,7 @@ import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useToast } from '@/hooks/use-toast'
-import { Eye, EyeOff, LogIn, UserPlus, KeyRound } from 'lucide-react'
+import { Eye, EyeOff, LogIn, UserPlus, KeyRound, Smartphone } from 'lucide-react'
 import { getApiBaseUrl } from '@/lib/api-utils'
 
 const signInSchema = z.object({
@@ -63,6 +63,13 @@ interface CheckoutSignInModalProps {
   onSuccess?: () => void
 }
 
+function formatPhoneDisplay(digits: string): string {
+  const d = digits.replace(/\D/g, '')
+  if (d.length <= 3) return d
+  if (d.length <= 6) return `(${d.slice(0, 3)}) ${d.slice(3)}`
+  return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6, 10)}`
+}
+
 export function CheckoutSignInModal({
   open,
   onOpenChange,
@@ -71,7 +78,7 @@ export function CheckoutSignInModal({
   const { toast } = useToast()
   const supabase = createClient()
   
-  const [activeTab, setActiveTab] = useState<'signin' | 'signup'>('signin')
+  const [activeTab, setActiveTab] = useState<'phone' | 'signin' | 'signup'>('phone')
   const [showSignInPassword, setShowSignInPassword] = useState(false)
   const [showSignUpPassword, setShowSignUpPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -79,6 +86,113 @@ export function CheckoutSignInModal({
   const [forgotEmail, setForgotEmail] = useState('')
   const [sendingReset, setSendingReset] = useState(false)
   const [resetSent, setResetSent] = useState(false)
+
+  const [phoneNumber, setPhoneNumber] = useState('')
+  const [otpCode, setOtpCode] = useState('')
+  const [phoneStep, setPhoneStep] = useState<'enter' | 'verify'>('enter')
+  const [sendingOtp, setSendingOtp] = useState(false)
+  const [verifyingOtp, setVerifyingOtp] = useState(false)
+  const [resendCountdown, setResendCountdown] = useState(0)
+
+  useEffect(() => {
+    if (!open) {
+      setPhoneStep('enter')
+      setOtpCode('')
+      setResendCountdown(0)
+    }
+  }, [open])
+
+  useEffect(() => {
+    if (resendCountdown <= 0) return
+    const timer = setTimeout(() => setResendCountdown(resendCountdown - 1), 1000)
+    return () => clearTimeout(timer)
+  }, [resendCountdown])
+
+  const handleSendOtp = useCallback(async () => {
+    const digits = phoneNumber.replace(/\D/g, '')
+    if (digits.length < 10) {
+      toast({ variant: "destructive", title: "Invalid phone number", description: "Please enter a valid 10-digit phone number" })
+      return
+    }
+    setSendingOtp(true)
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        phone: '+1' + digits,
+      })
+      if (error) throw error
+      setPhoneStep('verify')
+      setResendCountdown(60)
+      toast({ title: "Code Sent", description: "Check your phone for the verification code" })
+    } catch (error: any) {
+      console.error('Send OTP error:', error)
+      toast({ variant: "destructive", title: "Failed to send code", description: error.message || "Could not send verification code. Please try again." })
+    } finally {
+      setSendingOtp(false)
+    }
+  }, [phoneNumber, supabase, toast])
+
+  const handleVerifyOtp = useCallback(async () => {
+    if (otpCode.length !== 6) {
+      toast({ variant: "destructive", title: "Invalid code", description: "Please enter the 6-digit code" })
+      return
+    }
+    const digits = phoneNumber.replace(/\D/g, '')
+    setVerifyingOtp(true)
+    try {
+      const { data, error } = await supabase.auth.verifyOtp({
+        phone: '+1' + digits,
+        token: otpCode,
+        type: 'sms',
+      })
+      if (error) throw error
+
+      if (data.user?.email) {
+        try {
+          await fetch(`${getApiBaseUrl()}/api/customer/oauth-profile`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              auth_user_id: data.user.id,
+              email: data.user.email || '',
+              first_name: data.user.user_metadata?.first_name,
+              last_name: data.user.user_metadata?.last_name,
+              phone: '+1' + digits,
+            }),
+          })
+        } catch (err) {
+          console.error('Exception calling OAuth profile API:', err)
+        }
+      }
+
+      toast({ title: "Welcome!", description: "You've successfully signed in" })
+      onOpenChange(false)
+      if (onSuccess) onSuccess()
+    } catch (error: any) {
+      console.error('Verify OTP error:', error)
+      toast({ variant: "destructive", title: "Verification Failed", description: error.message || "Invalid code. Please try again." })
+    } finally {
+      setVerifyingOtp(false)
+    }
+  }, [otpCode, phoneNumber, supabase, toast, onOpenChange, onSuccess])
+
+  const handleResendOtp = useCallback(async () => {
+    if (resendCountdown > 0) return
+    const digits = phoneNumber.replace(/\D/g, '')
+    setSendingOtp(true)
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        phone: '+1' + digits,
+      })
+      if (error) throw error
+      setResendCountdown(60)
+      toast({ title: "Code Resent", description: "Check your phone for the new verification code" })
+    } catch (error: any) {
+      console.error('Resend OTP error:', error)
+      toast({ variant: "destructive", title: "Failed to resend", description: error.message || "Could not resend code. Please try again." })
+    } finally {
+      setSendingOtp(false)
+    }
+  }, [resendCountdown, phoneNumber, supabase, toast])
 
   // Sign In Form
   const signInForm = useForm<SignInFormData>({
@@ -274,11 +388,107 @@ export function CheckoutSignInModal({
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'signin' | 'signup')} className="w-full mt-4">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="signin" data-testid="tab-signin">Sign In</TabsTrigger>
-            <TabsTrigger value="signup" data-testid="tab-create-account">Create Account</TabsTrigger>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'phone' | 'signin' | 'signup')} className="w-full mt-4">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="phone" data-testid="tab-phone">
+              <Smartphone className="w-4 h-4 mr-1" />
+              Phone
+            </TabsTrigger>
+            <TabsTrigger value="signin" data-testid="tab-signin">
+              <LogIn className="w-4 h-4 mr-1" />
+              Email
+            </TabsTrigger>
+            <TabsTrigger value="signup" data-testid="tab-create-account">
+              <UserPlus className="w-4 h-4 mr-1" />
+              Sign Up
+            </TabsTrigger>
           </TabsList>
+
+          {/* Phone OTP Tab */}
+          <TabsContent value="phone" className="space-y-4 mt-4">
+            {phoneStep === 'enter' ? (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Phone Number</Label>
+                  <div className="flex gap-2">
+                    <div className="flex items-center px-3 border rounded-md bg-muted text-sm text-muted-foreground shrink-0">
+                      +1
+                    </div>
+                    <Input
+                      type="tel"
+                      placeholder="(416) 555-0123"
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                      data-testid="input-phone-number"
+                    />
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  className="w-full"
+                  disabled={sendingOtp || phoneNumber.replace(/\D/g, '').length < 10}
+                  onClick={handleSendOtp}
+                  data-testid="button-send-otp"
+                >
+                  {sendingOtp ? "Sending..." : "Send Code"}
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between flex-wrap gap-1">
+                  <p className="text-sm text-muted-foreground">
+                    Code sent to <span className="font-medium text-foreground">+1 {formatPhoneDisplay(phoneNumber)}</span>
+                  </p>
+                  <button
+                    type="button"
+                    className="text-xs text-primary hover:underline"
+                    onClick={() => { setPhoneStep('enter'); setOtpCode('') }}
+                    data-testid="button-edit-phone"
+                  >
+                    Edit
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  <Label>Verification Code</Label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    placeholder="000000"
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    data-testid="input-otp-code"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  className="w-full"
+                  disabled={verifyingOtp || otpCode.length !== 6}
+                  onClick={handleVerifyOtp}
+                  data-testid="button-verify-otp"
+                >
+                  {verifyingOtp ? "Verifying..." : "Verify Code"}
+                </Button>
+                <div className="text-center">
+                  {resendCountdown > 0 ? (
+                    <span className="text-sm text-muted-foreground" data-testid="text-resend-countdown">
+                      Resend in {resendCountdown}s
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      className="text-sm text-primary hover:underline"
+                      onClick={handleResendOtp}
+                      disabled={sendingOtp}
+                      data-testid="button-resend-otp"
+                    >
+                      Resend Code
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </TabsContent>
           
           {/* Sign In Tab */}
           <TabsContent value="signin" className="space-y-4 mt-4">
