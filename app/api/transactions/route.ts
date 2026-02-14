@@ -39,6 +39,8 @@ export async function GET(request: NextRequest) {
       created_at,
       restaurant_id,
       is_test_order,
+      user_id,
+      is_guest_order,
       restaurants(id, name)
     `
 
@@ -121,24 +123,48 @@ export async function GET(request: NextRequest) {
 
     data = dataResult.data || []
 
-    const transactions = data.map((order: any) => ({
-      id: order.id,
-      order_number: order.order_number,
-      total_amount: order.total_amount,
-      subtotal: order.subtotal,
-      delivery_fee: order.delivery_fee,
-      tax_amount: order.tax_amount,
-      tip_amount: order.tip_amount,
-      payment_status: order.payment_status,
-      stripe_payment_intent_id: order.stripe_payment_intent_id,
-      payment_method: order.payment_method,
-      created_at: order.created_at,
-      restaurant_id: order.restaurant_id,
-      restaurant_name: order.restaurants?.name || 'Unknown Restaurant',
-      customer_email: order.guest_email || null,
-      customer_name: order.guest_name || null,
-      is_test_order: order.is_test_order || false,
-    }))
+    const registeredUserIds = data
+      .filter((o: any) => o.user_id && !o.guest_email)
+      .map((o: any) => o.user_id)
+    const uniqueUserIds = Array.from(new Set(registeredUserIds)) as number[]
+
+    let usersMap: Record<number, { first_name: string; last_name: string; email: string }> = {}
+    if (uniqueUserIds.length > 0) {
+      const { data: usersData } = await (supabase as any)
+        .from('users')
+        .select('id, first_name, last_name, email')
+        .in('id', uniqueUserIds)
+      if (usersData) {
+        for (const u of usersData) {
+          usersMap[u.id] = u
+        }
+      }
+    }
+
+    const transactions = data.map((order: any) => {
+      const registeredUser = order.user_id ? usersMap[order.user_id] : null
+      const customerEmail = order.guest_email || registeredUser?.email || null
+      const customerName = order.guest_name || (registeredUser ? `${registeredUser.first_name || ''} ${registeredUser.last_name || ''}`.trim() : null)
+
+      return {
+        id: order.id,
+        order_number: order.order_number,
+        total_amount: order.total_amount,
+        subtotal: order.subtotal,
+        delivery_fee: order.delivery_fee,
+        tax_amount: order.tax_amount,
+        tip_amount: order.tip_amount,
+        payment_status: order.payment_status,
+        stripe_payment_intent_id: order.stripe_payment_intent_id,
+        payment_method: order.payment_method,
+        created_at: order.created_at,
+        restaurant_id: order.restaurant_id,
+        restaurant_name: order.restaurants?.name || 'Unknown Restaurant',
+        customer_email: customerEmail,
+        customer_name: customerName,
+        is_test_order: order.is_test_order || false,
+      }
+    })
 
     return NextResponse.json({ transactions, total })
   } catch (error) {

@@ -346,7 +346,7 @@ export default function TransactionsPage() {
                         Order #{tx.order_number || tx.id}
                       </TableCell>
                       <TableCell className="text-muted-foreground" data-testid={`text-customer-${tx.id}`}>
-                        {tx.customer_email || "N/A"}
+                        {tx.customer_email || tx.customer_name || "N/A"}
                       </TableCell>
                       <TableCell data-testid={`text-restaurant-${tx.id}`}>
                         {tx.restaurant_name}
