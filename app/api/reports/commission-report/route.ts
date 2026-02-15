@@ -145,12 +145,14 @@ export async function GET(request: NextRequest) {
         payment_status,
         order_status,
         stripe_payment_intent_id,
-        restaurant_id
+        restaurant_id,
+        is_test_order
       `)
       .gte('created_at', `${weekStart}T00:00:00`)
       .lte('created_at', `${weekEnd}T23:59:59`)
       .in('payment_status', ['paid', 'succeeded'])
       .in('order_status', ['completed', 'accepted', 'ready', 'preparing'])
+      .or('is_test_order.is.null,is_test_order.eq.false')
 
     if (ordersError) {
       console.error('[Commission Report] Orders query error:', ordersError)
@@ -327,12 +329,14 @@ export async function POST(request: NextRequest) {
         payment_status,
         order_status,
         stripe_payment_intent_id,
-        restaurant_id
+        restaurant_id,
+        is_test_order
       `)
       .gte('created_at', `${weekStart}T00:00:00`)
       .lte('created_at', `${weekEnd}T23:59:59`)
       .in('payment_status', ['paid', 'succeeded'])
       .in('order_status', ['completed', 'accepted', 'ready', 'preparing'])
+      .or('is_test_order.is.null,is_test_order.eq.false')
 
     if (ordersError) {
       console.error('[Commission Report] Orders query error:', ordersError)

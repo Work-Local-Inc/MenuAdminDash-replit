@@ -112,13 +112,15 @@ export async function GET(request: NextRequest) {
         payment_method,
         payment_status,
         order_status,
-        stripe_payment_intent_id
+        stripe_payment_intent_id,
+        is_test_order
       `)
       .eq('restaurant_id', restaurantId)
       .gte('created_at', `${startDate}T00:00:00`)
       .lte('created_at', `${endDate}T23:59:59`)
       .in('payment_status', ['paid', 'succeeded'])
       .in('order_status', ['completed', 'accepted', 'ready', 'preparing'])
+      .or('is_test_order.is.null,is_test_order.eq.false')
 
     if (ordersError) {
       console.error('[Statement] Orders query error:', ordersError)

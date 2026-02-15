@@ -63,6 +63,7 @@ interface Transaction {
   restaurant_name: string
   customer_email: string | null
   customer_name: string | null
+  is_test_order: boolean
 }
 
 const REASON_OPTIONS = [
@@ -78,6 +79,7 @@ const REASON_OPTIONS = [
 const STATUS_TABS = [
   { value: "", label: "All" },
   { value: "succeeded", label: "Succeeded" },
+  { value: "partially_refunded", label: "Partial Refund" },
   { value: "refunded", label: "Refunded" },
 ]
 
@@ -88,6 +90,8 @@ function getStatusBadge(status: string) {
       return <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 no-default-hover-elevate no-default-active-elevate" data-testid={`badge-status-${status}`}>Succeeded</Badge>
     case "refunded":
       return <Badge variant="destructive" data-testid={`badge-status-${status}`}>Refunded</Badge>
+    case "partially_refunded":
+      return <Badge variant="outline" className="border-orange-300 text-orange-700 dark:border-orange-700 dark:text-orange-300 no-default-hover-elevate no-default-active-elevate" data-testid={`badge-status-${status}`}>Partial Refund</Badge>
     case "uncaptured":
       return <Badge variant="outline" data-testid={`badge-status-${status}`}>Uncaptured</Badge>
     default:
@@ -342,7 +346,7 @@ export default function TransactionsPage() {
                         Order #{tx.order_number || tx.id}
                       </TableCell>
                       <TableCell className="text-muted-foreground" data-testid={`text-customer-${tx.id}`}>
-                        {tx.customer_email || "N/A"}
+                        {tx.customer_email || tx.customer_name || "N/A"}
                       </TableCell>
                       <TableCell data-testid={`text-restaurant-${tx.id}`}>
                         {tx.restaurant_name}
@@ -351,7 +355,7 @@ export default function TransactionsPage() {
                         {format(new Date(tx.created_at), "MMM d, h:mm a")}
                       </TableCell>
                       <TableCell>
-                        {(tx.payment_status === "succeeded" || tx.payment_status === "paid") && (
+                        {(tx.payment_status === "succeeded" || tx.payment_status === "paid" || tx.payment_status === "partially_refunded") && (
                           <Button
                             variant="outline"
                             size="sm"

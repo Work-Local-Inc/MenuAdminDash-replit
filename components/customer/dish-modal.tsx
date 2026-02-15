@@ -215,7 +215,15 @@ export function DishModal({ dish, restaurantId, isOpen, onClose, buttonStyle }: 
   
   useEffect(() => {
     if (isOpen) {
-      const defaultSize = dish.prices?.[0]?.size_variant || 'Regular';
+      let defaultSize = 'Regular';
+      if (dish.prices && Array.isArray(dish.prices) && dish.prices.length > 0) {
+        const sortedByPrice = [...dish.prices]
+          .filter((p: any) => p.size_variant !== null && p.size_variant !== undefined)
+          .sort((a: any, b: any) => Number(a.price) - Number(b.price));
+        const cheapest = sortedByPrice.length > 0 ? sortedByPrice[0] : dish.prices[0];
+        defaultSize = cheapest?.size_variant || 'Regular';
+        console.log(`[DishModal] Pre-selecting cheapest size: ${defaultSize} at $${Number(cheapest?.price || 0).toFixed(2)}`);
+      }
       setSelectedSize(defaultSize);
       setSelectedModifiers([]);
       setQuantity(1);

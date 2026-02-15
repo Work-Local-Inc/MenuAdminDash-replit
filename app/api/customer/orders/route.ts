@@ -59,11 +59,93 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
 
     const body = await request.json()
-    const { payment_intent_id, delivery_address, cart_items, user_id, guest_email, restaurant_slug: requestRestaurantSlug } = body
+    const { payment_intent_id, delivery_address, cart_items, user_id: requestUserId, guest_email, restaurant_slug: requestRestaurantSlug } = body
+
+    // Resolve user_id: If authenticated but no user_id provided (phone-only users),
+    // find or create their users table record so their profile persists across orders
+    let user_id = requestUserId
+    if (!user_id && user) {
+      console.log('[Order API] Authenticated user without user_id - resolving profile for:', user.id)
+      const { data: existingProfile } = await (adminSupabase as any)
+        .schema('menuca_v3')
+        .from('users')
+        .select('id')
+        .eq('auth_user_id', user.id)
+        .maybeSingle()
+      
+      if (existingProfile) {
+        user_id = existingProfile.id
+        console.log('[Order API] Found existing user profile by auth_user_id:', user_id)
+      } else {
+        // No record linked to this auth account yet - check by email or phone
+        const userEmail = delivery_address?.email || user.email
+        const userPhone = user.phone || delivery_address?.phone
+        let matchedProfile = null
+
+        if (userEmail) {
+          const { data } = await (adminSupabase as any)
+            .schema('menuca_v3')
+            .from('users')
+            .select('id, auth_user_id')
+            .eq('email', userEmail)
+            .maybeSingle()
+          if (data) matchedProfile = data
+        }
+        if (!matchedProfile && userPhone) {
+          const { data } = await (adminSupabase as any)
+            .schema('menuca_v3')
+            .from('users')
+            .select('id, auth_user_id')
+            .eq('phone', userPhone)
+            .maybeSingle()
+          if (data) matchedProfile = data
+        }
+
+        if (matchedProfile) {
+          user_id = matchedProfile.id
+          // Link auth account to this existing user record if not already linked
+          if (!matchedProfile.auth_user_id) {
+            await (adminSupabase as any)
+              .schema('menuca_v3')
+              .from('users')
+              .update({ auth_user_id: user.id })
+              .eq('id', matchedProfile.id)
+            console.log('[Order API] Linked auth account to existing user profile:', user_id)
+          } else {
+            console.log('[Order API] Found existing user profile by email/phone:', user_id)
+          }
+        } else {
+          // No existing record - create a new one
+          const checkoutName = delivery_address?.name?.trim()
+          const nameParts = checkoutName ? checkoutName.split(' ') : []
+          const insertData: Record<string, any> = {
+            auth_user_id: user.id,
+            email: userEmail || null,
+            first_name: nameParts[0] || null,
+            last_name: nameParts.length > 1 ? nameParts.slice(1).join(' ') : null,
+            phone: userPhone || null,
+          }
+          const { data: newProfile, error: insertErr } = await (adminSupabase as any)
+            .schema('menuca_v3')
+            .from('users')
+            .insert(insertData)
+            .select('id')
+            .single()
+          
+          if (newProfile) {
+            user_id = newProfile.id
+            console.log('[Order API] Created new user profile for phone user:', user_id)
+          } else {
+            console.error('[Order API] Failed to create user profile:', insertErr?.message)
+          }
+        }
+      }
+    }
 
     console.log('[Order API] Request:', { 
       payment_intent_id: payment_intent_id?.substring(0, 20) + '...', 
       has_user: !!user,
+      resolved_user_id: user_id,
       guest_email,
       cart_items_count: cart_items?.length,
       restaurant_slug: requestRestaurantSlug
@@ -141,8 +223,15 @@ export async function POST(request: NextRequest) {
     }
     
     // SECURITY: Verify payment belongs to this user/guest
+    // For authenticated users who were resolved via email/phone fallback,
+    // the payment intent may have been created with user_id='guest' (before a users record existed)
+    // or with a different user_id (if the record was just created). Allow both cases for authenticated users.
     const expectedUserId = user_id ? String(user_id) : 'guest'
-    if (paymentIntent.metadata.user_id !== expectedUserId) {
+    const piUserId = paymentIntent.metadata.user_id
+    const userIdMatches = piUserId === expectedUserId
+    const isAuthenticatedNewUser = user && piUserId === 'guest' && user_id
+    if (!userIdMatches && !isAuthenticatedNewUser) {
+      console.error('[Order API] Payment mismatch:', { piUserId, expectedUserId, isAuthenticated: !!user })
       return NextResponse.json({ error: 'Payment mismatch' }, { status: 401 })
     }
 
@@ -322,17 +411,19 @@ export async function POST(request: NextRequest) {
     // Format: dishId -> Set<modifierId>
     const dishModifierIndex = new Map<number, Set<number>>()
     const modifierIdToInfo = new Map<number, { name: string; modifier_group_id: number }>()
+    const modifierGroupNameMap = new Map<number, string>()
     
     menuData?.courses?.forEach((course: any) => {
       course.dishes?.forEach((dish: any) => {
-        // Initialize the set for this dish
         if (!dishModifierIndex.has(dish.id)) {
           dishModifierIndex.set(dish.id, new Set<number>())
         }
         const dishModifiers = dishModifierIndex.get(dish.id)!
         
         dish.modifier_groups?.forEach((mg: any) => {
-          // Add each modifier to this dish's valid modifier set
+          if (mg.name) {
+            modifierGroupNameMap.set(mg.id, mg.name)
+          }
           mg.modifiers?.forEach((mod: any) => {
             dishModifiers.add(mod.id)
             modifierIdToInfo.set(mod.id, {
@@ -458,7 +549,7 @@ export async function POST(request: NextRequest) {
           const { data: comboModGroups, error: comboModGroupsError } = await (adminSupabase as any)
             .schema('menuca_v3')
             .from('combo_modifier_groups')
-            .select('id, combo_group_section_id')
+            .select('id, name, combo_group_section_id')
             .in('id', comboModGroupIds)
 
           if (!comboModGroupsError && comboModGroups) {
@@ -471,25 +562,27 @@ export async function POST(request: NextRequest) {
               .in('id', sectionIds)
 
             if (!sectionsError && sections) {
-              // Build mapping: combo_modifier_group_id -> combo_group_id
               const sectionToComboGroup = new Map<number, number>()
               sections.forEach((s: any) => {
                 sectionToComboGroup.set(s.id, s.combo_group_id)
               })
 
               const modGroupToSection = new Map<number, number>()
+              const comboModGroupNameMap = new Map<number, string>()
               comboModGroups.forEach((g: any) => {
                 modGroupToSection.set(g.id, g.combo_group_section_id)
+                if (g.name) {
+                  comboModGroupNameMap.set(g.id, g.name)
+                }
               })
 
-              // Store the combo_group_id for each combo modifier for validation
               comboModifiersData?.forEach((mod: any) => {
                 const sectionId = modGroupToSection.get(mod.combo_modifier_group_id)
                 if (sectionId) {
                   const comboGroupId = sectionToComboGroup.get(sectionId)
                   if (comboGroupId) {
-                    // Store for validation: combo_modifier_id -> combo_group_id
                     (mod as any)._comboGroupId = comboGroupId
+                    (mod as any)._groupName = comboModGroupNameMap.get(mod.combo_modifier_group_id) || null
                     comboModifierMap.set(mod.id, mod)
                   }
                 }
@@ -497,6 +590,44 @@ export async function POST(request: NextRequest) {
             }
           }
         }
+      }
+    }
+
+    // DB fallback: for any cart modifier IDs not found via menu data, query DB directly
+    const allCartModIds = cart_items.flatMap((item: any) => (item.modifiers || []).map((m: any) => m.id))
+    const unmappedModIds = allCartModIds.filter((id: number) => !modifierIdToInfo.has(id) && !comboModifierMap.has(id))
+    if (unmappedModIds.length > 0) {
+      console.log('[Order API] DB fallback for unmapped modifier group names:', unmappedModIds)
+      const { data: dbModData } = await (adminSupabase as any)
+        .schema('menuca_v3')
+        .from('modifiers')
+        .select('id, modifier_group_id')
+        .in('id', unmappedModIds)
+
+      if (dbModData && dbModData.length > 0) {
+        const dbGroupIds = Array.from(new Set(dbModData.map((m: any) => m.modifier_group_id).filter(Boolean))) as number[]
+        const missingGroupIds = dbGroupIds.filter((gid: number) => !modifierGroupNameMap.has(gid))
+        
+        if (missingGroupIds.length > 0) {
+          const { data: dbGroupData } = await (adminSupabase as any)
+            .schema('menuca_v3')
+            .from('modifier_groups')
+            .select('id, name_en')
+            .in('id', missingGroupIds)
+
+          dbGroupData?.forEach((g: any) => {
+            if (g.name_en) modifierGroupNameMap.set(g.id, g.name_en)
+          })
+        }
+
+        dbModData.forEach((m: any) => {
+          if (m.modifier_group_id) {
+            modifierIdToInfo.set(m.id, {
+              name: '',
+              modifier_group_id: m.modifier_group_id
+            })
+          }
+        })
       }
     }
 
@@ -580,7 +711,8 @@ export async function POST(request: NextRequest) {
               name: simpleModifier.name,
               price: modPrice,
               quantity: modQuantity,
-              placement: mod.placement || null
+              placement: mod.placement || null,
+              group_name: modifierGroupNameMap.get(simpleModifier.modifier_group.id) || null
             })
           } else {
             // Check if it's a combo modifier
@@ -598,7 +730,8 @@ export async function POST(request: NextRequest) {
                   name: mod.name || `Modifier ${mod.id}`,
                   price: modPrice,
                   quantity: modQuantity,
-                  placement: mod.placement || null
+                  placement: mod.placement || null,
+                  group_name: null
                 })
                 continue
               }
@@ -624,7 +757,8 @@ export async function POST(request: NextRequest) {
                   name: comboModifier.name || mod.name || `Modifier ${mod.id}`,
                   price: modPrice,
                   quantity: modQuantity,
-                  placement: mod.placement || null
+                  placement: mod.placement || null,
+                  group_name: (comboModifier as any)._groupName || null
                 })
                 continue
               }
@@ -653,7 +787,8 @@ export async function POST(request: NextRequest) {
               name: comboModifier.name,
               price: effectivePrice,
               quantity: modQuantity,
-              placement: mod.placement || null
+              placement: mod.placement || null,
+              group_name: (comboModifier as any)._groupName || null
             })
           }
         }
@@ -789,19 +924,46 @@ export async function POST(request: NextRequest) {
     // For logged-in users, ensure we have their name for the kitchen receipt
     // If delivery_address.name is empty but user_id exists, look up the user's name
     let customerName = delivery_address?.name
-    if (!customerName && user_id) {
+    if (user_id) {
       const { data: userData } = await (adminSupabase as any)
         .schema('menuca_v3')
         .from('users')
-        .select('first_name, last_name, email')
+        .select('first_name, last_name, email, phone')
         .eq('id', user_id)
         .maybeSingle()
       
       if (userData) {
-        customerName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim()
         if (!customerName) {
-          // Fallback to email prefix if no name
-          customerName = userData.email?.split('@')[0] || 'Customer'
+          customerName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim()
+          if (!customerName) {
+            customerName = userData.email?.split('@')[0] || 'Customer'
+          }
+        }
+
+        // Update user profile with checkout details they provided (e.g. phone-only users adding name/email)
+        const profileUpdates: Record<string, string> = {}
+        const checkoutName = delivery_address?.name?.trim()
+        if (checkoutName && !userData.first_name && !userData.last_name) {
+          const nameParts = checkoutName.split(' ')
+          profileUpdates.first_name = nameParts[0]
+          if (nameParts.length > 1) {
+            profileUpdates.last_name = nameParts.slice(1).join(' ')
+          }
+        }
+        if (delivery_address?.email && !userData.email) {
+          profileUpdates.email = delivery_address.email
+        }
+        if (delivery_address?.phone && !userData.phone) {
+          profileUpdates.phone = delivery_address.phone
+        }
+
+        if (Object.keys(profileUpdates).length > 0) {
+          console.log('[Order] Updating user profile with checkout details:', { user_id, updates: Object.keys(profileUpdates) })
+          await (adminSupabase as any)
+            .schema('menuca_v3')
+            .from('users')
+            .update(profileUpdates)
+            .eq('id', user_id)
         }
       }
     }
@@ -830,6 +992,7 @@ export async function POST(request: NextRequest) {
       special_instructions: specialInstructions, // Order notes for kitchen/printer
       coupon_code: couponCode, // Promo/coupon code applied to order
       discount_amount: discountAmount, // Discount amount from coupon
+      is_test_order: configuredPaymentMode === 'test',
       // NOTE: service_time stored inside delivery_address JSONB for flexibility
       // NOTE: created_at auto-generated by database
     }

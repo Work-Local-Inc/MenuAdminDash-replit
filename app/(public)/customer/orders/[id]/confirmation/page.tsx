@@ -13,6 +13,7 @@ import { format } from 'date-fns'
 import { PostOrderSignupModal } from '@/components/customer/post-order-signup-modal'
 import { useCartStore } from '@/lib/stores/cart-store'
 import { createRestaurantSlug } from '@/lib/utils/slugify'
+import { createClient } from '@/lib/supabase/client'
 
 interface OrderItem {
   dish_id: number
@@ -71,8 +72,9 @@ interface Order {
   is_guest_order: boolean
   guest_email: string | null
   guest_name: string | null
+  guest_phone: string | null
   restaurant_id: number
-  order_type: 'delivery' | 'pickup'
+  order_type: 'delivery' | 'pickup' | 'takeout'
   payment_status: string
   payment_method: string | null
   stripe_payment_intent_id: string
@@ -151,7 +153,7 @@ export default function OrderConfirmationPage() {
           const prepTimeRes = await fetch(`/api/customer/restaurants/${restaurantSlug}/prep-time`)
           if (prepTimeRes.ok) {
             const prepTimeData = await prepTimeRes.json()
-            const isPickupOrder = data.order_type === 'pickup'
+            const isPickupOrder = data.order_type === 'pickup' || data.order_type === 'takeout'
             const prepMinutes = prepTimeData.prep_time_minutes || 30
             if (isPickupOrder) {
               setDynamicPrepTime(`${prepMinutes}-${prepMinutes + 10} minutes`)
@@ -165,11 +167,26 @@ export default function OrderConfirmationPage() {
         }
       }
 
-      // Show signup modal for guest orders after a short delay
-      if (data.is_guest_order && data.guest_email) {
-        setTimeout(() => {
-          setShowSignupModal(true)
-        }, 2000)
+      // Show signup modal only for true guest orders (not phone-authenticated users)
+      // If user_id is set, user already has an account (signed in via phone/email)
+      if (data.is_guest_order && data.guest_email && !data.user_id) {
+        // Check Supabase auth session directly — phone-only users may not have a profile
+        // record in the users table yet, but they DO have an active auth session
+        try {
+          const supabase = createClient()
+          const { data: { user: authUser } } = await supabase.auth.getUser()
+          if (authUser) {
+            console.log('[Confirmation] User authenticated via Supabase auth (phone/email), skipping signup modal')
+          } else {
+            setTimeout(() => {
+              setShowSignupModal(true)
+            }, 2000)
+          }
+        } catch {
+          setTimeout(() => {
+            setShowSignupModal(true)
+          }, 2000)
+        }
       }
     } catch (error: any) {
       console.error('Error loading order:', error)
@@ -236,7 +253,7 @@ export default function OrderConfirmationPage() {
   }
 
   const deliveryAddress = order.delivery_address
-  const isPickup = order.order_type === 'pickup'
+  const isPickup = order.order_type === 'pickup' || order.order_type === 'takeout'
   const serviceTime = deliveryAddress?.service_time
   const brandColor = order.restaurant.primary_color || null
   
@@ -442,67 +459,79 @@ export default function OrderConfirmationPage() {
           <div className="grid gap-6 md:grid-cols-2">
             {/* Left Column */}
             <div className="space-y-6">
-              {/* Restaurant Details */}
-              <Card data-testid="card-restaurant-details">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Store className="w-5 h-5" />
-                    Restaurant
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <p className="font-medium text-lg" data-testid="text-restaurant-name">
-                    {order.restaurant.name}
-                  </p>
-                  {order.restaurant.phone && (
-                    <p className="text-sm text-muted-foreground flex items-center gap-2">
-                      <Phone className="w-4 h-4" />
-                      {order.restaurant.phone}
+              {isPickup ? (
+                <Card data-testid="card-restaurant-details">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Store className="w-5 h-5" />
+                      Restaurant
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground flex items-center gap-1">
+                      <MapPin className="w-3.5 h-3.5" />
+                      Pickup Location
                     </p>
-                  )}
-                  {order.restaurant.address && (
-                    <p className="text-sm text-muted-foreground">
-                      {order.restaurant.address}
-                      {order.restaurant.city && `, ${order.restaurant.city}`}
-                      {order.restaurant.province && ` ${order.restaurant.province}`}
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <p className="font-medium text-lg" data-testid="text-restaurant-name">
+                      {order.restaurant.name}
                     </p>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Delivery/Pickup Information */}
-              <Card data-testid="card-delivery-info">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    {isPickup ? <Store className="w-5 h-5" /> : <MapPin className="w-5 h-5" />}
-                    {isPickup ? 'Pickup Location' : 'Delivery Address'}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {isPickup ? (
-                    <>
-                      <p className="font-medium text-lg">{order.restaurant.name}</p>
-                      {order.restaurant.address && (
-                        <p className="text-sm">
-                          {order.restaurant.address}
-                        </p>
-                      )}
-                      {(order.restaurant.city || order.restaurant.province) && (
-                        <p className="text-sm text-muted-foreground">
-                          {order.restaurant.city && order.restaurant.city}
-                          {order.restaurant.province && `, ${order.restaurant.province}`}
-                          {order.restaurant.postal_code && ` ${order.restaurant.postal_code}`}
-                        </p>
-                      )}
+                    {order.restaurant.address && (
+                      <p className="text-sm">
+                        {order.restaurant.address}
+                      </p>
+                    )}
+                    {(order.restaurant.city || order.restaurant.province) && (
+                      <p className="text-sm text-muted-foreground">
+                        {order.restaurant.city && order.restaurant.city}
+                        {order.restaurant.province && `, ${order.restaurant.province}`}
+                        {order.restaurant.postal_code && ` ${order.restaurant.postal_code}`}
+                      </p>
+                    )}
+                    {order.restaurant.phone && (
+                      <p className="text-sm text-muted-foreground flex items-center gap-2 mt-2">
+                        <Phone className="w-4 h-4" />
+                        {order.restaurant.phone}
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              ) : (
+                <>
+                  <Card data-testid="card-restaurant-details">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Store className="w-5 h-5" />
+                        Restaurant
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      <p className="font-medium text-lg" data-testid="text-restaurant-name">
+                        {order.restaurant.name}
+                      </p>
                       {order.restaurant.phone && (
-                        <p className="text-sm text-muted-foreground flex items-center gap-2 mt-2">
+                        <p className="text-sm text-muted-foreground flex items-center gap-2">
                           <Phone className="w-4 h-4" />
                           {order.restaurant.phone}
                         </p>
                       )}
-                    </>
-                  ) : (
-                    <>
+                      {order.restaurant.address && (
+                        <p className="text-sm text-muted-foreground">
+                          {order.restaurant.address}
+                          {order.restaurant.city && `, ${order.restaurant.city}`}
+                          {order.restaurant.province && ` ${order.restaurant.province}`}
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  <Card data-testid="card-delivery-info">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <MapPin className="w-5 h-5" />
+                        Delivery Address
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
                       {deliveryAddress.name && (
                         <p className="font-medium">{deliveryAddress.name}</p>
                       )}
@@ -521,10 +550,10 @@ export default function OrderConfirmationPage() {
                           </p>
                         </div>
                       )}
-                    </>
-                  )}
-                </CardContent>
-              </Card>
+                    </CardContent>
+                  </Card>
+                </>
+              )}
 
               {/* Order Status */}
               <Card data-testid="card-order-status">
@@ -723,6 +752,8 @@ export default function OrderConfirmationPage() {
           open={showSignupModal}
           onOpenChange={setShowSignupModal}
           guestEmail={order.guest_email}
+          guestName={order.guest_name}
+          guestPhone={order.guest_phone}
           onSuccess={() => {
             toast({
               title: "Account Created!",

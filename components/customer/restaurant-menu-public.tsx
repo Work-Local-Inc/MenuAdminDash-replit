@@ -70,28 +70,30 @@ export default function RestaurantMenuPublic({
   const displayCartCount = mounted ? cartItemCount : 0
   const displayCartTotal = mounted ? cartTotal : 0
 
-  const location = restaurant.restaurant_locations?.[0]
+  const location = restaurant.restaurant_locations?.find((l: any) => l.is_primary && l.is_active)
+    || restaurant.restaurant_locations?.find((l: any) => l.is_active)
+    || restaurant.restaurant_locations?.[0]
   const serviceConfig = restaurant.delivery_and_pickup_configs?.[0]
 
-  const streetAddress = location?.street_address
-  const postalCode = location?.postal_code
+  const streetAddress = location?.street_address || restaurant.street_address
+  const cityName = location?.city_name || ''
+  const postalCode = location?.postal_code || restaurant.postal_code
 
   useEffect(() => {
-    // Use restaurant_delivery_areas table (same as admin UI)
-    // Note: delivery_fee is already in dollars, not cents
     const activeArea = restaurant.restaurant_delivery_areas?.find(
       (area: any) => area.is_active
     )
     const deliveryFee = activeArea?.delivery_fee ?? 0
     const minOrder = activeArea?.delivery_min_order || serviceConfig?.delivery_min_order || 0
 
-    const address = streetAddress
-      ? `${streetAddress}${postalCode ? `, ${postalCode}` : ''}`
-      : undefined
+    const addressParts = []
+    if (streetAddress) addressParts.push(streetAddress)
+    if (cityName) addressParts.push(cityName)
+    if (postalCode) addressParts.push(postalCode)
+    const address = addressParts.length > 0 ? addressParts.join(', ') : undefined
 
-    // Use the restaurantSlug which prefers urlSlug if provided
     setRestaurant(restaurant.id, restaurant.name, restaurantSlug, deliveryFee, minOrder, address, brandColors.primary, gaMeasurementId)
-  }, [restaurant.id, restaurant.name, restaurant.restaurant_delivery_areas, serviceConfig, setRestaurant, streetAddress, postalCode, brandColors.primary, restaurantSlug, gaMeasurementId])
+  }, [restaurant.id, restaurant.name, restaurant.restaurant_delivery_areas, serviceConfig, setRestaurant, streetAddress, cityName, postalCode, brandColors.primary, restaurantSlug, gaMeasurementId])
 
   useEffect(() => {
     const fetchTaxConfig = async () => {
@@ -210,16 +212,18 @@ export default function RestaurantMenuPublic({
                 </div>
               )}
 
-              {location && (
+              {(location || streetAddress) && (
                 <div className="flex flex-col gap-2 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4" />
-                    <span data-testid="text-restaurant-address">
-                      {location.street_address}, {location.postal_code}
-                    </span>
-                  </div>
+                  {streetAddress && (
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-4 h-4" />
+                      <span data-testid="text-restaurant-address">
+                        {streetAddress}{cityName ? `, ${cityName}` : ''}{postalCode ? `, ${postalCode}` : ''}
+                      </span>
+                    </div>
+                  )}
 
-                  {location.phone && (
+                  {location?.phone && (
                     <div className="flex items-center gap-2">
                       <Phone className="w-4 h-4" />
                       <span data-testid="text-restaurant-phone">{location.phone}</span>
@@ -455,7 +459,7 @@ export default function RestaurantMenuPublic({
               <div className="flex items-center gap-2">
                 <ShoppingCart className="w-5 h-5" />
                 <span className="font-semibold">
-                  {isCartOpen && displayCartCount > 0 ? 'Place Order' : `Basket • ${displayCartCount} ${displayCartCount === 1 ? 'Item' : 'Items'}`}
+                  {isCartOpen && displayCartCount > 0 ? 'Place Order' : `Cart • ${displayCartCount} ${displayCartCount === 1 ? 'Item' : 'Items'}`}
                 </span>
               </div>
               <span className="font-bold text-lg">

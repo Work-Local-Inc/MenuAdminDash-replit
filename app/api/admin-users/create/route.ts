@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { createClient as createSupabaseAdmin } from '@supabase/supabase-js'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
 import { AuthError } from '@/lib/errors'
 export const dynamic = 'force-dynamic'
@@ -31,11 +32,10 @@ async function createRestaurantAdminAutomated({
   restaurant_ids: number[]
 }) {
   try {
-    // Create admin client with service role key
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
     
-    const adminClient = createAdminClient(supabaseUrl, serviceRoleKey, {
+    const adminClient = createSupabaseAdmin(supabaseUrl, serviceRoleKey, {
       auth: {
         autoRefreshToken: false,
         persistSession: false
@@ -157,8 +157,7 @@ async function createRestaurantAdminAutomated({
 
 export async function POST(request: NextRequest) {
   try {
-    await verifyAdminAuth(request)
-    const supabase = await createClient() as any
+    const { adminUser } = await verifyAdminAuth(request)
     const body = await request.json()
 
     const { email, first_name, last_name, phone, role_id, restaurant_ids } = body
@@ -170,7 +169,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // For Restaurant Admins (role_id = 2), restaurant_ids are required
     if (role_id === 2 && (!restaurant_ids || restaurant_ids.length === 0)) {
       return NextResponse.json(
         { error: 'restaurant_ids are required for Restaurant Admin role' },
@@ -178,34 +176,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get current admin's info to check permissions
-    // Note: Using direct query instead of get_my_admin_info() RPC due to type mismatch in production
-    const { data: { user } } = await supabase.auth.getUser()
-    
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Not authenticated' },
-        { status: 401 }
-      )
-    }
-
-    const { data: currentAdmin, error: adminError } = await supabase
-      .schema('menuca_v3')
-      .from('admin_users')
-      .select('id, email, role_id, status')
-      .eq('auth_user_id', user.id)
-      .eq('status', 'active')
-      .single()
-    
-    if (adminError || !currentAdmin) {
-      console.error('Admin verification failed:', { adminError, currentAdmin, userId: user.id })
-      return NextResponse.json(
-        { error: `Unable to verify admin permissions: ${adminError?.message || 'No admin record found'}` },
-        { status: 403 }
-      )
-    }
-
-    const currentRoleId = currentAdmin.role_id
+    const currentRoleId = (adminUser as any).role_id
 
     // Permission check: determine if current admin can create this role
     // Simplified 2-role system: Super Admin (1) and Restaurant Admin (2)
@@ -236,10 +207,9 @@ export async function POST(request: NextRequest) {
     }
 
     // MANUAL FLOW: Super Admin (role_id = 1) - requires manual Supabase auth creation
-    // Create admin user directly (bypassing broken RPC function)
-    // Note: auth_user_id will be NULL until manual auth creation step
-    const { data: result, error } = await supabase
-      .schema('menuca_v3')
+    // Use admin client to bypass RLS sequence permissions
+    const adminSupabase = createAdminClient() as any
+    const { data: result, error } = await adminSupabase
       .from('admin_users')
       .insert({
         email,

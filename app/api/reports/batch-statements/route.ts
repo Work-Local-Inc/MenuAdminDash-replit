@@ -109,12 +109,14 @@ export async function GET(request: NextRequest) {
         payment_status,
         order_status,
         stripe_payment_intent_id,
-        restaurant_id
+        restaurant_id,
+        is_test_order
       `)
       .gte('created_at', `${startDate}T00:00:00`)
       .lte('created_at', `${endDate}T23:59:59`)
       .in('payment_status', ['paid', 'succeeded'])
       .in('order_status', ['completed', 'accepted', 'ready', 'preparing'])
+      .or('is_test_order.is.null,is_test_order.eq.false')
 
     if (ordersError) {
       console.error('[Batch Statements] Orders query error:', ordersError)
@@ -170,6 +172,7 @@ export async function GET(request: NextRequest) {
       .from('orders')
       .select('restaurant_id, created_at')
       .in('payment_status', ['paid', 'succeeded'])
+      .or('is_test_order.is.null,is_test_order.eq.false')
       .order('created_at', { ascending: false })
 
     // Build a map of restaurant_id -> last order date

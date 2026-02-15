@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
       payment_type,
       delivery_address, 
       cart_items, 
-      user_id, 
+      user_id: requestUserId, 
       guest_email,
       restaurant_slug,
       order_type,
@@ -29,9 +29,89 @@ export async function POST(request: NextRequest) {
       order_notes
     } = body
 
+    // Resolve user_id: If authenticated but no user_id provided (phone-only users),
+    // find or create their users table record so their profile persists across orders
+    let user_id = requestUserId
+    if (!user_id && user) {
+      console.log('[Cash Order API] Authenticated user without user_id - resolving profile for:', user.id)
+      const { data: existingProfile } = await (adminSupabase as any)
+        .schema('menuca_v3')
+        .from('users')
+        .select('id')
+        .eq('auth_user_id', user.id)
+        .maybeSingle()
+      
+      if (existingProfile) {
+        user_id = String(existingProfile.id)
+        console.log('[Cash Order API] Found existing user profile by auth_user_id:', user_id)
+      } else {
+        // No record linked to this auth account yet - check by email or phone
+        const userEmail = delivery_address?.email || user.email
+        const userPhone = user.phone || delivery_address?.phone
+        let matchedProfile: any = null
+
+        if (userEmail) {
+          const { data } = await (adminSupabase as any)
+            .schema('menuca_v3')
+            .from('users')
+            .select('id, auth_user_id')
+            .eq('email', userEmail)
+            .maybeSingle()
+          if (data) matchedProfile = data
+        }
+        if (!matchedProfile && userPhone) {
+          const { data } = await (adminSupabase as any)
+            .schema('menuca_v3')
+            .from('users')
+            .select('id, auth_user_id')
+            .eq('phone', userPhone)
+            .maybeSingle()
+          if (data) matchedProfile = data
+        }
+
+        if (matchedProfile) {
+          user_id = String(matchedProfile.id)
+          if (!matchedProfile.auth_user_id) {
+            await (adminSupabase as any)
+              .schema('menuca_v3')
+              .from('users')
+              .update({ auth_user_id: user.id })
+              .eq('id', matchedProfile.id)
+            console.log('[Cash Order API] Linked auth account to existing user profile:', user_id)
+          } else {
+            console.log('[Cash Order API] Found existing user profile by email/phone:', user_id)
+          }
+        } else {
+          const checkoutName = delivery_address?.name?.trim()
+          const nameParts = checkoutName ? checkoutName.split(' ') : []
+          const insertData: Record<string, any> = {
+            auth_user_id: user.id,
+            email: userEmail || null,
+            first_name: nameParts[0] || null,
+            last_name: nameParts.length > 1 ? nameParts.slice(1).join(' ') : null,
+            phone: userPhone || null,
+          }
+          const { data: newProfile, error: insertErr } = await (adminSupabase as any)
+            .schema('menuca_v3')
+            .from('users')
+            .insert(insertData)
+            .select('id')
+            .single()
+          
+          if (newProfile) {
+            user_id = String(newProfile.id)
+            console.log('[Cash Order API] Created new user profile for phone user:', user_id)
+          } else {
+            console.error('[Cash Order API] Failed to create user profile:', insertErr?.message)
+          }
+        }
+      }
+    }
+
     console.log('[Cash Order API] Request:', { 
       payment_type,
       has_user: !!user,
+      resolved_user_id: user_id,
       guest_email,
       cart_items_count: cart_items?.length,
       order_type
@@ -107,12 +187,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to validate dishes' }, { status: 500 })
     }
 
-    // Build a map of all valid dishes from the menu AND extract dish prices from menu data
-    // This is critical: the menu RPC returns modifier_size_variant_id on dish prices,
-    // which maps dish sizes to the correct modifier price tiers via the two-tier FK system:
-    // dish_prices.dish_size_variant_id -> dish_size_variants.modifier_size_variant_id -> modifier_prices.modifier_size_variant_id
     const dishMap = new Map<number, { id: number; restaurant_id: number; name: string }>()
     const dishPriceMap = new Map<string, { price: number; size_variant: string | null; modifierSizeVariantId: number | null; sizeIndex: number }>()
+    const modifierIdToGroupId = new Map<number, number>()
+    const modifierGroupNameMap = new Map<number, string>()
     menuData?.courses?.forEach((course: any) => {
       course.dishes?.forEach((dish: any) => {
         dishMap.set(dish.id, {
@@ -131,6 +209,14 @@ export async function POST(request: NextRequest) {
             })
           })
         }
+        dish.modifier_groups?.forEach((mg: any) => {
+          if (mg.name) {
+            modifierGroupNameMap.set(mg.id, mg.name)
+          }
+          mg.modifiers?.forEach((mod: any) => {
+            modifierIdToGroupId.set(mod.id, mg.id)
+          })
+        })
       })
     })
 
@@ -169,7 +255,6 @@ export async function POST(request: NextRequest) {
       const potentialComboIds = (modifierIds as number[]).filter(id => !simpleModIds.has(id))
       
       if (potentialComboIds.length > 0) {
-        // Load combo modifier prices from separate table (combo_modifiers doesn't have price column)
         const { data: comboPricesData } = await (adminSupabase as any)
           .schema('menuca_v3')
           .from('combo_modifier_prices')
@@ -177,11 +262,70 @@ export async function POST(request: NextRequest) {
           .in('combo_modifier_id', potentialComboIds)
 
         comboPricesData?.forEach((priceRow: any) => {
-          // Store ALL prices with compound key: combo_modifier_id-size_variant
-          // This enables looking up size-specific prices for combo modifiers
           const sizeVariant = priceRow.size_variant || 'base'
           const key = `${priceRow.combo_modifier_id}-${sizeVariant}`
           comboModifierPriceMap.set(key, parseFloat(priceRow.price))
+        })
+
+        const { data: comboModifiersData } = await (adminSupabase as any)
+          .schema('menuca_v3')
+          .from('combo_modifiers')
+          .select('id, combo_modifier_group_id')
+          .in('id', potentialComboIds)
+
+        const comboModGroupIds = comboModifiersData?.map((m: any) => m.combo_modifier_group_id).filter(Boolean) || []
+        if (comboModGroupIds.length > 0) {
+          const { data: comboModGroups } = await (adminSupabase as any)
+            .schema('menuca_v3')
+            .from('combo_modifier_groups')
+            .select('id, name')
+            .in('id', comboModGroupIds)
+
+          const comboGroupNameMap = new Map<number, string>()
+          comboModGroups?.forEach((g: any) => {
+            if (g.name) comboGroupNameMap.set(g.id, g.name)
+          })
+          comboModifiersData?.forEach((mod: any) => {
+            modifierIdToGroupId.set(mod.id, mod.combo_modifier_group_id)
+            const gName = comboGroupNameMap.get(mod.combo_modifier_group_id)
+            if (gName) modifierGroupNameMap.set(mod.combo_modifier_group_id, gName)
+          })
+        }
+      }
+    }
+
+    // DB fallback: for any cart modifier IDs not found via menu data, query DB directly
+    // This handles cases where menu RPC doesn't include modifier_groups on certain dishes
+    const allCartModIds = cart_items.flatMap((item: any) => (item.modifiers || []).map((m: any) => m.id))
+    const unmappedModIds = allCartModIds.filter((id: number) => !modifierIdToGroupId.has(id))
+    if (unmappedModIds.length > 0) {
+      console.log('[Cash Order API] DB fallback for unmapped modifier group names:', unmappedModIds)
+      const { data: dbModData } = await (adminSupabase as any)
+        .schema('menuca_v3')
+        .from('modifiers')
+        .select('id, modifier_group_id')
+        .in('id', unmappedModIds)
+
+      if (dbModData && dbModData.length > 0) {
+        const dbGroupIds = Array.from(new Set(dbModData.map((m: any) => m.modifier_group_id).filter(Boolean))) as number[]
+        const missingGroupIds = dbGroupIds.filter((gid: number) => !modifierGroupNameMap.has(gid))
+        
+        if (missingGroupIds.length > 0) {
+          const { data: dbGroupData } = await (adminSupabase as any)
+            .schema('menuca_v3')
+            .from('modifier_groups')
+            .select('id, name_en')
+            .in('id', missingGroupIds)
+
+          dbGroupData?.forEach((g: any) => {
+            if (g.name_en) modifierGroupNameMap.set(g.id, g.name_en)
+          })
+        }
+
+        dbModData.forEach((m: any) => {
+          if (m.modifier_group_id) {
+            modifierIdToGroupId.set(m.id, m.modifier_group_id)
+          }
         })
       }
     }
@@ -235,12 +379,14 @@ export async function POST(request: NextRequest) {
           const finalModPrice = modPrice ?? 0
           const modQuantity = mod.quantity || 1
           itemTotal += finalModPrice * modQuantity * item.quantity
+          const groupId = modifierIdToGroupId.get(mod.id)
           validatedModifiers.push({
             modifier_id: mod.id,
             modifier_name: mod.name,
             modifier_price: finalModPrice.toString(),
             quantity: modQuantity,
-            placement: mod.placement || null
+            placement: mod.placement || null,
+            group_name: groupId ? (modifierGroupNameMap.get(groupId) || null) : null
           })
         }
       }
@@ -304,19 +450,46 @@ export async function POST(request: NextRequest) {
     // For logged-in users, ensure we have their name for the kitchen receipt
     // If delivery_address.name is empty but user_id exists, look up the user's name
     let customerName = delivery_address?.name
-    if (!customerName && dbUserId) {
+    if (dbUserId) {
       const { data: userData } = await (adminSupabase as any)
         .schema('menuca_v3')
         .from('users')
-        .select('first_name, last_name, email')
+        .select('first_name, last_name, email, phone')
         .eq('id', dbUserId)
-        .maybeSingle() as { data: { first_name: string | null; last_name: string | null; email: string | null } | null }
+        .maybeSingle() as { data: { first_name: string | null; last_name: string | null; email: string | null; phone: string | null } | null }
       
       if (userData) {
-        customerName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim()
         if (!customerName) {
-          // Fallback to email prefix if no name
-          customerName = userData.email?.split('@')[0] || 'Customer'
+          customerName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim()
+          if (!customerName) {
+            customerName = userData.email?.split('@')[0] || 'Customer'
+          }
+        }
+
+        // Update user profile with checkout details they provided (e.g. phone-only users adding name/email)
+        const profileUpdates: Record<string, string> = {}
+        const checkoutName = delivery_address?.name?.trim()
+        if (checkoutName && !userData.first_name && !userData.last_name) {
+          const nameParts = checkoutName.split(' ')
+          profileUpdates.first_name = nameParts[0]
+          if (nameParts.length > 1) {
+            profileUpdates.last_name = nameParts.slice(1).join(' ')
+          }
+        }
+        if (delivery_address?.email && !userData.email) {
+          profileUpdates.email = delivery_address.email
+        }
+        if (delivery_address?.phone && !userData.phone) {
+          profileUpdates.phone = delivery_address.phone
+        }
+
+        if (Object.keys(profileUpdates).length > 0) {
+          console.log('[Cash Order] Updating user profile with checkout details:', { user_id: dbUserId, updates: Object.keys(profileUpdates) })
+          await (adminSupabase as any)
+            .schema('menuca_v3')
+            .from('users')
+            .update(profileUpdates)
+            .eq('id', dbUserId)
         }
       }
     }
@@ -345,15 +518,24 @@ export async function POST(request: NextRequest) {
         modifiers: item.modifiers.map(mod => ({
           id: mod.modifier_id,
           name: mod.modifier_name,
-          price: parseFloat(mod.modifier_price) || 0,  // Unit price per modifier
+          price: parseFloat(mod.modifier_price) || 0,
           quantity: mod.quantity || 1,
           placement: mod.placement || null,
+          group_name: mod.group_name || null,
         })),
       }
     })
 
     // Generate unique order number (same format as credit card orders)
     const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
+
+    const { data: paymentConfig } = await (adminSupabase as any)
+      .schema('menuca_v3')
+      .from('delivery_and_pickup_configs')
+      .select('payment_mode')
+      .eq('restaurant_id', restaurant.id)
+      .maybeSingle()
+    const paymentMode = paymentConfig?.payment_mode || 'test'
 
     const orderData = {
       order_number: orderNumber,
@@ -385,6 +567,7 @@ export async function POST(request: NextRequest) {
         return parts.length > 0 ? parts.join(' | ') : null
       })(),
       stripe_payment_intent_id: cashOrderReference,
+      is_test_order: paymentMode === 'test',
     }
 
     console.log('[Cash Order API] Creating order:', orderData)

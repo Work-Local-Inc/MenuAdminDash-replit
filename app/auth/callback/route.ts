@@ -1,62 +1,73 @@
-import { createClient } from '@/lib/supabase/server'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { ensureOAuthProfileForSession } from '@/lib/auth/oauth-profile'
 
 export async function GET(request: NextRequest) {
-  const requestUrl = new URL(request.url)
-  const code = requestUrl.searchParams.get('code')
-  const redirect = requestUrl.searchParams.get('redirect') || '/customer/account'
+  const { searchParams } = new URL(request.url)
+  const code = searchParams.get('code')
+  const rawNext = searchParams.get('next')
+
+  const cookieStore = await cookies()
+  const savedRedirect = cookieStore.get('oauth_redirect_to')?.value
+
+  console.log('[Auth Callback] code:', !!code, 'rawNext:', rawNext, 'savedRedirect:', savedRedirect, 'full URL:', request.url)
+
+  const nextFromParam = (rawNext && rawNext.startsWith('/') && !rawNext.startsWith('//'))
+    ? rawNext
+    : null
+
+  const nextFromCookie = (savedRedirect && savedRedirect.startsWith('/') && !savedRedirect.startsWith('//'))
+    ? savedRedirect
+    : null
+
+  const safeNext = nextFromParam || nextFromCookie || '/checkout'
 
   if (code) {
-    const supabase = await createClient()
-    
-    // Exchange code for session
-    const { data, error } = await supabase.auth.exchangeCodeForSession(code)
-    
-    if (error) {
-      console.error('[Auth Callback] Error exchanging code:', error)
-      return NextResponse.redirect(`${requestUrl.origin}/customer/login?error=${encodeURIComponent(error.message)}`)
-    }
-
-    if (data.user) {
-      // SECURITY: Check email verification - require non-null timestamp
-      // Note: For OAuth providers like Google, email is verified by the provider
-      const emailVerified = !!data.user.email_confirmed_at || !!data.user.confirmed_at
-
-      // Use shared helper to ensure OAuth profile with all security checks
-      const result = await ensureOAuthProfileForSession({
-        authUserId: data.user.id,
-        email: data.user.email || '',
-        emailVerified,
-        firstName: data.user.user_metadata?.full_name?.split(' ')[0] || '',
-        lastName: data.user.user_metadata?.full_name?.split(' ').slice(1).join(' ') || '',
-        phone: data.user.user_metadata?.phone || null,
-      })
-
-      if (!result.success) {
-        console.error('[Auth Callback] Failed to ensure OAuth profile:', result.error)
-        return NextResponse.redirect(
-          `${requestUrl.origin}/customer/login?error=${encodeURIComponent(result.error || 'Failed to create profile')}`
-        )
-      }
-
-      // Send welcome email (don't fail auth if email fails)
-      try {
-        await fetch(`${requestUrl.origin}/api/customer/welcome-email`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll()
           },
-        })
-      } catch (emailError) {
-        console.error('[Auth Callback] Failed to send welcome email:', emailError)
+          setAll(cookiesToSet) {
+            try {
+              cookiesToSet.forEach(({ name, value, options }) =>
+                cookieStore.set(name, value, options)
+              )
+            } catch {}
+          },
+        },
       }
-    }
+    )
 
-    // Redirect to intended page
-    return NextResponse.redirect(`${requestUrl.origin}${redirect}`)
+    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    if (!error) {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user?.email) {
+          await ensureOAuthProfileForSession({
+            authUserId: user.id,
+            email: user.email,
+            emailVerified: !!user.email_confirmed_at || !!user.confirmed_at,
+            firstName: user.user_metadata?.full_name?.split(' ')[0] || user.user_metadata?.first_name,
+            lastName: user.user_metadata?.full_name?.split(' ').slice(1).join(' ') || user.user_metadata?.last_name,
+            phone: user.phone || undefined,
+          })
+        }
+      } catch (profileError) {
+        console.error('[Auth Callback] Failed to create OAuth profile:', profileError)
+      }
+
+      const response = NextResponse.redirect(new URL(safeNext, request.url))
+      response.cookies.delete('oauth_redirect_to')
+      return response
+    }
   }
 
-  // If no code, redirect to login
-  return NextResponse.redirect(`${requestUrl.origin}/customer/login`)
+  const response = NextResponse.redirect(new URL('/customer/login', request.url))
+  response.cookies.delete('oauth_redirect_to')
+  return response
 }

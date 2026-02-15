@@ -102,3 +102,41 @@ export async function GET(
     )
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const { adminUser } = await verifyAdminAuth(request)
+    if ((adminUser as any).role_id !== 1) {
+      return NextResponse.json({ error: 'Super Admin only' }, { status: 403 })
+    }
+
+    const orderId = parseInt(params.id)
+    if (isNaN(orderId)) {
+      return NextResponse.json({ error: 'Invalid order ID' }, { status: 400 })
+    }
+
+    const supabase = createAdminClient() as any
+
+    await supabase.from('order_status_history').delete().eq('order_id', orderId)
+    await supabase.from('order_items').delete().eq('order_id', orderId)
+    await supabase.from('payment_transactions').delete().eq('order_id', orderId)
+
+    const { error } = await supabase.from('orders').delete().eq('id', orderId)
+    if (error) {
+      console.error(`[Orders] Delete error for order ${orderId}:`, error)
+      return NextResponse.json({ error: 'Failed to delete order' }, { status: 500 })
+    }
+
+    console.log(`[Orders] Order ${orderId} deleted by admin ${(adminUser as any).id}`)
+    return NextResponse.json({ success: true, deleted: orderId })
+  } catch (error: any) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode })
+    }
+    console.error('[Orders] Delete error:', error)
+    return NextResponse.json({ error: 'Failed to delete order' }, { status: 500 })
+  }
+}

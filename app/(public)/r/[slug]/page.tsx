@@ -37,14 +37,13 @@ interface RestaurantRecord {
   checkout_button_color: string | null;
   image_card_description_lines: '2' | '3' | null;
   restaurant_delivery_areas?: { id: number; delivery_fee: number | null; delivery_min_order: number | null; is_active: boolean; estimated_delivery_minutes: number | null }[] | null;
-  restaurant_locations?: { id: number; street_address: string | null; postal_code: string | null; phone: string | null }[] | null;
+  restaurant_locations?: { id: number; street_address: string | null; city_id: number | null; province_id: number | null; postal_code: string | null; phone: string | null; is_primary: boolean | null; is_active: boolean | null; city_name?: string | null; province_name?: string | null }[] | null;
 }
 
 const getRestaurant = async (restaurantId: number) => {
-  noStore(); // Disable caching to always fetch fresh branding settings
-  const supabase = await createClient();
+  noStore();
+  const supabase = createAdminClient() as any;
   
-  // Base query fields (always available)
   const baseFields = `
     id,
     name,
@@ -61,44 +60,39 @@ const getRestaurant = async (restaurantId: number) => {
     checkout_button_color,
     image_card_description_lines,
     restaurant_delivery_areas(id, delivery_fee, delivery_min_order, is_active, estimated_delivery_minutes),
-    restaurant_locations(id, street_address, postal_code, phone)
+    restaurant_locations(id, street_address, city_id, province_id, postal_code, phone, is_primary, is_active)
   `;
   
-  // Try with show_order_online_badge first (older optional column)
   let { data, error } = await supabase
     .from('restaurants')
     .select(`${baseFields}, show_order_online_badge`)
     .eq('id', restaurantId)
-    .single<RestaurantRecord>();
+    .single();
 
-  // If show_order_online_badge doesn't exist, try without it
   if (error?.code === '42703' && error.message?.includes('show_order_online_badge')) {
-    console.log('[Restaurant Page] show_order_online_badge column not found, retrying without it');
     const result = await supabase
       .from('restaurants')
       .select(baseFields)
       .eq('id', restaurantId)
-      .single<RestaurantRecord>();
+      .single();
     
     data = result.data;
     error = result.error;
   }
   
-  // If image_card_description_lines doesn't exist, try base fields without it
   if (error?.code === '42703' && error.message?.includes('image_card_description_lines')) {
-    console.log('[Restaurant Page] image_card_description_lines column not found, retrying without it');
     const baseWithoutDescLines = `
       id, name, banner_image_url, banner_is_ai_generated, logo_url, logo_display_mode,
       primary_color, secondary_color, font_family, menu_layout, button_style,
       price_color, checkout_button_color,
       restaurant_delivery_areas(id, delivery_fee, delivery_min_order, is_active, estimated_delivery_minutes),
-      restaurant_locations(id, street_address, postal_code, phone)
+      restaurant_locations(id, street_address, city_id, province_id, postal_code, phone, is_primary, is_active)
     `;
     const result = await supabase
       .from('restaurants')
       .select(baseWithoutDescLines)
       .eq('id', restaurantId)
-      .single<RestaurantRecord>();
+      .single();
     
     data = result.data;
     error = result.error;
@@ -107,6 +101,29 @@ const getRestaurant = async (restaurantId: number) => {
   if (error) {
     console.error('[Restaurant Page] Failed to load restaurant:', error);
     return null;
+  }
+
+  if (data?.restaurant_locations?.length > 0) {
+    const cityIds = [...new Set(data.restaurant_locations.map((l: any) => l.city_id).filter(Boolean))];
+    const provinceIds = [...new Set(data.restaurant_locations.map((l: any) => l.province_id).filter(Boolean))];
+    
+    const [citiesResult, provincesResult] = await Promise.all([
+      cityIds.length > 0
+        ? supabase.from('cities').select('id, name').in('id', cityIds)
+        : { data: [] },
+      provinceIds.length > 0
+        ? supabase.from('provinces').select('id, name').in('id', provinceIds)
+        : { data: [] },
+    ]);
+    
+    const cityMap = new Map((citiesResult.data || []).map((c: any) => [c.id, c.name]));
+    const provinceMap = new Map((provincesResult.data || []).map((p: any) => [p.id, p.name]));
+    
+    data.restaurant_locations = data.restaurant_locations.map((loc: any) => ({
+      ...loc,
+      city_name: cityMap.get(loc.city_id) || null,
+      province_name: provinceMap.get(loc.province_id) || null,
+    }));
   }
 
   return data;

@@ -1,12 +1,11 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { useStripe, useElements, PaymentElement } from '@stripe/react-stripe-js'
+import { useStripe, useElements, PaymentElement, ExpressCheckoutElement } from '@stripe/react-stripe-js'
+import { StripeExpressCheckoutElementConfirmEvent } from '@stripe/stripe-js'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
 import { useCartStore } from '@/lib/stores/cart-store'
 import { PostOrderSignupModal } from '@/components/customer/post-order-signup-modal'
@@ -14,10 +13,10 @@ import { CardScannerModal } from '@/components/customer/card-scanner-modal'
 import { isMobileDevice, hasCamera } from '@/lib/utils/device'
 import { ScannedCardData } from '@/lib/utils/card-scanner'
 import { ArrowLeft, CreditCard, Camera, Shield, MapPin, ShoppingBag } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { trackPurchase } from '@/lib/analytics'
 import { getApiBaseUrl } from '@/lib/api-utils'
 
-// Order confirmation block that shows either pickup location or delivery address
 function OrderConfirmationBlock({ deliveryAddress }: { deliveryAddress: DeliveryAddress }) {
   const { orderType, restaurantName, restaurantAddress } = useCartStore();
   
@@ -40,7 +39,6 @@ function OrderConfirmationBlock({ deliveryAddress }: { deliveryAddress: Delivery
     );
   }
   
-  // Delivery order
   return (
     <div className="bg-muted/50 p-4 rounded-lg">
       <p className="text-sm font-medium mb-1 flex items-center gap-2">
@@ -68,15 +66,15 @@ interface DeliveryAddress {
   address_label?: string
   street_address: string
   unit?: string
-  city_id?: number // Optional for guest checkout
+  city_id?: number
   city_name?: string
-  city?: string // City string from Google Places (for guests)
-  province?: string // Province string from Google Places (for guests)
+  city?: string
+  province?: string
   postal_code: string
   delivery_instructions?: string
   email?: string
-  name?: string // Customer name for order
-  phone?: string // Customer phone number
+  name?: string
+  phone?: string
 }
 
 interface CheckoutPaymentFormProps {
@@ -84,7 +82,7 @@ interface CheckoutPaymentFormProps {
   deliveryAddress: DeliveryAddress
   userId?: string
   onBack: () => void
-  brandedButtonStyle?: React.CSSProperties // Restaurant branding
+  brandedButtonStyle?: React.CSSProperties
 }
 
 export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onBack, brandedButtonStyle }: CheckoutPaymentFormProps) {
@@ -94,23 +92,22 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
   const { toast } = useToast()
   const { clearCart, restaurantSlug, restaurantPrimaryColor, items, getTotal, getTax, getEffectiveDeliveryFee } = useCartStore()
   
-  // Use passed style or create from store
   const buttonStyle = brandedButtonStyle || (restaurantPrimaryColor 
     ? { backgroundColor: restaurantPrimaryColor, borderColor: restaurantPrimaryColor }
     : undefined)
   
   const [processing, setProcessing] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [isPaymentComplete, setIsPaymentComplete] = useState(false)
   const [creatingOrder, setCreatingOrder] = useState(false)
   const [showSignupModal, setShowSignupModal] = useState(false)
   const [completedOrderId, setCompletedOrderId] = useState<number | null>(null)
   const [guestEmail, setGuestEmail] = useState<string>('')
-  const [saveCard, setSaveCard] = useState(false)
   const [showScanModal, setShowScanModal] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [hasCameraAccess, setHasCameraAccess] = useState(false)
+  const [showExpressCheckout, setShowExpressCheckout] = useState(false)
 
-  // Detect mobile device on mount
   useEffect(() => {
     setIsMobile(isMobileDevice());
     setHasCameraAccess(hasCamera());
@@ -129,16 +126,112 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
       hasExpiry: !!(cardData.expiryMonth && cardData.expiryYear)
     });
     
-    // Note: Stripe Elements doesn't allow programmatic card data population for security
-    // Instead, we'll show the scanned data and let user verify/correct in the form
     toast({
       title: 'Card Detected',
       description: `Card ending in ${cardData.cardNumber.slice(-4)} - Please verify details in the form`,
     });
     
-    // Store scanned data for reference (could be used for validation)
     console.log('[Payment] Scanned card number:', cardData.cardNumber.replace(/.(?=.{4})/g, '*'));
   }
+
+  const createOrderAfterPayment = useCallback(async (paymentIntentId: string) => {
+    setCreatingOrder(true)
+    
+    try {
+      const { items } = useCartStore.getState()
+      
+      const orderPayload = {
+        payment_intent_id: paymentIntentId,
+        delivery_address: deliveryAddress,
+        guest_email: deliveryAddress.email,
+        user_id: userId,
+        restaurant_slug: restaurantSlug,
+        cart_items: items.map(item => ({
+          dishId: item.dishId,
+          size: item.size,
+          quantity: item.quantity,
+          modifiers: item.modifiers,
+          specialInstructions: item.specialInstructions,
+        })),
+      };
+      
+      console.log('[Payment] Creating order with userId:', userId, 'Payment Intent ID:', paymentIntentId);
+      
+      const orderResponse = await fetch(`${getApiBaseUrl()}/api/customer/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(orderPayload),
+      })
+
+      if (!orderResponse.ok) {
+        const errorData = await orderResponse.json().catch(() => ({}))
+        console.error('[Order Creation] Failed:', errorData)
+        throw new Error(errorData.error || 'Failed to create order')
+      }
+
+      const order = await orderResponse.json()
+
+      const currentItems = useCartStore.getState().items
+      const cartItems = currentItems.map(item => ({
+        id: item.dishId,
+        name: item.dishName,
+        price: item.sizePrice,
+        quantity: item.quantity
+      }))
+      trackPurchase(String(order.id), getTotal(), cartItems, getTax(), getEffectiveDeliveryFee())
+
+      const confirmationUrl = deliveryAddress.email
+        ? `/customer/orders/${order.id}/confirmation?token=${paymentIntentId}`
+        : `/customer/orders/${order.id}/confirmation`
+      
+      console.log('[Checkout] Redirecting to confirmation:', confirmationUrl)
+      window.location.href = confirmationUrl
+    } catch (error: any) {
+      console.error('Order creation error:', error)
+      toast({
+        title: "Error",
+        description: error.message || "An error occurred creating your order",
+        variant: "destructive",
+      })
+      setCreatingOrder(false)
+      setProcessing(false)
+    }
+  }, [deliveryAddress, userId, restaurantSlug, getTotal, getTax, getEffectiveDeliveryFee, toast])
+
+  const handleExpressCheckoutConfirm = useCallback(async (event: StripeExpressCheckoutElementConfirmEvent) => {
+    if (!stripe || !elements) return
+
+    setProcessing(true)
+
+    try {
+      const { error, paymentIntent } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: `${window.location.origin}/customer/order-confirmation`,
+        },
+        redirect: 'if_required',
+      })
+
+      if (error) {
+        toast({
+          title: "Payment Failed",
+          description: error.message,
+          variant: "destructive",
+        })
+        setProcessing(false)
+      } else if (paymentIntent && paymentIntent.status === 'succeeded') {
+        await createOrderAfterPayment(paymentIntent.id)
+      }
+    } catch (error: any) {
+      console.error('Express checkout error:', error)
+      toast({
+        title: "Error",
+        description: error.message || "An error occurred processing your payment",
+        variant: "destructive",
+      })
+      setProcessing(false)
+    }
+  }, [stripe, elements, toast, createOrderAfterPayment])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -157,7 +250,7 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
           payment_method_data: {
             billing_details: {
               address: {
-                country: 'CA', // Canada - we're Canada-only
+                country: 'CA',
                 postal_code: deliveryAddress.postal_code,
               }
             }
@@ -174,75 +267,7 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
         })
         setProcessing(false)
       } else if (paymentIntent && paymentIntent.status === 'succeeded') {
-        // If user wants to save card, set it up for future use
-        if (saveCard && userId) {
-          try {
-            console.log('[Payment] User opted to save card')
-            // Note: Stripe automatically saves payment methods when setup_future_usage is set
-            // This is handled in the payment intent creation on the backend
-          } catch (error) {
-            console.error('[Payment] Error saving card:', error)
-            // Don't fail the order if card saving fails
-          }
-        }
-        // Payment succeeded, show loading state while creating order
-        setCreatingOrder(true)
-        
-        // Payment succeeded, create order with cart items for server validation
-        const { items } = useCartStore.getState()
-        
-        const orderPayload = {
-          payment_intent_id: paymentIntent.id,
-          delivery_address: deliveryAddress,
-          guest_email: deliveryAddress.email, // Required for guest checkout
-          user_id: userId, // Include user_id to match payment intent metadata
-          restaurant_slug: restaurantSlug, // Include for payment mode lookup
-          cart_items: items.map(item => ({
-            dishId: item.dishId,
-            size: item.size,
-            quantity: item.quantity,
-            modifiers: item.modifiers,
-            specialInstructions: item.specialInstructions,
-          })),
-        };
-        
-        console.log('[Payment] Creating order with userId:', userId, 'Payment Intent ID:', paymentIntent.id);
-        
-        const orderResponse = await fetch(`${getApiBaseUrl()}/api/customer/orders`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(orderPayload),
-        })
-
-        if (!orderResponse.ok) {
-          const errorData = await orderResponse.json().catch(() => ({}))
-          console.error('[Order Creation] Failed:', errorData)
-          throw new Error(errorData.error || 'Failed to create order')
-        }
-
-        const order = await orderResponse.json()
-
-        // Track purchase event for GA before redirect
-        const currentItems = useCartStore.getState().items
-        const cartItems = currentItems.map(item => ({
-          id: item.dishId,
-          name: item.dishName,
-          price: item.sizePrice,
-          quantity: item.quantity
-        }))
-        trackPurchase(String(order.id), getTotal(), cartItems, getTax(), getEffectiveDeliveryFee())
-
-        // Build confirmation URL with payment intent as secure token for guest orders
-        const confirmationUrl = deliveryAddress.email
-          ? `/customer/orders/${order.id}/confirmation?token=${paymentIntent.id}`
-          : `/customer/orders/${order.id}/confirmation`
-        
-        console.log('[Checkout] Redirecting to confirmation:', confirmationUrl)
-        
-        // Use hard redirect for reliable navigation to confirmation page
-        // Note: Cart will be cleared on confirmation page to avoid triggering
-        // the "cart is empty" redirect logic before we can navigate away
-        window.location.href = confirmationUrl
+        await createOrderAfterPayment(paymentIntent.id)
       }
     } catch (error: any) {
       console.error('Payment error:', error)
@@ -269,12 +294,63 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Order Type Confirmation - Shows pickup location or delivery address */}
         <OrderConfirmationBlock deliveryAddress={deliveryAddress} />
 
-        {/* Payment Element */}
+        {/* Express Checkout - Native Apple Pay / Google Pay buttons */}
+        <div className={showExpressCheckout ? '' : 'hidden'}>
+          <ExpressCheckoutElement
+            onReady={({ availablePaymentMethods }) => {
+              console.log('[Express Checkout] onReady fired, availablePaymentMethods:', JSON.stringify(availablePaymentMethods))
+              if (availablePaymentMethods) {
+                const hasWallet = availablePaymentMethods.applePay || availablePaymentMethods.googlePay
+                setShowExpressCheckout(!!hasWallet)
+                console.log('[Express Checkout] hasWallet:', hasWallet, 'applePay:', availablePaymentMethods.applePay, 'googlePay:', availablePaymentMethods.googlePay)
+              } else {
+                console.log('[Express Checkout] No payment methods available - element will be hidden')
+              }
+            }}
+            onConfirm={handleExpressCheckoutConfirm}
+            onClick={({ resolve }) => {
+              resolve()
+            }}
+            options={{
+              wallets: {
+                applePay: 'auto',
+                googlePay: 'auto',
+              },
+              buttonType: {
+                applePay: 'plain' as any,
+                googlePay: 'pay',
+              },
+              buttonHeight: 48,
+              layout: {
+                maxColumns: 2,
+                maxRows: 1,
+                overflow: 'never',
+              },
+              paymentMethods: {
+                link: 'never',
+                amazonPay: 'never',
+                paypal: 'never',
+              }
+            }}
+          />
+        </div>
+
+        {showExpressCheckout && (
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-2 text-muted-foreground">
+                Or pay with card
+              </span>
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Scan Card Button - Mobile Only */}
           {isMobile && hasCameraAccess && (
             <>
               <div className="flex items-center justify-center">
@@ -297,7 +373,7 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
                   <span className="bg-background px-2 text-muted-foreground">
-                    Or enter manually
+                    Or enter card details
                   </span>
                 </div>
               </div>
@@ -306,11 +382,17 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
 
           <PaymentElement 
             onReady={() => setIsLoading(false)}
+            onChange={(event) => {
+              setIsPaymentComplete(event.complete)
+            }}
             options={{
               defaultValues: {
                 billingDetails: {
+                  name: deliveryAddress.name || undefined,
+                  email: deliveryAddress.email || undefined,
+                  phone: deliveryAddress.phone || undefined,
                   address: {
-                    country: 'CA', // Canada - this makes it show "Postal code" instead of "ZIP code"
+                    country: 'CA',
                     postal_code: deliveryAddress.postal_code,
                   }
                 }
@@ -319,40 +401,22 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
                 billingDetails: {
                   email: 'auto',
                   address: {
-                    country: 'never', // Hide country selector since we're Canada-only
+                    country: 'never',
                     postalCode: 'auto',
                   }
                 }
               },
+              wallets: {
+                link: 'never',
+                applePay: 'never',
+                googlePay: 'never',
+              },
+              paymentMethodOrder: ['card'],
               terms: {
                 card: 'never'
               }
             }}
           />
-
-          {/* Save Card Checkbox (Only for logged-in users) */}
-          {userId && (
-            <div className="flex items-start space-x-3 p-4 bg-primary/5 border border-primary/20 rounded-lg">
-              <Checkbox
-                id="save-card"
-                checked={saveCard}
-                onCheckedChange={(checked) => setSaveCard(checked as boolean)}
-                data-testid="checkbox-save-card"
-              />
-              <div className="flex-1 space-y-1">
-                <Label
-                  htmlFor="save-card"
-                  className="text-sm font-medium leading-none cursor-pointer flex items-center gap-2"
-                >
-                  <Shield className="w-4 h-4 text-primary" />
-                  Save card for faster checkout
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  Securely save this card with Stripe for quicker future purchases
-                </p>
-              </div>
-            </div>
-          )}
 
           <div className="flex gap-3">
             <Button
@@ -368,11 +432,14 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
             </Button>
             <Button
               type="submit"
-              disabled={!stripe || processing || isLoading}
-              className="flex-1"
+              disabled={!stripe || processing || isLoading || !isPaymentComplete}
+              className={cn(
+                "flex-1",
+                (!isPaymentComplete && !isLoading && !processing) && "opacity-50 cursor-not-allowed"
+              )}
               size="lg"
               data-testid="button-place-order"
-              style={buttonStyle}
+              style={(!isPaymentComplete && !isLoading && !processing) ? undefined : buttonStyle}
             >
               {isLoading ? "Loading..." : processing ? "Processing..." : "Place Order"}
             </Button>
@@ -385,20 +452,19 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
       </CardContent>
     </Card>
 
-    {/* Post-Order Signup Modal (Guest Users Only) */}
     <PostOrderSignupModal
       open={showSignupModal}
       onOpenChange={(open) => {
         if (!open) {
-          // BUG FIX 2: Always redirect when modal closes (skip or ESC/click outside)
           handleSignupModalClose()
         }
       }}
       guestEmail={guestEmail}
+      guestName={deliveryAddress.name}
+      guestPhone={deliveryAddress.phone}
       onSuccess={handleSignupModalClose}
     />
 
-    {/* Full-screen loading overlay during order creation */}
     {creatingOrder && (
       <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center" data-testid="loading-order-creation">
         <Card className="w-full max-w-md mx-4">
@@ -417,7 +483,6 @@ export function CheckoutPaymentForm({ clientSecret, deliveryAddress, userId, onB
       </div>
     )}
 
-    {/* Card Scanning Modal - Mobile Only */}
     <CardScannerModal
       isOpen={showScanModal}
       onClose={() => setShowScanModal(false)}

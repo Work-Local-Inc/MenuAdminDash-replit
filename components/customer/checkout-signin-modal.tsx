@@ -1,10 +1,11 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/client'
+import { useCartStore } from '@/lib/stores/cart-store'
 import {
   Dialog,
   DialogContent,
@@ -27,12 +28,12 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useToast } from '@/hooks/use-toast'
-import { Eye, EyeOff, LogIn, UserPlus } from 'lucide-react'
-import { FcGoogle } from 'react-icons/fc'
-import { Separator } from '@/components/ui/separator'
+import { Eye, EyeOff, LogIn, UserPlus, KeyRound, Smartphone } from 'lucide-react'
+import { SiGoogle } from 'react-icons/si'
 import { getApiBaseUrl } from '@/lib/api-utils'
 
 const signInSchema = z.object({
@@ -63,6 +64,13 @@ interface CheckoutSignInModalProps {
   onSuccess?: () => void
 }
 
+function formatPhoneDisplay(digits: string): string {
+  const d = digits.replace(/\D/g, '')
+  if (d.length <= 3) return d
+  if (d.length <= 6) return `(${d.slice(0, 3)}) ${d.slice(3)}`
+  return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6, 10)}`
+}
+
 export function CheckoutSignInModal({
   open,
   onOpenChange,
@@ -71,10 +79,122 @@ export function CheckoutSignInModal({
   const { toast } = useToast()
   const supabase = createClient()
   
-  const [activeTab, setActiveTab] = useState<'signin' | 'signup'>('signin')
+  const [activeTab, setActiveTab] = useState<'phone' | 'signin' | 'signup'>('phone')
   const [showSignInPassword, setShowSignInPassword] = useState(false)
   const [showSignUpPassword, setShowSignUpPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showForgotPassword, setShowForgotPassword] = useState(false)
+  const [forgotEmail, setForgotEmail] = useState('')
+  const [sendingReset, setSendingReset] = useState(false)
+  const [resetSent, setResetSent] = useState(false)
+
+  const [phoneNumber, setPhoneNumber] = useState('')
+  const [otpCode, setOtpCode] = useState('')
+  const [phoneStep, setPhoneStep] = useState<'enter' | 'verify'>('enter')
+  const [sendingOtp, setSendingOtp] = useState(false)
+  const [verifyingOtp, setVerifyingOtp] = useState(false)
+  const [resendCountdown, setResendCountdown] = useState(0)
+  const [googleLoading, setGoogleLoading] = useState(false)
+
+  useEffect(() => {
+    if (!open) {
+      setPhoneStep('enter')
+      setOtpCode('')
+      setResendCountdown(0)
+    }
+  }, [open])
+
+  useEffect(() => {
+    if (resendCountdown <= 0) return
+    const timer = setTimeout(() => setResendCountdown(resendCountdown - 1), 1000)
+    return () => clearTimeout(timer)
+  }, [resendCountdown])
+
+  const handleSendOtp = useCallback(async () => {
+    const digits = phoneNumber.replace(/\D/g, '')
+    if (digits.length < 10) {
+      toast({ variant: "destructive", title: "Invalid phone number", description: "Please enter a valid 10-digit phone number" })
+      return
+    }
+    setSendingOtp(true)
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        phone: '+1' + digits,
+      })
+      if (error) throw error
+      setPhoneStep('verify')
+      setResendCountdown(60)
+      toast({ title: "Code Sent", description: "Check your phone for the verification code" })
+    } catch (error: any) {
+      console.error('Send OTP error:', error)
+      toast({ variant: "destructive", title: "Failed to send code", description: error.message || "Could not send verification code. Please try again." })
+    } finally {
+      setSendingOtp(false)
+    }
+  }, [phoneNumber, supabase, toast])
+
+  const handleVerifyOtp = useCallback(async () => {
+    if (otpCode.length !== 6) {
+      toast({ variant: "destructive", title: "Invalid code", description: "Please enter the 6-digit code" })
+      return
+    }
+    const digits = phoneNumber.replace(/\D/g, '')
+    setVerifyingOtp(true)
+    try {
+      const { data, error } = await supabase.auth.verifyOtp({
+        phone: '+1' + digits,
+        token: otpCode,
+        type: 'sms',
+      })
+      if (error) throw error
+
+      if (data.user?.email) {
+        try {
+          await fetch(`${getApiBaseUrl()}/api/customer/oauth-profile`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              auth_user_id: data.user.id,
+              email: data.user.email || '',
+              first_name: data.user.user_metadata?.first_name,
+              last_name: data.user.user_metadata?.last_name,
+              phone: '+1' + digits,
+            }),
+          })
+        } catch (err) {
+          console.error('Exception calling OAuth profile API:', err)
+        }
+      }
+
+      toast({ title: "Welcome!", description: "You've successfully signed in" })
+      onOpenChange(false)
+      if (onSuccess) onSuccess()
+    } catch (error: any) {
+      console.error('Verify OTP error:', error)
+      toast({ variant: "destructive", title: "Verification Failed", description: error.message || "Invalid code. Please try again." })
+    } finally {
+      setVerifyingOtp(false)
+    }
+  }, [otpCode, phoneNumber, supabase, toast, onOpenChange, onSuccess])
+
+  const handleResendOtp = useCallback(async () => {
+    if (resendCountdown > 0) return
+    const digits = phoneNumber.replace(/\D/g, '')
+    setSendingOtp(true)
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        phone: '+1' + digits,
+      })
+      if (error) throw error
+      setResendCountdown(60)
+      toast({ title: "Code Resent", description: "Check your phone for the new verification code" })
+    } catch (error: any) {
+      console.error('Resend OTP error:', error)
+      toast({ variant: "destructive", title: "Failed to resend", description: error.message || "Could not resend code. Please try again." })
+    } finally {
+      setSendingOtp(false)
+    }
+  }, [resendCountdown, phoneNumber, supabase, toast])
 
   // Sign In Form
   const signInForm = useForm<SignInFormData>({
@@ -99,22 +219,65 @@ export function CheckoutSignInModal({
   })
 
   const handleGoogleSignIn = async () => {
+    setGoogleLoading(true)
     try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const slug = useCartStore.getState().restaurantSlug
+      const redirectPath = '/checkout' + (slug ? '?restaurant=' + slug : '')
+      document.cookie = `oauth_redirect_to=${encodeURIComponent(redirectPath)};path=/;max-age=600;samesite=lax`
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback?redirect=/checkout`,
+          redirectTo: window.location.origin + '/auth/callback?next=' + encodeURIComponent(redirectPath),
         },
       })
-
       if (error) throw error
     } catch (error: any) {
-      console.error('Google sign in error:', error)
+      console.error('Google sign-in error:', error)
       toast({
         variant: "destructive",
         title: "Google Sign In Failed",
-        description: error.message || "Failed to sign in with Google",
+        description: error.message || "Could not sign in with Google. Please try again.",
       })
+      setGoogleLoading(false)
+    }
+  }
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!forgotEmail) return
+    setSendingReset(true)
+
+    try {
+      const slug = useCartStore.getState().restaurantSlug
+      const returnTo = slug
+        ? `/checkout?reset_password=true&restaurant=${slug}`
+        : '/checkout?reset_password=true'
+      const response = await fetch('/api/customer/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: forgotEmail,
+          returnTo,
+          redirectUrl: window.location.origin,
+        }),
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error || 'Failed to send reset email')
+
+      setResetSent(true)
+      toast({
+        title: "Reset Link Sent",
+        description: "Check your email for a password reset link.",
+      })
+    } catch (error: any) {
+      console.error('Password reset error:', error)
+      toast({
+        variant: "destructive",
+        title: "Reset Failed",
+        description: error.message || "Failed to send reset link. Please try again.",
+      })
+    } finally {
+      setSendingReset(false)
     }
   }
 
@@ -251,117 +414,274 @@ export function CheckoutSignInModal({
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'signin' | 'signup')} className="w-full mt-4">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="signin" data-testid="tab-signin">Sign In</TabsTrigger>
-            <TabsTrigger value="signup" data-testid="tab-create-account">Create Account</TabsTrigger>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'phone' | 'signin' | 'signup')} className="w-full mt-4">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="phone" data-testid="tab-phone">
+              <Smartphone className="w-4 h-4 mr-1" />
+              Phone
+            </TabsTrigger>
+            <TabsTrigger value="signin" data-testid="tab-signin">
+              <LogIn className="w-4 h-4 mr-1" />
+              Email
+            </TabsTrigger>
+            <TabsTrigger value="signup" data-testid="tab-create-account">
+              <UserPlus className="w-4 h-4 mr-1" />
+              Sign Up
+            </TabsTrigger>
           </TabsList>
+
+          {/* Phone OTP Tab */}
+          <TabsContent value="phone" className="space-y-4 mt-4">
+            {phoneStep === 'enter' ? (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Phone Number</Label>
+                  <div className="flex gap-2">
+                    <div className="flex items-center px-3 border rounded-md bg-muted text-sm text-muted-foreground shrink-0">
+                      +1
+                    </div>
+                    <Input
+                      type="tel"
+                      placeholder="(416) 555-0123"
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                      data-testid="input-phone-number"
+                    />
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  className="w-full"
+                  disabled={sendingOtp || phoneNumber.replace(/\D/g, '').length < 10}
+                  onClick={handleSendOtp}
+                  data-testid="button-send-otp"
+                >
+                  {sendingOtp ? "Sending..." : "Send Code"}
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between flex-wrap gap-1">
+                  <p className="text-sm text-muted-foreground">
+                    Code sent to <span className="font-medium text-foreground">+1 {formatPhoneDisplay(phoneNumber)}</span>
+                  </p>
+                  <button
+                    type="button"
+                    className="text-xs text-primary hover:underline"
+                    onClick={() => { setPhoneStep('enter'); setOtpCode('') }}
+                    data-testid="button-edit-phone"
+                  >
+                    Edit
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  <Label>Verification Code</Label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    placeholder="000000"
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    data-testid="input-otp-code"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  className="w-full"
+                  disabled={verifyingOtp || otpCode.length !== 6}
+                  onClick={handleVerifyOtp}
+                  data-testid="button-verify-otp"
+                >
+                  {verifyingOtp ? "Verifying..." : "Verify Code"}
+                </Button>
+                <div className="text-center">
+                  {resendCountdown > 0 ? (
+                    <span className="text-sm text-muted-foreground" data-testid="text-resend-countdown">
+                      Resend in {resendCountdown}s
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      className="text-sm text-primary hover:underline"
+                      onClick={handleResendOtp}
+                      disabled={sendingOtp}
+                      data-testid="button-resend-otp"
+                    >
+                      Resend Code
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </TabsContent>
           
           {/* Sign In Tab */}
           <TabsContent value="signin" className="space-y-4 mt-4">
-            <Form {...signInForm}>
-              <form onSubmit={signInForm.handleSubmit(handleSignIn)} className="space-y-4">
-                <FormField
-                  control={signInForm.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          type="email"
-                          placeholder="you@example.com"
-                          data-testid="input-signin-email"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={signInForm.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Password</FormLabel>
-                      <FormControl>
-                        <div className="relative">
+            {showForgotPassword ? (
+              <div className="space-y-4">
+                {resetSent ? (
+                  <div className="text-center space-y-3 py-4">
+                    <div className="mx-auto w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                      <KeyRound className="w-6 h-6 text-green-600 dark:text-green-400" />
+                    </div>
+                    <h3 className="font-medium text-lg">Check Your Email</h3>
+                    <p className="text-sm text-muted-foreground">
+                      We sent a password reset link to <strong>{forgotEmail}</strong>. Click the link in the email to set a new password.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full mt-2"
+                      onClick={() => {
+                        setShowForgotPassword(false)
+                        setResetSent(false)
+                        setForgotEmail('')
+                      }}
+                      data-testid="button-back-to-signin"
+                    >
+                      Back to Sign In
+                    </Button>
+                  </div>
+                ) : (
+                  <form onSubmit={handleForgotPassword} className="space-y-4">
+                    <div className="space-y-2">
+                      <h3 className="font-medium">Reset Your Password</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Enter your email address and we'll send you a link to reset your password.
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Email</Label>
+                      <Input
+                        type="email"
+                        placeholder="you@example.com"
+                        value={forgotEmail}
+                        onChange={(e) => setForgotEmail(e.target.value)}
+                        required
+                        data-testid="input-forgot-email"
+                      />
+                    </div>
+                    <Button 
+                      type="submit" 
+                      className="w-full" 
+                      disabled={sendingReset}
+                      data-testid="button-send-reset-link"
+                    >
+                      {sendingReset ? "Sending..." : "Send Reset Link"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="w-full"
+                      onClick={() => setShowForgotPassword(false)}
+                      data-testid="button-cancel-forgot"
+                    >
+                      Back to Sign In
+                    </Button>
+                  </form>
+                )}
+              </div>
+            ) : (
+              <Form {...signInForm}>
+                <form onSubmit={signInForm.handleSubmit(handleSignIn)} className="space-y-4">
+                  <FormField
+                    control={signInForm.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
                           <Input
                             {...field}
-                            type={showSignInPassword ? "text" : "password"}
-                            placeholder="••••••••"
-                            data-testid="input-signin-password"
+                            type="email"
+                            placeholder="you@example.com"
+                            data-testid="input-signin-email"
                           />
-                          <Button
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={signInForm.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <div className="flex items-center justify-between flex-wrap gap-1">
+                          <FormLabel>Password</FormLabel>
+                          <button
                             type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="absolute right-0 top-0 h-full px-3"
-                            onClick={() => setShowSignInPassword(!showSignInPassword)}
-                            data-testid="button-toggle-signin-password"
+                            className="text-xs text-primary hover:underline"
+                            onClick={() => {
+                              setShowForgotPassword(true)
+                              setForgotEmail(signInForm.getValues('email') || '')
+                            }}
+                            data-testid="button-forgot-password"
                           >
-                            {showSignInPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                          </Button>
+                            Forgot password?
+                          </button>
                         </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                        <FormControl>
+                          <div className="relative">
+                            <Input
+                              {...field}
+                              type={showSignInPassword ? "text" : "password"}
+                              placeholder="••••••••"
+                              data-testid="input-signin-password"
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="absolute right-0 top-0 h-full px-3"
+                              onClick={() => setShowSignInPassword(!showSignInPassword)}
+                              data-testid="button-toggle-signin-password"
+                            >
+                              {showSignInPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </Button>
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                <FormField
-                  control={signInForm.control}
-                  name="rememberMe"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                          data-testid="checkbox-remember-me"
-                        />
-                      </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel className="text-sm font-normal cursor-pointer">
-                          Remember me
-                        </FormLabel>
-                      </div>
-                    </FormItem>
-                  )}
-                />
-                
-                <Button 
-                  type="submit" 
-                  className="w-full" 
-                  disabled={isSubmitting}
-                  data-testid="button-submit-signin"
-                >
-                  <LogIn className="w-4 h-4 mr-2" />
-                  {isSubmitting ? "Signing in..." : "Sign In"}
-                </Button>
-              </form>
-            </Form>
+                  <FormField
+                    control={signInForm.control}
+                    name="rememberMe"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="checkbox-remember-me"
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="text-sm font-normal cursor-pointer">
+                            Remember me
+                          </FormLabel>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <Button 
+                    type="submit" 
+                    className="w-full" 
+                    disabled={isSubmitting}
+                    data-testid="button-submit-signin"
+                  >
+                    <LogIn className="w-4 h-4 mr-2" />
+                    {isSubmitting ? "Signing in..." : "Sign In"}
+                  </Button>
+                </form>
+              </Form>
+            )}
 
-            <div className="relative my-4">
-              <Separator />
-              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-background px-2 text-xs text-muted-foreground">
-                OR
-              </span>
-            </div>
-
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={handleGoogleSignIn}
-              disabled={isSubmitting}
-              data-testid="button-google-signin-modal"
-            >
-              <FcGoogle className="w-5 h-5 mr-2" />
-              Continue with Google
-            </Button>
           </TabsContent>
           
           {/* Create Account Tab */}
@@ -490,26 +810,9 @@ export function CheckoutSignInModal({
               </form>
             </Form>
 
-            <div className="relative my-4">
-              <Separator />
-              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-background px-2 text-xs text-muted-foreground">
-                OR
-              </span>
-            </div>
-
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={handleGoogleSignIn}
-              disabled={isSubmitting}
-              data-testid="button-google-signup-modal"
-            >
-              <FcGoogle className="w-5 h-5 mr-2" />
-              Continue with Google
-            </Button>
           </TabsContent>
         </Tabs>
+
       </DialogContent>
     </Dialog>
   )

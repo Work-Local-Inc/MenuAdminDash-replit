@@ -1,8 +1,8 @@
 "use client"
 
 import { useEffect, useState, useRef } from 'react'
-import { useRouter } from 'next/navigation'
-import { useCartStore, AppliedPromo } from '@/lib/stores/cart-store'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useCartStore, useHasCartHydrated, AppliedPromo } from '@/lib/stores/cart-store'
 import { createClient } from '@/lib/supabase/client'
 import { Elements } from '@stripe/react-stripe-js'
 import { loadStripe, Stripe } from '@stripe/stripe-js'
@@ -16,6 +16,7 @@ import { CheckoutAddressForm } from '@/components/customer/checkout-address-form
 import { CheckoutPaymentForm } from '@/components/customer/checkout-payment-form'
 import { CheckoutPaymentSelection } from '@/components/customer/checkout-payment-selection'
 import { CheckoutSignInModal } from '@/components/customer/checkout-signin-modal'
+import { ResetPasswordModal } from '@/components/customer/reset-password-modal'
 import { OrderTypeSelector } from '@/components/customer/order-type-selector'
 import { Schedule } from '@/components/customer/schedule-time-picker'
 import { PromoCodeInput } from '@/components/customer/promo-code-input'
@@ -49,6 +50,15 @@ interface DeliveryAddress {
 
 export default function CheckoutPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const isResettingPasswordFromParams = searchParams.get('reset_password') === 'true'
+  const isResettingPasswordRef = useRef(
+    isResettingPasswordFromParams || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('reset_password') === 'true')
+  )
+  if (isResettingPasswordFromParams) {
+    isResettingPasswordRef.current = true
+  }
+  const isResettingPassword = isResettingPasswordRef.current
   const { toast } = useToast()
   const [supabase] = useState(() => createClient())
   
@@ -73,6 +83,8 @@ export default function CheckoutPage() {
     appliedPromo,
     applyPromo
   } = useCartStore()
+  
+  const cartHydrated = useHasCartHydrated()
   
   // Debug: Log what slug the cart has stored
   useEffect(() => {
@@ -99,6 +111,8 @@ export default function CheckoutPage() {
   const [guestPickupName, setGuestPickupName] = useState('')
   const [guestPickupPhone, setGuestPickupPhone] = useState('')
   const [loggedInPickupPhone, setLoggedInPickupPhone] = useState('') // For logged-in users missing phone
+  const [loggedInPickupName, setLoggedInPickupName] = useState('') // For phone-only users missing name
+  const [loggedInPickupEmail, setLoggedInPickupEmail] = useState('') // For phone-only users missing email
   const [schedules, setSchedules] = useState<Schedule[]>([])
   const [schedulesLoading, setSchedulesLoading] = useState(false)
   const [isDeliveryBlocked, setIsDeliveryBlocked] = useState(false)
@@ -232,10 +246,27 @@ export default function CheckoutPage() {
         // Process profile
         if (profileData?.user) {
           console.log('[Checkout] User profile loaded:', profileData.user.id, profileData.user.email)
+          const { data: { user: authUser } } = await supabase.auth.getUser()
+          if (!profileData.user.phone && authUser?.phone) {
+            profileData.user.phone = authUser.phone
+          }
           setCurrentUser(profileData.user)
         } else {
-          console.log('[Checkout] No user profile - Guest checkout mode')
-          setCurrentUser(null)
+          const { data: { user: authUser } } = await supabase.auth.getUser()
+          if (authUser) {
+            console.log('[Checkout] No profile but authenticated - using auth data (phone-only user)')
+            setCurrentUser({
+              id: null,
+              auth_user_id: authUser.id,
+              email: authUser.email || '',
+              first_name: authUser.user_metadata?.first_name || '',
+              last_name: authUser.user_metadata?.last_name || '',
+              phone: authUser.phone || '',
+            })
+          } else {
+            console.log('[Checkout] No user profile - Guest checkout mode')
+            setCurrentUser(null)
+          }
         }
         
         // Process schedules (only if we fetched them)
@@ -259,6 +290,29 @@ export default function CheckoutPage() {
           } else {
             console.log('[Checkout] ⚠️ No service config found - delivery/pickup will default to enabled')
           }
+
+          const cartAddress = useCartStore.getState().restaurantAddress;
+          if (!cartAddress && restaurantData) {
+            const loc = restaurantData.restaurant_locations?.find((l: any) => l.is_primary && l.is_active) 
+              || restaurantData.restaurant_locations?.find((l: any) => l.is_active)
+              || restaurantData.restaurant_locations?.[0];
+            let fallbackAddress = '';
+            if (loc?.street_address) {
+              const parts = [loc.street_address];
+              if (loc.city_name) parts.push(loc.city_name);
+              if (loc.province_name) parts.push(loc.province_name);
+              if (loc.postal_code) parts.push(loc.postal_code);
+              fallbackAddress = parts.join(', ');
+            } else if (restaurantData.street_address) {
+              fallbackAddress = restaurantData.street_address;
+              if (restaurantData.city) fallbackAddress += `, ${restaurantData.city}`;
+              if (restaurantData.postal_code) fallbackAddress += ` ${restaurantData.postal_code}`;
+            }
+            if (fallbackAddress) {
+              useCartStore.getState().setRestaurantAddress(fallbackAddress);
+              console.log('[Checkout] Set restaurant address from API:', fallbackAddress);
+            }
+          }
         }
       } catch (error) {
         console.error('[Checkout] Error fetching data:', error)
@@ -277,16 +331,36 @@ export default function CheckoutPage() {
       console.log('[Checkout] Auth state changed:', event, session?.user?.id)
       
       if (event === 'SIGNED_IN' && session?.user) {
-        // User just signed in - refresh user data only
-        try {
-          const response = await fetch(`${getApiBaseUrl()}/api/customer/profile`, { credentials: 'include' })
-          if (response.ok) {
-            const { user: userData } = await response.json()
-            setCurrentUser(userData)
+        const authUser = session.user
+        const fetchProfile = async (retries = 3): Promise<void> => {
+          try {
+            const response = await fetch(`${getApiBaseUrl()}/api/customer/profile`, { credentials: 'include' })
+            if (response.ok) {
+              const { user: userData } = await response.json()
+              if (userData) {
+                if (!userData.phone && authUser.phone) {
+                  userData.phone = authUser.phone
+                }
+                setCurrentUser(userData)
+              } else if (retries > 0) {
+                await new Promise(r => setTimeout(r, 1000))
+                return fetchProfile(retries - 1)
+              } else {
+                setCurrentUser({
+                  id: null,
+                  auth_user_id: authUser.id,
+                  email: authUser.email || '',
+                  first_name: authUser.user_metadata?.first_name || '',
+                  last_name: authUser.user_metadata?.last_name || '',
+                  phone: authUser.phone || '',
+                })
+              }
+            }
+          } catch (error) {
+            console.error('[Checkout] Auth refresh error:', error)
           }
-        } catch (error) {
-          console.error('[Checkout] Auth refresh error:', error)
         }
+        await fetchProfile()
       } else if (event === 'SIGNED_OUT') {
         setCurrentUser(null)
       }
@@ -298,16 +372,16 @@ export default function CheckoutPage() {
   }, [restaurantSlug])
 
   useEffect(() => {
-    // Redirect if cart is empty (but NOT if order was just placed successfully)
-    if (!loading && items.length === 0 && !orderPlacedSuccessfully) {
+    if (!loading && cartHydrated && items.length === 0 && !orderPlacedSuccessfully && !isResettingPassword) {
+      const restSlug = restaurantSlug || searchParams.get('restaurant')
       toast({
         title: "Cart is empty",
         description: "Add items to your cart before checking out",
         variant: "destructive",
       })
-      router.push(restaurantSlug ? `/r/${restaurantSlug}` : '/')
+      router.push(restSlug ? `/r/${restSlug}` : '/customer/login')
     }
-  }, [items, loading, restaurantSlug, router, toast, orderPlacedSuccessfully])
+  }, [items, loading, cartHydrated, restaurantSlug, router, toast, orderPlacedSuccessfully, isResettingPassword, searchParams])
 
   // Hydrate gaMeasurementId if missing (handles direct checkout entry from saved cart)
   const { setGaMeasurementId } = useCartStore()
@@ -518,8 +592,6 @@ export default function CheckoutPage() {
         return
       }
     } else {
-      // For logged-in users, phone is still required
-      // Prefer inline entry if provided, otherwise fall back to profile phone
       const userPhone = loggedInPickupPhone.trim() || currentUser.phone || ''
       if (!userPhone || userPhone.length < 7) {
         toast({
@@ -529,14 +601,33 @@ export default function CheckoutPage() {
         })
         return
       }
+      const userEmail = currentUser.email || loggedInPickupEmail.trim()
+      if (!userEmail) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        if (!loggedInPickupEmail.trim() || !emailRegex.test(loggedInPickupEmail.trim())) {
+          toast({
+            title: "Email required",
+            description: "Please enter a valid email address for your order confirmation",
+            variant: "destructive",
+          })
+          return
+        }
+      }
+      const userName = loggedInPickupName.trim() || `${currentUser.first_name || ''} ${currentUser.last_name || ''}`.trim()
+      if (!userName || userName.length < 2) {
+        toast({
+          title: "Name required",
+          description: "Please enter your name for the order",
+          variant: "destructive",
+        })
+        return
+      }
     }
     
-    const email = currentUser?.email || guestPickupEmail
-    // Build full name from first_name and last_name if available
+    const email = currentUser?.email || loggedInPickupEmail.trim() || guestPickupEmail
     const userName = currentUser 
-      ? `${currentUser.first_name || ''} ${currentUser.last_name || ''}`.trim() || 'Customer'
+      ? loggedInPickupName.trim() || `${currentUser.first_name || ''} ${currentUser.last_name || ''}`.trim() || 'Customer'
       : guestPickupName.trim()
-    // Prefer inline phone entry if provided, otherwise fall back to profile/guest phone
     const phone = loggedInPickupPhone.trim() || currentUser?.phone || guestPickupPhone.trim()
     
     // For pickup, we don't need a delivery address - just the restaurant address
@@ -611,7 +702,7 @@ export default function CheckoutPage() {
               delivery_address: JSON.stringify(selectedAddress),
               restaurant_slug: restaurantSlug,
               guest_email: selectedAddress?.email,
-              order_type: orderType,
+              order_type: effectiveOrderType,
               service_time: JSON.stringify(pickupTime),
               order_notes: orderNotes.trim() || undefined,
               coupon_code: appliedPromo?.code || undefined,
@@ -655,7 +746,7 @@ export default function CheckoutPage() {
         }))
 
         // Calculate delivery fee and tax for non-card orders
-        const cashDeliveryFee = orderType === 'delivery' ? effectiveDeliveryFee : 0
+        const cashDeliveryFee = effectiveOrderType === 'delivery' ? effectiveDeliveryFee : 0
         const cashTax = tax
 
         const response = await fetch(`${getApiBaseUrl()}/api/customer/orders/cash`, {
@@ -668,7 +759,7 @@ export default function CheckoutPage() {
             user_id: currentUser?.id ? String(currentUser.id) : undefined,
             guest_email: selectedAddress?.email,
             restaurant_slug: restaurantSlug,
-            order_type: orderType,
+            order_type: effectiveOrderType,
             service_time: pickupTime,
             delivery_fee: cashDeliveryFee,
             tax_amount: cashTax,
@@ -728,8 +819,20 @@ export default function CheckoutPage() {
     )
   }
 
-  if (items.length === 0 && !orderPlacedSuccessfully) {
+  if (items.length === 0 && !orderPlacedSuccessfully && !isResettingPassword) {
     return null // Will redirect to restaurant menu
+  }
+
+  if (isResettingPassword && items.length === 0) {
+    const returnRestaurant = searchParams.get('restaurant')
+    return (
+      <div className="min-h-screen bg-muted/30 flex items-center justify-center">
+        <ResetPasswordModal onPasswordReset={() => {
+          isResettingPasswordRef.current = false
+          router.replace(returnRestaurant ? `/r/${returnRestaurant}` : '/customer/login')
+        }} />
+      </div>
+    )
   }
 
   // Compute minimum order violation for delivery (inline warning, not blocking redirect)
@@ -738,29 +841,30 @@ export default function CheckoutPage() {
 
   return (
     <AnalyticsProvider measurementId={gaMeasurementId}>
-    <div className="min-h-screen bg-muted/30">
+    <div className="min-h-screen bg-muted/30 overflow-x-hidden">
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         {/* Header */}
         <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
             <Button variant="ghost" asChild data-testid="button-back-to-menu">
               <Link href={`/r/${restaurantSlug}`}>
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to {restaurantName}
+                <span className="hidden sm:inline">Back to {restaurantName}</span>
+                <span className="sm:hidden">Back</span>
               </Link>
             </Button>
             
             {/* Auth Section */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 min-w-0">
               {currentUser ? (
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 min-w-0">
                   <Link 
                     href="/customer/account?from=checkout" 
-                    className="flex items-center gap-2 text-sm hover:text-primary transition-colors"
+                    className="flex items-center gap-1.5 text-sm hover:text-primary transition-colors min-w-0"
                     data-testid="link-account"
                   >
-                    <User className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-muted-foreground hover:text-primary">
+                    <User className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
+                    <span className="text-muted-foreground hover:text-primary truncate max-w-[120px] sm:max-w-[200px]">
                       {currentUser.email || currentUser.first_name || 'Account'}
                     </span>
                   </Link>
@@ -770,8 +874,8 @@ export default function CheckoutPage() {
                     onClick={handleSignOut}
                     data-testid="button-sign-out"
                   >
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Sign Out
+                    <LogOut className="w-4 h-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Sign Out</span>
                   </Button>
                 </div>
               ) : (
@@ -852,28 +956,35 @@ export default function CheckoutPage() {
             {/* Progress Steps */}
             <Card>
               <CardContent className="p-6">
-                <div className="flex items-center gap-4">
-                  <div className={`flex items-center gap-2 ${step === 'address' ? 'text-primary' : 'text-muted-foreground'}`}>
+                <p className="text-xs text-muted-foreground mb-3" data-testid="text-step-indicator">
+                  Step {step === 'address' ? '1' : step === 'payment-method' ? '2' : '3'} of 3
+                </p>
+                <div className="flex items-center gap-2 sm:gap-4">
+                  <div className="flex flex-col items-center gap-1 min-w-0">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'address' ? 'bg-primary text-primary-foreground' : 'bg-green-500 text-white'}`}>
                       {effectiveOrderType === 'pickup' ? <ShoppingBag className="w-4 h-4" /> : <MapPin className="w-4 h-4" />}
                     </div>
-                    <span className="font-medium hidden sm:inline">
-                      {effectiveOrderType === 'pickup' ? 'Pickup' : 'Address'}
+                    <span className={`text-[11px] sm:text-xs font-medium truncate max-w-[70px] sm:max-w-none text-center ${step === 'address' ? 'text-primary' : 'text-muted-foreground'}`}>
+                      {effectiveOrderType === 'pickup' ? 'Details' : 'Address'}
                     </span>
                   </div>
                   <Separator className="flex-1" />
-                  <div className={`flex items-center gap-2 ${step === 'payment-method' ? 'text-primary' : 'text-muted-foreground'}`}>
+                  <div className="flex flex-col items-center gap-1 min-w-0">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'payment-method' ? 'bg-primary text-primary-foreground' : step === 'payment' ? 'bg-green-500 text-white' : 'bg-muted'}`}>
                       <Wallet className="w-4 h-4" />
                     </div>
-                    <span className="font-medium hidden sm:inline">Method</span>
+                    <span className={`text-[11px] sm:text-xs font-medium truncate max-w-[70px] sm:max-w-none text-center ${step === 'payment-method' ? 'text-primary' : 'text-muted-foreground'}`}>
+                      Method
+                    </span>
                   </div>
                   <Separator className="flex-1" />
-                  <div className={`flex items-center gap-2 ${step === 'payment' ? 'text-primary' : 'text-muted-foreground'}`}>
+                  <div className="flex flex-col items-center gap-1 min-w-0">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'payment' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                       <CreditCard className="w-4 h-4" />
                     </div>
-                    <span className="font-medium hidden sm:inline">Payment</span>
+                    <span className={`text-[11px] sm:text-xs font-medium truncate max-w-[70px] sm:max-w-none text-center ${step === 'payment' ? 'text-primary' : 'text-muted-foreground'}`}>
+                      Payment
+                    </span>
                   </div>
                 </div>
               </CardContent>
@@ -904,7 +1015,7 @@ export default function CheckoutPage() {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {/* Restaurant Address */}
-                  <div className="bg-muted/50 rounded-lg p-4">
+                  <div className="bg-muted/50 rounded-lg p-4" data-testid="text-pickup-address">
                     <div className="flex items-start gap-3">
                       <MapPin className="w-5 h-5 text-primary mt-0.5" />
                       <div>
@@ -912,7 +1023,7 @@ export default function CheckoutPage() {
                         {restaurantAddress ? (
                           <p className="text-sm text-muted-foreground">{restaurantAddress}</p>
                         ) : (
-                          <p className="text-sm text-muted-foreground">Address will be provided after ordering</p>
+                          <p className="text-sm text-muted-foreground italic">Pickup address not available yet. Please contact the restaurant.</p>
                         )}
                       </div>
                     </div>
@@ -923,29 +1034,77 @@ export default function CheckoutPage() {
                     <div className="space-y-4">
                       <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
                         <p className="text-sm font-medium text-green-800 dark:text-green-200">
-                          Ordering as {currentUser.first_name || currentUser.email}
+                          Ordering as {currentUser.first_name || currentUser.email || currentUser.phone || 'Signed in user'}
                         </p>
-                        <p className="text-xs text-green-600 dark:text-green-400">{currentUser.email}</p>
+                        {currentUser.email ? (
+                          <p className="text-xs text-green-600 dark:text-green-400">{currentUser.email}</p>
+                        ) : currentUser.phone ? (
+                          <p className="text-xs text-green-600 dark:text-green-400">{currentUser.phone}</p>
+                        ) : null}
                       </div>
                       
-                      {/* Phone input for logged-in users missing phone */}
-                      {(!currentUser.phone || currentUser.phone.trim().length < 7) && (
-                        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 space-y-3">
-                          <div>
-                            <p className="font-semibold text-sm text-amber-800 dark:text-amber-200">Phone number required</p>
-                            <p className="text-xs text-amber-600 dark:text-amber-400">
-                              The restaurant needs your phone number to contact you about your order.
-                            </p>
-                          </div>
-                          <input
-                            type="tel"
-                            placeholder="(613) 555-1234"
-                            autoComplete="tel"
-                            className="w-full px-3 py-2 border rounded-md"
-                            data-testid="input-loggedin-pickup-phone"
-                            value={loggedInPickupPhone}
-                            onChange={(e) => setLoggedInPickupPhone(e.target.value)}
-                          />
+                      {/* Name/Email/Phone inputs for users missing details */}
+                      {((!currentUser.first_name && !currentUser.last_name) || !currentUser.email || !currentUser.phone || currentUser.phone.trim().length < 7) && (
+                        <div className="space-y-4">
+                          {/* Name input if missing */}
+                          {!currentUser.first_name && !currentUser.last_name && (
+                            <div className="space-y-2">
+                              <label htmlFor="loggedin-pickup-name" className="text-sm font-medium">
+                                Your Name *
+                              </label>
+                              <input
+                                type="text"
+                                id="loggedin-pickup-name"
+                                placeholder="John Smith"
+                                autoComplete="name"
+                                className="w-full px-3 py-2 border rounded-md"
+                                data-testid="input-loggedin-pickup-name"
+                                value={loggedInPickupName}
+                                onChange={(e) => setLoggedInPickupName(e.target.value)}
+                              />
+                            </div>
+                          )}
+                          
+                          {/* Phone input if missing */}
+                          {(!currentUser.phone || currentUser.phone.trim().length < 7) && (
+                            <div className="space-y-2">
+                              <label htmlFor="loggedin-pickup-phone" className="text-sm font-medium">
+                                Phone Number *
+                              </label>
+                              <input
+                                type="tel"
+                                id="loggedin-pickup-phone"
+                                placeholder="(613) 555-1234"
+                                autoComplete="tel"
+                                className="w-full px-3 py-2 border rounded-md"
+                                data-testid="input-loggedin-pickup-phone"
+                                value={loggedInPickupPhone}
+                                onChange={(e) => setLoggedInPickupPhone(e.target.value)}
+                              />
+                            </div>
+                          )}
+                          
+                          {/* Email input if missing */}
+                          {!currentUser.email && (
+                            <div className="space-y-2">
+                              <label htmlFor="loggedin-pickup-email" className="text-sm font-medium">
+                                Email Address *
+                              </label>
+                              <input
+                                type="email"
+                                id="loggedin-pickup-email"
+                                placeholder="your@email.com"
+                                autoComplete="email"
+                                className="w-full px-3 py-2 border rounded-md"
+                                data-testid="input-loggedin-pickup-email"
+                                value={loggedInPickupEmail}
+                                onChange={(e) => setLoggedInPickupEmail(e.target.value)}
+                              />
+                              <p className="text-xs text-muted-foreground">
+                                We'll send your order confirmation here
+                              </p>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -1031,7 +1190,7 @@ export default function CheckoutPage() {
                     data-testid="button-continue-pickup"
                     style={brandedButtonStyle}
                   >
-                    Continue to Payment
+                    {total > 0 ? `Continue to Pay $${total.toFixed(2)}` : 'Continue to Payment'}
                   </Button>
                   
                   {/* Sign In Prompt for Guests */}
@@ -1109,7 +1268,11 @@ export default function CheckoutPage() {
                     <div key={item.id} className="flex justify-between text-sm" data-testid={`order-item-${item.id}`}>
                       <div className="flex-1">
                         <p className="font-medium">{item.quantity}x {item.dishName}</p>
-                        <p className="text-xs text-muted-foreground">{item.size}</p>
+                        {item.size && item.size !== 'Regular' && (
+                          <p className="text-xs text-muted-foreground" data-testid={`text-order-item-size-${item.id}`}>
+                            {item.size}
+                          </p>
+                        )}
                         {item.modifiers.length > 0 && (
                           <p className="text-xs text-muted-foreground">
                             + {item.modifiers.map(m => m.name).join(', ')}
@@ -1189,6 +1352,10 @@ export default function CheckoutPage() {
         onOpenChange={setShowSignInModal}
         onSuccess={handleSignInSuccess}
       />
+
+      {/* Password Reset Modal - shown when user clicks reset link from email */}
+      <ResetPasswordModal onPasswordReset={handleSignInSuccess} />
+
     </div>
     </AnalyticsProvider>
   )

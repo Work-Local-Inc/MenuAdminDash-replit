@@ -415,11 +415,61 @@ export async function POST(request: NextRequest) {
 
     // LOGGED-IN USER: Get or create Stripe customer
     if (user) {
-      const { data: userData } = await supabase
+      const adminSupabase = createAdminClient() as any
+      let userData: { id: number; stripe_customer_id: string | null; email: string; first_name: string | null; last_name: string | null } | null = null
+
+      // Primary lookup: by auth_user_id
+      const { data: primaryResult } = await adminSupabase
+        .schema('menuca_v3')
         .from('users')
         .select('id, stripe_customer_id, email, first_name, last_name')
         .eq('auth_user_id', user.id)
-        .single() as { data: { id: number; stripe_customer_id: string | null; email: string; first_name: string | null; last_name: string | null } | null }
+        .maybeSingle()
+      
+      userData = primaryResult
+
+      // Fallback: check by email or phone if auth_user_id not linked
+      if (!userData) {
+        const userEmail = user.email || guest_email
+        if (userEmail) {
+          const { data } = await adminSupabase
+            .schema('menuca_v3')
+            .from('users')
+            .select('id, stripe_customer_id, email, first_name, last_name, auth_user_id')
+            .eq('email', userEmail)
+            .maybeSingle()
+          if (data) {
+            userData = data
+            if (!data.auth_user_id) {
+              await adminSupabase
+                .schema('menuca_v3')
+                .from('users')
+                .update({ auth_user_id: user.id })
+                .eq('id', data.id)
+              console.log('[PaymentIntent] Linked auth account to existing user:', data.id)
+            }
+          }
+        }
+        if (!userData && user.phone) {
+          const { data } = await adminSupabase
+            .schema('menuca_v3')
+            .from('users')
+            .select('id, stripe_customer_id, email, first_name, last_name, auth_user_id')
+            .eq('phone', user.phone)
+            .maybeSingle()
+          if (data) {
+            userData = data
+            if (!data.auth_user_id) {
+              await adminSupabase
+                .schema('menuca_v3')
+                .from('users')
+                .update({ auth_user_id: user.id })
+                .eq('id', data.id)
+              console.log('[PaymentIntent] Linked auth account to existing user by phone:', data.id)
+            }
+          }
+        }
+      }
 
       userDbId = userData?.id || null
       stripeCustomerId = userData?.stripe_customer_id || undefined
@@ -462,8 +512,9 @@ export async function POST(request: NextRequest) {
         // Update user with Stripe customer ID  
         if (userData?.id) {
           const updateData = { stripe_customer_id: stripeCustomerId }
-          await (supabase
-            .from('users') as any)
+          await adminSupabase
+            .schema('menuca_v3')
+            .from('users')
             .update(updateData)
             .eq('id', userData.id)
         }

@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
 
     const supabase = createAdminClient()
 
-    const orderSelect = 'id, order_number, restaurant_id, subtotal, total_amount, delivery_fee, tip_amount, payment_method, payment_status, order_status, stripe_payment_intent_id, created_at'
+    const orderSelect = 'id, order_number, restaurant_id, subtotal, total_amount, delivery_fee, tip_amount, payment_method, payment_status, order_status, stripe_payment_intent_id, created_at, is_test_order'
 
     let { data: orderData, error: orderError } = await (supabase as any)
       .from('orders')
@@ -151,6 +151,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (order.is_test_order) {
+      return NextResponse.json(
+        { error: 'Cannot refund a test order — no real money was charged' },
+        { status: 400 }
+      )
+    }
+
     if (!order.stripe_payment_intent_id) {
       return NextResponse.json(
         { error: 'Cannot refund this order - no Stripe payment intent found (cash orders cannot be refunded)' },
@@ -158,9 +165,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (!['paid', 'succeeded'].includes(order.payment_status)) {
+    if (!['paid', 'succeeded', 'partially_refunded'].includes(order.payment_status)) {
       return NextResponse.json(
-        { error: `Cannot refund order with payment status "${order.payment_status}". Must be "paid" or "succeeded"` },
+        { error: `Cannot refund order with payment status "${order.payment_status}". Must be "paid", "succeeded", or "partially_refunded"` },
         { status: 400 }
       )
     }
@@ -309,6 +316,18 @@ export async function POST(request: NextRequest) {
         { error: 'Refund was processed in Stripe but failed to save record. Please contact support.', stripe_refund_id: stripeRefund.id },
         { status: 500 }
       )
+    }
+
+    const newPaymentStatus = (totalAlreadyRefunded + refund_amount >= order.total_amount) ? 'refunded' : 'partially_refunded'
+    const { error: statusUpdateError } = await (supabase as any)
+      .from('orders')
+      .update({ payment_status: newPaymentStatus })
+      .eq('id', order.id)
+
+    if (statusUpdateError) {
+      console.error('[Refunds] WARNING: Failed to update order payment_status:', statusUpdateError)
+    } else {
+      console.log(`[Refunds] Updated order #${order.id} payment_status to "${newPaymentStatus}"`)
     }
 
     console.log(`[Refunds] Refund completed successfully: refund_id=${refundRecord.id}, stripe_refund=${stripeRefund.id}`)

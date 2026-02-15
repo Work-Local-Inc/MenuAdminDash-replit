@@ -39,21 +39,42 @@ export async function POST(request: NextRequest) {
       .eq('auth_user_id', user.id)
       .single()
 
-    // FALLBACK: If not found, try by email (legacy users without auth_user_id)
+    // FALLBACK: If not found, try by email or phone
     if (userError || !userData) {
-      console.log('[Customer Address API] User not found by auth_user_id, trying email fallback')
-      const { data: emailData, error: emailError } = await adminSupabase
-        .from('users')
-        .select('id, email, auth_user_id')
-        .eq('email', user.email || '')
-        .single()
-
-      if (emailError || !emailData) {
-        console.error('[Customer Address API] User not found by email either:', user.email)
-        return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      console.log('[Customer Address API] User not found by auth_user_id, trying email/phone fallback')
+      
+      if (user.email) {
+        const { data: emailData } = await adminSupabase
+          .from('users')
+          .select('id, email, auth_user_id')
+          .eq('email', user.email)
+          .maybeSingle()
+        if (emailData) userData = emailData
       }
 
-      userData = emailData
+      if (!userData && user.phone) {
+        const cleanPhone = user.phone.replace(/\D/g, '')
+        const phoneVariants = [user.phone, cleanPhone, '+' + cleanPhone]
+        if (cleanPhone.startsWith('1') && cleanPhone.length === 11) {
+          phoneVariants.push(cleanPhone.substring(1))
+        }
+        for (const pv of phoneVariants) {
+          const { data: phoneData } = await adminSupabase
+            .from('users')
+            .select('id, email, auth_user_id')
+            .eq('phone', pv)
+            .maybeSingle()
+          if (phoneData) {
+            userData = phoneData
+            break
+          }
+        }
+      }
+
+      if (!userData) {
+        console.error('[Customer Address API] User not found by any method:', user.email, user.phone)
+        return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      }
 
       // Backfill auth_user_id for legacy users
       if (!userData.auth_user_id) {
@@ -76,23 +97,64 @@ export async function POST(request: NextRequest) {
         .eq('is_default', true)
     }
 
-    const { data, error } = await adminSupabase
-      .from('user_delivery_addresses')
-      .insert({
-        user_id: userId,
-        street_address,
-        unit: unit || null,
-        city_id: city_id || null,
-        postal_code: postal_code.toUpperCase().replace(/\s/g, ''),
-        delivery_instructions: delivery_instructions || null,
-        address_label: address_label || null,
-        is_default: is_default || false,
-      } as any)
-      .select()
-      .single()
+    const addressData = {
+      user_id: userId,
+      street_address,
+      unit: unit || null,
+      city_id: city_id || null,
+      postal_code: postal_code.toUpperCase().replace(/\s/g, ''),
+      delivery_instructions: delivery_instructions || null,
+      address_label: address_label || null,
+      is_default: is_default || false,
+    } as any
+
+    let data, error
+
+    if (address_label) {
+      const { data: existing } = await adminSupabase
+        .from('user_delivery_addresses')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('address_label', address_label)
+        .maybeSingle()
+
+      if (existing) {
+        const result = await adminSupabase
+          .from('user_delivery_addresses')
+          .update({
+            street_address: addressData.street_address,
+            unit: addressData.unit,
+            city_id: addressData.city_id,
+            postal_code: addressData.postal_code,
+            delivery_instructions: addressData.delivery_instructions,
+            is_default: addressData.is_default,
+          } as any)
+          .eq('id', existing.id)
+          .select()
+          .single()
+        data = result.data
+        error = result.error
+      } else {
+        const result = await adminSupabase
+          .from('user_delivery_addresses')
+          .insert(addressData)
+          .select()
+          .single()
+        data = result.data
+        error = result.error
+      }
+    } else {
+      const result = await adminSupabase
+        .from('user_delivery_addresses')
+        .insert(addressData)
+        .select()
+        .single()
+      data = result.data
+      error = result.error
+    }
 
     if (error) {
-      console.error('[Customer Address API] Insert error:', error)
+      console.error('[Customer Address API] Save error:', error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
@@ -124,21 +186,42 @@ export async function GET(request: NextRequest) {
       .eq('auth_user_id', user.id)
       .single()
 
-    // FALLBACK: If not found, try by email (legacy users without auth_user_id)
+    // FALLBACK: If not found, try by email or phone
     if (userError || !userData) {
-      console.log('[Customer Address API GET] User not found by auth_user_id, trying email fallback')
-      const { data: emailData, error: emailError } = await adminSupabase
-        .from('users')
-        .select('id, email, auth_user_id')
-        .eq('email', user.email || '')
-        .single()
-
-      if (emailError || !emailData) {
-        console.error('[Customer Address API GET] User not found by email either:', user.email)
-        return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      console.log('[Customer Address API GET] User not found by auth_user_id, trying email/phone fallback')
+      
+      if (user.email) {
+        const { data: emailData } = await adminSupabase
+          .from('users')
+          .select('id, email, auth_user_id')
+          .eq('email', user.email)
+          .maybeSingle()
+        if (emailData) userData = emailData
       }
 
-      userData = emailData
+      if (!userData && user.phone) {
+        const cleanPhone = user.phone.replace(/\D/g, '')
+        const phoneVariants = [user.phone, cleanPhone, '+' + cleanPhone]
+        if (cleanPhone.startsWith('1') && cleanPhone.length === 11) {
+          phoneVariants.push(cleanPhone.substring(1))
+        }
+        for (const pv of phoneVariants) {
+          const { data: phoneData } = await adminSupabase
+            .from('users')
+            .select('id, email, auth_user_id')
+            .eq('phone', pv)
+            .maybeSingle()
+          if (phoneData) {
+            userData = phoneData
+            break
+          }
+        }
+      }
+
+      if (!userData) {
+        console.error('[Customer Address API GET] User not found by any method:', user.email, user.phone)
+        return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      }
 
       // Backfill auth_user_id for legacy users
       if (!userData.auth_user_id) {

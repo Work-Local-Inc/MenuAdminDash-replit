@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { X, Trash2, Plus, Minus, ShoppingBag, Tag, Sparkles, TrendingUp } from 'lucide-react';
 import {
   Sheet,
@@ -10,9 +11,18 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useCartStore } from '@/lib/stores/cart-store';
 import { getTaxLabel } from '@/lib/types/tax';
-import { CouponInput } from '@/components/customer/coupon-input';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -24,6 +34,7 @@ interface CartDrawerProps {
 
 export function CartDrawer({ isOpen, onClose, restaurant, restaurantSlug, buttonStyle }: CartDrawerProps) {
   const { items, updateQuantity, removeItem, clearCart, appliedPromo, clearPromo, getDiscount, getEffectiveDeliveryFee, getTaxBreakdown, getTax, orderType } = useCartStore();
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
   
   // Helper function to get button branding class - only applies to non-icon buttons
   const getButtonClassName = (isIcon: boolean = false) => {
@@ -58,7 +69,7 @@ export function CartDrawer({ isOpen, onClose, restaurant, restaurantSlug, button
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={clearCart}
+                onClick={() => setShowClearConfirm(true)}
                 className={getButtonClassName(false)}
                 data-testid="button-clear-cart"
               >
@@ -80,7 +91,7 @@ export function CartDrawer({ isOpen, onClose, restaurant, restaurantSlug, button
         ) : (
           <>
             {/* Cart Items */}
-            <div className="flex-1 overflow-y-auto px-6 py-4">
+            <div className="overflow-y-auto px-6 py-4">
               <div className="space-y-4">
                 {items.map((item) => (
                   <div
@@ -92,6 +103,11 @@ export function CartDrawer({ isOpen, onClose, restaurant, restaurantSlug, button
                       <h4 className="font-medium mb-1" data-testid={`text-cart-item-name-${item.dishId}`}>
                         {item.dishName}
                       </h4>
+                      {item.size && item.size !== 'Regular' && (
+                        <p className="text-xs text-muted-foreground mb-1" data-testid={`text-cart-item-size-${item.dishId}`}>
+                          {item.size}
+                        </p>
+                      )}
                       
                       {item.modifiers.length > 0 && (
                         <div className="text-sm text-muted-foreground mb-1">
@@ -196,16 +212,6 @@ export function CartDrawer({ isOpen, onClose, restaurant, restaurantSlug, button
             
             {/* Cart Summary */}
             <div className="border-t px-6 py-4 bg-muted/30">
-              {/* Coupon Input */}
-              {!appliedPromo && (restaurantSlug || restaurant?.slug) && (
-                <div className="mb-3">
-                  <CouponInput 
-                    restaurantSlug={restaurantSlug || restaurant?.slug} 
-                    buttonStyle={buttonStyle}
-                  />
-                </div>
-              )}
-              
               {/* Applied Promo Code */}
               {appliedPromo && (
                 <div className="mb-3 space-y-2">
@@ -317,6 +323,29 @@ export function CartDrawer({ isOpen, onClose, restaurant, restaurantSlug, button
           </>
         )}
       </SheetContent>
+
+      <AlertDialog open={showClearConfirm} onOpenChange={setShowClearConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle data-testid="text-clear-cart-title">Clear Cart?</AlertDialogTitle>
+            <AlertDialogDescription data-testid="text-clear-cart-description">
+              This will remove all items from your cart.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-clear-cart">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              data-testid="button-confirm-clear-cart"
+              onClick={() => {
+                clearCart();
+                setShowClearConfirm(false);
+              }}
+            >
+              Clear Cart
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Sheet>
   );
 }

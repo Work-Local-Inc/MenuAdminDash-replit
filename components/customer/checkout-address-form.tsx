@@ -54,7 +54,7 @@ interface CheckoutAddressFormProps {
 export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick, brandedButtonStyle }: CheckoutAddressFormProps) {
   const { toast } = useToast()
   const [supabase] = useState(() => createClient())
-  const { restaurantId, setDeliveryFee, setMinOrder } = useCartStore()
+  const { restaurantId, setDeliveryFee, setMinOrder, getTotal } = useCartStore()
   
   // Load Google Maps script for geocoding saved addresses
   const { isLoaded: googleMapsLoaded } = useLoadScript({
@@ -224,24 +224,15 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick,
   const loadSavedAddresses = async () => {
     if (!userId) return
     try {
-      // Fetch addresses and user profile in parallel
-      const [addressesResult, profileResult] = await Promise.all([
-        supabase
-          .from('user_delivery_addresses')
-          .select(`
-            *,
-            city:cities(name)
-          `)
-          .eq('user_id', userId)
-          .order('is_default', { ascending: false }),
-        // Also fetch user profile for name/phone (needed for receipts)
+      const [addressesResponse, profileResult] = await Promise.all([
+        fetch(`${getApiBaseUrl()}/api/customer/addresses`, { credentials: 'include' }).then(r => {
+          if (!r.ok) throw new Error('Failed to fetch addresses')
+          return r.json()
+        }),
         fetch(`${getApiBaseUrl()}/api/customer/profile`, { credentials: 'include' }).then(r => r.json()).catch(() => null)
       ])
 
-      const { data, error } = addressesResult
-      if (error) throw error
-
-      const addresses = (data || []).map((addr: any) => ({
+      const addresses = (addressesResponse || []).map((addr: any) => ({
         id: addr.id,
         address_label: addr.address_label,
         street_address: addr.street_address,
@@ -254,18 +245,31 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick,
 
       setSavedAddresses(addresses)
       
-      // Store user profile for later use (name/phone for receipts)
       if (profileResult?.user) {
         const user = profileResult.user
+        let phone = user.phone || ''
+        if (!phone) {
+          const { data: { user: authUser } } = await supabase.auth.getUser()
+          if (authUser?.phone) phone = authUser.phone
+        }
         setUserProfile({
           name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Customer',
-          phone: user.phone || '',
+          phone,
           email: user.email || '',
         })
+      } else {
+        const { data: { user: authUser } } = await supabase.auth.getUser()
+        if (authUser) {
+          setUserProfile({
+            name: `${authUser.user_metadata?.first_name || ''} ${authUser.user_metadata?.last_name || ''}`.trim() || 'Customer',
+            phone: authUser.phone || '',
+            email: authUser.email || '',
+          })
+        }
       }
       
       // Auto-select default address and geocode it
-      const defaultAddr = addresses.find((a: any) => (data as any[]).find((d: any) => d.id === a.id)?.is_default)
+      const defaultAddr = addresses.find((a: any) => (addressesResponse as any[]).find((d: any) => d.id === a.id)?.is_default)
       if (defaultAddr?.id) {
         setSelectedAddressId(defaultAddr.id)
         // Pre-populate delivery instructions from default address
@@ -657,7 +661,7 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick,
             data-testid="button-continue-to-payment"
             style={brandedButtonStyle}
           >
-            Continue to Payment
+            {getTotal() > 0 ? `Continue to Pay $${getTotal().toFixed(2)}` : 'Continue to Payment'}
           </Button>
         )}
 
@@ -853,7 +857,7 @@ export function CheckoutAddressForm({ userId, onAddressConfirmed, onSignInClick,
               style={brandedButtonStyle}
             >
               <Check className="w-4 h-4 mr-2" />
-              {submitting ? "Processing..." : (isGuest ? "Continue to Payment" : "Save & Continue to Payment")}
+              {submitting ? "Processing..." : (isGuest ? (getTotal() > 0 ? `Continue to Pay $${getTotal().toFixed(2)}` : "Continue to Payment") : (getTotal() > 0 ? `Save & Pay $${getTotal().toFixed(2)}` : "Save & Continue to Payment"))}
             </Button>
           </div>
         )}
