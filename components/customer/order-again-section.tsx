@@ -80,10 +80,19 @@ export function OrderAgainSection({ restaurantSlug, restaurantId, courses, brand
     fetchPastOrders()
   }, [restaurantSlug])
 
-  const findDishInMenu = (dishId: number) => {
+  const findDishInMenu = (dishId: number, itemName?: string) => {
     for (const course of courses) {
       const dish = course.dishes?.find((d: any) => d.id === dishId)
       if (dish) return dish
+    }
+    if (itemName) {
+      const normalizedName = itemName.toLowerCase().trim()
+      for (const course of courses) {
+        const dish = course.dishes?.find((d: any) => 
+          d.name?.toLowerCase().trim() === normalizedName
+        )
+        if (dish) return dish
+      }
     }
     return null
   }
@@ -104,7 +113,7 @@ export function OrderAgainSection({ restaurantSlug, restaurantId, courses, brand
     let skippedCount = 0
 
     for (const item of order.items) {
-      const dish = findDishInMenu(item.dish_id)
+      const dish = findDishInMenu(item.dish_id, item.item_name)
       if (!dish || !isDishAvailable(dish)) {
         skippedCount += 1
         continue
