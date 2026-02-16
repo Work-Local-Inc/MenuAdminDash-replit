@@ -122,6 +122,7 @@ const allMenuItems = [
       {
         label: "Transactions",
         items: [
+          { title: "All Transactions", url: "/admin/accounting/transactions" },
           { title: "Daily Orders", url: "/admin/accounting/orders" },
           { title: "Refunds", url: "/admin/accounting/refunds" },
         ],
