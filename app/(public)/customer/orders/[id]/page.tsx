@@ -31,14 +31,22 @@ export default function OrderDetailsPage() {
 
   const loadOrderDetails = async () => {
     try {
-      // Check authentication
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
         router.push(`/customer/login?redirect=/customer/orders/${orderId}`)
         return
       }
 
-      // Fetch order
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('auth_user_id', user.id)
+        .maybeSingle()
+
+      if (userError || !userData) {
+        throw new Error('User record not found')
+      }
+
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
         .select(`
@@ -46,14 +54,13 @@ export default function OrderDetailsPage() {
           restaurant:restaurants(id, name, slug, logo_url, phone)
         `)
         .eq('id', orderId)
-        .eq('user_id', user.id)
+        .eq('user_id', userData.id)
         .single()
 
       if (orderError) throw orderError
 
       setOrder(orderData)
 
-      // Fetch status history
       const { data: historyData, error: historyError } = await supabase
         .from('order_status_history')
         .select('*')
