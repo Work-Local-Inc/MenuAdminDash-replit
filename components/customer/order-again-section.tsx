@@ -67,7 +67,8 @@ export function OrderAgainSection({ restaurantSlug, restaurantId, courses, brand
 
         const ordersData = await ordersRes.json()
         if (ordersData?.orders && ordersData.orders.length > 0) {
-          setPastOrders(ordersData.orders.slice(0, 3))
+          const ordersWithItems = ordersData.orders.filter((o: PastOrder) => o.items && o.items.length > 0)
+          setPastOrders(ordersWithItems.slice(0, 3))
         }
       } catch (error) {
         console.error('[OrderAgain] Error fetching past orders:', error)
@@ -158,47 +159,60 @@ export function OrderAgainSection({ restaurantSlug, restaurantId, courses, brand
 
         <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
           {pastOrders.map((order) => {
-            const itemsSummary = order.items
-              .map((item) => `${item.quantity}x ${item.item_name}`)
-              .join(', ')
+            const displayItems = order.items.slice(0, 4)
+            const remainingCount = order.items.length - displayItems.length
 
             return (
               <Card
                 key={order.id}
                 data-testid={`card-past-order-${order.id}`}
-                className="w-64 flex-shrink-0 p-3 flex flex-col gap-2"
+                className="w-72 sm:w-80 flex-shrink-0 p-0 flex flex-col"
               >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs text-muted-foreground font-medium">
-                    {format(new Date(order.created_at), 'MMM d')}
-                  </span>
-                  <span className="text-sm font-semibold">
-                    ${Number(order.total_amount).toFixed(2)}
-                  </span>
+                <div className="p-3 pb-2 flex-1">
+                  <div
+                    data-testid={`text-order-items-${order.id}`}
+                    className="space-y-1 mb-2"
+                  >
+                    {displayItems.map((item, idx) => (
+                      <div key={item.id || idx} className="flex items-start justify-between gap-2 text-sm">
+                        <span className="min-w-0 truncate">{item.quantity}x {item.item_name}</span>
+                        <span className="text-muted-foreground flex-shrink-0 tabular-nums">
+                          ${Number(item.total_price || 0).toFixed(2)}
+                        </span>
+                      </div>
+                    ))}
+                    {remainingCount > 0 && (
+                      <span className="text-xs text-muted-foreground">
+                        +{remainingCount} more item{remainingCount > 1 ? 's' : ''}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground pt-1 border-t border-border/50">
+                    <span>{format(new Date(order.created_at), 'MMM d, yyyy')}</span>
+                    <span className="font-medium text-foreground text-sm">
+                      ${Number(order.total_amount).toFixed(2)}
+                    </span>
+                  </div>
                 </div>
 
-                <p
-                  data-testid={`text-order-items-${order.id}`}
-                  className="text-sm text-foreground line-clamp-2 leading-snug"
-                >
-                  {itemsSummary}
-                </p>
-
-                <Button
-                  data-testid={`button-reorder-${order.id}`}
-                  size="sm"
-                  className="text-white mt-auto w-full"
-                  style={{ backgroundColor: brandColor }}
-                  onClick={() => handleReorder(order)}
-                  disabled={reorderingId === order.id}
-                >
-                  {reorderingId === order.id ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-1" />
-                  ) : (
-                    <ShoppingCart className="w-4 h-4 mr-1" />
-                  )}
-                  Reorder
-                </Button>
+                <div className="px-3 pb-3">
+                  <Button
+                    data-testid={`button-reorder-${order.id}`}
+                    size="sm"
+                    className="text-white w-full"
+                    style={{ backgroundColor: brandColor }}
+                    onClick={() => handleReorder(order)}
+                    disabled={reorderingId === order.id}
+                  >
+                    {reorderingId === order.id ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                    ) : (
+                      <ShoppingCart className="w-4 h-4 mr-1" />
+                    )}
+                    Reorder
+                  </Button>
+                </div>
               </Card>
             )
           })}

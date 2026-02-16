@@ -86,21 +86,23 @@ export async function GET(
       return NextResponse.json({ orders: [] }, { status: 200 })
     }
     
-    console.log('[PastOrders] Found', orders.length, 'orders')
+    console.log('[PastOrders] Found', orders.length, 'orders, IDs:', orders.map((o: any) => o.id))
     
-    // Fetch order items for all orders
     const orderIds = orders.map((order: any) => order.id)
     const { data: orderItems, error: orderItemsError } = await adminSupabase
       .from('order_items')
       .select('id, order_id, dish_id, item_name, quantity, unit_price, total_price, customizations, special_instructions')
       .in('order_id', orderIds)
+      .order('id', { ascending: true })
+    
+    console.log('[PastOrders] Order items query result:', {
+      itemCount: orderItems?.length ?? 0,
+      error: orderItemsError?.message ?? null,
+      orderIds,
+    })
     
     if (orderItemsError) {
       console.error('[PastOrders] Order items query error:', orderItemsError.message)
-      return NextResponse.json(
-        { error: 'Failed to fetch order items' },
-        { status: 500 }
-      )
     }
     
     // Build response with order items mapped to each order
@@ -135,7 +137,8 @@ export async function GET(
       }))
     }
     
-    console.log('[PastOrders] Returning', response.orders.length, 'orders')
+    const itemCounts = response.orders.map((o: any) => `#${o.id}:${o.items.length}items`)
+    console.log('[PastOrders] Returning', response.orders.length, 'orders -', itemCounts.join(', '))
     return NextResponse.json(response, { status: 200 })
     
   } catch (error: any) {
