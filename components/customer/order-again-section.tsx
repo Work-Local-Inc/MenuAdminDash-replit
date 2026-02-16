@@ -98,7 +98,7 @@ export function OrderAgainSection({ restaurantSlug, restaurantId, courses, brand
   }
 
   const isDishAvailable = (dish: any): boolean => {
-    if (!dish.is_active) return false
+    if (dish.is_active === false) return false
     if (dish.hidden_days && dish.hidden_days.length > 0) {
       const today = new Date().getDay()
       if (dish.hidden_days.includes(today)) return false
@@ -119,14 +119,15 @@ export function OrderAgainSection({ restaurantSlug, restaurantId, courses, brand
         continue
       }
 
-      const defaultSize = dish.dish_sizes?.[0]
+      const prices = dish.prices || dish.dish_sizes || []
+      const defaultPrice = prices.find((p: any) => p.display_order === 1) || prices[0]
 
       addItem({
         dishId: dish.id,
-        dishName: item.item_name,
+        dishName: item.item_name || dish.name,
         dishImage: dish.image_url,
-        size: defaultSize?.size_name || 'Regular',
-        sizePrice: defaultSize?.price || item.unit_price,
+        size: defaultPrice?.size_variant || defaultPrice?.size_name || 'Regular',
+        sizePrice: defaultPrice?.price || item.unit_price,
         quantity: item.quantity,
         modifiers: [],
         specialInstructions: item.special_instructions || undefined,
