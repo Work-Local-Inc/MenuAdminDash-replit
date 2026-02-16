@@ -61,14 +61,34 @@ export function OrdersTab({ userId }: OrdersTabProps) {
           console.error('Error loading order items:', itemsError)
         }
 
-        if (!itemsError && items) {
-          const grouped: Record<number, any[]> = {}
+        const grouped: Record<number, any[]> = {}
+
+        if (!itemsError && items && items.length > 0) {
           items.forEach((item: any) => {
             if (!grouped[item.order_id]) grouped[item.order_id] = []
             grouped[item.order_id].push(item)
           })
-          setOrderItems(grouped)
         }
+
+        ordersData.forEach((order: any) => {
+          if (!grouped[order.id] || grouped[order.id].length === 0) {
+            if (order.items && Array.isArray(order.items) && order.items.length > 0) {
+              grouped[order.id] = order.items.map((item: any, idx: number) => ({
+                id: idx + 1,
+                order_id: order.id,
+                dish_id: item.dish_id || 0,
+                item_name: item.name || item.dish_name || item.item_name || 'Item',
+                quantity: item.quantity || 1,
+                unit_price: item.unit_price || item.price || 0,
+                total_price: item.subtotal || item.total_price || (item.unit_price || item.price || 0) * (item.quantity || 1),
+                customizations: item.modifiers || item.customizations || null,
+                special_instructions: item.special_instructions || null,
+              }))
+            }
+          }
+        })
+
+        setOrderItems(grouped)
       }
     } catch (error: any) {
       console.error('Error loading orders:', error)
