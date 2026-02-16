@@ -43,6 +43,7 @@ export async function PATCH(
     console.log('[Schedules PATCH] Updating schedule:', updateData)
     
     const { data, error } = await supabase
+      .schema('menuca_v3')
       .from('restaurant_schedules')
       .update(updateData)
       .eq('id', params.scheduleId)
@@ -77,6 +78,7 @@ export async function DELETE(
     const supabase = createAdminClient() as any
     
     const { error } = await supabase
+      .schema('menuca_v3')
       .from('restaurant_schedules')
       .delete()
       .eq('id', params.scheduleId)

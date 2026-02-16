@@ -79,6 +79,7 @@ export async function POST(
     console.log('[Schedules POST] Creating schedule:', insertData)
     
     const { data, error } = await supabase
+      .schema('menuca_v3')
       .from('restaurant_schedules')
       .insert(insertData)
       .select()
