@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
-import { UtensilsCrossed, MapPin, Clock, Phone, ShoppingCart } from 'lucide-react'
+import { UtensilsCrossed, MapPin, Clock, Phone, ShoppingCart, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -17,7 +17,9 @@ import { DishImageCard } from './dish-image-card'
 import { DishListRow } from './dish-list-row'
 import { CartDrawer } from './cart-drawer'
 import { PromoBanner } from './promo-banner'
+import { OrderAgainSection } from './order-again-section'
 import { LanguageToggle } from './language-toggle'
+import Link from 'next/link'
 import { useCartStore } from '@/lib/stores/cart-store'
 import { useLanguage } from '@/lib/contexts/language-context'
 import { resolveBrandingColors, MENUCA_RED } from '@/lib/utils'
@@ -343,7 +345,14 @@ export default function RestaurantMenuPublic({
             </div>
 
             <div className="flex flex-col items-end gap-2 flex-shrink-0">
-              <LanguageToggle primaryColor={brandColors.primary} />
+              <div className="flex items-center gap-2">
+                <Link href="/customer/account" data-testid="link-user-account">
+                  <Button variant="ghost" size="icon" className="rounded-full" aria-label="My Account">
+                    <User className="w-5 h-5" />
+                  </Button>
+                </Link>
+                <LanguageToggle primaryColor={brandColors.primary} />
+              </div>
               <div className="flex flex-col sm:flex-row gap-1 sm:gap-2">
                 {serviceConfig?.has_delivery_enabled && (
                   <Badge variant="secondary" className="text-xs sm:text-sm" data-testid="badge-delivery">
@@ -375,6 +384,14 @@ export default function RestaurantMenuPublic({
       {/* Promotional Banners - show available deals and coupons */}
       <PromoBanner 
         restaurantSlug={restaurantSlug}
+        brandColor={brandColors.primary}
+      />
+
+      {/* Order Again section for returning customers */}
+      <OrderAgainSection
+        restaurantSlug={restaurantSlug}
+        restaurantId={restaurant.id}
+        courses={courses}
         brandColor={brandColors.primary}
       />
 
