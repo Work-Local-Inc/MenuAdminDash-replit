@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
-import { UtensilsCrossed, MapPin, Clock, Phone, ShoppingCart, User } from 'lucide-react'
+import { UtensilsCrossed, MapPin, Clock, Phone, ShoppingCart, User, LogIn } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -18,6 +18,7 @@ import { DishListRow } from './dish-list-row'
 import { CartDrawer } from './cart-drawer'
 import { PromoBanner } from './promo-banner'
 import { OrderAgainSection } from './order-again-section'
+import { CheckoutSignInModal } from './checkout-signin-modal'
 import { LanguageToggle } from './language-toggle'
 import Link from 'next/link'
 import { useCartStore } from '@/lib/stores/cart-store'
@@ -59,6 +60,8 @@ export default function RestaurantMenuPublic({
   const [currentLanguage, setCurrentLanguage] = useState<string | null>(null)
   const [schedules, setSchedules] = useState<any[]>([])
   const [showClosedModal, setShowClosedModal] = useState(false)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [showSignInModal, setShowSignInModal] = useState(false)
 
   const cartItemCount = useCartStore((state) =>
     state.items.reduce((sum, item) => sum + item.quantity, 0)
@@ -78,6 +81,18 @@ export default function RestaurantMenuPublic({
 
   useEffect(() => {
     setMounted(true)
+    const checkAuth = async () => {
+      try {
+        const res = await fetch(`${getApiBaseUrl()}/api/customer/profile`, { credentials: 'include' })
+        if (res.ok) {
+          const data = await res.json()
+          if (data?.user?.id) {
+            setIsLoggedIn(true)
+          }
+        }
+      } catch {}
+    }
+    checkAuth()
   }, [])
 
   const displayCartCount = mounted ? cartItemCount : 0
@@ -346,11 +361,24 @@ export default function RestaurantMenuPublic({
 
             <div className="flex flex-col items-end gap-2 flex-shrink-0">
               <div className="flex items-center gap-2">
-                <Link href="/customer/account" data-testid="link-user-account">
-                  <Button variant="ghost" size="icon" className="rounded-full" aria-label="My Account">
-                    <User className="w-5 h-5" />
+                {isLoggedIn ? (
+                  <Link href="/customer/account" data-testid="link-user-account">
+                    <Button variant="ghost" size="icon" className="rounded-full" aria-label="My Account">
+                      <User className="w-5 h-5" />
+                    </Button>
+                  </Link>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    aria-label="Sign In"
+                    onClick={() => setShowSignInModal(true)}
+                    data-testid="button-sign-in"
+                  >
+                    <LogIn className="w-4 h-4 mr-1" />
+                    Sign In
                   </Button>
-                </Link>
+                )}
                 <LanguageToggle primaryColor={brandColors.primary} />
               </div>
               <div className="flex flex-col sm:flex-row gap-1 sm:gap-2">
@@ -616,6 +644,14 @@ export default function RestaurantMenuPublic({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <CheckoutSignInModal
+        open={showSignInModal}
+        onOpenChange={setShowSignInModal}
+        onSuccess={() => {
+          setIsLoggedIn(true)
+        }}
+      />
 
       <CartDrawer
         isOpen={isCartOpen}
