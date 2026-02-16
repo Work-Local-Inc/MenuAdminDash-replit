@@ -362,7 +362,7 @@ export default function RestaurantMenuPublic({
             <div className="flex flex-col items-end gap-2 flex-shrink-0">
               <div className="flex items-center gap-2">
                 {isLoggedIn ? (
-                  <Link href="/customer/account" data-testid="link-user-account">
+                  <Link href={`/customer/account?restaurant=${urlSlug}`} data-testid="link-user-account">
                     <Button variant="ghost" size="icon" className="rounded-full" aria-label="My Account">
                       <User className="w-5 h-5" />
                     </Button>

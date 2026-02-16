@@ -83,27 +83,33 @@ export default function CustomerAccountPage() {
     return null // Will redirect
   }
 
+  const restaurantSlug = searchParams.get('restaurant')
+
   return (
     <div className="min-h-screen bg-muted/30">
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         {/* Header */}
         <div className="mb-6">
-          {/* Back to Checkout button when coming from checkout */}
-          {fromCheckout && (
-            <Button 
-              variant="ghost" 
-              asChild 
-              className="mb-4"
-              data-testid="button-back-to-checkout"
-            >
-              <Link href="/checkout">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Checkout
-              </Link>
-            </Button>
-          )}
+          {/* Navigation back - context-aware */}
+          {(() => {
+            const backHref = fromCheckout ? '/checkout' : restaurantSlug ? `/r/${restaurantSlug}` : '/'
+            const backLabel = fromCheckout ? 'Back to Checkout' : restaurantSlug ? 'Back to Menu' : 'Browse Restaurants'
+            return (
+              <Button 
+                variant="ghost" 
+                asChild 
+                className="mb-4"
+                data-testid="button-back-navigation"
+              >
+                <Link href={backHref}>
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  {backLabel}
+                </Link>
+              </Button>
+            )
+          })()}
           
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <div>
               <h1 className="text-3xl font-bold">My Account</h1>
               <p className="text-muted-foreground">
