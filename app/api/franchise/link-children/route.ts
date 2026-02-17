@@ -1,59 +1,94 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { verifyAdminAuth } from '@/lib/auth/admin-check'
-import { createAdminClient } from '@/lib/supabase/admin'
-import { AuthError } from '@/lib/errors'
-import { z } from 'zod'
-export const dynamic = 'force-dynamic'
+import { NextRequest, NextResponse } from "next/server";
+import { verifyAdminAuth } from "@/lib/auth/admin-check";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { AuthError } from "@/lib/errors";
+import { z } from "zod";
+export const dynamic = "force-dynamic";
 
-const linkChildrenSchema = z.object({
-  parent_restaurant_id: z.number().int().positive(),
-  restaurant_id: z.number().int().positive().optional(),
-  child_restaurant_ids: z.array(z.number().int().positive()).optional(),
-}).refine(
-  (data) => data.restaurant_id !== undefined || data.child_restaurant_ids !== undefined,
-  { message: "Either restaurant_id or child_restaurant_ids must be provided" }
-)
+const linkChildrenSchema = z
+  .object({
+    parent_restaurant_id: z.number().int().positive(),
+    restaurant_id: z.number().int().positive().optional(),
+    child_restaurant_ids: z.array(z.number().int().positive()).optional(),
+  })
+  .refine(
+    (data) =>
+      data.restaurant_id !== undefined ||
+      data.child_restaurant_ids !== undefined,
+    {
+      message: "Either restaurant_id or child_restaurant_ids must be provided",
+    },
+  );
 
 export async function POST(request: NextRequest) {
   try {
-    const { user } = await verifyAdminAuth(request)
-    const supabase = createAdminClient() as any
-    
-    const body = await request.json()
-    const validatedData = linkChildrenSchema.parse(body)
-    
+    const { user } = await verifyAdminAuth(request);
+    const supabase = createAdminClient() as any;
+
+    const body = await request.json();
+    const validatedData = linkChildrenSchema.parse(body);
+
     const requestBody: any = {
       parent_restaurant_id: validatedData.parent_restaurant_id,
-      updated_by: user.id
-    }
-    
+      updated_by: user.id,
+    };
+
     if (validatedData.restaurant_id) {
-      requestBody.restaurant_id = validatedData.restaurant_id
+      requestBody.restaurant_id = validatedData.restaurant_id;
     } else if (validatedData.child_restaurant_ids) {
-      requestBody.child_restaurant_ids = validatedData.child_restaurant_ids
+      requestBody.child_restaurant_ids = validatedData.child_restaurant_ids;
     }
-    
-    const { data, error } = await supabase.functions.invoke('convert-restaurant-to-franchise', {
-      body: requestBody
-    })
-    
-    if (error) {
-      throw error
+
+    // Get child IDs to update
+    const childIds =
+      validatedData.child_restaurant_ids ||
+      (validatedData.restaurant_id ? [validatedData.restaurant_id] : []);
+
+    if (childIds.length === 0) {
+      return NextResponse.json(
+        { error: "No restaurants to link" },
+        { status: 400 },
+      );
     }
-    
-    return NextResponse.json(data)
+
+    // Link children to parent
+    const { data, error } = await supabase
+      .from("restaurants")
+      .update({
+        parent_restaurant_id: validatedData.parent_restaurant_id,
+        updated_at: new Date().toISOString(),
+      })
+      .in("id", childIds)
+      .select("id, name, parent_restaurant_id");
+
+    if (error) throw error;
+
+    return NextResponse.json({
+      success: true,
+      linked_count: data?.length || 0,
+      restaurants: data,
+    });
   } catch (error: any) {
     if (error instanceof AuthError) {
-      return NextResponse.json({ error: error.message }, { status: error.statusCode })
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.statusCode },
+      );
     }
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ 
-        error: 'Validation error', 
-        details: error.errors 
-      }, { status: 400 })
+      return NextResponse.json(
+        {
+          error: "Validation error",
+          details: error.errors,
+        },
+        { status: 400 },
+      );
     }
-    return NextResponse.json({ 
-      error: error.message || 'Failed to link restaurants to franchise' 
-    }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: error.message || "Failed to link restaurants to franchise",
+      },
+      { status: 500 },
+    );
   }
 }

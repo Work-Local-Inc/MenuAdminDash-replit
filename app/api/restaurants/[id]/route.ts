@@ -1,181 +1,191 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { verifyAdminAuth } from '@/lib/auth/admin-check'
-import { getRestaurantById } from '@/lib/supabase/queries'
-import { createAdminClient } from '@/lib/supabase/admin'
-import { restaurantUpdateSchema } from '@/lib/validations/restaurant'
-import { AuthError } from '@/lib/errors'
-import { z } from 'zod'
-export const dynamic = 'force-dynamic'
+import { NextRequest, NextResponse } from "next/server";
+import { verifyAdminAuth } from "@/lib/auth/admin-check";
+import { getRestaurantById } from "@/lib/supabase/queries";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { restaurantUpdateSchema } from "@/lib/validations/restaurant";
+import { AuthError } from "@/lib/errors";
+import { z } from "zod";
+export const dynamic = "force-dynamic";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { id: string } },
 ) {
   try {
-    await verifyAdminAuth(request)
-    
-    const restaurant = await getRestaurantById(params.id)
-    return NextResponse.json(restaurant)
+    await verifyAdminAuth(request);
+
+    const restaurant = await getRestaurantById(params.id);
+    return NextResponse.json(restaurant);
   } catch (error: any) {
     if (error instanceof AuthError) {
       return NextResponse.json(
         { error: error.message },
-        { status: error.statusCode }
-      )
+        { status: error.statusCode },
+      );
     }
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch restaurant' },
-      { status: 500 }
-    )
+      { error: error.message || "Failed to fetch restaurant" },
+      { status: 500 },
+    );
   }
 }
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { id: string } },
 ) {
-  console.log(`[Restaurant API] PATCH request for restaurant ${params.id}`)
+  console.log(`[Restaurant API] PATCH request for restaurant ${params.id}`);
   try {
-    await verifyAdminAuth(request)
-    
-    const supabase = createAdminClient() as any
+    await verifyAdminAuth(request);
 
-    const body = await request.json()
-    console.log('[Restaurant API] Request body:', JSON.stringify(body))
-    
+    const supabase = createAdminClient() as any;
+
+    const body = await request.json();
+    console.log("[Restaurant API] Request body:", JSON.stringify(body));
+
     // Validate request body
-    const validatedData = restaurantUpdateSchema.parse(body)
-    console.log('[Restaurant API] Validated data:', JSON.stringify(validatedData))
+    const validatedData = restaurantUpdateSchema.parse(body);
+    console.log(
+      "[Restaurant API] Validated data:",
+      JSON.stringify(validatedData),
+    );
 
     // If status is being updated, update directly (Edge Function approach was unreliable)
     if (validatedData.status) {
       // Update status directly in the database
       const { error: statusError } = await supabase
-        .from('restaurants')
+        .from("restaurants")
         .update({ status: validatedData.status })
-        .eq('id', params.id)
+        .eq("id", params.id);
 
       if (statusError) {
-        console.error('[Restaurant API] Status update error:', statusError)
-        throw statusError
+        console.error("[Restaurant API] Status update error:", statusError);
+        throw statusError;
       }
 
-      console.log(`[Restaurant API] Status updated for restaurant ${params.id} to ${validatedData.status}`)
+      console.log(
+        `[Restaurant API] Status updated for restaurant ${params.id} to ${validatedData.status}`,
+      );
 
       // Remove status from validatedData so we don't update it again
-      const { status, ...otherFields } = validatedData
+      const { status, ...otherFields } = validatedData;
 
       // If there are other fields to update (name, timezone, etc.), update them separately
       if (Object.keys(otherFields).length > 0) {
         const { error: updateError } = await supabase
-          .from('restaurants')
+          .from("restaurants")
           .update(otherFields)
-          .eq('id', params.id)
+          .eq("id", params.id);
 
-        if (updateError) throw updateError
+        if (updateError) throw updateError;
       }
     } else {
       // No status change - direct update for non-sensitive fields (name, timezone, etc.)
       const { data, error } = await supabase
-        .from('restaurants')
+        .from("restaurants")
         .update(validatedData)
-        .eq('id', params.id)
+        .eq("id", params.id)
         .select()
-        .single()
+        .single();
 
-      // If error is about unknown column (not yet added to DB), 
+      // If error is about unknown column (not yet added to DB),
       // retry without that field
-      if (error && (error.message?.includes('logo_display_mode') || error.message?.includes('image_card_description_lines'))) {
-        const { logo_display_mode, image_card_description_lines, ...dataWithoutNewFields } = validatedData as any
+      if (
+        error &&
+        (error.message?.includes("logo_display_mode") ||
+          error.message?.includes("image_card_description_lines"))
+      ) {
+        const {
+          logo_display_mode,
+          image_card_description_lines,
+          ...dataWithoutNewFields
+        } = validatedData as any;
         const { data: retryData, error: retryError } = await supabase
-          .from('restaurants')
+          .from("restaurants")
           .update(dataWithoutNewFields)
-          .eq('id', params.id)
+          .eq("id", params.id)
           .select()
-          .single()
-        
-        if (retryError) throw retryError
+          .single();
+
+        if (retryError) throw retryError;
       } else if (error) {
-        throw error
+        throw error;
       }
     }
 
     // Fetch and return the updated restaurant
     const { data: restaurant, error: fetchError } = await supabase
-      .from('restaurants')
+      .from("restaurants")
       .select()
-      .eq('id', params.id)
-      .single()
+      .eq("id", params.id)
+      .single();
 
-    if (fetchError) throw fetchError
+    if (fetchError) throw fetchError;
 
-    return NextResponse.json(restaurant)
+    return NextResponse.json(restaurant);
   } catch (error: any) {
     if (error instanceof AuthError) {
       return NextResponse.json(
         { error: error.message },
-        { status: error.statusCode }
-      )
+        { status: error.statusCode },
+      );
     }
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Validation failed', details: error.errors },
-        { status: 400 }
-      )
+        { error: "Validation failed", details: error.errors },
+        { status: 400 },
+      );
     }
     return NextResponse.json(
-      { error: error.message || 'Failed to update restaurant' },
-      { status: 500 }
-    )
+      { error: error.message || "Failed to update restaurant" },
+      { status: 500 },
+    );
   }
 }
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { id: string } },
 ) {
   try {
-    await verifyAdminAuth(request)
-    
-    const supabase = createAdminClient() as any
+    await verifyAdminAuth(request);
 
-    let reason = 'Restaurant deactivated by admin'
+    const supabase = createAdminClient() as any;
+
+    let reason = "Restaurant deactivated by admin";
     try {
-      const body = await request.json()
+      const body = await request.json();
       if (body.reason) {
-        reason = body.reason
+        reason = body.reason;
       }
     } catch {
       // No body or invalid JSON - use default reason
     }
 
-    const { data, error } = await supabase.functions.invoke('update-restaurant-status', {
-      body: {
-        restaurant_id: parseInt(params.id),
-        new_status: 'inactive',
-        reason: reason
-      }
-    })
+    const { error } = await supabase
+      .from("restaurants")
+      .update({
+        status: "inactive",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", params.id);
 
-    if (error) throw error
+    if (error) throw error;
 
-    if (!data?.success) {
-      return NextResponse.json({ 
-        error: data?.message || 'Failed to deactivate restaurant' 
-      }, { status: 400 })
-    }
-
-    return NextResponse.json(data)
+    return NextResponse.json({
+      success: true,
+      message: "Restaurant deactivated successfully",
+    });
   } catch (error: any) {
     if (error instanceof AuthError) {
       return NextResponse.json(
         { error: error.message },
-        { status: error.statusCode }
-      )
+        { status: error.statusCode },
+      );
     }
     return NextResponse.json(
-      { error: error.message || 'Failed to deactivate restaurant' },
-      { status: 500 }
-    )
+      { error: error.message || "Failed to deactivate restaurant" },
+      { status: 500 },
+    );
   }
 }
