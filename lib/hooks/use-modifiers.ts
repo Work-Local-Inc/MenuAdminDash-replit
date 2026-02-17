@@ -389,6 +389,62 @@ export function useDeleteModifier() {
   });
 }
 
+// ==================== LIBRARY GROUP LINKING ====================
+
+export function useRestaurantModifierGroups(restaurantId: number) {
+  return useQuery<any[]>({
+    queryKey: ['/api/menu/modifier-groups', restaurantId],
+    queryFn: async () => {
+      const res = await fetch(`/api/menu/modifier-groups?restaurant_id=${restaurantId}`);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to fetch modifier groups');
+      }
+      return res.json();
+    },
+    enabled: !!restaurantId,
+  });
+}
+
+export function useLinkLibraryGroup() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ dishId, modifier_group_id }: { dishId: number; modifier_group_id: number }) => {
+      const res = await fetch(`/api/menu/dishes/${dishId}/link-library-group`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ modifier_group_id }),
+      });
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to link library group');
+      }
+      return res.json();
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ['/api/menu/builder'],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['/api/menu/dishes', variables.dishId, 'modifier-groups'],
+      });
+      toast({
+        title: 'Success',
+        description: 'Library group linked successfully',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: error.message,
+      });
+    },
+  });
+}
+
 export function useReorderModifiers() {
   const queryClient = useQueryClient();
   const { toast } = useToast();

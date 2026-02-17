@@ -31,7 +31,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Separator } from '@/components/ui/separator'
-import { Layers, Plus, Edit, Trash2, Copy, ChevronDown, ChevronRight } from 'lucide-react'
+import { Layers, Plus, Edit, Trash2, Copy, ChevronDown, ChevronRight, Link2, Loader2 } from 'lucide-react'
 import {
   MenuBuilderDish,
   DishModifierGroup,
@@ -45,6 +45,8 @@ import {
   useCreateModifier,
   useUpdateModifier,
   useDeleteModifier,
+  useRestaurantModifierGroups,
+  useLinkLibraryGroup,
 } from '@/lib/hooks/use-modifiers'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
 import { GripVertical } from 'lucide-react'
@@ -72,10 +74,43 @@ export function DishModifierPanel({ dish, restaurantId, onClose }: DishModifierP
   const [breakingInheritanceGroupId, setBreakingInheritanceGroupId] = useState<number | null>(null)
   const [editorOpen, setEditorOpen] = useState(false)
   const [editingGroup, setEditingGroup] = useState<DishModifierGroup | null>(null)
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false)
+  const [selectedLibraryGroups, setSelectedLibraryGroups] = useState<Set<number>>(new Set())
 
   // Hooks
   const breakInheritance = useBreakInheritance()
   const deleteGroup = useDeleteModifierGroup()
+  const linkLibraryGroup = useLinkLibraryGroup()
+  const { data: libraryGroups, isLoading: libraryGroupsLoading } = useRestaurantModifierGroups(
+    linkDialogOpen ? restaurantId : 0
+  )
+
+  const alreadyLinkedIds = new Set(dish.modifier_groups.map(g => g.id))
+  const availableLibraryGroups = (libraryGroups || []).filter(
+    (g: any) => !alreadyLinkedIds.has(g.id)
+  )
+
+  const toggleLibraryGroupSelection = (groupId: number) => {
+    const newSelected = new Set(selectedLibraryGroups)
+    if (newSelected.has(groupId)) {
+      newSelected.delete(groupId)
+    } else {
+      newSelected.add(groupId)
+    }
+    setSelectedLibraryGroups(newSelected)
+  }
+
+  const handleLinkSelected = async () => {
+    const groupIds = Array.from(selectedLibraryGroups)
+    for (let i = 0; i < groupIds.length; i++) {
+      await linkLibraryGroup.mutateAsync({
+        dishId: dish.id,
+        modifier_group_id: groupIds[i],
+      })
+    }
+    setSelectedLibraryGroups(new Set())
+    setLinkDialogOpen(false)
+  }
 
   // Calculate summary stats
   const inheritedCount = dish.modifier_groups.filter(g => g.course_template_id !== null).length
@@ -293,11 +328,23 @@ export function DishModifierPanel({ dish, restaurantId, onClose }: DishModifierP
         )}
       </div>
 
-      {/* Add Custom Group Button */}
-      <div className="pt-4">
+      {/* Action Buttons */}
+      <div className="pt-4 flex gap-2">
+        <Button
+          onClick={() => {
+            setSelectedLibraryGroups(new Set())
+            setLinkDialogOpen(true)
+          }}
+          className="flex-1"
+          variant="secondary"
+          data-testid="button-link-from-library"
+        >
+          <Link2 className="w-4 h-4 mr-2" />
+          Link from Library
+        </Button>
         <Button
           onClick={handleAddCustomGroup}
-          className="w-full"
+          className="flex-1"
           variant="outline"
           data-testid="button-add-custom-group"
         >
@@ -352,6 +399,73 @@ export function DishModifierPanel({ dish, restaurantId, onClose }: DishModifierP
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Link from Library Dialog */}
+      <Dialog open={linkDialogOpen} onOpenChange={setLinkDialogOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" data-testid="dialog-link-from-library">
+          <DialogHeader>
+            <DialogTitle>Link from Library</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            {libraryGroupsLoading ? (
+              <div className="flex items-center justify-center py-8" data-testid="loading-library-groups">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : availableLibraryGroups.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8" data-testid="text-no-library-groups">
+                All library groups are already linked to this dish
+              </p>
+            ) : (
+              availableLibraryGroups.map((group: any) => (
+                <div
+                  key={group.id}
+                  className="flex items-center gap-3 p-3 border rounded-md hover-elevate"
+                  data-testid={`library-group-row-${group.id}`}
+                >
+                  <Checkbox
+                    checked={selectedLibraryGroups.has(group.id)}
+                    onCheckedChange={() => toggleLibraryGroupSelection(group.id)}
+                    data-testid={`checkbox-library-group-${group.id}`}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium" data-testid={`text-library-group-name-${group.id}`}>
+                      {group.name || group.name_en}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      <Badge variant="secondary" className="mr-1">
+                        {group.modifiers?.length || 0} modifier{(group.modifiers?.length || 0) !== 1 ? 's' : ''}
+                      </Badge>
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {availableLibraryGroups.length > 0 && (
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setLinkDialogOpen(false)}
+                data-testid="button-cancel-link"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleLinkSelected}
+                disabled={selectedLibraryGroups.size === 0 || linkLibraryGroup.isPending}
+                data-testid="button-confirm-link"
+              >
+                {linkLibraryGroup.isPending ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : null}
+                Link Selected ({selectedLibraryGroups.size})
+              </Button>
+            </DialogFooter>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Modifier Group Editor Dialog */}
       <DishModifierGroupEditor
