@@ -87,7 +87,7 @@ function getRelativeTime(isoString: string | null): string {
   const diffHr = Math.floor(diffMin / 60)
   if (diffHr < 24) return `${diffHr} hr ago`
   const diffDays = Math.floor(diffHr / 24)
-  return `${diffDays} days ago`
+  return `${diffDays} ${diffDays === 1 ? "day" : "days"} ago`
 }
 
 function getHealthBadge(status: string) {
@@ -482,7 +482,7 @@ export default function DevicesPage() {
 
                   <div className="flex items-center gap-1 text-muted-foreground">
                     <AlertTriangle className="h-3 w-3 shrink-0" />
-                    <span className="truncate">Fetch Failures</span>
+                    <span className="truncate">Failures</span>
                   </div>
                   <span
                     className={`text-right ${device.consecutive_fetch_failures >= 3 ? "text-red-500 font-medium" : ""}`}
@@ -493,7 +493,7 @@ export default function DevicesPage() {
 
                   <div className="flex items-center gap-1 text-muted-foreground">
                     <Clock className="h-3 w-3 shrink-0" />
-                    <span className="truncate">Oldest Order</span>
+                    <span className="truncate">Pending</span>
                   </div>
                   <span
                     className={`text-right ${device.oldest_pending_order_minutes >= 5 ? "text-red-500 font-medium" : ""}`}
@@ -534,7 +534,7 @@ export default function DevicesPage() {
 
                   <div className="flex items-center gap-1 text-muted-foreground">
                     <Zap className="h-3 w-3 shrink-0" />
-                    <span className="truncate">App Version</span>
+                    <span className="truncate">Version</span>
                   </div>
                   <span className="text-right text-xs text-muted-foreground truncate" data-testid={`text-version-${device.id}`}>
                     {device.app_version || "—"}
