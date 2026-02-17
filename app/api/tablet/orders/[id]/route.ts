@@ -1,15 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase/admin";
-import {
-  verifyDeviceAuth,
-  isAuthError,
-  checkRateLimit,
-  rateLimitResponse,
-} from "@/lib/tablet/verify-device";
-import { maskEmail, maskPhone } from "@/lib/tablet/auth";
-import { resolveIdParam, resolveFkParam } from "@/lib/utils/uuid";
-import type { TabletOrder, TabletOrderItem } from "@/types/tablet";
-export const dynamic = "force-dynamic";
+import { NextRequest, NextResponse } from 'next/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { verifyDeviceAuth, isAuthError, checkRateLimit, rateLimitResponse } from '@/lib/tablet/verify-device'
+import { maskEmail, maskPhone } from '@/lib/tablet/auth'
+import type { TabletOrder, TabletOrderItem } from '@/types/tablet'
+export const dynamic = 'force-dynamic'
 
 /**
  * GET /api/tablet/orders/[id]
@@ -18,40 +12,39 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: orderId } = await params;
+    const { id: orderId } = await params
 
     // Verify device authentication
-    const authResult = await verifyDeviceAuth(request);
+    const authResult = await verifyDeviceAuth(request)
     if (isAuthError(authResult)) {
-      return authResult;
+      return authResult
     }
 
-    const deviceContext = authResult;
+    const deviceContext = authResult
 
     // Check rate limit
     if (!checkRateLimit(deviceContext.device_id)) {
-      return rateLimitResponse();
+      return rateLimitResponse()
     }
 
     // Validate order ID
-    let orderResolved;
-    try {
-      orderResolved = resolveIdParam(orderId);
-    } catch {
-      return NextResponse.json({ error: "Invalid order ID" }, { status: 400 });
+    const orderIdNum = parseInt(orderId, 10)
+    if (isNaN(orderIdNum)) {
+      return NextResponse.json(
+        { error: 'Invalid order ID' },
+        { status: 400 }
+      )
     }
-    const { column: orderCol, value: orderVal } = orderResolved;
 
-    const supabase = createAdminClient() as any;
+    const supabase = createAdminClient() as any
 
     // Fetch order - must belong to device's restaurant
     const { data: order, error: orderError } = await supabase
-      .from("orders")
-      .select(
-        `
+      .from('orders')
+      .select(`
         id,
         order_number,
         order_type,
@@ -80,58 +73,53 @@ export async function GET(
           phone,
           email
         )
-      `,
-      )
-      .eq(orderCol, orderVal)
-      .eq("restaurant_id", deviceContext.restaurant_id)
-      .single();
+      `)
+      .eq('id', orderIdNum)
+      .eq('restaurant_id', deviceContext.restaurant_id)
+      .single()
 
     if (orderError || !order) {
-      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Order not found' },
+        { status: 404 }
+      )
     }
 
-    // Get status history (order_status_history has order_uuid)
-    const historyFk = resolveFkParam(orderId, "order_id", "order_uuid");
+    // Get status history
     const { data: statusHistory } = await supabase
-      .from("order_status_history")
-      .select("status, notes, created_at")
-      .eq(historyFk.column, historyFk.value)
-      .order("created_at", { ascending: false });
+      .from('order_status_history')
+      .select('status, notes, created_at')
+      .eq('order_id', orderIdNum)
+      .order('created_at', { ascending: false })
 
     // Transform order (same logic as list endpoint)
-    let customerName = "Unknown Customer";
-    let customerPhone = "";
-    let customerEmail = "";
+    let customerName = 'Unknown Customer'
+    let customerPhone = ''
+    let customerEmail = ''
 
     if (order.is_guest_order) {
-      customerName = order.guest_name || "Guest";
-      customerPhone = order.guest_phone || "";
-      customerEmail = order.guest_email || "";
+      customerName = order.guest_name || 'Guest'
+      customerPhone = order.guest_phone || ''
+      customerEmail = order.guest_email || ''
     } else if (order.users) {
-      const user = order.users as any;
-      customerName =
-        [user.first_name, user.last_name].filter(Boolean).join(" ") ||
-        "Customer";
-      customerPhone = user.phone || "";
-      customerEmail = user.email || "";
+      const user = order.users as any
+      customerName = [user.first_name, user.last_name].filter(Boolean).join(' ') || 'Customer'
+      customerPhone = user.phone || ''
+      customerEmail = user.email || ''
     }
 
-    const items =
-      typeof order.items === "string"
-        ? JSON.parse(order.items)
-        : order.items || [];
-    const deliveryAddress =
-      typeof order.delivery_address === "string"
-        ? JSON.parse(order.delivery_address)
-        : order.delivery_address;
+    const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items || []
+    const deliveryAddress = typeof order.delivery_address === 'string'
+      ? JSON.parse(order.delivery_address)
+      : order.delivery_address
 
-    const serviceTime = deliveryAddress?.service_time || { type: "asap" };
+    const serviceTime = deliveryAddress?.service_time || { type: 'asap' }
 
     // Transform items - use 'notes' field for printer app compatibility
     const transformedItems: TabletOrderItem[] = items.map((item: any) => ({
       dish_id: item.dish_id,
       name: item.name,
-      size: item.size || "default",
+      size: item.size || 'default',
       quantity: item.quantity,
       unit_price: parseFloat(item.unit_price) || 0,
       subtotal: parseFloat(item.subtotal) || 0,
@@ -142,12 +130,12 @@ export async function GET(
         placement: mod.placement || null,
       })),
       notes: item.special_instructions || item.notes || null, // Printer app expects 'notes'
-    }));
+    }))
 
     const transformedOrder: TabletOrder = {
       id: order.id,
       order_number: order.order_number,
-      order_type: order.order_type as "delivery" | "pickup",
+      order_type: order.order_type as 'delivery' | 'pickup',
       order_status: order.order_status,
       created_at: order.created_at,
 
@@ -157,19 +145,13 @@ export async function GET(
         email: maskEmail(customerEmail),
       },
 
-      delivery_address:
-        order.order_type === "delivery" && deliveryAddress
-          ? {
-              street: deliveryAddress.street || deliveryAddress.address || "",
-              city: deliveryAddress.city || "",
-              province: deliveryAddress.province || "",
-              postal_code: deliveryAddress.postal_code || "",
-              instructions:
-                deliveryAddress.delivery_instructions ||
-                deliveryAddress.instructions ||
-                "",
-            }
-          : null,
+      delivery_address: order.order_type === 'delivery' && deliveryAddress ? {
+        street: deliveryAddress.street || deliveryAddress.address || '',
+        city: deliveryAddress.city || '',
+        province: deliveryAddress.province || '',
+        postal_code: deliveryAddress.postal_code || '',
+        instructions: deliveryAddress.delivery_instructions || deliveryAddress.instructions || '',
+      } : null,
 
       items: transformedItems,
 
@@ -188,18 +170,18 @@ export async function GET(
 
       acknowledged_at: order.acknowledged_at || undefined,
       acknowledged_by_device_id: order.acknowledged_by_device_id || undefined,
-    };
+    }
 
     return NextResponse.json({
       order: transformedOrder,
       status_history: statusHistory || [],
-    });
+    })
   } catch (error: any) {
-    console.error("[Tablet Order Detail] Error:", error);
+    console.error('[Tablet Order Detail] Error:', error)
     return NextResponse.json(
-      { error: error.message || "Failed to fetch order" },
-      { status: 500 },
-    );
+      { error: error.message || 'Failed to fetch order' },
+      { status: 500 }
+    )
   }
 }
 
@@ -210,40 +192,43 @@ export async function GET(
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: orderId } = await params;
+    const { id: orderId } = await params
 
     // Verify device authentication
-    const authResult = await verifyDeviceAuth(request);
+    const authResult = await verifyDeviceAuth(request)
     if (isAuthError(authResult)) {
-      return authResult;
+      return authResult
     }
 
-    const deviceContext = authResult;
+    const deviceContext = authResult
 
     // Validate order ID
-    let postResolved;
-    try {
-      postResolved = resolveIdParam(orderId);
-    } catch {
-      return NextResponse.json({ error: "Invalid order ID" }, { status: 400 });
+    const orderIdNum = parseInt(orderId, 10)
+    if (isNaN(orderIdNum)) {
+      return NextResponse.json(
+        { error: 'Invalid order ID' },
+        { status: 400 }
+      )
     }
-    const { column: postCol, value: postVal } = postResolved;
 
-    const supabase = createAdminClient() as any;
+    const supabase = createAdminClient() as any
 
     // Verify order belongs to device's restaurant
     const { data: order, error: orderError } = await supabase
-      .from("orders")
-      .select("id, restaurant_id, acknowledged_at")
-      .eq(postCol, postVal)
-      .eq("restaurant_id", deviceContext.restaurant_id)
-      .single();
+      .from('orders')
+      .select('id, restaurant_id, acknowledged_at')
+      .eq('id', orderIdNum)
+      .eq('restaurant_id', deviceContext.restaurant_id)
+      .single()
 
     if (orderError || !order) {
-      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Order not found' },
+        { status: 404 }
+      )
     }
 
     // Check if already acknowledged
@@ -251,42 +236,40 @@ export async function POST(
       return NextResponse.json({
         success: true,
         acknowledged_at: order.acknowledged_at,
-        message: "Order was already acknowledged",
-      });
+        message: 'Order was already acknowledged',
+      })
     }
 
     // Update order with acknowledgment
-    const acknowledgedAt = new Date().toISOString();
+    const acknowledgedAt = new Date().toISOString()
 
     const { error: updateError } = await supabase
-      .from("orders")
+      .from('orders')
       .update({
         acknowledged_at: acknowledgedAt,
         acknowledged_by_device_id: deviceContext.device_id,
       })
-      .eq(postCol, postVal);
+      .eq('id', orderIdNum)
 
     if (updateError) {
-      console.error("[Tablet Order Acknowledge] Update error:", updateError);
+      console.error('[Tablet Order Acknowledge] Update error:', updateError)
       return NextResponse.json(
-        { error: "Failed to acknowledge order" },
-        { status: 500 },
-      );
+        { error: 'Failed to acknowledge order' },
+        { status: 500 }
+      )
     }
 
-    console.log(
-      `[Tablet Order Acknowledge] Order ${orderId} acknowledged by device ${deviceContext.device_id}`,
-    );
+    console.log(`[Tablet Order Acknowledge] Order ${orderIdNum} acknowledged by device ${deviceContext.device_id}`)
 
     return NextResponse.json({
       success: true,
       acknowledged_at: acknowledgedAt,
-    });
+    })
   } catch (error: any) {
-    console.error("[Tablet Order Acknowledge] Error:", error);
+    console.error('[Tablet Order Acknowledge] Error:', error)
     return NextResponse.json(
-      { error: error.message || "Failed to acknowledge order" },
-      { status: 500 },
-    );
+      { error: error.message || 'Failed to acknowledge order' },
+      { status: 500 }
+    )
   }
 }

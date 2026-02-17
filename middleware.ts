@@ -1,77 +1,103 @@
-import { NextResponse, type NextRequest } from "next/server";
-import {
-  extractSubdomain,
-  getRestaurantBySubdomainAsync,
-} from "@/lib/subdomain-mapping";
-import { verifyTokenEdge, COOKIE_NAME } from "@/lib/auth/verify-token-edge";
+import { createServerClient } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
+import { Database } from '@/types/supabase-database'
+import { extractSubdomain, getRestaurantBySubdomainAsync } from '@/lib/subdomain-mapping'
 
 export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-  const originalHost = request.headers.get("x-original-host");
-  const rawHostname = originalHost || request.headers.get("host") || "";
-  const hostname = rawHostname.split(":")[0];
-
-  // Allow Railway healthchecks through without subdomain routing
-  if (hostname === "healthcheck.railway.app") {
-    return NextResponse.next();
-  }
-
+  const { pathname } = request.nextUrl
+  const rawHostname = request.headers.get('host') || ''
+  
+  // Strip port for consistent subdomain detection
+  const hostname = rawHostname.split(':')[0]
+  
   // --- SUBDOMAIN ROUTING ---
-  const subdomain = extractSubdomain(hostname);
-
-  console.log(
-    `[Middleware] Host: ${rawHostname}, Hostname: ${hostname}, Subdomain: ${subdomain}, Path: ${pathname}`,
-  );
-
+  const subdomain = extractSubdomain(hostname)
+  
+  // Debug logging for production
+  console.log(`[Middleware] Host: ${rawHostname}, Hostname: ${hostname}, Subdomain: ${subdomain}, Path: ${pathname}`)
+  
   if (subdomain) {
-    console.log(`[Middleware] Looking up subdomain: ${subdomain}`);
-    const mapping = await getRestaurantBySubdomainAsync(subdomain);
-    console.log(
-      `[Middleware] Mapping result:`,
-      mapping ? `Found: ${mapping.slug}` : "NOT FOUND",
-    );
-
+    console.log(`[Middleware] Looking up subdomain: ${subdomain}`)
+    // Use async lookup to fetch from database (with caching)
+    const mapping = await getRestaurantBySubdomainAsync(subdomain)
+    console.log(`[Middleware] Mapping result:`, mapping ? `Found: ${mapping.slug}` : 'NOT FOUND')
+    
     if (mapping) {
-      if (pathname.startsWith("/admin") || pathname === "/login") {
-        const url = new URL(`https://menuai.ca${pathname}`);
-        return NextResponse.redirect(url);
+      // Block admin/login routes on branded subdomains - redirect to main domain
+      if (pathname.startsWith('/admin') || pathname === '/login') {
+        const url = new URL(`https://orders.menu.ca${pathname}`)
+        return NextResponse.redirect(url)
       }
-
-      if (pathname === "/" || pathname === "") {
-        const url = request.nextUrl.clone();
-        url.pathname = `/r/${mapping.slug}`;
-        console.log(`[Middleware] Rewriting ${subdomain} to ${url.pathname}`);
-        const response = NextResponse.rewrite(url);
-        response.headers.set("x-subdomain-rewrite", "true");
-        return response;
+      
+      // Rewrite root path to restaurant page
+      if (pathname === '/' || pathname === '') {
+        const url = request.nextUrl.clone()
+        url.pathname = `/r/${mapping.slug}`
+        console.log(`[Middleware] Rewriting ${subdomain} to ${url.pathname}`)
+        // Add header to indicate this is a subdomain rewrite (skip slug redirect in page)
+        const response = NextResponse.rewrite(url)
+        response.headers.set('x-subdomain-rewrite', 'true')
+        return response
       }
-
-      return NextResponse.next();
+      
+      // For other paths (/checkout, /cart, /customer/*)
+      // These use cart store (localStorage) for restaurant context
+      // Just continue - they will work once customer has visited the restaurant page
+      return NextResponse.next()
     } else {
-      console.log(`[Middleware] Unknown subdomain: ${subdomain}`);
+      // Unknown subdomain - log it
+      console.log(`[Middleware] Unknown subdomain: ${subdomain}`)
     }
   }
-
+  
   // --- ADMIN/AUTH ROUTES (for main domain only) ---
-  if (!pathname.startsWith("/admin") && pathname !== "/login") {
-    return NextResponse.next();
+  if (!pathname.startsWith('/admin') && pathname !== '/login') {
+    return NextResponse.next()
   }
+  
+  let supabaseResponse = NextResponse.next({
+    request,
+  })
 
-  // Check local JWT session
-  const token = request.cookies.get(COOKIE_NAME)?.value;
-  const user = token ? await verifyTokenEdge(token) : null;
+  const supabase = createServerClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      db: {
+        schema: 'menuca_v3'
+      },
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
+          supabaseResponse = NextResponse.next({
+            request,
+          })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          )
+        },
+      },
+    }
+  )
+
+  // Refresh session if expired - required for Server Components
+  const { data: { session } } = await supabase.auth.getSession()
 
   // If accessing /login with a valid session, redirect to dashboard
-  if (pathname === "/login" && user) {
-    const redirectUrl = new URL("/admin/dashboard", request.url);
-    return NextResponse.redirect(redirectUrl);
+  if (request.nextUrl.pathname === '/login' && session) {
+    const redirectUrl = new URL('/admin/dashboard', request.url)
+    return NextResponse.redirect(redirectUrl)
   }
 
-  return NextResponse.next();
+  return supabaseResponse
 }
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    // Match all paths for subdomain routing
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
   ],
-};
+}

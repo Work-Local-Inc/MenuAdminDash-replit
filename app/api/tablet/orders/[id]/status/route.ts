@@ -7,8 +7,7 @@ import {
   rateLimitResponse,
 } from "@/lib/tablet/verify-device";
 import { orderStatusUpdateSchema } from "@/lib/validations/tablet";
-import { resolveIdParam } from "@/lib/utils/uuid";
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic'
 
 /**
  * PATCH /api/tablet/orders/[id]/status
@@ -36,25 +35,17 @@ export async function PATCH(
     }
 
     // Validate order ID
-    let orderResolved;
-    try {
-      orderResolved = resolveIdParam(orderId);
-    } catch {
+    const orderIdNum = parseInt(orderId, 10);
+    if (isNaN(orderIdNum)) {
       return NextResponse.json({ error: "Invalid order ID" }, { status: 400 });
     }
-    const { column: orderCol, value: orderVal } = orderResolved;
 
     // Parse and validate request body
     const body = await request.json();
     const validation = orderStatusUpdateSchema.safeParse(body);
 
     if (!validation.success) {
-      console.error(
-        `[Tablet Order Status] Validation FAILED for device ${deviceContext.device_id}, order ${orderId}. Raw body:`,
-        JSON.stringify(body),
-        "Errors:",
-        JSON.stringify(validation.error.flatten()),
-      );
+      console.error(`[Tablet Order Status] Validation FAILED for device ${deviceContext.device_id}, order ${orderId}. Raw body:`, JSON.stringify(body), 'Errors:', JSON.stringify(validation.error.flatten()))
       return NextResponse.json(
         { error: "Validation failed", details: validation.error.flatten() },
         { status: 400 },
@@ -69,7 +60,7 @@ export async function PATCH(
     const { data: order, error: orderError } = await supabase
       .from("orders")
       .select("id, order_status, restaurant_id, created_at")
-      .eq(orderCol, orderVal)
+      .eq("id", orderIdNum)
       .eq("restaurant_id", deviceContext.restaurant_id)
       .single();
 
@@ -136,7 +127,7 @@ export async function PATCH(
     const { error: updateError } = await supabase
       .from("orders")
       .update(updateData)
-      .eq(orderCol, orderVal);
+      .eq("id", orderIdNum);
 
     if (updateError) {
       console.error("[Tablet Order Status] Update error:", updateError);
@@ -154,7 +145,7 @@ export async function PATCH(
     const { error: historyError } = await supabase
       .from("order_status_history")
       .insert({
-        order_id: order.id,
+        order_id: orderIdNum,
         order_created_at: order.created_at,
         status,
         notes: historyNotes,
@@ -173,17 +164,17 @@ export async function PATCH(
     const { data: statusHistory } = await supabase
       .from("order_status_history")
       .select("status, notes, created_at")
-      .eq("order_id", order.id)
+      .eq("order_id", orderIdNum)
       .order("created_at", { ascending: false });
 
     console.log(
-      `[Tablet Order Status] Order ${orderId} changed from '${currentStatus}' to '${status}' by device ${deviceContext.device_id}`,
+      `[Tablet Order Status] Order ${orderIdNum} changed from '${currentStatus}' to '${status}' by device ${deviceContext.device_id}`,
     );
 
     return NextResponse.json({
       success: true,
       order: {
-        id: order.id,
+        id: orderIdNum,
         previous_status: currentStatus,
         current_status: status,
       },

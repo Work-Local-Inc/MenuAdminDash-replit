@@ -1,33 +1,33 @@
-import { createLocalClient } from "@/lib/db/local-client";
-import { getSessionFromCookies } from "@/lib/auth/local-auth";
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
+import { Database } from '@/types/supabase-database'
 
-// Drop-in replacement for Supabase server client
-// Data queries go to local Postgres, auth uses local JWT
 export async function createClient() {
-  const client = createLocalClient("menuca_v3") as any;
-  const { user, session } = await getSessionFromCookies();
+  const cookieStore = await cookies()
 
-  // Override auth methods with local auth
-  client.auth = {
-    getUser: async () => {
-      if (!user)
-        return {
-          data: { user: null },
-          error: { message: "Not authenticated" },
-        };
-      return {
-        data: { user: { id: user.id, email: user.email, role: user.role } },
-        error: null,
-      };
-    },
-    getSession: async () => {
-      return { data: { session }, error: null };
-    },
-    signOut: async () => ({ error: null }),
-    onAuthStateChange: () => ({
-      data: { subscription: { unsubscribe: () => {} } },
-    }),
-  };
-
-  return client;
+  return createServerClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      db: {
+        schema: 'menuca_v3'
+      },
+      cookies: {
+        getAll() {
+          return cookieStore.getAll()
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options)
+            })
+          } catch (error) {
+            // The `set` method was called from a Server Component.
+            // This can be ignored if you have middleware refreshing
+            // user sessions.
+          }
+        },
+      },
+    }
+  )
 }
