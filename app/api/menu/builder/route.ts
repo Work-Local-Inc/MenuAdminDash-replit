@@ -169,15 +169,58 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // NOTE: Modifier groups are loaded separately via /api/menu/modifier-groups endpoint
-    // The modifier_groups table uses restaurant_id (not dish_id) - the relationship
-    // between dishes and modifiers is handled by the get_restaurant_menu RPC
-    // For the menu builder, we skip dish-level modifier loading here
-    let modifierGroups: any[] = []
-    let dishModifiers: any[] = []
-    let modifierPrices: any[] = []
-    
-    console.log('[MENU BUILDER] Skipping dish-level modifier query (handled by separate API)')
+    let dishModifierGroupLinks: any[] = []
+    let restaurantModifierGroups: any[] = []
+    let restaurantModifiers: any[] = []
+    let restaurantModifierPrices: any[] = []
+
+    if (dishIds.length > 0) {
+      const { data: dmgData, error: dmgError } = await supabase
+        .schema('menuca_v3')
+        .from('dish_modifier_groups')
+        .select('id, dish_id, modifier_group_id')
+        .in('dish_id', dishIds)
+        .is('deleted_at', null)
+
+      if (dmgError) {
+        console.log('[MENU BUILDER] dish_modifier_groups query error:', dmgError)
+      } else {
+        dishModifierGroupLinks = dmgData || []
+        console.log('[MENU BUILDER] Dish modifier group links loaded:', dishModifierGroupLinks.length)
+      }
+
+      const linkedGroupIds = Array.from(new Set(dishModifierGroupLinks.map((l: any) => l.modifier_group_id)))
+      if (linkedGroupIds.length > 0) {
+        const { data: mgData } = await supabase
+          .schema('menuca_v3')
+          .from('modifier_groups')
+          .select('id, restaurant_id, name_en, name_fr, category')
+          .in('id', linkedGroupIds)
+          .is('deleted_at', null)
+        restaurantModifierGroups = mgData || []
+
+        const { data: modsData } = await supabase
+          .schema('menuca_v3')
+          .from('modifiers')
+          .select('id, modifier_group_id, name_en, name_fr, display_order, is_active')
+          .in('modifier_group_id', linkedGroupIds)
+          .is('deleted_at', null)
+          .order('display_order', { ascending: true })
+        restaurantModifiers = modsData || []
+
+        const modifierIds = restaurantModifiers.map((m: any) => m.id)
+        if (modifierIds.length > 0) {
+          const { data: prData } = await supabase
+            .schema('menuca_v3')
+            .from('modifier_prices')
+            .select('id, modifier_id, price, modifier_size_variant_id')
+            .in('modifier_id', modifierIds)
+          restaurantModifierPrices = prData || []
+        }
+
+        console.log('[MENU BUILDER] Modifier groups loaded:', restaurantModifierGroups.length, 'modifiers:', restaurantModifiers.length)
+      }
+    }
 
     // Filter soft-deleted modifiers in application layer after fetching with left joins
     // Also add computed 'name' and 'description' fields for backward compatibility (using English as default)
@@ -225,116 +268,43 @@ export async function GET(request: NextRequest) {
           description: dish.description_en || dish.description_fr || '',
           dish_prices: dishPricesForDish, // Add prices array from separate query
           price: defaultPrice, // Computed price from first variant
-          modifier_groups: (modifierGroups as any)
-            ?.filter((g: any) => g.dish_id === dish.id)
-            .map((g: any) => {
-              let modifiers: any[] = []
-              
-              // ===================================================================
-              // STATE GUARD: Handle mixed state (cloned vs linked modifiers)
-              // ===================================================================
-              // PRIORITY 1: If course_template_id is set (inherited) → fetch via library
-              // PRIORITY 2: If is_custom = true (broke inheritance) → fetch dish_modifiers
-              // NEVER SHOW BOTH (even if both exist in database due to legacy cloning)
-              // ===================================================================
-              
-              if (g.course_template_id) {
-                // INHERITED: Fetch from library via category template
-                // IGNORE any dish_modifiers that might exist (legacy clones)
-                const categoryTemplate = templates.find((t: any) => t.id === g.course_template_id)
-                
-                if (categoryTemplate?.library_template_id) {
-                  // TRUE LINKING: Try to fetch from library template first
-                  modifiers = libraryModifiers
-                    .filter((m: any) => m.template_id === categoryTemplate.library_template_id && !m.deleted_at)
-                    .sort((a: any, b: any) => a.display_order - b.display_order)
-                  
-                  // DEFENSIVE FALLBACK: If library join returns empty, fall back to dish_modifiers
-                  if (!modifiers || modifiers.length === 0) {
-                    console.warn(`[FALLBACK] Library join empty for dish_group ${g.id} (library_template_id: ${categoryTemplate.library_template_id}), using dish_modifiers`)
-                    modifiers = dishModifiers
-                      .filter((m: any) => m.modifier_group_id === g.id && !m.deleted_at)
-                      .sort((a: any, b: any) => a.display_order - b.display_order)
-                  } else {
-                    // MIXED STATE DETECTION: Warn if dish_modifiers also exist (shouldn't happen)
-                    const legacyModifiers = dishModifiers.filter((m: any) => m.modifier_group_id === g.id && !m.deleted_at)
-                    if (legacyModifiers.length > 0) {
-                      console.warn('[MIXED STATE DETECTED]', {
-                        message: 'Dish has both library link AND cloned modifiers',
-                        dish_id: dish.id,
-                        group_id: g.id,
-                        course_template_id: g.course_template_id,
-                        library_template_id: categoryTemplate.library_template_id,
-                        library_modifiers: modifiers.length,
-                        legacy_cloned_modifiers: legacyModifiers.length,
-                        action: 'Using library modifiers (correct), ignoring clones (legacy)'
-                      })
-                    }
+          modifier_groups: dishModifierGroupLinks
+            .filter((link: any) => link.dish_id === dish.id)
+            .map((link: any) => {
+              const group = restaurantModifierGroups.find((g: any) => g.id === link.modifier_group_id)
+              if (!group) return null
+
+              const groupModifiers = restaurantModifiers
+                .filter((m: any) => m.modifier_group_id === group.id)
+                .map((m: any) => {
+                  const basePrice = restaurantModifierPrices.find(
+                    (p: any) => p.modifier_id === m.id && (!p.modifier_size_variant_id || p.modifier_size_variant_id === 1)
+                  )
+                  return {
+                    id: m.id,
+                    modifier_group_id: group.id,
+                    name: m.name_en || m.name_fr || '',
+                    price: basePrice?.price || 0,
+                    is_included: false,
+                    is_default: false,
+                    display_order: m.display_order,
                   }
-                } else if (categoryTemplate) {
-                  // Fetch from category template's own modifiers (no library link)
-                  modifiers = categoryTemplate.course_template_modifiers?.filter((m: any) => !m.deleted_at) || []
-                  
-                  // DEFENSIVE FALLBACK: If template modifiers empty, fall back to dish_modifiers
-                  if (!modifiers || modifiers.length === 0) {
-                    console.warn(`[FALLBACK] Template modifiers empty for dish_group ${g.id} (course_template_id: ${g.course_template_id}), using dish_modifiers`)
-                    modifiers = dishModifiers
-                      .filter((m: any) => m.modifier_group_id === g.id && !m.deleted_at)
-                      .sort((a: any, b: any) => a.display_order - b.display_order)
-                  } else {
-                    // MIXED STATE DETECTION: Warn if dish_modifiers also exist
-                    const legacyModifiers = dishModifiers.filter((m: any) => m.modifier_group_id === g.id && !m.deleted_at)
-                    if (legacyModifiers.length > 0) {
-                      console.warn('[MIXED STATE DETECTED]', {
-                        message: 'Dish has both template link AND cloned modifiers',
-                        dish_id: dish.id,
-                        group_id: g.id,
-                        course_template_id: g.course_template_id,
-                        template_modifiers: modifiers.length,
-                        legacy_cloned_modifiers: legacyModifiers.length,
-                        action: 'Using template modifiers (correct), ignoring clones (legacy)'
-                      })
-                    }
-                  }
-                }
-              } else if (g.is_custom) {
-                // CUSTOM: Dish broke inheritance, use its own modifiers
-                modifiers = dishModifiers
-                  .filter((m: any) => m.modifier_group_id === g.id && !m.deleted_at)
-                  .sort((a: any, b: any) => a.display_order - b.display_order)
-              } else {
-                // ORPHANED: No template link and not custom (shouldn't happen)
-                // Check if dish_modifiers exist (legacy state)
-                const orphanedModifiers = dishModifiers.filter((m: any) => m.modifier_group_id === g.id && !m.deleted_at)
-                if (orphanedModifiers.length > 0) {
-                  console.warn('[ORPHANED MODIFIERS DETECTED]', {
-                    message: 'Modifier group has no template link and is not marked custom',
-                    dish_id: dish.id,
-                    group_id: g.id,
-                    modifiers: orphanedModifiers.length,
-                    action: 'Using dish_modifiers as fallback (needs migration)'
-                  })
-                  modifiers = orphanedModifiers.sort((a: any, b: any) => a.display_order - b.display_order)
-                }
-              }
-              
-              // Join modifier prices from separate query (dish_modifier_prices table)
-              const modifiersWithPrices = modifiers.map((m: any) => {
-                const pricesForModifier = modifierPrices.filter((p: any) => p.dish_modifier_id === m.id)
-                const price = pricesForModifier[0]?.price || 0
-                
-                return {
-                  ...m,
-                  prices: pricesForModifier,
-                  price // Default price for display
-                }
-              })
-              
+                })
+
               return {
-                ...g,
-                dish_modifiers: modifiersWithPrices
+                id: group.id,
+                dish_id: dish.id,
+                course_template_id: null,
+                name: group.name_en || group.name_fr || '',
+                is_required: false,
+                min_selections: 0,
+                max_selections: groupModifiers.length || 1,
+                display_order: 0,
+                is_custom: true,
+                dish_modifiers: groupModifiers,
               }
-            }) || []
+            })
+            .filter(Boolean) || []
         }
       }) || []
     })) || []
