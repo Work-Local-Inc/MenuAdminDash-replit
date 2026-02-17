@@ -1,8 +1,0 @@
-name = "menuai-proxy"
-main = "worker.js"
-compatibility_date = "2024-01-01"
-
-routes = [
-  { pattern = "menuai.ca/*", zone_name = "menuai.ca" },
-  { pattern = "*.menuai.ca/*", zone_name = "menuai.ca" },
-]

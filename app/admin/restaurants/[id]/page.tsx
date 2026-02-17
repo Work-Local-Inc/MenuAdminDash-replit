@@ -1,45 +1,37 @@
-"use client";
+"use client"
 
-import { useParams } from "next/navigation";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { useRestaurant } from "@/lib/hooks/use-restaurants";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
-import Link from "next/link";
-import { RestaurantBasicInfo } from "@/components/restaurant/tabs/basic-info";
-import { RestaurantLocations } from "@/components/restaurant/tabs/locations";
-import { RestaurantContacts } from "@/components/restaurant/tabs/contacts";
-import { RestaurantDomains } from "@/components/restaurant/tabs/domains";
-import { RestaurantHours } from "@/components/restaurant/tabs/hours";
-import { RestaurantServiceConfig } from "@/components/restaurant/tabs/service-config";
-import { RestaurantDeliveryAreas } from "@/components/restaurant/tabs/delivery-areas";
-import { RestaurantPaymentMethods } from "@/components/restaurant/tabs/payment-methods";
-import { RestaurantIntegrations } from "@/components/restaurant/tabs/integrations";
-import { RestaurantBranding } from "@/components/restaurant/tabs/branding";
-import { RestaurantSEO } from "@/components/restaurant/tabs/seo";
-import { RestaurantImages } from "@/components/restaurant/tabs/images";
-import { RestaurantCustomCSS } from "@/components/restaurant/tabs/custom-css";
-import { Categorization } from "@/components/restaurant/tabs/categorization";
-import { RestaurantMenuBuilder } from "@/components/restaurant/tabs/menu-builder";
-import { RestaurantModifierGroups } from "@/components/restaurant/tabs/modifier-groups";
-import { OnlineOrderingToggle } from "@/components/restaurant/online-ordering-toggle";
-import { useAdminUser } from "@/hooks/use-admin-user";
+import { useParams } from "next/navigation"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useRestaurant } from "@/lib/hooks/use-restaurants"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { ArrowLeft } from "lucide-react"
+import Link from "next/link"
+import { RestaurantBasicInfo } from "@/components/restaurant/tabs/basic-info"
+import { RestaurantLocations } from "@/components/restaurant/tabs/locations"
+import { RestaurantContacts } from "@/components/restaurant/tabs/contacts"
+import { RestaurantDomains } from "@/components/restaurant/tabs/domains"
+import { RestaurantHours } from "@/components/restaurant/tabs/hours"
+import { RestaurantServiceConfig } from "@/components/restaurant/tabs/service-config"
+import { RestaurantDeliveryAreas } from "@/components/restaurant/tabs/delivery-areas"
+import { RestaurantPaymentMethods } from "@/components/restaurant/tabs/payment-methods"
+import { RestaurantIntegrations } from "@/components/restaurant/tabs/integrations"
+import { RestaurantBranding } from "@/components/restaurant/tabs/branding"
+import { RestaurantSEO } from "@/components/restaurant/tabs/seo"
+import { RestaurantImages } from "@/components/restaurant/tabs/images"
+import { RestaurantCustomCSS } from "@/components/restaurant/tabs/custom-css"
+import { Categorization } from "@/components/restaurant/tabs/categorization"
+import { OnlineOrderingToggle } from "@/components/restaurant/online-ordering-toggle"
+import { useAdminUser } from "@/hooks/use-admin-user"
 
 export default function RestaurantDetailPage() {
-  const params = useParams();
-  const restaurantId = params.id as string;
-  const { data: restaurant, isLoading } = useRestaurant(restaurantId);
-  const { data: adminUser } = useAdminUser();
-  const isSuperAdmin = adminUser?.role_id === 1;
+  const params = useParams()
+  const restaurantId = params.id as string
+  const { data: restaurant, isLoading } = useRestaurant(restaurantId)
+  const { data: adminUser } = useAdminUser()
+  const isSuperAdmin = adminUser?.role_id === 1
 
   if (isLoading) {
     return (
@@ -53,7 +45,7 @@ export default function RestaurantDetailPage() {
         </div>
         <Skeleton className="h-96" />
       </div>
-    );
+    )
   }
 
   if (!restaurant) {
@@ -64,7 +56,7 @@ export default function RestaurantDetailPage() {
           <Button variant="link">Back to Restaurants</Button>
         </Link>
       </div>
-    );
+    )
   }
 
   return (
@@ -79,33 +71,26 @@ export default function RestaurantDetailPage() {
           </Link>
           <div>
             <div className="flex items-center gap-2">
-              <h1
-                className="text-3xl font-bold tracking-tight"
-                data-testid="text-restaurant-name"
-              >
+              <h1 className="text-3xl font-bold tracking-tight" data-testid="text-restaurant-name">
                 {restaurant.name}
               </h1>
-              <Badge
-                variant={
-                  restaurant.status === "active"
-                    ? "default"
-                    : restaurant.status === "suspended"
-                      ? "destructive"
-                      : "secondary"
-                }
-              >
+              <Badge variant={
+                restaurant.status === 'active' ? 'default' :
+                restaurant.status === 'suspended' ? 'destructive' :
+                'secondary'
+              }>
                 {restaurant.status}
               </Badge>
             </div>
             <p className="text-muted-foreground">ID: {restaurant.id}</p>
           </div>
         </div>
-
+        
         <OnlineOrderingToggle
           restaurantId={restaurantId}
           restaurantName={restaurant.name}
           currentStatus={restaurant.online_ordering_enabled ?? true}
-          isActive={restaurant.status === "active"}
+          isActive={restaurant.status === 'active'}
         />
       </div>
 
@@ -118,54 +103,33 @@ export default function RestaurantDetailPage() {
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 pb-2">
               Core
             </h3>
-            <TabsTrigger
-              value="basic-info"
+            <TabsTrigger 
+              value="basic-info" 
               data-testid="tab-basic-info"
               className="w-full justify-start"
             >
               Basic Info
             </TabsTrigger>
-            <TabsTrigger
-              value="locations"
+            <TabsTrigger 
+              value="locations" 
               data-testid="tab-locations"
               className="w-full justify-start"
             >
               Locations
             </TabsTrigger>
-            <TabsTrigger
-              value="contacts"
+            <TabsTrigger 
+              value="contacts" 
               data-testid="tab-contacts"
               className="w-full justify-start"
             >
               Contacts
             </TabsTrigger>
-            <TabsTrigger
-              value="hours"
+            <TabsTrigger 
+              value="hours" 
               data-testid="tab-hours"
               className="w-full justify-start"
             >
               Hours
-            </TabsTrigger>
-          </div>
-
-          {/* Menu Section */}
-          <div className="w-full space-y-1">
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 pb-2">
-              Menu
-            </h3>
-            <TabsTrigger
-              value="menu-builder"
-              data-testid="tab-menu-builder"
-              className="w-full justify-start"
-            >
-              Menu Builder
-            </TabsTrigger>
-            <TabsTrigger
-              value="modifier-groups"
-              data-testid="tab-modifier-groups"
-              className="w-full justify-start"
-            >
-              Modifier Groups
             </TabsTrigger>
           </div>
 
@@ -174,22 +138,22 @@ export default function RestaurantDetailPage() {
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 pb-2">
               Operations
             </h3>
-            <TabsTrigger
-              value="service-config"
+            <TabsTrigger 
+              value="service-config" 
               data-testid="tab-service-config"
               className="w-full justify-start"
             >
               Service Config
             </TabsTrigger>
-            <TabsTrigger
-              value="delivery-areas"
+            <TabsTrigger 
+              value="delivery-areas" 
               data-testid="tab-delivery-areas"
               className="w-full justify-start"
             >
               Delivery Areas
             </TabsTrigger>
-            <TabsTrigger
-              value="payment-methods"
+            <TabsTrigger 
+              value="payment-methods" 
               data-testid="tab-payment-methods"
               className="w-full justify-start"
             >
@@ -202,29 +166,29 @@ export default function RestaurantDetailPage() {
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 pb-2">
               Marketing
             </h3>
-            <TabsTrigger
-              value="categorization"
+            <TabsTrigger 
+              value="categorization" 
               data-testid="tab-categorization"
               className="w-full justify-start"
             >
               Categorization
             </TabsTrigger>
-            <TabsTrigger
-              value="branding"
+            <TabsTrigger 
+              value="branding" 
               data-testid="tab-branding"
               className="w-full justify-start"
             >
               Branding
             </TabsTrigger>
-            <TabsTrigger
-              value="seo"
+            <TabsTrigger 
+              value="seo" 
               data-testid="tab-seo"
               className="w-full justify-start"
             >
               SEO
             </TabsTrigger>
-            <TabsTrigger
-              value="images"
+            <TabsTrigger 
+              value="images" 
               data-testid="tab-images"
               className="w-full justify-start"
             >
@@ -237,23 +201,23 @@ export default function RestaurantDetailPage() {
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 pb-2">
               Advanced
             </h3>
-            <TabsTrigger
-              value="domains"
+            <TabsTrigger 
+              value="domains" 
               data-testid="tab-domains"
               className="w-full justify-start"
             >
               Domains
             </TabsTrigger>
-            <TabsTrigger
-              value="integrations"
+            <TabsTrigger 
+              value="integrations" 
               data-testid="tab-integrations"
               className="w-full justify-start"
             >
               Integrations
             </TabsTrigger>
             {isSuperAdmin && (
-              <TabsTrigger
-                value="custom-css"
+              <TabsTrigger 
+                value="custom-css" 
                 data-testid="tab-custom-css"
                 className="w-full justify-start"
               >
@@ -278,13 +242,10 @@ export default function RestaurantDetailPage() {
           </TabsContent>
 
           <TabsContent value="domains" className="mt-0">
-            <RestaurantDomains
-              restaurantId={restaurantId}
+            <RestaurantDomains 
+              restaurantId={restaurantId} 
               restaurantName={restaurant.name}
-              restaurantSlug={`${restaurant.name
-                ?.toLowerCase()
-                .replace(/[^a-z0-9]+/g, "-")
-                .replace(/^-|-$/g, "")}-${restaurantId}`}
+              restaurantSlug={`${restaurant.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${restaurantId}`}
             />
           </TabsContent>
 
@@ -324,14 +285,6 @@ export default function RestaurantDetailPage() {
             <RestaurantImages restaurantId={restaurantId} />
           </TabsContent>
 
-          <TabsContent value="menu-builder" className="mt-0">
-            <RestaurantMenuBuilder restaurantId={restaurantId} />
-          </TabsContent>
-
-          <TabsContent value="modifier-groups" className="mt-0">
-            <RestaurantModifierGroups restaurantId={restaurantId} />
-          </TabsContent>
-
           {isSuperAdmin && (
             <TabsContent value="custom-css" className="mt-0">
               <RestaurantCustomCSS restaurantId={restaurantId} />
@@ -340,5 +293,5 @@ export default function RestaurantDetailPage() {
         </div>
       </Tabs>
     </div>
-  );
+  )
 }

@@ -1,218 +1,137 @@
-import { NextRequest, NextResponse } from "next/server";
-import { verifyAdminAuth } from "@/lib/auth/admin-check";
-import { verifyRestaurantAccess } from "@/lib/auth/restaurant-access";
-import { AuthError } from "@/lib/errors";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { resolveIdParam } from "@/lib/utils/uuid";
-import { z } from "zod";
-export const dynamic = "force-dynamic";
+import { NextRequest, NextResponse } from 'next/server'
+import { verifyAdminAuth } from '@/lib/auth/admin-check'
+import { verifyRestaurantAccess } from '@/lib/auth/restaurant-access'
+import { AuthError } from '@/lib/errors'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { z } from 'zod'
+export const dynamic = 'force-dynamic'
 
 const seoSchema = z.object({
-  meta_title: z
-    .string()
-    .max(60, "Meta title should be 60 characters or less")
-    .nullable()
-    .optional(),
-  meta_description: z
-    .string()
-    .max(160, "Meta description should be 160 characters or less")
-    .nullable()
-    .optional(),
-  og_title: z
-    .string()
-    .max(60, "OG title should be 60 characters or less")
-    .nullable()
-    .optional(),
-  og_description: z
-    .string()
-    .max(160, "OG description should be 160 characters or less")
-    .nullable()
-    .optional(),
-  og_image_url: z.string().url("Must be a valid URL").nullable().optional(),
+  meta_title: z.string().max(60, 'Meta title should be 60 characters or less').nullable().optional(),
+  meta_description: z.string().max(160, 'Meta description should be 160 characters or less').nullable().optional(),
+  og_title: z.string().max(60, 'OG title should be 60 characters or less').nullable().optional(),
+  og_description: z.string().max(160, 'OG description should be 160 characters or less').nullable().optional(),
+  og_image_url: z.string().url('Must be a valid URL').nullable().optional(),
   include_in_sitemap: z.boolean().optional(),
-});
-
-async function resolveRestaurantIntId(
-  supabase: any,
-  paramId: string,
-): Promise<{ intId: number } | { error: string }> {
-  const { column, value } = resolveIdParam(paramId);
-  if (column === "uuid") {
-    const { data: rest } = await supabase
-      .from("restaurants")
-      .select("id")
-      .eq("uuid", value)
-      .single();
-    if (!rest) return { error: "Restaurant not found" };
-    return { intId: rest.id };
-  }
-  return { intId: value as number };
-}
+})
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { adminUser } = await verifyAdminAuth(request);
-
-    const access = await verifyRestaurantAccess(adminUser as any, params.id);
+    const { adminUser } = await verifyAdminAuth(request)
+    const restaurantId = params.id
+    
+    const access = await verifyRestaurantAccess(adminUser as any, restaurantId)
     if (!access.allowed) {
-      return NextResponse.json(
-        { error: access.error },
-        { status: access.status },
-      );
+      return NextResponse.json({ error: access.error }, { status: access.status })
     }
 
-    const supabase = createAdminClient() as any;
-    const resolved = await resolveRestaurantIntId(supabase, params.id);
-    if ("error" in resolved)
-      return NextResponse.json({ error: resolved.error }, { status: 404 });
-
+    const supabase = createAdminClient() as any
+    
     const { data, error } = await supabase
-      .from("restaurant_seo")
-      .select("*")
-      .eq("restaurant_id", resolved.intId)
-      .single();
-
-    if (error && error.code !== "PGRST116") {
-      // PGRST116 = not found
-      throw error;
+      .from('restaurant_seo')
+      .select('*')
+      .eq('restaurant_id', parseInt(params.id))
+      .single()
+    
+    if (error && error.code !== 'PGRST116') { // PGRST116 = not found
+      throw error
     }
-
-    return NextResponse.json(data || null);
+    
+    return NextResponse.json(data || null)
   } catch (error: any) {
     if (error instanceof AuthError) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: error.statusCode },
-      );
+      return NextResponse.json({ error: error.message }, { status: error.statusCode })
     }
-    return NextResponse.json(
-      { error: error.message || "Failed to fetch SEO data" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: error.message || 'Failed to fetch SEO data' }, { status: 500 })
   }
 }
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { adminUser } = await verifyAdminAuth(request);
-
-    const access = await verifyRestaurantAccess(adminUser as any, params.id);
+    const { adminUser } = await verifyAdminAuth(request)
+    const restaurantId = params.id
+    
+    const access = await verifyRestaurantAccess(adminUser as any, restaurantId)
     if (!access.allowed) {
-      return NextResponse.json(
-        { error: access.error },
-        { status: access.status },
-      );
+      return NextResponse.json({ error: access.error }, { status: access.status })
     }
-
-    const supabase = createAdminClient() as any;
-
-    let body;
+    
+    const supabase = createAdminClient() as any
+    
+    let body
     try {
-      body = await request.json();
+      body = await request.json()
     } catch {
       return NextResponse.json(
-        { error: "Invalid or missing request body" },
-        { status: 400 },
-      );
+        { error: 'Invalid or missing request body' },
+        { status: 400 }
+      )
     }
-
+    
     // Ensure at least one field is provided to prevent accidental data wipe
     if (!body || Object.keys(body).length === 0) {
       return NextResponse.json(
-        {
-          error:
-            "Request body cannot be empty. Provide at least one SEO field to update.",
-        },
-        { status: 400 },
-      );
+        { error: 'Request body cannot be empty. Provide at least one SEO field to update.' },
+        { status: 400 }
+      )
     }
-
+    
     // Validate request body server-side
-    const validatedData = seoSchema.parse(body);
-
+    const validatedData = seoSchema.parse(body)
+    
     // Ensure we have at least one non-undefined field after validation
-    const hasValidData = Object.values(validatedData).some(
-      (val) => val !== undefined,
-    );
+    const hasValidData = Object.values(validatedData).some(val => val !== undefined)
     if (!hasValidData) {
       return NextResponse.json(
-        { error: "At least one SEO field must be provided" },
-        { status: 400 },
-      );
+        { error: 'At least one SEO field must be provided' },
+        { status: 400 }
+      )
     }
-
-    const resolved = await resolveRestaurantIntId(supabase, params.id);
-    if ("error" in resolved)
-      return NextResponse.json({ error: resolved.error }, { status: 404 });
-
+    
     // Fetch existing SEO data to merge with updates (prevents overwriting unmodified fields)
     const { data: existingData } = await supabase
-      .from("restaurant_seo")
-      .select("*")
-      .eq("restaurant_id", resolved.intId)
-      .single();
-
+      .from('restaurant_seo')
+      .select('*')
+      .eq('restaurant_id', parseInt(params.id))
+      .single()
+    
     // Merge: only update fields that were explicitly provided in the request
     const mergedData = {
-      restaurant_id: resolved.intId,
-      meta_title:
-        validatedData.meta_title !== undefined
-          ? validatedData.meta_title
-          : (existingData?.meta_title ?? null),
-      meta_description:
-        validatedData.meta_description !== undefined
-          ? validatedData.meta_description
-          : (existingData?.meta_description ?? null),
-      og_title:
-        validatedData.og_title !== undefined
-          ? validatedData.og_title
-          : (existingData?.og_title ?? null),
-      og_description:
-        validatedData.og_description !== undefined
-          ? validatedData.og_description
-          : (existingData?.og_description ?? null),
-      og_image_url:
-        validatedData.og_image_url !== undefined
-          ? validatedData.og_image_url
-          : (existingData?.og_image_url ?? null),
-      include_in_sitemap:
-        validatedData.include_in_sitemap !== undefined
-          ? validatedData.include_in_sitemap
-          : (existingData?.include_in_sitemap ?? true),
+      restaurant_id: parseInt(params.id),
+      meta_title: validatedData.meta_title !== undefined ? validatedData.meta_title : (existingData?.meta_title ?? null),
+      meta_description: validatedData.meta_description !== undefined ? validatedData.meta_description : (existingData?.meta_description ?? null),
+      og_title: validatedData.og_title !== undefined ? validatedData.og_title : (existingData?.og_title ?? null),
+      og_description: validatedData.og_description !== undefined ? validatedData.og_description : (existingData?.og_description ?? null),
+      og_image_url: validatedData.og_image_url !== undefined ? validatedData.og_image_url : (existingData?.og_image_url ?? null),
+      include_in_sitemap: validatedData.include_in_sitemap !== undefined ? validatedData.include_in_sitemap : (existingData?.include_in_sitemap ?? true),
       updated_at: new Date().toISOString(),
-    };
-
+    }
+    
     const { data, error } = await supabase
-      .from("restaurant_seo")
+      .from('restaurant_seo')
       .upsert(mergedData)
       .select()
-      .single();
-
-    if (error) throw error;
-
-    return NextResponse.json(data);
+      .single()
+    
+    if (error) throw error
+    
+    return NextResponse.json(data)
   } catch (error: any) {
     if (error instanceof AuthError) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: error.statusCode },
-      );
+      return NextResponse.json({ error: error.message }, { status: error.statusCode })
     }
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: "Validation failed", details: error.errors },
-        { status: 400 },
-      );
+        { error: 'Validation failed', details: error.errors },
+        { status: 400 }
+      )
     }
-    return NextResponse.json(
-      { error: error.message || "Failed to save SEO data" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: error.message || 'Failed to save SEO data' }, { status: 500 })
   }
 }

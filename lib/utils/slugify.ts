@@ -7,11 +7,11 @@ export function slugify(text: string): string {
     .toString()
     .toLowerCase()
     .trim()
-    .replace(/[']/g, "") // Remove apostrophes
-    .replace(/[^\w\s-]/g, "") // Remove special characters
-    .replace(/[\s_-]+/g, "-") // Replace spaces, underscores with hyphens
-    .replace(/^-+/, "") // Remove leading hyphens
-    .replace(/-+$/, ""); // Remove trailing hyphens
+    .replace(/[']/g, '') // Remove apostrophes
+    .replace(/[^\w\s-]/g, '') // Remove special characters
+    .replace(/[\s_-]+/g, '-') // Replace spaces, underscores with hyphens
+    .replace(/^-+/, '') // Remove leading hyphens
+    .replace(/-+$/, ''); // Remove trailing hyphens
 }
 
 /**
@@ -20,43 +20,20 @@ export function slugify(text: string): string {
  */
 export function extractIdFromSlug(slug: string): number | null {
   // Try to extract ID from slug (e.g., "pizza-place-123" → 123)
-  const parts = slug.split("-");
+  const parts = slug.split('-');
   const lastPart = parts[parts.length - 1];
   const id = parseInt(lastPart, 10);
-
+  
   if (!isNaN(id)) {
     return id;
   }
-
+  
   // If slug is just a number, use it directly
   const directId = parseInt(slug, 10);
   if (!isNaN(directId)) {
     return directId;
   }
-
-  return null;
-}
-
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-/**
- * Extract ID or UUID from slug
- * Returns column/value pair for use in database queries
- * Tries UUID first, then falls back to integer extraction
- */
-export function extractIdOrUuidFromSlug(
-  slug: string,
-): { column: "uuid" | "id"; value: string | number } | null {
-  if (UUID_RE.test(slug)) {
-    return { column: "uuid", value: slug };
-  }
-
-  const intId = extractIdFromSlug(slug);
-  if (intId !== null) {
-    return { column: "id", value: intId };
-  }
-
+  
   return null;
 }
 

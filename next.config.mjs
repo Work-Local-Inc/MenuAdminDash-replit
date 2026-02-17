@@ -18,12 +18,11 @@ const nextConfig = {
     NEXT_PUBLIC_STRIPE_PUBLIC_KEY: process.env.TESTING_VITE_STRIPE_PUBLIC_KEY || process.env.VITE_STRIPE_PUBLIC_KEY,
     NEXT_PUBLIC_TESTING_VITE_STRIPE_PUBLIC_KEY: process.env.TESTING_VITE_STRIPE_PUBLIC_KEY,
     NEXT_PUBLIC_GOOGLE_API_KEY: process.env.GOOGLE_API_KEY,
-    NEXT_PUBLIC_MAPBOX_TOKEN: process.env.NEXT_PUBLIC_MAPBOX_TOKEN,
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   },
   images: {
-    domains: ['cdn.menuai.ca', 'nthpbtdjhhnwfxqsxbvy.supabase.co'],
+    domains: ['nthpbtdjhhnwfxqsxbvy.supabase.co'],
   },
 
   // Security headers - Critical for production
@@ -44,9 +43,9 @@ const nextConfig = {
                 ? "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.stripe.com https://api.mapbox.com https://maps.googleapis.com"
                 : "script-src 'self' 'unsafe-inline' https://js.stripe.com https://api.mapbox.com https://maps.googleapis.com",
               "style-src 'self' 'unsafe-inline' https://api.mapbox.com https://fonts.googleapis.com",
-              "img-src 'self' data: blob: https://cdn.menuai.ca https://*.supabase.co https://api.mapbox.com https://maps.gstatic.com https://maps.googleapis.com",
+              "img-src 'self' data: blob: https://*.supabase.co https://api.mapbox.com https://maps.gstatic.com https://maps.googleapis.com",
               "font-src 'self' data: https://fonts.gstatic.com",
-              "connect-src 'self' blob: https://*.supabase.co https://api.stripe.com https://api.mapbox.com https://events.mapbox.com https://maps.googleapis.com wss://*.supabase.co https://orders.menuai.ca https://*.menuai.ca https://apple-pay-gateway.apple.com https://*.apple-pay-gateway.apple.com",
+              "connect-src 'self' blob: https://*.supabase.co https://api.stripe.com https://api.mapbox.com https://events.mapbox.com https://maps.googleapis.com wss://*.supabase.co https://orders.menu.ca https://*.menu.ca https://apple-pay-gateway.apple.com https://*.apple-pay-gateway.apple.com",
               "frame-src https://js.stripe.com https://pay.google.com",
               "worker-src 'self' blob:",
               "base-uri 'self'",

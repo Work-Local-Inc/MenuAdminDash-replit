@@ -1,154 +1,150 @@
-import { NextRequest, NextResponse } from "next/server";
-import Stripe from "stripe";
-import { createAdminClient } from "@/lib/supabase/admin";
-export const dynamic = "force-dynamic";
+import { NextRequest, NextResponse } from 'next/server'
+import Stripe from 'stripe'
+import { createAdminClient } from '@/lib/supabase/admin'
+export const dynamic = 'force-dynamic'
 
-// Lazy Stripe init to avoid build-time crash
-let _stripe: Stripe | null = null;
-function getStripe(): Stripe {
-  if (!_stripe) {
-    const key =
-      process.env.TESTING_STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY;
-    if (!key) throw new Error("Missing required Stripe secret key");
-    _stripe = new Stripe(key, {});
-  }
-  return _stripe;
+// Use TEST Stripe key to match payment intent creation
+const stripeSecretKey = process.env.TESTING_STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY
+
+if (!stripeSecretKey) {
+  throw new Error('Missing required Stripe secret key. Set STRIPE_SECRET_KEY or TESTING_STRIPE_SECRET_KEY')
 }
 
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+const stripe = new Stripe(stripeSecretKey, {})
+
+const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
 
 export async function POST(request: NextRequest) {
   // SECURITY: Fail closed if webhook secret is not configured
   if (!webhookSecret) {
-    console.error(
-      "[Stripe Webhook] STRIPE_WEBHOOK_SECRET not configured - rejecting request",
-    );
+    console.error('[Stripe Webhook] STRIPE_WEBHOOK_SECRET not configured - rejecting request')
     return NextResponse.json(
-      { error: "Webhook not configured" },
-      { status: 500 },
-    );
+      { error: 'Webhook not configured' },
+      { status: 500 }
+    )
   }
 
-  const body = await request.text();
-  const signature = request.headers.get("stripe-signature");
+  const body = await request.text()
+  const signature = request.headers.get('stripe-signature')
 
   if (!signature) {
-    return NextResponse.json({ error: "No signature" }, { status: 400 });
+    return NextResponse.json({ error: 'No signature' }, { status: 400 })
   }
 
-  let event: Stripe.Event;
+  let event: Stripe.Event
 
   try {
     // Verify webhook signature - always required
-    event = getStripe().webhooks.constructEvent(body, signature, webhookSecret);
+    event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
   } catch (err: any) {
-    console.error("Webhook signature verification failed:", err.message);
-    return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
+    console.error('Webhook signature verification failed:', err.message)
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
 
-  const supabase = createAdminClient() as any;
+  const supabase = createAdminClient() as any
 
   try {
     // Check if event was already processed (idempotency)
     const { data: existingEvent } = await supabase
-      .from("stripe_webhook_events")
-      .select("id")
-      .eq("stripe_event_id", event.id)
-      .single();
+      .from('stripe_webhook_events')
+      .select('id')
+      .eq('stripe_event_id', event.id)
+      .single()
 
     if (existingEvent) {
-      return NextResponse.json({ received: true, status: "already_processed" });
+      return NextResponse.json({ received: true, status: 'already_processed' })
     }
 
     // Log the event
-    await supabase.from("stripe_webhook_events").insert({
-      stripe_event_id: event.id,
-      event_type: event.type,
-      payload: event as any,
-      processed: false,
-    } as any);
+    await supabase
+      .from('stripe_webhook_events')
+      .insert({
+        stripe_event_id: event.id,
+        event_type: event.type,
+        payload: event as any,
+        processed: false,
+      } as any)
 
     // Handle different event types
     switch (event.type) {
-      case "payment_intent.succeeded": {
-        const paymentIntent = event.data.object as Stripe.PaymentIntent;
+      case 'payment_intent.succeeded': {
+        const paymentIntent = event.data.object as Stripe.PaymentIntent
 
         // Update payment transaction status
         await supabase
-          .from("payment_transactions")
+          .from('payment_transactions')
           .update({
-            status: "succeeded",
+            status: 'succeeded',
             updated_at: new Date().toISOString(),
           } as any)
-          .eq("stripe_payment_intent_id", paymentIntent.id);
+          .eq('stripe_payment_intent_id', paymentIntent.id)
 
         // Update order payment status
         await supabase
-          .from("orders")
+          .from('orders')
           .update({
-            payment_status: "paid",
+            payment_status: 'paid',
           } as any)
-          .eq("stripe_payment_intent_id", paymentIntent.id);
+          .eq('stripe_payment_intent_id', paymentIntent.id)
 
-        break;
+        break
       }
 
-      case "payment_intent.payment_failed": {
-        const paymentIntent = event.data.object as Stripe.PaymentIntent;
+      case 'payment_intent.payment_failed': {
+        const paymentIntent = event.data.object as Stripe.PaymentIntent
 
         // Update payment transaction status
         await supabase
-          .from("payment_transactions")
+          .from('payment_transactions')
           .update({
-            status: "failed",
-            failure_reason:
-              paymentIntent.last_payment_error?.message || "Payment failed",
+            status: 'failed',
+            failure_reason: paymentIntent.last_payment_error?.message || 'Payment failed',
             updated_at: new Date().toISOString(),
           } as any)
-          .eq("stripe_payment_intent_id", paymentIntent.id);
+          .eq('stripe_payment_intent_id', paymentIntent.id)
 
-        break;
+        break
       }
 
-      case "charge.refunded": {
-        const charge = event.data.object as Stripe.Charge;
+      case 'charge.refunded': {
+        const charge = event.data.object as Stripe.Charge
 
         // Update payment transaction with refund info
         await supabase
-          .from("payment_transactions")
+          .from('payment_transactions')
           .update({
-            status: "refunded",
+            status: 'refunded',
             refund_amount: charge.amount_refunded / 100,
             refunded_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           } as any)
-          .eq("stripe_charge_id", charge.id);
+          .eq('stripe_charge_id', charge.id)
 
-        break;
+        break
       }
     }
 
     // Mark event as processed
     await supabase
-      .from("stripe_webhook_events")
+      .from('stripe_webhook_events')
       .update({ processed: true } as any)
-      .eq("stripe_event_id", event.id);
+      .eq('stripe_event_id', event.id)
 
-    return NextResponse.json({ received: true, status: "processed" });
+    return NextResponse.json({ received: true, status: 'processed' })
   } catch (error: any) {
-    console.error("Webhook processing error:", error);
+    console.error('Webhook processing error:', error)
 
     // Log error to webhook events table
     await supabase
-      .from("stripe_webhook_events")
+      .from('stripe_webhook_events')
       .update({
         error_message: error.message,
       } as any)
-      .eq("stripe_event_id", event.id);
+      .eq('stripe_event_id', event.id)
 
     return NextResponse.json(
-      { error: "Webhook processing failed" },
-      { status: 500 },
-    );
+      { error: 'Webhook processing failed' },
+      { status: 500 }
+    )
   }
 }

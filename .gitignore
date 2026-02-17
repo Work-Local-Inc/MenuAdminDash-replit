@@ -13,4 +13,3 @@ attached_assets
 .env*.local
 # Memory MCP
 .memory/
-.vercel
