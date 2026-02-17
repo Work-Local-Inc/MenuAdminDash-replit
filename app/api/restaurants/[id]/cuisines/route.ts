@@ -97,7 +97,7 @@ export async function POST(
 
     const supabase = createAdminClient();
 
-    // Look up cuisine_id from name
+    // Look up cuisine_type_id from name
     const { data: cuisine, error: lookupError } = await supabase
       .from("cuisine_types")
       .select("id")
@@ -117,7 +117,7 @@ export async function POST(
       .from("restaurant_cuisines")
       .select("id")
       .eq("restaurant_id", restaurantId)
-      .eq("cuisine_id", cuisine.id)
+      .eq("cuisine_type_id", cuisine.id)
       .maybeSingle();
 
     if (existing) {
@@ -140,7 +140,7 @@ export async function POST(
       .from("restaurant_cuisines")
       .insert({
         restaurant_id: restaurantId,
-        cuisine_id: cuisine.id,
+        cuisine_type_id: cuisine.id,
         is_primary: isPrimary,
       })
       .select(
