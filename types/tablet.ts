@@ -195,6 +195,9 @@ export interface HeartbeatRequest {
   printer_status?: 'online' | 'offline' | 'paper_low' | 'error'
   app_version: string
   last_print_at?: string
+  last_successful_fetch?: string | null
+  consecutive_fetch_failures?: number | null
+  oldest_pending_order_minutes?: number | null
 }
 
 export interface HeartbeatResponse {

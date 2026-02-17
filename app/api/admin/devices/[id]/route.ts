@@ -56,13 +56,39 @@ export async function GET(
     }
 
     const deviceObj = device as any
+    const now = Date.now()
+    const lastCheckAt = deviceObj.last_check_at ? new Date(deviceObj.last_check_at).getTime() : null
+    const lastSuccessfulFetch = deviceObj.last_successful_fetch ? new Date(deviceObj.last_successful_fetch).getTime() : null
+    const consecutiveFailures = deviceObj.consecutive_fetch_failures ?? 0
+    const oldestPending = deviceObj.oldest_pending_order_minutes ?? 0
+
+    let health_status: 'healthy' | 'warning' | 'critical' | 'offline' | 'unknown' = 'healthy'
+    if (lastCheckAt === null) {
+      health_status = 'unknown'
+    } else if (now - lastCheckAt > 2 * 60 * 1000) {
+      health_status = 'offline'
+    } else if (
+      (lastSuccessfulFetch !== null && now - lastSuccessfulFetch > 5 * 60 * 1000) ||
+      consecutiveFailures >= 3 ||
+      oldestPending >= 5
+    ) {
+      health_status = 'critical'
+    } else if (lastSuccessfulFetch !== null && now - lastSuccessfulFetch > 2 * 60 * 1000) {
+      health_status = 'warning'
+    }
+
     return NextResponse.json({
       ...deviceObj,
       restaurant_name: deviceObj.restaurants?.name || null,
       config: deviceObj.device_configs || null,
-      is_online: deviceObj.last_check_at
-        ? new Date(deviceObj.last_check_at) > new Date(Date.now() - 2 * 60 * 1000)
-        : false,
+      last_successful_fetch: deviceObj.last_successful_fetch ?? null,
+      consecutive_fetch_failures: consecutiveFailures,
+      oldest_pending_order_minutes: oldestPending,
+      battery_level: deviceObj.battery_level ?? null,
+      printer_status: deviceObj.printer_status ?? null,
+      app_version: deviceObj.app_version ?? 'unknown',
+      health_status,
+      is_online: lastCheckAt !== null && now - lastCheckAt < 2 * 60 * 1000,
     })
   } catch (error: any) {
     console.error('[Admin Device Detail] Error:', error)

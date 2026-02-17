@@ -81,9 +81,27 @@ Protects restaurants from missed orders when tablets aren't acknowledged. If an 
 ### Tablet Heartbeat Connection
 - The tablet app (React Native, `ca.menu.orders`) sends periodic POST requests to `/api/tablet/heartbeat`
 - This updates `devices.last_check_at` which the cron uses to determine if the tablet is online/offline
+- Heartbeat also stores health telemetry: `last_successful_fetch`, `consecutive_fetch_failures`, `oldest_pending_order_minutes`, `battery_level`, `printer_status`, `app_version`
 - Auth: Bearer token from `device_sessions` table, validated via `lib/tablet/verify-device.ts`
-- CRITICAL: `lib/tablet/auth.ts` queries custom tables (`devices`, `device_sessions`, `device_configs`) that are NOT in auto-generated Supabase types. ALL Supabase clients in this file MUST use `createAdminClient() as any`
+- CRITICAL: `lib/tablet/auth.ts` queries custom tables (`devices`, `device_sessions`, `device_configs`, `device_recovery_commands`) that are NOT in auto-generated Supabase types. ALL Supabase clients in this file MUST use `createAdminClient() as any`
 - If the heartbeat returns 500, it shows up as an AxiosError in Sentry from the React Native app (project: `react-native`, release: `ca.menu.orders@X.X.X`). This is NOT a random error — it means the tablet API is broken.
+- Heartbeat response includes pending recovery commands (if any) for remote recovery
+
+### Tablet Health Monitoring System (Feb 2026)
+- Dashboard at `/admin/devices` shows real-time health status for all tablets
+- Health telemetry is stored on the `devices` table (requires migration: `scripts/migrations/add-device-health-columns.sql`)
+- Health status levels: healthy (green), warning (yellow, >2min stale), critical (red, >5min stale or >=3 failures), offline (gray, >2min no heartbeat), unknown (never connected)
+- Auto-refreshes every 15 seconds
+- Remote recovery commands: `resync` (re-auth + fetch) and `reload_app` (full app restart)
+- Commands delivered via heartbeat response with 2-minute TTL
+- Tablet acknowledges commands via `POST /api/tablet/recovery-ack`
+- Command audit trail: who issued, when, execution status
+- Key files:
+  - `app/admin/devices/page.tsx` - Health monitoring dashboard
+  - `app/api/admin/devices/[id]/recovery/route.ts` - Recovery command API (GET history, POST new command)
+  - `app/api/tablet/recovery-ack/route.ts` - Tablet command acknowledgment
+  - `lib/hooks/use-devices.ts` - React hooks for device health data + recovery commands
+  - `scripts/migrations/add-device-health-columns.sql` - Database migration (MUST RUN in Supabase)
 
 ### Phone Number Lookup Priority
 1. `restaurant_contacts` where `receives_orders = true` AND `is_active = true` (menuca_v3 schema)

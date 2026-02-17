@@ -207,6 +207,9 @@ export async function updateDeviceHeartbeat(
     battery_level?: number
     printer_status?: string
     app_version?: string
+    last_successful_fetch?: string | null
+    consecutive_fetch_failures?: number | null
+    oldest_pending_order_minutes?: number | null
   }
 ): Promise<void> {
   const supabase = createAdminClient() as any
@@ -215,13 +218,25 @@ export async function updateDeviceHeartbeat(
     last_check_at: new Date().toISOString(),
   }
 
-  // Could store additional heartbeat data in a separate table if needed
-  // For now, just update last_check_at
+  if (data?.battery_level !== undefined) updateData.battery_level = data.battery_level
+  if (data?.printer_status !== undefined) updateData.printer_status = data.printer_status
+  if (data?.app_version !== undefined) updateData.app_version = data.app_version
+  if (data?.last_successful_fetch !== undefined) updateData.last_successful_fetch = data.last_successful_fetch
+  if (data?.consecutive_fetch_failures !== undefined) updateData.consecutive_fetch_failures = data.consecutive_fetch_failures
+  if (data?.oldest_pending_order_minutes !== undefined) updateData.oldest_pending_order_minutes = data.oldest_pending_order_minutes
 
-  await supabase
-    .from('devices')
-    .update(updateData)
-    .eq('id', deviceId)
+  try {
+    await supabase
+      .from('devices')
+      .update(updateData)
+      .eq('id', deviceId)
+  } catch (err) {
+    console.warn(`[Device Heartbeat] Full update failed for device ${deviceId}, falling back to last_check_at only:`, err)
+    await supabase
+      .from('devices')
+      .update({ last_check_at: new Date().toISOString() })
+      .eq('id', deviceId)
+  }
 }
 
 /**

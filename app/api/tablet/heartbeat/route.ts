@@ -34,13 +34,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { battery_level, printer_status, app_version, last_print_at } = validation.data
+    const { battery_level, printer_status, app_version, last_print_at, last_successful_fetch, consecutive_fetch_failures, oldest_pending_order_minutes } = validation.data
 
     // Update device heartbeat
     await updateDeviceHeartbeat(deviceContext.device_id, {
       battery_level: battery_level ?? undefined,
       printer_status: printer_status ?? undefined,
       app_version,
+      last_successful_fetch: last_successful_fetch ?? undefined,
+      consecutive_fetch_failures: consecutive_fetch_failures ?? undefined,
+      oldest_pending_order_minutes: oldest_pending_order_minutes ?? undefined,
     })
 
     let configUpdate: Partial<DeviceConfig> | undefined = undefined
@@ -67,14 +70,49 @@ export async function POST(request: NextRequest) {
       console.warn(`[Device Heartbeat] Config lookup failed for device ${deviceContext.device_id}, continuing without config`)
     }
 
-    // Log heartbeat (useful for debugging connectivity issues)
+    let recoveryCommand = undefined
+    try {
+      const rcSupabase = createAdminClient() as any
+      const { data: pendingCmd } = await rcSupabase
+        .from('device_recovery_commands')
+        .select('command_id, action, reason, issued_at')
+        .eq('device_id', deviceContext.device_id)
+        .eq('execution_status', 'pending')
+        .order('issued_at', { ascending: false })
+        .limit(1)
+        .single()
+
+      if (pendingCmd) {
+        const cmdAge = Date.now() - new Date(pendingCmd.issued_at).getTime()
+        if (cmdAge < 2 * 60 * 1000) {
+          recoveryCommand = {
+            id: pendingCmd.command_id,
+            action: pendingCmd.action,
+            reason: pendingCmd.reason,
+            issued_at: pendingCmd.issued_at,
+          }
+        } else {
+          await rcSupabase
+            .from('device_recovery_commands')
+            .update({ execution_status: 'expired' })
+            .eq('command_id', pendingCmd.command_id)
+        }
+      }
+    } catch (e) {
+    }
+
     console.log(`[Device Heartbeat] Device ${deviceContext.device_id}: battery=${battery_level}%, printer=${printer_status}, app=${app_version}`)
 
-    return NextResponse.json({
+    const response: any = {
       success: true,
       server_time: new Date().toISOString(),
       config_update: configUpdate,
-    })
+    }
+    if (recoveryCommand) {
+      response.recovery_command = recoveryCommand
+    }
+
+    return NextResponse.json(response)
   } catch (error: any) {
     console.error('[Device Heartbeat] Error:', error)
     return NextResponse.json(

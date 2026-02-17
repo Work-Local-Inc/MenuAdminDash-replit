@@ -13,6 +13,28 @@ interface Device {
   last_check_at: string | null
   last_boot_at: string | null
   created_at: string
+  last_successful_fetch: string | null
+  consecutive_fetch_failures: number
+  oldest_pending_order_minutes: number
+  battery_level: number | null
+  printer_status: string | null
+  app_version: string
+  health_status: 'healthy' | 'warning' | 'critical' | 'offline' | 'unknown'
+  is_online: boolean
+}
+
+interface RecoveryCommand {
+  id: number
+  device_id: number
+  command_id: string
+  action: 'resync' | 'reload_app'
+  reason: string | null
+  issued_by: string | null
+  issued_at: string
+  executed_at: string | null
+  execution_status: 'pending' | 'executed' | 'expired' | 'failed'
+  execution_result: string | null
+  created_at: string
 }
 
 interface DeviceFilters {
@@ -33,6 +55,7 @@ export function useDevices(filters?: DeviceFilters) {
       if (!res.ok) throw new Error('Failed to fetch devices')
       return res.json()
     },
+    refetchInterval: 15000,
   })
 }
 
@@ -119,6 +142,41 @@ export function useDeleteDevice() {
       }
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/devices'] })
+    },
+  })
+}
+
+export function useDeviceRecoveryCommands(deviceId: number) {
+  return useQuery<RecoveryCommand[]>({
+    queryKey: ['/api/admin/devices', deviceId, 'recovery'],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/devices/${deviceId}/recovery`)
+      if (!res.ok) throw new Error('Failed to fetch recovery commands')
+      return res.json()
+    },
+    enabled: !!deviceId,
+  })
+}
+
+export function useIssueRecoveryCommand() {
+  const queryClient = useQueryClient()
+
+  return useMutation<RecoveryCommand, Error, { deviceId: number; action: 'resync' | 'reload_app'; reason?: string }>({
+    mutationFn: async ({ deviceId, action, reason }) => {
+      const res = await fetch(`/api/admin/devices/${deviceId}/recovery`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, reason }),
+      })
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || 'Failed to issue recovery command')
+      }
+      return res.json()
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/devices', variables.deviceId, 'recovery'] })
       queryClient.invalidateQueries({ queryKey: ['/api/admin/devices'] })
     },
   })

@@ -73,6 +73,9 @@ export const heartbeatSchema = z.object({
     return String(val)
   }, z.string().optional().default('unknown')),
   last_print_at: z.string().optional().nullable(),
+  last_successful_fetch: z.string().optional().nullable(),
+  consecutive_fetch_failures: z.coerce.number().int().min(0).optional().nullable(),
+  oldest_pending_order_minutes: z.coerce.number().int().min(0).optional().nullable(),
 }).passthrough()
 
 // ==================== Type Exports ====================
