@@ -172,8 +172,7 @@ export async function PUT(
   try {
     const { adminUser } = await verifyAdminAuth(request);
 
-    const restaurantId = parseInt(params.id);
-    const access = await verifyRestaurantAccess(adminUser as any, restaurantId);
+    const access = await verifyRestaurantAccess(adminUser as any, params.id);
     if (!access.allowed) {
       return NextResponse.json(
         { error: access.error },
@@ -186,8 +185,27 @@ export async function PUT(
 
     const validatedData = bulkUpdateSchema.parse(body);
 
+    // Resolve to int for upsert
+    const { column: restCol2, value: restVal2 } = resolveIdParam(params.id);
+    let putRestId: number;
+    if (restCol2 === "uuid") {
+      const { data: rest } = await supabase
+        .from("restaurants")
+        .select("id")
+        .eq("uuid", restVal2)
+        .single();
+      if (!rest)
+        return NextResponse.json(
+          { error: "Restaurant not found" },
+          { status: 404 },
+        );
+      putRestId = rest.id;
+    } else {
+      putRestId = restVal2 as number;
+    }
+
     const upsertData = validatedData.map((option, index) => ({
-      restaurant_id: restaurantId,
+      restaurant_id: putRestId,
       payment_method: option.payment_type,
       is_enabled: option.enabled,
       english_label: option.label_en || null,

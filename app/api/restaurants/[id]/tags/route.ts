@@ -3,6 +3,7 @@ import { verifyAdminAuth } from "@/lib/auth/admin-check";
 import { verifyRestaurantAccess } from "@/lib/auth/restaurant-access";
 import { AuthError } from "@/lib/errors";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { resolveIdParam, resolveFkParam } from "@/lib/utils/uuid";
 import { z } from "zod";
 export const dynamic = "force-dynamic";
 
@@ -17,15 +18,7 @@ export async function GET(
   try {
     const { adminUser } = await verifyAdminAuth(request);
 
-    const restaurantId = parseInt(params.id);
-    if (isNaN(restaurantId)) {
-      return NextResponse.json(
-        { error: "Invalid restaurant ID" },
-        { status: 400 },
-      );
-    }
-
-    const access = await verifyRestaurantAccess(adminUser as any, restaurantId);
+    const access = await verifyRestaurantAccess(adminUser as any, params.id);
     if (!access.allowed) {
       return NextResponse.json(
         { error: access.error },
@@ -34,6 +27,11 @@ export async function GET(
     }
 
     const supabase = createAdminClient();
+    const restFk = resolveFkParam(
+      params.id,
+      "restaurant_id",
+      "restaurant_uuid",
+    );
 
     // Get tags for the restaurant
     const { data: tags, error } = await supabase
@@ -48,7 +46,7 @@ export async function GET(
         )
       `,
       )
-      .eq("restaurant_id", restaurantId);
+      .eq(restFk.column, restFk.value);
 
     if (error) throw error;
 
@@ -75,15 +73,7 @@ export async function POST(
   try {
     const { adminUser } = await verifyAdminAuth(request);
 
-    const restaurantId = parseInt(params.id);
-    if (isNaN(restaurantId)) {
-      return NextResponse.json(
-        { error: "Invalid restaurant ID" },
-        { status: 400 },
-      );
-    }
-
-    const access = await verifyRestaurantAccess(adminUser as any, restaurantId);
+    const access = await verifyRestaurantAccess(adminUser as any, params.id);
     if (!access.allowed) {
       return NextResponse.json(
         { error: access.error },
@@ -95,6 +85,11 @@ export async function POST(
     const validatedData = addTagSchema.parse(body);
 
     const supabase = createAdminClient();
+    const restFk = resolveFkParam(
+      params.id,
+      "restaurant_id",
+      "restaurant_uuid",
+    );
 
     // Look up tag by name
     const { data: tag, error: lookupError } = await supabase
@@ -112,7 +107,7 @@ export async function POST(
     const { data: existing } = await supabase
       .from("restaurant_tag_assignments")
       .select("id")
-      .eq("restaurant_id", restaurantId)
+      .eq(restFk.column, restFk.value)
       .eq("tag_id", tag.id)
       .maybeSingle();
 
@@ -123,11 +118,30 @@ export async function POST(
       );
     }
 
+    // Resolve to int for insert
+    const { column: restCol, value: restVal } = resolveIdParam(params.id);
+    let restaurantIntId: number;
+    if (restCol === "uuid") {
+      const { data: rest } = await supabase
+        .from("restaurants")
+        .select("id")
+        .eq("uuid", restVal)
+        .single();
+      if (!rest)
+        return NextResponse.json(
+          { error: "Restaurant not found" },
+          { status: 404 },
+        );
+      restaurantIntId = rest.id;
+    } else {
+      restaurantIntId = restVal as number;
+    }
+
     // Insert the tag assignment
     const { data, error } = await supabase
       .from("restaurant_tag_assignments")
       .insert({
-        restaurant_id: restaurantId,
+        restaurant_id: restaurantIntId,
         tag_id: tag.id,
       })
       .select(

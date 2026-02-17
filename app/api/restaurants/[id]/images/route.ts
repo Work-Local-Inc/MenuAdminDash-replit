@@ -4,6 +4,7 @@ import { verifyRestaurantAccess } from "@/lib/auth/restaurant-access";
 import { AuthError } from "@/lib/errors";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { deleteFromR2 } from "@/lib/r2";
+import { resolveIdParam } from "@/lib/utils/uuid";
 import { z } from "zod";
 export const dynamic = "force-dynamic";
 
@@ -22,15 +23,31 @@ const imageUpdateSchema = z.object({
   display_order: z.number().int().nonnegative().optional(),
 });
 
+async function resolveRestaurantIntId(
+  supabase: any,
+  paramId: string,
+): Promise<{ intId: number } | { error: string }> {
+  const { column, value } = resolveIdParam(paramId);
+  if (column === "uuid") {
+    const { data: rest } = await supabase
+      .from("restaurants")
+      .select("id")
+      .eq("uuid", value)
+      .single();
+    if (!rest) return { error: "Restaurant not found" };
+    return { intId: rest.id };
+  }
+  return { intId: value as number };
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } },
 ) {
   try {
     const { adminUser } = await verifyAdminAuth(request);
-    const restaurantId = parseInt(params.id);
 
-    const access = await verifyRestaurantAccess(adminUser as any, restaurantId);
+    const access = await verifyRestaurantAccess(adminUser as any, params.id);
     if (!access.allowed) {
       return NextResponse.json(
         { error: access.error },
@@ -39,11 +56,14 @@ export async function GET(
     }
 
     const supabase = createAdminClient() as any;
+    const resolved = await resolveRestaurantIntId(supabase, params.id);
+    if ("error" in resolved)
+      return NextResponse.json({ error: resolved.error }, { status: 404 });
 
     const { data, error } = await supabase
       .from("restaurant_images")
       .select("*")
-      .eq("restaurant_id", parseInt(params.id))
+      .eq("restaurant_id", resolved.intId)
       .order("display_order", { ascending: true })
       .order("created_at", { ascending: true });
 
@@ -70,9 +90,8 @@ export async function POST(
 ) {
   try {
     const { adminUser } = await verifyAdminAuth(request);
-    const restaurantId = parseInt(params.id);
 
-    const access = await verifyRestaurantAccess(adminUser as any, restaurantId);
+    const access = await verifyRestaurantAccess(adminUser as any, params.id);
     if (!access.allowed) {
       return NextResponse.json(
         { error: access.error },
@@ -81,6 +100,9 @@ export async function POST(
     }
 
     const supabase = createAdminClient() as any;
+    const resolved = await resolveRestaurantIntId(supabase, params.id);
+    if ("error" in resolved)
+      return NextResponse.json({ error: resolved.error }, { status: 404 });
 
     let body;
     try {
@@ -98,7 +120,7 @@ export async function POST(
     const { data, error } = await supabase
       .from("restaurant_images")
       .insert({
-        restaurant_id: parseInt(params.id),
+        restaurant_id: resolved.intId,
         ...validatedData,
       })
       .select()
@@ -133,9 +155,8 @@ export async function PATCH(
 ) {
   try {
     const { adminUser } = await verifyAdminAuth(request);
-    const restaurantId = parseInt(params.id);
 
-    const access = await verifyRestaurantAccess(adminUser as any, restaurantId);
+    const access = await verifyRestaurantAccess(adminUser as any, params.id);
     if (!access.allowed) {
       return NextResponse.json(
         { error: access.error },
@@ -144,6 +165,9 @@ export async function PATCH(
     }
 
     const supabase = createAdminClient() as any;
+    const resolved = await resolveRestaurantIntId(supabase, params.id);
+    if ("error" in resolved)
+      return NextResponse.json({ error: resolved.error }, { status: 404 });
 
     let body;
     try {
@@ -180,7 +204,7 @@ export async function PATCH(
       .from("restaurant_images")
       .update(validatedData)
       .eq("id", body.image_id)
-      .eq("restaurant_id", parseInt(params.id))
+      .eq("restaurant_id", resolved.intId)
       .select()
       .single();
 
@@ -213,9 +237,8 @@ export async function DELETE(
 ) {
   try {
     const { adminUser } = await verifyAdminAuth(request);
-    const restaurantId = parseInt(params.id);
 
-    const access = await verifyRestaurantAccess(adminUser as any, restaurantId);
+    const access = await verifyRestaurantAccess(adminUser as any, params.id);
     if (!access.allowed) {
       return NextResponse.json(
         { error: access.error },
@@ -224,6 +247,9 @@ export async function DELETE(
     }
 
     const supabase = createAdminClient() as any;
+    const resolved = await resolveRestaurantIntId(supabase, params.id);
+    if ("error" in resolved)
+      return NextResponse.json({ error: resolved.error }, { status: 404 });
 
     const { searchParams } = new URL(request.url);
     const imageId = searchParams.get("image_id");
@@ -240,7 +266,7 @@ export async function DELETE(
       .from("restaurant_images")
       .select("image_url")
       .eq("id", parseInt(imageId))
-      .eq("restaurant_id", parseInt(params.id))
+      .eq("restaurant_id", resolved.intId)
       .single();
 
     // Delete from database
@@ -248,7 +274,7 @@ export async function DELETE(
       .from("restaurant_images")
       .delete()
       .eq("id", parseInt(imageId))
-      .eq("restaurant_id", parseInt(params.id));
+      .eq("restaurant_id", resolved.intId);
 
     if (dbError) throw dbError;
 

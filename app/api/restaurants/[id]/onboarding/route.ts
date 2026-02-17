@@ -3,6 +3,7 @@ import { verifyAdminAuth } from "@/lib/auth/admin-check";
 import { verifyRestaurantAccess } from "@/lib/auth/restaurant-access";
 import { AuthError } from "@/lib/errors";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { resolveIdParam, resolveFkParam } from "@/lib/utils/uuid";
 export const dynamic = "force-dynamic";
 
 export async function GET(
@@ -12,15 +13,7 @@ export async function GET(
   try {
     const { adminUser } = await verifyAdminAuth(request);
 
-    const restaurantId = parseInt(params.id);
-    if (isNaN(restaurantId)) {
-      return NextResponse.json(
-        { error: "Invalid restaurant ID" },
-        { status: 400 },
-      );
-    }
-
-    const access = await verifyRestaurantAccess(adminUser as any, restaurantId);
+    const access = await verifyRestaurantAccess(adminUser as any, params.id);
     if (!access.allowed) {
       return NextResponse.json(
         { error: access.error },
@@ -29,12 +22,18 @@ export async function GET(
     }
 
     const supabase = createAdminClient() as any;
+    const onboardingFk = resolveFkParam(
+      params.id,
+      "restaurant_id",
+      "restaurant_uuid",
+    );
+    const { column: restCol, value: restVal } = resolveIdParam(params.id);
 
     // Get onboarding record directly
     const { data: onboarding, error: onboardingError } = await supabase
       .from("restaurant_onboarding")
       .select("*")
-      .eq("restaurant_id", restaurantId)
+      .eq(onboardingFk.column, onboardingFk.value)
       .maybeSingle();
 
     if (onboardingError) throw onboardingError;
@@ -43,7 +42,7 @@ export async function GET(
     const { data: restaurant, error: restError } = await supabase
       .from("restaurants")
       .select("id, name, status, created_at")
-      .eq("id", restaurantId)
+      .eq(restCol, restVal)
       .single();
 
     if (restError) throw restError;

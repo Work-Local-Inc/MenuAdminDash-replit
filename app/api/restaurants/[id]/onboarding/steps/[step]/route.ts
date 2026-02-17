@@ -3,6 +3,7 @@ import { verifyAdminAuth } from "@/lib/auth/admin-check";
 import { verifyRestaurantAccess } from "@/lib/auth/restaurant-access";
 import { AuthError } from "@/lib/errors";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { resolveIdParam } from "@/lib/utils/uuid";
 import { z } from "zod";
 export const dynamic = "force-dynamic";
 
@@ -28,17 +29,9 @@ export async function PATCH(
   try {
     const { adminUser } = await verifyAdminAuth(request);
 
-    const restaurantId = parseInt(params.id);
     const step = params.step;
 
-    if (isNaN(restaurantId)) {
-      return NextResponse.json(
-        { error: "Invalid restaurant ID" },
-        { status: 400 },
-      );
-    }
-
-    const access = await verifyRestaurantAccess(adminUser as any, restaurantId);
+    const access = await verifyRestaurantAccess(adminUser as any, params.id);
     if (!access.allowed) {
       return NextResponse.json(
         { error: access.error },
@@ -58,6 +51,25 @@ export async function PATCH(
 
     const supabase = createAdminClient() as any;
 
+    // Resolve to int for upsert (onConflict uses restaurant_id)
+    const { column: restCol, value: restVal } = resolveIdParam(params.id);
+    let restaurantIntId: number;
+    if (restCol === "uuid") {
+      const { data: rest } = await supabase
+        .from("restaurants")
+        .select("id")
+        .eq("uuid", restVal)
+        .single();
+      if (!rest)
+        return NextResponse.json(
+          { error: "Restaurant not found" },
+          { status: 404 },
+        );
+      restaurantIntId = rest.id;
+    } else {
+      restaurantIntId = restVal as number;
+    }
+
     // Upsert the onboarding record with the step status
     const stepColumn = `step_${step}_completed`;
     const now = new Date().toISOString();
@@ -67,7 +79,7 @@ export async function PATCH(
       .from("restaurant_onboarding")
       .upsert(
         {
-          restaurant_id: restaurantId,
+          restaurant_id: restaurantIntId,
           [stepColumn]: validatedData.completed,
           [`step_${step}_completed_at`]: validatedData.completed ? now : null,
           updated_at: now,
@@ -88,7 +100,7 @@ export async function PATCH(
         .from("restaurant_onboarding")
         .upsert(
           {
-            restaurant_id: restaurantId,
+            restaurant_id: restaurantIntId,
             updated_at: now,
           },
           {
