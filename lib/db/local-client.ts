@@ -436,9 +436,11 @@ class QueryBuilder {
     const { columns, relations } = this._parseSelect(this._selectCols);
 
     // Build base columns - use * or specific columns
-    const colStr = columns.includes("*")
-      ? `t.*`
-      : columns.map((c) => `t."${c}"`).join(", ");
+    // When relations exist, always use t.* so FK columns are available for joins
+    const colStr =
+      columns.includes("*") || relations.size > 0
+        ? `t.*`
+        : columns.map((c) => `t."${c}"`).join(", ");
 
     const where = this._buildWhereClause(1);
     const orderBy =
@@ -620,7 +622,15 @@ class QueryBuilder {
     const sql = `INSERT INTO ${this._qualifiedTable()} (${colNames}) VALUES ${valueSets.join(", ")} RETURNING *`;
     const res = await this._pool.query(sql, [...allParams, ...where.params]);
 
-    const data = res.rows;
+    let data = res.rows;
+
+    // Resolve relations if .select() was chained with relation columns
+    if (this._selectCols && this._selectCols !== "*") {
+      const { relations } = this._parseSelect(this._selectCols);
+      if (relations.size > 0) {
+        data = await this._resolveRelations(data, relations);
+      }
+    }
 
     if (this._returnSingle) {
       return { data: data.length > 0 ? data[0] : null, error: null };
