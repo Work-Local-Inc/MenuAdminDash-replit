@@ -1,62 +1,76 @@
-import { createBrowserClient } from '@supabase/ssr'
-import { Database } from '@/types/supabase-database'
+const COOKIE_NAME = "menu-session";
 
-export function createClient() {
-  return createBrowserClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      db: {
-        schema: 'menuca_v3',
-      },
-      cookies: {
-        getAll() {
-          // Only access document on the client side
-          if (typeof document === 'undefined') return []
-          
-          return document.cookie.split(';').map(cookie => {
-            const [name, value] = cookie.trim().split('=')
-            return { name, value }
-          }).filter(cookie => cookie.name) // Filter out empty cookies
-        },
-        setAll(cookiesToSet) {
-          // Only access document on the client side
-          if (typeof document === 'undefined') return
-          
-          cookiesToSet.forEach(({ name, value, options }) => {
-            document.cookie = `${name}=${value}; path=${options?.path || '/'}; max-age=${options?.maxAge || 604800}; ${options?.sameSite ? `samesite=${options.sameSite}` : ''}`
-          })
-        },
-      },
-    }
-  )
+// Lightweight browser-side auth client
+// Data queries are NOT done from the browser — they go through API routes
+// This only provides auth state for the client-side UI
+function getTokenFromCookie(): string | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(new RegExp(`${COOKIE_NAME}=([^;]+)`));
+  return match ? match[1] : null;
 }
 
-// Client for querying public schema tables (admin_users, admin_user_restaurants, etc.)
-// Uses 'any' type since Database type is defined for menuca_v3 schema
+function parseJwt(token: string): any {
+  try {
+    const base64 = token.split(".")[1];
+    return JSON.parse(atob(base64));
+  } catch {
+    return null;
+  }
+}
+
+class BrowserAuthClient {
+  auth = {
+    getSession: async () => {
+      const token = getTokenFromCookie();
+      if (!token) return { data: { session: null }, error: null };
+      const decoded = parseJwt(token);
+      if (!decoded) return { data: { session: null }, error: null };
+      return {
+        data: {
+          session: {
+            access_token: token,
+            user: { id: decoded.sub, email: decoded.email, role: decoded.role },
+          },
+        },
+        error: null,
+      };
+    },
+
+    getUser: async () => {
+      const token = getTokenFromCookie();
+      if (!token)
+        return {
+          data: { user: null },
+          error: { message: "Not authenticated" },
+        };
+      const decoded = parseJwt(token);
+      if (!decoded)
+        return { data: { user: null }, error: { message: "Invalid token" } };
+      return {
+        data: {
+          user: { id: decoded.sub, email: decoded.email, role: decoded.role },
+        },
+        error: null,
+      };
+    },
+
+    signOut: async () => {
+      // Call logout API to clear the httpOnly cookie
+      await fetch("/api/auth/logout", { method: "POST" });
+      return { error: null };
+    },
+
+    onAuthStateChange: (callback: (event: string, session: any) => void) => {
+      // No real-time auth state changes with JWT cookies
+      return { data: { subscription: { unsubscribe: () => {} } } };
+    },
+  };
+}
+
+export function createClient() {
+  return new BrowserAuthClient() as any;
+}
+
 export function createPublicClient() {
-  return createBrowserClient<any>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      db: {
-        schema: 'public',
-      },
-      cookies: {
-        getAll() {
-          if (typeof document === 'undefined') return []
-          return document.cookie.split(';').map(cookie => {
-            const [name, value] = cookie.trim().split('=')
-            return { name, value }
-          }).filter(cookie => cookie.name)
-        },
-        setAll(cookiesToSet: any) {
-          if (typeof document === 'undefined') return
-          cookiesToSet.forEach(({ name, value, options }: any) => {
-            document.cookie = `${name}=${value}; path=${options?.path || '/'}; max-age=${options?.maxAge || 604800}; ${options?.sameSite ? `samesite=${options.sameSite}` : ''}`
-          })
-        },
-      },
-    }
-  )
+  return new BrowserAuthClient() as any;
 }

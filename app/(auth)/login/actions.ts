@@ -1,30 +1,30 @@
-'use server'
+"use server";
 
-import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
+import { signInWithPassword, setSessionCookie } from "@/lib/auth/local-auth";
 
 export async function login(formData: FormData) {
-  const supabase = await createClient()
+  const email = formData.get("email") as string;
+  const password = formData.get("password") as string;
 
-  const email = formData.get('email') as string
-  const password = formData.get('password') as string
+  console.log(`[Login] Attempting login for: ${email}`);
 
-  console.log(`[Login] Attempting login for: ${email}`)
+  const { data, error } = await signInWithPassword(email, password);
 
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  })
-
-  if (error) {
-    console.error(`[Login] FAILED for ${email}:`, error.message)
-    return { error: error.message }
+  if (error || !data) {
+    console.error(`[Login] FAILED for ${email}:`, error?.message);
+    return { error: error?.message || "Login failed" };
   }
 
-  console.log(`[Login] SUCCESS for ${email}, user_id: ${data.user?.id}`)
-  console.log(`[Login] Session created: ${!!data.session}, expires: ${data.session?.expires_at}`)
+  console.log(`[Login] SUCCESS for ${email}, user_id: ${data.user.id}`);
 
-  revalidatePath('/', 'layout')
-  redirect('/admin/dashboard')
+  // Set session cookie
+  const cookieStore = await cookies();
+  const cookie = setSessionCookie(data.session.access_token);
+  cookieStore.set(cookie.name, cookie.value, cookie.options);
+
+  revalidatePath("/", "layout");
+  redirect("/admin/dashboard");
 }
