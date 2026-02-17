@@ -18,16 +18,19 @@ export default {
       return new Response(null, { headers: corsHeaders });
     }
 
-    if (request.method === "GET") {
+    if (request.method === "GET" || request.method === "HEAD") {
       const object = await env.MENU_IMAGES.get(key);
       if (!object) {
-        return new Response("Not Found", { status: 404, headers: corsHeaders });
+        return new Response(null, { status: 404, headers: corsHeaders });
       }
       const headers = new Headers(corsHeaders);
       object.writeHttpMetadata(headers);
       headers.set("etag", object.httpEtag);
       headers.set("cache-control", "public, max-age=31536000, immutable");
-      return new Response(object.body, { headers });
+      headers.set("content-length", object.size.toString());
+      return new Response(request.method === "HEAD" ? null : object.body, {
+        headers,
+      });
     }
 
     // Auth required for writes
