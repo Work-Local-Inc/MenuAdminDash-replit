@@ -118,7 +118,7 @@ export default function LoginPage() {
                   id="email"
                   name="email"
                   type="email"
-                  placeholder="admin@menu.ca"
+                  placeholder="admin@menuai.ca"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   autoComplete="email"
