@@ -44,6 +44,11 @@ interface AdjustmentRow {
   tax_exempt: boolean
 }
 
+interface LocationRow {
+  restaurant_id: number
+  street_address: string | null
+}
+
 function round2(val: number): number {
   return Math.round(val * 100) / 100
 }
@@ -89,7 +94,16 @@ function calculateRestaurantFees(
 
   const totalUnpaid = ccTotal + interacTotal
 
-  return { totalUnpaid, totalFees }
+  return {
+    totalUnpaid,
+    totalFees,
+    commission: round2(commission),
+    weeklyCommission: round2(weeklyCommission),
+    transactionFees: round2(transactionFees),
+    bankFees: round2(bankFees),
+    deliveryCommission: round2(deliveryCommission),
+    hst: round2(hst),
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -198,6 +212,23 @@ export async function GET(request: NextRequest) {
     const snapshots = (snapshotsData || []) as SnapshotRow[]
     const snapshotMap = new Map(snapshots.map(s => [s.restaurant_id, s]))
 
+    const { data: currentSnapshotsData } = await (supabase as any)
+      .from('commission_weekly_snapshots')
+      .select('restaurant_id, net_paid')
+      .eq('week_start', weekStart)
+
+    const currentSnapshots = (currentSnapshotsData || []) as { restaurant_id: number; net_paid: number }[]
+    const currentSnapshotMap = new Map(currentSnapshots.map(s => [s.restaurant_id, s]))
+
+    const { data: locationsData } = await (supabase as any)
+      .from('restaurant_locations')
+      .select('restaurant_id, street_address')
+      .eq('is_primary', true)
+      .eq('is_active', true)
+
+    const locations = (locationsData || []) as LocationRow[]
+    const locationMap = new Map(locations.map(l => [l.restaurant_id, l.street_address || '']))
+
     const ordersByRestaurant = new Map<number, OrderRow[]>()
     for (const order of orders) {
       const existing = ordersByRestaurant.get(order.restaurant_id) || []
@@ -208,12 +239,19 @@ export async function GET(request: NextRequest) {
     const restaurantResults: Array<{
       restaurant_id: number
       restaurant_name: string
+      restaurant_address: string
       this_week: number
       prev_week: number
       carry_value: number
       net_paid: number
       next_week: number
       has_snapshot: boolean
+      commission: number
+      weekly_commission: number
+      transaction_fees: number
+      bank_fees: number
+      delivery_commission: number
+      hst: number
     }> = []
 
     for (const restaurant of restaurants) {
@@ -221,7 +259,7 @@ export async function GET(request: NextRequest) {
       const config = configMap.get(restaurant.id)
       const restAdjustments = adjustmentsByRestaurant.get(restaurant.id) || []
 
-      const { totalUnpaid, totalFees } = calculateRestaurantFees(restaurantOrders, config)
+      const fees = calculateRestaurantFees(restaurantOrders, config)
 
       const totalCharges = restAdjustments
         .filter(a => a.adjustment_type === 'charge')
@@ -231,24 +269,33 @@ export async function GET(request: NextRequest) {
         .filter(a => a.adjustment_type === 'credit')
         .reduce((sum, a) => sum + round2(parseFloat(String(a.amount))), 0)
 
-      const thisWeek = round2(totalUnpaid - totalFees - totalCharges + totalCredits)
+      const thisWeek = round2(fees.totalUnpaid - fees.totalFees - totalCharges + totalCredits)
 
       const prevSnapshot = snapshotMap.get(restaurant.id)
       const prevWeek = prevSnapshot ? round2(Number(prevSnapshot.this_week_net)) : 0
       const carryValue = prevSnapshot ? round2(Number(prevSnapshot.next_week_balance)) : 0
-      const netPaid = 0
+
+      const currentSnapshot = currentSnapshotMap.get(restaurant.id)
+      const netPaid = currentSnapshot ? round2(Number(currentSnapshot.net_paid)) : 0
 
       const nextWeek = round2(carryValue + prevWeek + thisWeek - netPaid)
 
       restaurantResults.push({
         restaurant_id: restaurant.id,
         restaurant_name: restaurant.name,
+        restaurant_address: locationMap.get(restaurant.id) || '',
         this_week: thisWeek,
         prev_week: prevWeek,
         carry_value: carryValue,
         net_paid: netPaid,
         next_week: nextWeek,
         has_snapshot: !!prevSnapshot,
+        commission: fees.commission,
+        weekly_commission: fees.weeklyCommission,
+        transaction_fees: fees.transactionFees,
+        bank_fees: fees.bankFees,
+        delivery_commission: fees.deliveryCommission,
+        hst: fees.hst,
       })
     }
 
@@ -382,6 +429,14 @@ export async function POST(request: NextRequest) {
     const snapshots = (snapshotsData || []) as SnapshotRow[]
     const snapshotMap = new Map(snapshots.map(s => [s.restaurant_id, s]))
 
+    const { data: existingSnapshotsData } = await (supabase as any)
+      .from('commission_weekly_snapshots')
+      .select('restaurant_id, net_paid')
+      .eq('week_start', weekStart)
+
+    const existingSnapshots = (existingSnapshotsData || []) as { restaurant_id: number; net_paid: number }[]
+    const existingSnapshotMap = new Map(existingSnapshots.map(s => [s.restaurant_id, s]))
+
     const ordersByRestaurant = new Map<number, OrderRow[]>()
     for (const order of orders) {
       const existing = ordersByRestaurant.get(order.restaurant_id) || []
@@ -405,7 +460,7 @@ export async function POST(request: NextRequest) {
       const config = configMap.get(restaurant.id)
       const restAdjustments = adjustmentsByRestaurant.get(restaurant.id) || []
 
-      const { totalUnpaid, totalFees } = calculateRestaurantFees(restaurantOrders, config)
+      const fees = calculateRestaurantFees(restaurantOrders, config)
 
       const totalCharges = restAdjustments
         .filter(a => a.adjustment_type === 'charge')
@@ -415,12 +470,14 @@ export async function POST(request: NextRequest) {
         .filter(a => a.adjustment_type === 'credit')
         .reduce((sum, a) => sum + round2(parseFloat(String(a.amount))), 0)
 
-      const thisWeek = round2(totalUnpaid - totalFees - totalCharges + totalCredits)
+      const thisWeek = round2(fees.totalUnpaid - fees.totalFees - totalCharges + totalCredits)
 
       const prevSnapshot = snapshotMap.get(restaurant.id)
       const prevWeek = prevSnapshot ? round2(Number(prevSnapshot.this_week_net)) : 0
       const carryValue = prevSnapshot ? round2(Number(prevSnapshot.next_week_balance)) : 0
-      const netPaid = 0
+
+      const existingSnapshot = existingSnapshotMap.get(restaurant.id)
+      const netPaid = existingSnapshot ? round2(Number(existingSnapshot.net_paid)) : 0
 
       const nextWeek = round2(carryValue + prevWeek + thisWeek - netPaid)
 
@@ -476,6 +533,128 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('[Commission Report] Snapshot error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const { adminUser } = await verifyAdminAuth(request)
+
+    if (adminUser.role_id !== SUPER_ADMIN_ROLE_ID) {
+      return NextResponse.json(
+        { error: 'Forbidden - Super Admin access required' },
+        { status: 403 }
+      )
+    }
+
+    const body = await request.json()
+    const { weekStart, restaurantId, netPaid, markAllPaid } = body
+
+    if (!weekStart) {
+      return NextResponse.json(
+        { error: 'Missing required field: weekStart' },
+        { status: 400 }
+      )
+    }
+
+    const supabase = await createClient()
+
+    if (markAllPaid) {
+      const { data: allSnapshots, error: fetchError } = await (supabase as any)
+        .from('commission_weekly_snapshots')
+        .select('restaurant_id, next_week_balance')
+        .eq('week_start', weekStart)
+
+      if (fetchError) {
+        console.error('[Commission Report] Fetch snapshots error:', fetchError)
+        return NextResponse.json(
+          { error: 'Failed to fetch snapshots' },
+          { status: 500 }
+        )
+      }
+
+      if (!allSnapshots || allSnapshots.length === 0) {
+        return NextResponse.json(
+          { error: 'No snapshots found for this week. Please save a snapshot first before marking payments.' },
+          { status: 400 }
+        )
+      }
+
+      let updatedCount = 0
+      let errorCount = 0
+
+      for (const snap of allSnapshots) {
+        const { error: updateError } = await (supabase as any)
+          .from('commission_weekly_snapshots')
+          .update({ net_paid: snap.next_week_balance })
+          .eq('restaurant_id', snap.restaurant_id)
+          .eq('week_start', weekStart)
+
+        if (updateError) {
+          console.error('[Commission Report] Bulk update error for restaurant', snap.restaurant_id, updateError)
+          errorCount++
+        } else {
+          updatedCount++
+        }
+      }
+
+      console.log('[Commission Report] Bulk mark paid:', updatedCount, 'updated, errors:', errorCount)
+
+      return NextResponse.json({
+        success: true,
+        updated_count: updatedCount,
+        error_count: errorCount,
+      })
+    }
+
+    if (!restaurantId || netPaid === undefined || netPaid === null) {
+      return NextResponse.json(
+        { error: 'Missing required fields: restaurantId, netPaid' },
+        { status: 400 }
+      )
+    }
+
+    const { data: existingSnap } = await (supabase as any)
+      .from('commission_weekly_snapshots')
+      .select('restaurant_id')
+      .eq('restaurant_id', restaurantId)
+      .eq('week_start', weekStart)
+      .single()
+
+    if (!existingSnap) {
+      return NextResponse.json(
+        { error: 'No snapshot found for this restaurant and week. Please save a snapshot first before marking payments.' },
+        { status: 400 }
+      )
+    }
+
+    const { error: updateError } = await (supabase as any)
+      .from('commission_weekly_snapshots')
+      .update({ net_paid: netPaid })
+      .eq('restaurant_id', restaurantId)
+      .eq('week_start', weekStart)
+
+    if (updateError) {
+      console.error('[Commission Report] Update net_paid error:', updateError)
+      return NextResponse.json(
+        { error: 'Failed to update net_paid' },
+        { status: 500 }
+      )
+    }
+
+    console.log('[Commission Report] Marked paid for restaurant', restaurantId, 'amount:', netPaid)
+
+    return NextResponse.json({
+      success: true,
+      restaurant_id: restaurantId,
+      net_paid: netPaid,
+    })
+  } catch (error) {
+    console.error('[Commission Report] PATCH error:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

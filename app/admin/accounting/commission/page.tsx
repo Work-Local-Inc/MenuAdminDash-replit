@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react"
 import { useQuery, useMutation } from "@tanstack/react-query"
 import { format, startOfWeek, subWeeks, addDays } from "date-fns"
-import { CalendarIcon, Download, FileText, Save, ArrowUpDown, Search, TrendingUp, TrendingDown, Minus } from "lucide-react"
+import { CalendarIcon, Download, FileText, Save, ArrowUpDown, Search, TrendingUp, TrendingDown, Minus, CheckCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Calendar } from "@/components/ui/calendar"
@@ -41,12 +41,19 @@ import { cn } from "@/lib/utils"
 interface CommissionRestaurant {
   restaurant_id: number
   restaurant_name: string
+  restaurant_address: string
   this_week: number
   prev_week: number
   carry_value: number
   net_paid: number
   next_week: number
   has_snapshot: boolean
+  commission: number
+  weekly_commission: number
+  transaction_fees: number
+  bank_fees: number
+  delivery_commission: number
+  hst: number
 }
 
 interface CommissionReportData {
@@ -83,8 +90,10 @@ export default function CommissionReportPage() {
   const weekStartStr = format(weekStart, "yyyy-MM-dd")
   const weekEndStr = format(weekEnd, "yyyy-MM-dd")
 
+  const reportQueryKey = `/api/reports/commission-report?weekStart=${weekStartStr}&weekEnd=${weekEndStr}`
+
   const { data, isLoading } = useQuery<CommissionReportData>({
-    queryKey: [`/api/reports/commission-report?weekStart=${weekStartStr}&weekEnd=${weekEndStr}`],
+    queryKey: [reportQueryKey],
   })
 
   const snapshotMutation = useMutation({
@@ -95,7 +104,7 @@ export default function CommissionReportPage() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: [`/api/reports/commission-report?weekStart=${weekStartStr}&weekEnd=${weekEndStr}`],
+        queryKey: [reportQueryKey],
       })
       toast({
         title: "Snapshot saved",
@@ -106,6 +115,37 @@ export default function CommissionReportPage() {
       toast({
         title: "Failed to save snapshot",
         description: error.message || "An error occurred while saving the snapshot.",
+        variant: "destructive",
+      })
+    },
+  })
+
+  const markPaidMutation = useMutation({
+    mutationFn: (params: { restaurantId?: number; netPaid?: number; markAllPaid?: boolean }) =>
+      apiRequest("/api/reports/commission-report", {
+        method: "PATCH",
+        body: JSON.stringify({
+          weekStart: weekStartStr,
+          restaurantId: params.restaurantId,
+          netPaid: params.netPaid,
+          markAllPaid: params.markAllPaid,
+        }),
+      }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: [reportQueryKey],
+      })
+      toast({
+        title: "Marked as paid",
+        description: variables.markAllPaid
+          ? "All restaurants have been marked as paid for this week."
+          : "Restaurant has been marked as paid for this week.",
+      })
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to mark as paid",
+        description: error.message || "An error occurred while updating payment status.",
         variant: "destructive",
       })
     },
@@ -179,31 +219,61 @@ export default function CommissionReportPage() {
     const headers = [
       'ID',
       'Restaurant Name',
+      'Address',
       'This Week',
       'Prev Week',
       'Carry Value',
       'Net Paid',
       'Next Week',
+      'Commission',
+      'Weekly Commission',
+      'Transaction Fees',
+      'Bank Fees',
+      'Delivery Commission',
+      'HST',
     ]
 
     const rows = filteredAndSorted.map(r => [
       r.restaurant_id,
       `"${r.restaurant_name.replace(/"/g, '""')}"`,
+      `"${(r.restaurant_address || '').replace(/"/g, '""')}"`,
       r.this_week.toFixed(2),
       r.prev_week.toFixed(2),
       r.carry_value.toFixed(2),
       r.net_paid.toFixed(2),
       r.next_week.toFixed(2),
+      (r.commission || 0).toFixed(2),
+      (r.weekly_commission || 0).toFixed(2),
+      (r.transaction_fees || 0).toFixed(2),
+      (r.bank_fees || 0).toFixed(2),
+      (r.delivery_commission || 0).toFixed(2),
+      (r.hst || 0).toFixed(2),
     ].join(','))
+
+    const feeTotals = filteredAndSorted.reduce((acc, r) => ({
+      commission: acc.commission + (r.commission || 0),
+      weekly_commission: acc.weekly_commission + (r.weekly_commission || 0),
+      transaction_fees: acc.transaction_fees + (r.transaction_fees || 0),
+      bank_fees: acc.bank_fees + (r.bank_fees || 0),
+      delivery_commission: acc.delivery_commission + (r.delivery_commission || 0),
+      hst: acc.hst + (r.hst || 0),
+    }), { commission: 0, weekly_commission: 0, transaction_fees: 0, bank_fees: 0, delivery_commission: 0, hst: 0 })
 
     const totalsRow = [
       '',
       '"TOTALS"',
+      '',
       data.totals.this_week.toFixed(2),
       data.totals.prev_week.toFixed(2),
       data.totals.carry_value.toFixed(2),
       data.totals.net_paid.toFixed(2),
       data.totals.next_week.toFixed(2),
+      feeTotals.commission.toFixed(2),
+      feeTotals.weekly_commission.toFixed(2),
+      feeTotals.transaction_fees.toFixed(2),
+      feeTotals.bank_fees.toFixed(2),
+      feeTotals.delivery_commission.toFixed(2),
+      feeTotals.hst.toFixed(2),
     ].join(',')
 
     const csvContent = [headers.join(','), ...rows, '', totalsRow].join('\n')
@@ -232,6 +302,36 @@ export default function CommissionReportPage() {
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  disabled={!data?.restaurants?.length || markPaidMutation.isPending}
+                  data-testid="button-mark-all-paid"
+                >
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  {markPaidMutation.isPending ? "Updating..." : "Mark All Paid"}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Mark All Restaurants as Paid?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will set net_paid equal to next_week_balance for all restaurants in the {dateRange} snapshot. A snapshot must be saved first.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel data-testid="button-mark-all-cancel">Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => markPaidMutation.mutate({ markAllPaid: true })}
+                    data-testid="button-mark-all-confirm"
+                  >
+                    Mark All Paid
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button
@@ -440,6 +540,7 @@ export default function CommissionReportPage() {
                           <ArrowUpDown className={cn("h-3 w-3", sortField === 'next_week' && "text-primary")} />
                         </div>
                       </TableHead>
+                      <TableHead className="text-center">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -451,6 +552,9 @@ export default function CommissionReportPage() {
                         <TableCell>
                           <div className="flex flex-col">
                             <span className="font-medium">{r.restaurant_name}</span>
+                            {r.restaurant_address && (
+                              <span className="text-xs text-muted-foreground" data-testid={`text-address-${r.restaurant_id}`}>{r.restaurant_address}</span>
+                            )}
                             <span className="text-xs text-muted-foreground">ID: {r.restaurant_id}</span>
                           </div>
                         </TableCell>
@@ -465,11 +569,43 @@ export default function CommissionReportPage() {
                         )}>
                           {formatCurrency(r.next_week)}
                         </TableCell>
+                        <TableCell className="text-center">
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                disabled={r.next_week === 0 || markPaidMutation.isPending}
+                                data-testid={`button-mark-paid-${r.restaurant_id}`}
+                              >
+                                <CheckCircle className="h-4 w-4 mr-1" />
+                                Mark Paid
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Mark as Paid?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will mark {r.restaurant_name} as paid with net_paid = {formatCurrency(r.next_week)} for the week of {dateRange}. A snapshot must be saved first.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel data-testid={`button-mark-paid-cancel-${r.restaurant_id}`}>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => markPaidMutation.mutate({ restaurantId: r.restaurant_id, netPaid: r.next_week })}
+                                  data-testid={`button-mark-paid-confirm-${r.restaurant_id}`}
+                                >
+                                  Confirm
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </TableCell>
                       </TableRow>
                     ))}
                     {filteredAndSorted.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                           No commission data found for this period
                         </TableCell>
                       </TableRow>
@@ -494,6 +630,7 @@ export default function CommissionReportPage() {
                           )}>
                             {formatCurrency(data.totals.next_week)}
                           </TableCell>
+                          <TableCell />
                         </TableRow>
                       </TableBody>
                     </Table>
