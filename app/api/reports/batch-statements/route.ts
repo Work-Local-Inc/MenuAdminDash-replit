@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic'
 
 const SUPER_ADMIN_ROLE_ID = 1
 const HST_RATE = 0.13
+const EXCLUDED_RESTAURANT_IDS = [1021]
 
 interface OrderRow {
   id: number
@@ -84,6 +85,7 @@ export async function GET(request: NextRequest) {
     const { data: restaurantsData, error: restaurantsError } = await supabase
       .from('restaurants')
       .select('id, name, legacy_v1_id')
+      .not('id', 'in', `(${EXCLUDED_RESTAURANT_IDS.join(',')})`)
       .order('name')
 
     if (restaurantsError) {
