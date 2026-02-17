@@ -1,47 +1,95 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useQuery, useMutation } from "@tanstack/react-query"
-import { queryClient } from "@/lib/queryClient"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Switch } from "@/components/ui/switch"
-import { useToast } from "@/hooks/use-toast"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import * as z from "zod"
-import { Plus, Globe, CheckCircle, XCircle, Pencil, Trash2, ExternalLink, Copy } from "lucide-react"
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Switch } from "@/components/ui/switch";
+import { useToast } from "@/hooks/use-toast";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import {
+  Plus,
+  Globe,
+  CheckCircle,
+  XCircle,
+  Pencil,
+  Trash2,
+  ExternalLink,
+  Copy,
+} from "lucide-react";
 
 const subdomainSchema = z.object({
-  subdomain: z.string().min(1, "Subdomain is required").regex(/^[a-z0-9]+([\.\-][a-z0-9]+)*$/, "Lowercase letters, numbers, dots and hyphens only"),
+  subdomain: z
+    .string()
+    .min(1, "Subdomain is required")
+    .regex(
+      /^[a-z0-9]+([\.\-][a-z0-9]+)*$/,
+      "Lowercase letters, numbers, dots and hyphens only",
+    ),
   slug: z.string().min(1, "Slug is required"),
   name: z.string().min(1, "Display name is required"),
   is_primary: z.boolean().default(false),
   is_active: z.boolean().default(true),
-})
+});
 
-type SubdomainFormValues = z.infer<typeof subdomainSchema>
+type SubdomainFormValues = z.infer<typeof subdomainSchema>;
 
 interface RestaurantDomainsProps {
-  restaurantId: string
-  restaurantName?: string
-  restaurantSlug?: string
+  restaurantId: string;
+  restaurantName?: string;
+  restaurantSlug?: string;
 }
 
-export function RestaurantDomains({ restaurantId, restaurantName, restaurantSlug }: RestaurantDomainsProps) {
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [editingSubdomain, setEditingSubdomain] = useState<any>(null)
-  const { toast } = useToast()
+export function RestaurantDomains({
+  restaurantId,
+  restaurantName,
+  restaurantSlug,
+}: RestaurantDomainsProps) {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingSubdomain, setEditingSubdomain] = useState<any>(null);
+  const { toast } = useToast();
 
   const { data: subdomains = [], isLoading } = useQuery<any[]>({
-    queryKey: ['/api/restaurants', restaurantId, 'subdomains'],
-  })
+    queryKey: ["/api/restaurants", restaurantId, "subdomains"],
+  });
 
   const form = useForm<SubdomainFormValues>({
     resolver: zodResolver(subdomainSchema) as any,
@@ -52,121 +100,160 @@ export function RestaurantDomains({ restaurantId, restaurantName, restaurantSlug
       is_primary: false,
       is_active: true,
     },
-  })
+  });
 
   const createSubdomain = useMutation({
     mutationFn: async (data: SubdomainFormValues) => {
       const res = await fetch(`/api/restaurants/${restaurantId}/subdomains`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
-      })
+      });
       if (!res.ok) {
-        const error = await res.json()
-        throw new Error(error.error || 'Failed to create subdomain')
+        const error = await res.json();
+        throw new Error(error.error || "Failed to create subdomain");
       }
-      return res.json()
+      return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/restaurants', restaurantId, 'subdomains'] })
-      toast({ title: "Success", description: "Subdomain created successfully" })
-      setIsDialogOpen(false)
+      queryClient.invalidateQueries({
+        queryKey: ["/api/restaurants", restaurantId, "subdomains"],
+      });
+      toast({
+        title: "Success",
+        description: "Subdomain created successfully",
+      });
+      setIsDialogOpen(false);
       form.reset({
         subdomain: "",
         slug: restaurantSlug || "",
         name: restaurantName || "",
         is_primary: false,
         is_active: true,
-      })
+      });
     },
     onError: (error: any) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" })
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     },
-  })
+  });
 
   const updateSubdomain = useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: Partial<SubdomainFormValues> }) => {
-      const res = await fetch(`/api/restaurants/${restaurantId}/subdomains/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      })
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: Partial<SubdomainFormValues>;
+    }) => {
+      const res = await fetch(
+        `/api/restaurants/${restaurantId}/subdomains/${id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        },
+      );
       if (!res.ok) {
-        const error = await res.json()
-        throw new Error(error.error || 'Failed to update subdomain')
+        const error = await res.json();
+        throw new Error(error.error || "Failed to update subdomain");
       }
-      return res.json()
+      return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/restaurants', restaurantId, 'subdomains'] })
-      toast({ title: "Success", description: "Subdomain updated successfully" })
-      setIsDialogOpen(false)
-      setEditingSubdomain(null)
+      queryClient.invalidateQueries({
+        queryKey: ["/api/restaurants", restaurantId, "subdomains"],
+      });
+      toast({
+        title: "Success",
+        description: "Subdomain updated successfully",
+      });
+      setIsDialogOpen(false);
+      setEditingSubdomain(null);
       form.reset({
         subdomain: "",
         slug: restaurantSlug || "",
         name: restaurantName || "",
         is_primary: false,
         is_active: true,
-      })
+      });
     },
     onError: (error: any) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" })
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     },
-  })
+  });
 
   const deleteSubdomain = useMutation({
     mutationFn: async (id: number) => {
-      const res = await fetch(`/api/restaurants/${restaurantId}/subdomains/${id}`, {
-        method: 'DELETE',
-      })
+      const res = await fetch(
+        `/api/restaurants/${restaurantId}/subdomains/${id}`,
+        {
+          method: "DELETE",
+        },
+      );
       if (!res.ok) {
-        const error = await res.json()
-        throw new Error(error.error || 'Failed to delete subdomain')
+        const error = await res.json();
+        throw new Error(error.error || "Failed to delete subdomain");
       }
-      return res.json()
+      return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/restaurants', restaurantId, 'subdomains'] })
-      toast({ title: "Success", description: "Subdomain deleted successfully" })
+      queryClient.invalidateQueries({
+        queryKey: ["/api/restaurants", restaurantId, "subdomains"],
+      });
+      toast({
+        title: "Success",
+        description: "Subdomain deleted successfully",
+      });
     },
     onError: (error: any) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" })
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     },
-  })
+  });
 
   const onSubmit = async (data: SubdomainFormValues) => {
     if (editingSubdomain) {
-      await updateSubdomain.mutateAsync({ id: editingSubdomain.id, data })
+      await updateSubdomain.mutateAsync({ id: editingSubdomain.id, data });
     } else {
-      await createSubdomain.mutateAsync(data)
+      await createSubdomain.mutateAsync(data);
     }
-  }
+  };
 
   const handleEdit = (subdomain: any) => {
-    setEditingSubdomain(subdomain)
+    setEditingSubdomain(subdomain);
     form.reset({
       subdomain: subdomain.subdomain || "",
       slug: subdomain.slug || "",
       name: subdomain.name || "",
       is_primary: subdomain.is_primary ?? false,
       is_active: subdomain.is_active ?? true,
-    })
-    setIsDialogOpen(true)
-  }
+    });
+    setIsDialogOpen(true);
+  };
 
   const handleDelete = (id: number) => {
     if (confirm("Are you sure you want to delete this subdomain?")) {
-      deleteSubdomain.mutate(id)
+      deleteSubdomain.mutate(id);
     }
-  }
+  };
 
   const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text)
-    toast({ title: "Copied", description: "URL copied to clipboard" })
-  }
+    navigator.clipboard.writeText(text);
+    toast({ title: "Copied", description: "URL copied to clipboard" });
+  };
 
-  const getFullUrl = (subdomain: string) => `https://${subdomain}.menu.ca`
+  const getFullUrl = (subdomain: string) => `https://${subdomain}.menuai.ca`;
 
   return (
     <Card>
@@ -174,21 +261,27 @@ export function RestaurantDomains({ restaurantId, restaurantName, restaurantSlug
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
             <CardTitle>Subdomain Routing</CardTitle>
-            <CardDescription>Manage custom subdomains for this restaurant (e.g., yourrestaurant.menu.ca)</CardDescription>
+            <CardDescription>
+              Manage custom subdomains for this restaurant (e.g.,
+              yourrestaurant.menuai.ca)
+            </CardDescription>
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={(open) => {
-            setIsDialogOpen(open)
-            if (!open) {
-              setEditingSubdomain(null)
-              form.reset({
-                subdomain: "",
-                slug: restaurantSlug || "",
-                name: restaurantName || "",
-                is_primary: false,
-                is_active: true,
-              })
-            }
-          }}>
+          <Dialog
+            open={isDialogOpen}
+            onOpenChange={(open) => {
+              setIsDialogOpen(open);
+              if (!open) {
+                setEditingSubdomain(null);
+                form.reset({
+                  subdomain: "",
+                  slug: restaurantSlug || "",
+                  name: restaurantName || "",
+                  is_primary: false,
+                  is_active: true,
+                });
+              }
+            }}
+          >
             <DialogTrigger asChild>
               <Button data-testid="button-add-subdomain">
                 <Plus className="h-4 w-4 mr-2" />
@@ -197,13 +290,20 @@ export function RestaurantDomains({ restaurantId, restaurantName, restaurantSlug
             </DialogTrigger>
             <DialogContent className="max-w-2xl">
               <DialogHeader>
-                <DialogTitle>{editingSubdomain ? "Edit Subdomain" : "Add New Subdomain"}</DialogTitle>
+                <DialogTitle>
+                  {editingSubdomain ? "Edit Subdomain" : "Add New Subdomain"}
+                </DialogTitle>
                 <DialogDescription>
-                  {editingSubdomain ? "Update subdomain settings" : "Create a new subdomain for this restaurant"}
+                  {editingSubdomain
+                    ? "Update subdomain settings"
+                    : "Create a new subdomain for this restaurant"}
                 </DialogDescription>
               </DialogHeader>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <form
+                  onSubmit={form.handleSubmit(onSubmit)}
+                  className="space-y-4"
+                >
                   <FormField
                     control={form.control}
                     name="subdomain"
@@ -212,17 +312,22 @@ export function RestaurantDomains({ restaurantId, restaurantName, restaurantSlug
                         <FormLabel>Subdomain</FormLabel>
                         <div className="flex items-center gap-2">
                           <FormControl>
-                            <Input 
-                              placeholder="myrestaurant" 
+                            <Input
+                              placeholder="myrestaurant"
                               data-testid="input-subdomain"
                               {...field}
-                              onChange={(e) => field.onChange(e.target.value.toLowerCase())}
+                              onChange={(e) =>
+                                field.onChange(e.target.value.toLowerCase())
+                              }
                             />
                           </FormControl>
-                          <span className="text-muted-foreground whitespace-nowrap">.menu.ca</span>
+                          <span className="text-muted-foreground whitespace-nowrap">
+                            .menuai.ca
+                          </span>
                         </div>
                         <FormDescription>
-                          The subdomain prefix (e.g., &quot;myrestaurant&quot; for myrestaurant.menu.ca)
+                          The subdomain prefix (e.g., &quot;myrestaurant&quot;
+                          for myrestaurant.menuai.ca)
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -236,8 +341,8 @@ export function RestaurantDomains({ restaurantId, restaurantName, restaurantSlug
                       <FormItem>
                         <FormLabel>Restaurant Slug</FormLabel>
                         <FormControl>
-                          <Input 
-                            placeholder="my-restaurant-123" 
+                          <Input
+                            placeholder="my-restaurant-123"
                             data-testid="input-slug"
                             {...field}
                           />
@@ -257,8 +362,8 @@ export function RestaurantDomains({ restaurantId, restaurantName, restaurantSlug
                       <FormItem>
                         <FormLabel>Display Name</FormLabel>
                         <FormControl>
-                          <Input 
-                            placeholder="My Restaurant" 
+                          <Input
+                            placeholder="My Restaurant"
                             data-testid="input-name"
                             {...field}
                           />
@@ -322,16 +427,18 @@ export function RestaurantDomains({ restaurantId, restaurantName, restaurantSlug
                       type="button"
                       variant="outline"
                       onClick={() => {
-                        setIsDialogOpen(false)
-                        setEditingSubdomain(null)
-                        form.reset()
+                        setIsDialogOpen(false);
+                        setEditingSubdomain(null);
+                        form.reset();
                       }}
                     >
                       Cancel
                     </Button>
-                    <Button 
-                      type="submit" 
-                      disabled={createSubdomain.isPending || updateSubdomain.isPending}
+                    <Button
+                      type="submit"
+                      disabled={
+                        createSubdomain.isPending || updateSubdomain.isPending
+                      }
                       data-testid="button-submit-subdomain"
                     >
                       {editingSubdomain ? "Update Subdomain" : "Add Subdomain"}
@@ -346,15 +453,20 @@ export function RestaurantDomains({ restaurantId, restaurantName, restaurantSlug
       <CardContent>
         {isLoading ? (
           <div className="space-y-4">
-            {Array(2).fill(0).map((_, i) => (
-              <Skeleton key={i} className="h-16 w-full" />
-            ))}
+            {Array(2)
+              .fill(0)
+              .map((_, i) => (
+                <Skeleton key={i} className="h-16 w-full" />
+              ))}
           </div>
         ) : subdomains.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <Globe className="h-12 w-12 text-muted-foreground mb-4" />
             <p className="text-muted-foreground">No subdomains configured</p>
-            <p className="text-sm text-muted-foreground">Add a subdomain to enable custom URLs like yourrestaurant.menu.ca</p>
+            <p className="text-sm text-muted-foreground">
+              Add a subdomain to enable custom URLs like
+              yourrestaurant.menuai.ca
+            </p>
           </div>
         ) : (
           <div className="rounded-md border">
@@ -369,10 +481,15 @@ export function RestaurantDomains({ restaurantId, restaurantName, restaurantSlug
               </TableHeader>
               <TableBody>
                 {subdomains.map((subdomain: any) => (
-                  <TableRow key={subdomain.id} data-testid={`row-subdomain-${subdomain.id}`}>
+                  <TableRow
+                    key={subdomain.id}
+                    data-testid={`row-subdomain-${subdomain.id}`}
+                  >
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-sm">{subdomain.subdomain}.menu.ca</span>
+                        <span className="font-mono text-sm">
+                          {subdomain.subdomain}.menuai.ca
+                        </span>
                         {subdomain.is_primary && (
                           <Badge variant="secondary">Primary</Badge>
                         )}
@@ -380,7 +497,9 @@ export function RestaurantDomains({ restaurantId, restaurantName, restaurantSlug
                           variant="ghost"
                           size="icon"
                           className="h-6 w-6"
-                          onClick={() => copyToClipboard(getFullUrl(subdomain.subdomain))}
+                          onClick={() =>
+                            copyToClipboard(getFullUrl(subdomain.subdomain))
+                          }
                           data-testid={`button-copy-${subdomain.id}`}
                         >
                           <Copy className="h-3 w-3" />
@@ -439,5 +558,5 @@ export function RestaurantDomains({ restaurantId, restaurantName, restaurantSlug
         )}
       </CardContent>
     </Card>
-  )
+  );
 }
