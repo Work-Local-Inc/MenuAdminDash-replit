@@ -1,0 +1,13 @@
+name = "menu-cdn"
+main = "worker.js"
+compatibility_date = "2024-12-01"
+account_id = "7ee53b77377bfa08a66d323326a64b76"
+workers_dev = true
+
+[[r2_buckets]]
+binding = "MENU_IMAGES"
+bucket_name = "menu-images"
+
+[[routes]]
+pattern = "cdn.menuai.ca"
+custom_domain = true
