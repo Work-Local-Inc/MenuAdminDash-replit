@@ -65,7 +65,16 @@ class QueryBuilder {
     cols?: string,
     opts?: { count?: string; head?: boolean },
   ): QueryBuilder {
-    this._mode = "select";
+    // Only set mode to "select" if not already in a write mode
+    // This supports Supabase-style .insert().select() chaining
+    if (
+      this._mode !== "insert" &&
+      this._mode !== "update" &&
+      this._mode !== "upsert" &&
+      this._mode !== "delete"
+    ) {
+      this._mode = "select";
+    }
     this._selectCols = cols || "*";
     if (opts?.count === "exact") this._wantCount = true;
     if (opts?.head) this._headOnly = true;
