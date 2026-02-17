@@ -1,98 +1,119 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { verifyAdminAuth } from '@/lib/auth/admin-check'
-import { AuthError } from '@/lib/errors'
-import { createAdminClient } from '@/lib/supabase/admin'
-import { z } from 'zod'
-export const dynamic = 'force-dynamic'
+import { NextRequest, NextResponse } from "next/server";
+import { verifyAdminAuth } from "@/lib/auth/admin-check";
+import { AuthError } from "@/lib/errors";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { resolveIdParam } from "@/lib/utils/uuid";
+import { z } from "zod";
+export const dynamic = "force-dynamic";
 
 const updateModifierGroupSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
+  name: z.string().min(1, "Name is required"),
   is_required: z.boolean().optional(),
   min_selections: z.number().int().min(0).optional(),
   max_selections: z.number().int().min(0).optional(),
-  modifiers: z.array(z.object({
-    id: z.number().int().optional(),
-    name: z.string().min(1),
-    price: z.number().min(0),
-    display_order: z.number().int().min(0),
-  })).optional(),
-})
+  modifiers: z
+    .array(
+      z.object({
+        id: z.number().int().optional(),
+        name: z.string().min(1),
+        price: z.number().min(0),
+        display_order: z.number().int().min(0),
+      }),
+    )
+    .optional(),
+});
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { id: string } },
 ) {
   try {
-    await verifyAdminAuth(request)
-    const supabase = createAdminClient() as any
+    await verifyAdminAuth(request);
+    const supabase = createAdminClient() as any;
 
-    const modifierGroupId = parseInt(params.id)
-    if (isNaN(modifierGroupId)) {
+    let templateResolved;
+    try {
+      templateResolved = resolveIdParam(params.id);
+    } catch {
       return NextResponse.json(
-        { error: 'Invalid modifier group ID' },
-        { status: 400 }
-      )
+        { error: "Invalid modifier group ID" },
+        { status: 400 },
+      );
     }
+    const { column: templateCol, value: templateVal } = templateResolved;
 
-    const body = await request.json()
-    const validatedData = updateModifierGroupSchema.parse(body)
+    const body = await request.json();
+    const validatedData = updateModifierGroupSchema.parse(body);
 
     // Build update object with only provided fields
-    const updateData: any = { name: validatedData.name }
+    const updateData: any = { name: validatedData.name };
     if (validatedData.is_required !== undefined) {
-      updateData.is_required = validatedData.is_required
+      updateData.is_required = validatedData.is_required;
     }
     if (validatedData.min_selections !== undefined) {
-      updateData.min_selections = validatedData.min_selections
+      updateData.min_selections = validatedData.min_selections;
     }
     if (validatedData.max_selections !== undefined) {
-      updateData.max_selections = validatedData.max_selections
+      updateData.max_selections = validatedData.max_selections;
     }
 
     // Update the modifier group
     const { data: updated, error: updateError } = await (supabase
-      .schema('menuca_v3')
-      .from('course_modifier_templates' as any)
+      .schema("menuca_v3")
+      .from("course_modifier_templates" as any)
       .update(updateData)
-      .eq('id', modifierGroupId)
+      .eq(templateCol, templateVal)
       .select()
-      .single() as any)
+      .single() as any);
 
-    if (updateError) throw updateError
+    if (updateError) throw updateError;
+
+    // For propagation queries that use course_template_id (integer FK),
+    // we need the integer ID
+    const templateIntId: number = updated.id;
 
     // Propagate changes to inheriting dish modifier groups
     await (supabase
-      .schema('menuca_v3')
-      .from('modifier_groups' as any)
+      .schema("menuca_v3")
+      .from("modifier_groups" as any)
       .update({
         name: updateData.name,
-        ...(updateData.is_required !== undefined && { is_required: updateData.is_required }),
-        ...(updateData.min_selections !== undefined && { min_selections: updateData.min_selections }),
-        ...(updateData.max_selections !== undefined && { max_selections: updateData.max_selections }),
+        ...(updateData.is_required !== undefined && {
+          is_required: updateData.is_required,
+        }),
+        ...(updateData.min_selections !== undefined && {
+          min_selections: updateData.min_selections,
+        }),
+        ...(updateData.max_selections !== undefined && {
+          max_selections: updateData.max_selections,
+        }),
       } as any)
-      .eq('course_template_id', modifierGroupId)
-      .eq('is_custom', false) as any)
+      .eq("course_template_id", templateIntId)
+      .eq("is_custom", false) as any);
 
     // Handle modifiers update if provided
     if (validatedData.modifiers) {
       // Get existing modifiers
       const { data: existingModifiers } = await (supabase
-        .schema('menuca_v3')
-        .from('course_template_modifiers' as any)
-        .select('id')
-        .eq('course_template_id', modifierGroupId) as any)
+        .schema("menuca_v3")
+        .from("course_template_modifiers" as any)
+        .select("id")
+        .eq("course_template_id", templateIntId) as any);
 
-      const existingIds = (existingModifiers as any[])?.map((m: any) => m.id) || []
-      const providedIds = validatedData.modifiers.filter(m => m.id).map(m => m.id!)
+      const existingIds =
+        (existingModifiers as any[])?.map((m: any) => m.id) || [];
+      const providedIds = validatedData.modifiers
+        .filter((m) => m.id)
+        .map((m) => m.id!);
 
       // Delete removed modifiers
-      const toDelete = existingIds.filter(id => !providedIds.includes(id))
+      const toDelete = existingIds.filter((id) => !providedIds.includes(id));
       if (toDelete.length > 0) {
         await (supabase
-          .schema('menuca_v3')
-          .from('course_template_modifiers' as any)
+          .schema("menuca_v3")
+          .from("course_template_modifiers" as any)
           .delete()
-          .in('id', toDelete) as any)
+          .in("id", toDelete) as any);
       }
 
       // Update or insert modifiers
@@ -100,109 +121,144 @@ export async function PATCH(
         if (modifier.id) {
           // Update existing
           await (supabase
-            .schema('menuca_v3')
-            .from('course_template_modifiers' as any)
+            .schema("menuca_v3")
+            .from("course_template_modifiers" as any)
             .update({
               name: modifier.name,
               price: modifier.price,
               display_order: modifier.display_order,
             } as any)
-            .eq('id', modifier.id) as any)
+            .eq("id", modifier.id) as any);
         } else {
           // Insert new
           await (supabase
-            .schema('menuca_v3')
-            .from('course_template_modifiers' as any)
+            .schema("menuca_v3")
+            .from("course_template_modifiers" as any)
             .insert({
-              course_template_id: modifierGroupId,
+              course_template_id: templateIntId,
               name: modifier.name,
               price: modifier.price,
               display_order: modifier.display_order,
-            } as any) as any)
+            } as any) as any);
         }
       }
     }
 
-    return NextResponse.json({ success: true, modifier_group: updated })
+    return NextResponse.json({ success: true, modifier_group: updated });
   } catch (error: any) {
-    console.error('[UPDATE MODIFIER GROUP ERROR]', error)
+    console.error("[UPDATE MODIFIER GROUP ERROR]", error);
     if (error instanceof AuthError) {
-      return NextResponse.json({ error: error.message }, { status: error.statusCode })
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.statusCode },
+      );
     }
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Validation failed', details: error.errors },
-        { status: 400 }
-      )
+        { error: "Validation failed", details: error.errors },
+        { status: 400 },
+      );
     }
     return NextResponse.json(
-      { error: error.message || 'Failed to update modifier group' },
-      { status: 500 }
-    )
+      { error: error.message || "Failed to update modifier group" },
+      { status: 500 },
+    );
   }
 }
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { id: string } },
 ) {
   try {
-    await verifyAdminAuth(request)
-    const supabase = createAdminClient() as any
+    await verifyAdminAuth(request);
+    const supabase = createAdminClient() as any;
 
-    const templateId = parseInt(params.id)
-    if (isNaN(templateId)) {
+    let templateResolved;
+    try {
+      templateResolved = resolveIdParam(params.id);
+    } catch {
       return NextResponse.json(
-        { error: 'Invalid template ID' },
-        { status: 400 }
-      )
+        { error: "Invalid template ID" },
+        { status: 400 },
+      );
+    }
+    const { column: templateCol, value: templateVal } = templateResolved;
+
+    // We need the integer ID for course_template_id FK lookups on modifier_groups
+    let templateIntId: number;
+    if (templateCol === "uuid") {
+      const { data: tmpl } = await (supabase
+        .schema("menuca_v3")
+        .from("course_modifier_templates" as any)
+        .select("id")
+        .eq("uuid", templateVal)
+        .single() as any);
+      if (!tmpl) {
+        return NextResponse.json(
+          { error: "Template not found" },
+          { status: 404 },
+        );
+      }
+      templateIntId = tmpl.id;
+    } else {
+      templateIntId = templateVal as number;
     }
 
     // Fetch existing dish groups that inherit from this template
     const { data: existingGroups } = await (supabase
-      .schema('menuca_v3')
-      .from('modifier_groups' as any)
-      .select('id, is_custom')
-      .eq('course_template_id', templateId)
-      .is('deleted_at', null) as any)
+      .schema("menuca_v3")
+      .from("modifier_groups" as any)
+      .select("id, is_custom")
+      .eq("course_template_id", templateIntId)
+      .is("deleted_at", null) as any);
 
     // Soft-delete the category template
     const { error: templateError } = await (supabase
-      .schema('menuca_v3')
-      .from('course_modifier_templates' as any)
+      .schema("menuca_v3")
+      .from("course_modifier_templates" as any)
       .update({ deleted_at: new Date().toISOString() } as any)
-      .eq('id', templateId) as any)
+      .eq(templateCol, templateVal) as any);
 
-    if (templateError) throw templateError
+    if (templateError) throw templateError;
 
     // Orphan dish modifier groups (convert inherited groups to custom groups)
     if (existingGroups && (existingGroups as any[]).length > 0) {
-      const groupsToOrphan = (existingGroups as any[]).filter((g: any) => !g.is_custom)
-      
+      const groupsToOrphan = (existingGroups as any[]).filter(
+        (g: any) => !g.is_custom,
+      );
+
       if (groupsToOrphan.length > 0) {
         await (supabase
-          .schema('menuca_v3')
-          .from('modifier_groups' as any)
-          .update({ 
+          .schema("menuca_v3")
+          .from("modifier_groups" as any)
+          .update({
             course_template_id: null,
-            is_custom: true 
+            is_custom: true,
           } as any)
-          .in('id', groupsToOrphan.map((g: any) => g.id)) as any)
+          .in(
+            "id",
+            groupsToOrphan.map((g: any) => g.id),
+          ) as any);
       }
     }
 
     return NextResponse.json({
       success: true,
-      orphaned_groups: (existingGroups as any[])?.filter((g: any) => !g.is_custom).length || 0,
-    })
+      orphaned_groups:
+        (existingGroups as any[])?.filter((g: any) => !g.is_custom).length || 0,
+    });
   } catch (error: any) {
-    console.error('[DELETE CATEGORY TEMPLATE ERROR]', error)
+    console.error("[DELETE CATEGORY TEMPLATE ERROR]", error);
     if (error instanceof AuthError) {
-      return NextResponse.json({ error: error.message }, { status: error.statusCode })
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.statusCode },
+      );
     }
     return NextResponse.json(
-      { error: error.message || 'Failed to delete template' },
-      { status: 500 }
-    )
+      { error: error.message || "Failed to delete template" },
+      { status: 500 },
+    );
   }
 }

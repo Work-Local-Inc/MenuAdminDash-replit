@@ -1,114 +1,143 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { verifyAdminAuth } from '@/lib/auth/admin-check'
-import { AuthError } from '@/lib/errors'
-import { createAdminClient } from '@/lib/supabase/admin'
-import { z } from 'zod'
-export const dynamic = 'force-dynamic'
+import { NextRequest, NextResponse } from "next/server";
+import { verifyAdminAuth } from "@/lib/auth/admin-check";
+import { AuthError } from "@/lib/errors";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { resolveIdParam, resolveFkParam } from "@/lib/utils/uuid";
+import { z } from "zod";
+export const dynamic = "force-dynamic";
 
 const updateCourseSchema = z.object({
-  name: z.string().min(1, 'Name is required').max(255).optional(),
+  name: z.string().min(1, "Name is required").max(255).optional(),
   description: z.string().nullable().optional(),
   display_order: z.number().int().min(0).optional(),
   is_active: z.boolean().optional(),
-})
+});
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { id: string } },
 ) {
   try {
-    await verifyAdminAuth(request)
-    const supabase = createAdminClient() as any
+    await verifyAdminAuth(request);
+    const supabase = createAdminClient() as any;
 
-    const body = await request.json()
-    const validatedData = updateCourseSchema.parse(body)
+    let courseResolved;
+    try {
+      courseResolved = resolveIdParam(params.id);
+    } catch {
+      return NextResponse.json({ error: "Invalid course ID" }, { status: 400 });
+    }
+    const { column: courseCol, value: courseVal } = courseResolved;
+
+    const body = await request.json();
+    const validatedData = updateCourseSchema.parse(body);
 
     const updateData: any = {
       updated_at: new Date().toISOString(),
-    }
+    };
 
-    if (validatedData.name !== undefined) updateData.name = validatedData.name
-    if (validatedData.description !== undefined) updateData.description = validatedData.description
-    if (validatedData.display_order !== undefined) updateData.display_order = validatedData.display_order
-    if (validatedData.is_active !== undefined) updateData.is_active = validatedData.is_active
+    if (validatedData.name !== undefined) updateData.name = validatedData.name;
+    if (validatedData.description !== undefined)
+      updateData.description = validatedData.description;
+    if (validatedData.display_order !== undefined)
+      updateData.display_order = validatedData.display_order;
+    if (validatedData.is_active !== undefined)
+      updateData.is_active = validatedData.is_active;
 
     const { data, error } = await supabase
-      .schema('menuca_v3')
-      .from('courses')
+      .schema("menuca_v3")
+      .from("courses")
       .update(updateData)
-      .eq('id', parseInt(params.id))
+      .eq(courseCol, courseVal)
       .select()
-      .single()
+      .single();
 
-    if (error) throw error
+    if (error) throw error;
 
     if (!data) {
-      return NextResponse.json(
-        { error: 'Course not found' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: "Course not found" }, { status: 404 });
     }
 
-    return NextResponse.json(data)
+    return NextResponse.json(data);
   } catch (error: any) {
     if (error instanceof AuthError) {
-      return NextResponse.json({ error: error.message }, { status: error.statusCode })
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.statusCode },
+      );
     }
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Validation failed', details: error.errors },
-        { status: 400 }
-      )
+        { error: "Validation failed", details: error.errors },
+        { status: 400 },
+      );
     }
     return NextResponse.json(
-      { error: error.message || 'Failed to update course' },
-      { status: 500 }
-    )
+      { error: error.message || "Failed to update course" },
+      { status: 500 },
+    );
   }
 }
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { id: string } },
 ) {
   try {
-    await verifyAdminAuth(request)
-    const supabase = createAdminClient() as any
+    await verifyAdminAuth(request);
+    const supabase = createAdminClient() as any;
+
+    let courseResolved;
+    try {
+      courseResolved = resolveIdParam(params.id);
+    } catch {
+      return NextResponse.json({ error: "Invalid course ID" }, { status: 400 });
+    }
+    const { column: courseCol, value: courseVal } = courseResolved;
+
+    // dishes has course_uuid, so use resolveFkParam
+    const courseFk = resolveFkParam(params.id, "course_id", "course_uuid");
 
     // Check if course has any dishes
     const { data: dishes, error: dishCheckError } = await supabase
-      .schema('menuca_v3')
-      .from('dishes')
-      .select('id')
-      .eq('course_id', parseInt(params.id))
-      .limit(1)
+      .schema("menuca_v3")
+      .from("dishes")
+      .select("id")
+      .eq(courseFk.column, courseFk.value)
+      .limit(1);
 
-    if (dishCheckError) throw dishCheckError
+    if (dishCheckError) throw dishCheckError;
 
     if (dishes && dishes.length > 0) {
       return NextResponse.json(
-        { error: 'Cannot delete course with existing dishes. Please reassign or delete dishes first.' },
-        { status: 400 }
-      )
+        {
+          error:
+            "Cannot delete course with existing dishes. Please reassign or delete dishes first.",
+        },
+        { status: 400 },
+      );
     }
 
     // Delete the course
     const { error } = await supabase
-      .schema('menuca_v3')
-      .from('courses')
+      .schema("menuca_v3")
+      .from("courses")
       .delete()
-      .eq('id', parseInt(params.id))
+      .eq(courseCol, courseVal);
 
-    if (error) throw error
+    if (error) throw error;
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true });
   } catch (error: any) {
     if (error instanceof AuthError) {
-      return NextResponse.json({ error: error.message }, { status: error.statusCode })
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.statusCode },
+      );
     }
     return NextResponse.json(
-      { error: error.message || 'Failed to delete course' },
-      { status: 500 }
-    )
+      { error: error.message || "Failed to delete course" },
+      { status: 500 },
+    );
   }
 }

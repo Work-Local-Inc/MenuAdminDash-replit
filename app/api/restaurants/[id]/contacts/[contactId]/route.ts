@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyAdminAuth } from "@/lib/auth/admin-check";
 import { verifyRestaurantAccess } from "@/lib/auth/restaurant-access";
 import { AuthError } from "@/lib/errors";
+import { resolveIdParam, resolveFkParam } from "@/lib/utils/uuid";
 export const dynamic = "force-dynamic";
 
 export async function PATCH(
@@ -13,10 +14,16 @@ export async function PATCH(
     const { adminUser } = await verifyAdminAuth(request);
 
     const supabase = createAdminClient() as any;
-    const restaurantId = parseInt(params.id);
-    const contactId = parseInt(params.contactId);
+    const { column: contactCol, value: contactVal } = resolveIdParam(
+      params.contactId,
+    );
+    const restFk = resolveFkParam(
+      params.id,
+      "restaurant_id",
+      "restaurant_uuid",
+    );
 
-    const access = await verifyRestaurantAccess(adminUser as any, restaurantId);
+    const access = await verifyRestaurantAccess(adminUser as any, params.id);
     if (!access.allowed) {
       return NextResponse.json(
         { error: access.error },
@@ -35,8 +42,8 @@ export async function PATCH(
     const { data: updatedLocation, error: updateError } = await supabase
       .from("restaurant_locations")
       .update(locationUpdateData)
-      .eq("id", contactId)
-      .eq("restaurant_id", restaurantId)
+      .eq(contactCol, contactVal)
+      .eq(restFk.column, restFk.value)
       .select()
       .single();
 
@@ -77,8 +84,7 @@ export async function DELETE(
   try {
     const { adminUser } = await verifyAdminAuth(request);
 
-    const restaurantId = parseInt(params.id);
-    const access = await verifyRestaurantAccess(adminUser as any, restaurantId);
+    const access = await verifyRestaurantAccess(adminUser as any, params.id);
     if (!access.allowed) {
       return NextResponse.json(
         { error: access.error },
@@ -98,7 +104,14 @@ export async function DELETE(
       // No body - use default reason
     }
 
-    const contactId = parseInt(params.contactId);
+    const { column: contactCol, value: contactVal } = resolveIdParam(
+      params.contactId,
+    );
+    const restFk = resolveFkParam(
+      params.id,
+      "restaurant_id",
+      "restaurant_uuid",
+    );
 
     // Clear contact info from the restaurant location
     const { error } = await supabase
@@ -108,8 +121,8 @@ export async function DELETE(
         email: null,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", contactId)
-      .eq("restaurant_id", restaurantId);
+      .eq(contactCol, contactVal)
+      .eq(restFk.column, restFk.value);
 
     if (error) throw error;
 

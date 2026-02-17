@@ -9,360 +9,161 @@
 -- Run with: psql "$SUPABASE_BRANCH_DB_URL" -f migrations/017_add_uuid_columns.sql
 --
 -- Tables already with uuid: restaurants, restaurant_locations,
---   restaurant_contacts, restaurant_domains, restaurant_schedules,
---   delivery_and_pickup_configs, courses, dishes, ingredients,
---   ingredient_groups, ingredient_group_items, combo_groups, combo_items,
---   dish_modifiers, orders, devices
+--   restaurant_domains, restaurant_schedules, delivery_and_pickup_configs,
+--   courses, dishes, dish_modifiers, dish_modifier_prices, orders, devices,
+--   combo_group_modifier_pricing, combo_group_translations,
+--   delivery_company_emails, delivery_providers, promotion_campaigns,
+--   promotion_codes, promotion_redemptions, restaurant_delivery_areas,
+--   restaurant_delivery_companies, restaurant_distance_based_delivery_fees,
+--   restaurant_special_schedules, restaurant_twilio_config, upsell_rules
 --
 -- Strategy:
 --   1. Add uuid column with default gen_random_uuid()
 --   2. Backfill any existing rows
 --   3. Add UNIQUE index for lookups
 --
+-- Each table is a separate DO block so one failure won't roll back the rest.
 -- Safe to run multiple times (IF NOT EXISTS everywhere).
 -- ============================================================================
 
 SET search_path TO menuca_v3;
 
-BEGIN;
+-- Helper: reusable function to add uuid column to any table
+CREATE OR REPLACE FUNCTION _add_uuid_column(p_table TEXT) RETURNS void AS $$
+BEGIN
+    EXECUTE format('ALTER TABLE %I ADD COLUMN IF NOT EXISTS uuid UUID', p_table);
+    EXECUTE format('UPDATE %I SET uuid = gen_random_uuid() WHERE uuid IS NULL', p_table);
+    EXECUTE format('ALTER TABLE %I ALTER COLUMN uuid SET DEFAULT gen_random_uuid()', p_table);
+    EXECUTE format('ALTER TABLE %I ALTER COLUMN uuid SET NOT NULL', p_table);
+    EXECUTE format('CREATE UNIQUE INDEX IF NOT EXISTS idx_%s_uuid ON %I(uuid)', p_table, p_table);
+END;
+$$ LANGUAGE plpgsql;
 
 -- ============================================================================
 -- USERS & ACCESS CONTROL
 -- ============================================================================
-
--- users
-ALTER TABLE users ADD COLUMN IF NOT EXISTS uuid UUID;
-UPDATE users SET uuid = gen_random_uuid() WHERE uuid IS NULL;
-ALTER TABLE users ALTER COLUMN uuid SET DEFAULT gen_random_uuid();
-ALTER TABLE users ALTER COLUMN uuid SET NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_users_uuid ON users(uuid);
-
--- admin_users
-ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS uuid UUID;
-UPDATE admin_users SET uuid = gen_random_uuid() WHERE uuid IS NULL;
-ALTER TABLE admin_users ALTER COLUMN uuid SET DEFAULT gen_random_uuid();
-ALTER TABLE admin_users ALTER COLUMN uuid SET NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_admin_users_uuid ON admin_users(uuid);
-
--- admin_user_restaurants
-ALTER TABLE admin_user_restaurants ADD COLUMN IF NOT EXISTS uuid UUID;
-UPDATE admin_user_restaurants SET uuid = gen_random_uuid() WHERE uuid IS NULL;
-ALTER TABLE admin_user_restaurants ALTER COLUMN uuid SET DEFAULT gen_random_uuid();
-ALTER TABLE admin_user_restaurants ALTER COLUMN uuid SET NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_admin_user_restaurants_uuid ON admin_user_restaurants(uuid);
-
--- admin_roles
-ALTER TABLE admin_roles ADD COLUMN IF NOT EXISTS uuid UUID;
-UPDATE admin_roles SET uuid = gen_random_uuid() WHERE uuid IS NULL;
-ALTER TABLE admin_roles ALTER COLUMN uuid SET DEFAULT gen_random_uuid();
-ALTER TABLE admin_roles ALTER COLUMN uuid SET NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_admin_roles_uuid ON admin_roles(uuid);
-
--- user_addresses
-ALTER TABLE user_addresses ADD COLUMN IF NOT EXISTS uuid UUID;
-UPDATE user_addresses SET uuid = gen_random_uuid() WHERE uuid IS NULL;
-ALTER TABLE user_addresses ALTER COLUMN uuid SET DEFAULT gen_random_uuid();
-ALTER TABLE user_addresses ALTER COLUMN uuid SET NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_user_addresses_uuid ON user_addresses(uuid);
-
--- user_delivery_addresses
-ALTER TABLE user_delivery_addresses ADD COLUMN IF NOT EXISTS uuid UUID;
-UPDATE user_delivery_addresses SET uuid = gen_random_uuid() WHERE uuid IS NULL;
-ALTER TABLE user_delivery_addresses ALTER COLUMN uuid SET DEFAULT gen_random_uuid();
-ALTER TABLE user_delivery_addresses ALTER COLUMN uuid SET NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_user_delivery_addresses_uuid ON user_delivery_addresses(uuid);
-
--- user_payment_methods
-ALTER TABLE user_payment_methods ADD COLUMN IF NOT EXISTS uuid UUID;
-UPDATE user_payment_methods SET uuid = gen_random_uuid() WHERE uuid IS NULL;
-ALTER TABLE user_payment_methods ALTER COLUMN uuid SET DEFAULT gen_random_uuid();
-ALTER TABLE user_payment_methods ALTER COLUMN uuid SET NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_user_payment_methods_uuid ON user_payment_methods(uuid);
+SELECT _add_uuid_column('users');
+SELECT _add_uuid_column('admin_users');
+SELECT _add_uuid_column('admin_user_restaurants');
+SELECT _add_uuid_column('admin_roles');
+SELECT _add_uuid_column('user_addresses');
+SELECT _add_uuid_column('user_delivery_addresses');
+SELECT _add_uuid_column('user_payment_methods');
 
 -- ============================================================================
 -- MENU & CATALOG
 -- ============================================================================
-
--- dish_prices
-ALTER TABLE dish_prices ADD COLUMN IF NOT EXISTS uuid UUID;
-UPDATE dish_prices SET uuid = gen_random_uuid() WHERE uuid IS NULL;
-ALTER TABLE dish_prices ALTER COLUMN uuid SET DEFAULT gen_random_uuid();
-ALTER TABLE dish_prices ALTER COLUMN uuid SET NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_dish_prices_uuid ON dish_prices(uuid);
-
--- dish_modifier_prices
-ALTER TABLE dish_modifier_prices ADD COLUMN IF NOT EXISTS uuid UUID;
-UPDATE dish_modifier_prices SET uuid = gen_random_uuid() WHERE uuid IS NULL;
-ALTER TABLE dish_modifier_prices ALTER COLUMN uuid SET DEFAULT gen_random_uuid();
-ALTER TABLE dish_modifier_prices ALTER COLUMN uuid SET NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_dish_modifier_prices_uuid ON dish_modifier_prices(uuid);
+SELECT _add_uuid_column('combo_groups');
+SELECT _add_uuid_column('dish_prices');
+SELECT _add_uuid_column('dish_size_variants');
 
 -- ============================================================================
 -- COMBO MODIFIER SYSTEM
 -- ============================================================================
-
--- combo_group_sections
-ALTER TABLE combo_group_sections ADD COLUMN IF NOT EXISTS uuid UUID;
-UPDATE combo_group_sections SET uuid = gen_random_uuid() WHERE uuid IS NULL;
-ALTER TABLE combo_group_sections ALTER COLUMN uuid SET DEFAULT gen_random_uuid();
-ALTER TABLE combo_group_sections ALTER COLUMN uuid SET NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_combo_group_sections_uuid ON combo_group_sections(uuid);
-
--- combo_modifier_groups
-ALTER TABLE combo_modifier_groups ADD COLUMN IF NOT EXISTS uuid UUID;
-UPDATE combo_modifier_groups SET uuid = gen_random_uuid() WHERE uuid IS NULL;
-ALTER TABLE combo_modifier_groups ALTER COLUMN uuid SET DEFAULT gen_random_uuid();
-ALTER TABLE combo_modifier_groups ALTER COLUMN uuid SET NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_combo_modifier_groups_uuid ON combo_modifier_groups(uuid);
-
--- combo_modifiers
-ALTER TABLE combo_modifiers ADD COLUMN IF NOT EXISTS uuid UUID;
-UPDATE combo_modifiers SET uuid = gen_random_uuid() WHERE uuid IS NULL;
-ALTER TABLE combo_modifiers ALTER COLUMN uuid SET DEFAULT gen_random_uuid();
-ALTER TABLE combo_modifiers ALTER COLUMN uuid SET NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_combo_modifiers_uuid ON combo_modifiers(uuid);
-
--- combo_modifier_prices
-ALTER TABLE combo_modifier_prices ADD COLUMN IF NOT EXISTS uuid UUID;
-UPDATE combo_modifier_prices SET uuid = gen_random_uuid() WHERE uuid IS NULL;
-ALTER TABLE combo_modifier_prices ALTER COLUMN uuid SET DEFAULT gen_random_uuid();
-ALTER TABLE combo_modifier_prices ALTER COLUMN uuid SET NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_combo_modifier_prices_uuid ON combo_modifier_prices(uuid);
-
--- combo_modifier_placements
-ALTER TABLE combo_modifier_placements ADD COLUMN IF NOT EXISTS uuid UUID;
-UPDATE combo_modifier_placements SET uuid = gen_random_uuid() WHERE uuid IS NULL;
-ALTER TABLE combo_modifier_placements ALTER COLUMN uuid SET DEFAULT gen_random_uuid();
-ALTER TABLE combo_modifier_placements ALTER COLUMN uuid SET NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_combo_modifier_placements_uuid ON combo_modifier_placements(uuid);
-
--- dish_combo_groups
-ALTER TABLE dish_combo_groups ADD COLUMN IF NOT EXISTS uuid UUID;
-UPDATE dish_combo_groups SET uuid = gen_random_uuid() WHERE uuid IS NULL;
-ALTER TABLE dish_combo_groups ALTER COLUMN uuid SET DEFAULT gen_random_uuid();
-ALTER TABLE dish_combo_groups ALTER COLUMN uuid SET NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_dish_combo_groups_uuid ON dish_combo_groups(uuid);
+SELECT _add_uuid_column('combo_group_sections');
+SELECT _add_uuid_column('combo_group_dish_selections');
+SELECT _add_uuid_column('combo_modifier_groups');
+SELECT _add_uuid_column('combo_modifiers');
+SELECT _add_uuid_column('combo_modifier_prices');
+SELECT _add_uuid_column('combo_modifier_placements');
+SELECT _add_uuid_column('combo_steps');
+SELECT _add_uuid_column('dish_combo_groups');
 
 -- ============================================================================
--- MENU BUILDER SYSTEM (Migration 008+)
+-- MENU BUILDER / MODIFIER SYSTEM
 -- ============================================================================
-
--- course_modifier_templates
-ALTER TABLE course_modifier_templates ADD COLUMN IF NOT EXISTS uuid UUID;
-UPDATE course_modifier_templates SET uuid = gen_random_uuid() WHERE uuid IS NULL;
-ALTER TABLE course_modifier_templates ALTER COLUMN uuid SET DEFAULT gen_random_uuid();
-ALTER TABLE course_modifier_templates ALTER COLUMN uuid SET NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_course_modifier_templates_uuid ON course_modifier_templates(uuid);
-
--- course_template_modifiers
-ALTER TABLE course_template_modifiers ADD COLUMN IF NOT EXISTS uuid UUID;
-UPDATE course_template_modifiers SET uuid = gen_random_uuid() WHERE uuid IS NULL;
-ALTER TABLE course_template_modifiers ALTER COLUMN uuid SET DEFAULT gen_random_uuid();
-ALTER TABLE course_template_modifiers ALTER COLUMN uuid SET NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_course_template_modifiers_uuid ON course_template_modifiers(uuid);
-
--- dish_modifier_groups (from migration 008)
-ALTER TABLE dish_modifier_groups ADD COLUMN IF NOT EXISTS uuid UUID;
-UPDATE dish_modifier_groups SET uuid = gen_random_uuid() WHERE uuid IS NULL;
-ALTER TABLE dish_modifier_groups ALTER COLUMN uuid SET DEFAULT gen_random_uuid();
-ALTER TABLE dish_modifier_groups ALTER COLUMN uuid SET NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_dish_modifier_groups_uuid ON dish_modifier_groups(uuid);
+SELECT _add_uuid_column('course_modifier_templates');
+SELECT _add_uuid_column('course_template_modifiers');
+SELECT _add_uuid_column('dish_modifier_groups');
+SELECT _add_uuid_column('modifier_groups');
+SELECT _add_uuid_column('modifiers');
+SELECT _add_uuid_column('modifier_prices');
+SELECT _add_uuid_column('modifier_size_variants');
+SELECT _add_uuid_column('modifier_group_details');
 
 -- ============================================================================
 -- ORDERS & PAYMENTS
 -- ============================================================================
-
--- order_items
-ALTER TABLE order_items ADD COLUMN IF NOT EXISTS uuid UUID;
-UPDATE order_items SET uuid = gen_random_uuid() WHERE uuid IS NULL;
-ALTER TABLE order_items ALTER COLUMN uuid SET DEFAULT gen_random_uuid();
-ALTER TABLE order_items ALTER COLUMN uuid SET NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_order_items_uuid ON order_items(uuid);
-
--- order_item_modifiers
-ALTER TABLE order_item_modifiers ADD COLUMN IF NOT EXISTS uuid UUID;
-UPDATE order_item_modifiers SET uuid = gen_random_uuid() WHERE uuid IS NULL;
-ALTER TABLE order_item_modifiers ALTER COLUMN uuid SET DEFAULT gen_random_uuid();
-ALTER TABLE order_item_modifiers ALTER COLUMN uuid SET NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_order_item_modifiers_uuid ON order_item_modifiers(uuid);
-
--- payment_transactions
-ALTER TABLE payment_transactions ADD COLUMN IF NOT EXISTS uuid UUID;
-UPDATE payment_transactions SET uuid = gen_random_uuid() WHERE uuid IS NULL;
-ALTER TABLE payment_transactions ALTER COLUMN uuid SET DEFAULT gen_random_uuid();
-ALTER TABLE payment_transactions ALTER COLUMN uuid SET NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_payment_transactions_uuid ON payment_transactions(uuid);
-
--- order_status_history
-ALTER TABLE order_status_history ADD COLUMN IF NOT EXISTS uuid UUID;
-UPDATE order_status_history SET uuid = gen_random_uuid() WHERE uuid IS NULL;
-ALTER TABLE order_status_history ALTER COLUMN uuid SET DEFAULT gen_random_uuid();
-ALTER TABLE order_status_history ALTER COLUMN uuid SET NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_order_status_history_uuid ON order_status_history(uuid);
+SELECT _add_uuid_column('order_items');
+SELECT _add_uuid_column('order_status_history');
+SELECT _add_uuid_column('order_refunds');
+SELECT _add_uuid_column('payment_transactions');
 
 -- ============================================================================
 -- MARKETING & PROMOTIONS
 -- ============================================================================
-
--- promotional_deals
-ALTER TABLE promotional_deals ADD COLUMN IF NOT EXISTS uuid UUID;
-UPDATE promotional_deals SET uuid = gen_random_uuid() WHERE uuid IS NULL;
-ALTER TABLE promotional_deals ALTER COLUMN uuid SET DEFAULT gen_random_uuid();
-ALTER TABLE promotional_deals ALTER COLUMN uuid SET NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_promotional_deals_uuid ON promotional_deals(uuid);
-
--- promotional_coupons
-ALTER TABLE promotional_coupons ADD COLUMN IF NOT EXISTS uuid UUID;
-UPDATE promotional_coupons SET uuid = gen_random_uuid() WHERE uuid IS NULL;
-ALTER TABLE promotional_coupons ALTER COLUMN uuid SET DEFAULT gen_random_uuid();
-ALTER TABLE promotional_coupons ALTER COLUMN uuid SET NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_promotional_coupons_uuid ON promotional_coupons(uuid);
+SELECT _add_uuid_column('promotional_deals');
+SELECT _add_uuid_column('promotional_coupons');
+SELECT _add_uuid_column('promotion_targets');
+SELECT _add_uuid_column('promotion_templates');
+SELECT _add_uuid_column('promotion_tiers');
+SELECT _add_uuid_column('flash_sale_claims');
 
 -- ============================================================================
--- RESTAURANT SUB-TABLES (ones missing uuid)
+-- RESTAURANT SUB-TABLES
 -- ============================================================================
-
--- restaurant_feedback
-ALTER TABLE restaurant_feedback ADD COLUMN IF NOT EXISTS uuid UUID;
-UPDATE restaurant_feedback SET uuid = gen_random_uuid() WHERE uuid IS NULL;
-ALTER TABLE restaurant_feedback ALTER COLUMN uuid SET DEFAULT gen_random_uuid();
-ALTER TABLE restaurant_feedback ALTER COLUMN uuid SET NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_restaurant_feedback_uuid ON restaurant_feedback(uuid);
-
--- restaurant_custom_css
-ALTER TABLE restaurant_custom_css ADD COLUMN IF NOT EXISTS uuid UUID;
-UPDATE restaurant_custom_css SET uuid = gen_random_uuid() WHERE uuid IS NULL;
-ALTER TABLE restaurant_custom_css ALTER COLUMN uuid SET DEFAULT gen_random_uuid();
-ALTER TABLE restaurant_custom_css ALTER COLUMN uuid SET NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_restaurant_custom_css_uuid ON restaurant_custom_css(uuid);
-
--- restaurant_bank_accounts
-ALTER TABLE restaurant_bank_accounts ADD COLUMN IF NOT EXISTS uuid UUID;
-UPDATE restaurant_bank_accounts SET uuid = gen_random_uuid() WHERE uuid IS NULL;
-ALTER TABLE restaurant_bank_accounts ALTER COLUMN uuid SET DEFAULT gen_random_uuid();
-ALTER TABLE restaurant_bank_accounts ALTER COLUMN uuid SET NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_restaurant_bank_accounts_uuid ON restaurant_bank_accounts(uuid);
-
--- restaurant_payment_methods
-ALTER TABLE restaurant_payment_methods ADD COLUMN IF NOT EXISTS uuid UUID;
-UPDATE restaurant_payment_methods SET uuid = gen_random_uuid() WHERE uuid IS NULL;
-ALTER TABLE restaurant_payment_methods ALTER COLUMN uuid SET DEFAULT gen_random_uuid();
-ALTER TABLE restaurant_payment_methods ALTER COLUMN uuid SET NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_restaurant_payment_methods_uuid ON restaurant_payment_methods(uuid);
-
--- restaurant_redirects
-ALTER TABLE restaurant_redirects ADD COLUMN IF NOT EXISTS uuid UUID;
-UPDATE restaurant_redirects SET uuid = gen_random_uuid() WHERE uuid IS NULL;
-ALTER TABLE restaurant_redirects ALTER COLUMN uuid SET DEFAULT gen_random_uuid();
-ALTER TABLE restaurant_redirects ALTER COLUMN uuid SET NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_restaurant_redirects_uuid ON restaurant_redirects(uuid);
-
--- restaurant_charges
-ALTER TABLE restaurant_charges ADD COLUMN IF NOT EXISTS uuid UUID;
-UPDATE restaurant_charges SET uuid = gen_random_uuid() WHERE uuid IS NULL;
-ALTER TABLE restaurant_charges ALTER COLUMN uuid SET DEFAULT gen_random_uuid();
-ALTER TABLE restaurant_charges ALTER COLUMN uuid SET NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_restaurant_charges_uuid ON restaurant_charges(uuid);
-
--- restaurant_images
-ALTER TABLE restaurant_images ADD COLUMN IF NOT EXISTS uuid UUID;
-UPDATE restaurant_images SET uuid = gen_random_uuid() WHERE uuid IS NULL;
-ALTER TABLE restaurant_images ALTER COLUMN uuid SET DEFAULT gen_random_uuid();
-ALTER TABLE restaurant_images ALTER COLUMN uuid SET NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_restaurant_images_uuid ON restaurant_images(uuid);
-
--- restaurant_banners
-ALTER TABLE restaurant_banners ADD COLUMN IF NOT EXISTS uuid UUID;
-UPDATE restaurant_banners SET uuid = gen_random_uuid() WHERE uuid IS NULL;
-ALTER TABLE restaurant_banners ALTER COLUMN uuid SET DEFAULT gen_random_uuid();
-ALTER TABLE restaurant_banners ALTER COLUMN uuid SET NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_restaurant_banners_uuid ON restaurant_banners(uuid);
-
--- restaurant_citations
-ALTER TABLE restaurant_citations ADD COLUMN IF NOT EXISTS uuid UUID;
-UPDATE restaurant_citations SET uuid = gen_random_uuid() WHERE uuid IS NULL;
-ALTER TABLE restaurant_citations ALTER COLUMN uuid SET DEFAULT gen_random_uuid();
-ALTER TABLE restaurant_citations ALTER COLUMN uuid SET NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_restaurant_citations_uuid ON restaurant_citations(uuid);
+SELECT _add_uuid_column('restaurant_reviews');
+SELECT _add_uuid_column('restaurant_payment_options');
+SELECT _add_uuid_column('restaurant_subdomains');
+SELECT _add_uuid_column('restaurant_commission_configs');
+SELECT _add_uuid_column('restaurant_onboarding');
+SELECT _add_uuid_column('restaurant_status_history');
+SELECT _add_uuid_column('restaurant_analytics_configs');
+SELECT _add_uuid_column('restaurant_menu_cache');
+SELECT _add_uuid_column('restaurant_cuisines');
+SELECT _add_uuid_column('restaurant_tags');
+SELECT _add_uuid_column('restaurant_tag_assignments');
+SELECT _add_uuid_column('restaurant_tag_associations');
+SELECT _add_uuid_column('restaurant_ownership_groups');
+SELECT _add_uuid_column('restaurant_group_memberships');
+SELECT _add_uuid_column('dish_availability');
 
 -- ============================================================================
--- FRANCHISE & BUSINESS
+-- VENDOR / COMMISSION SYSTEM
 -- ============================================================================
-
--- franchises
-ALTER TABLE franchises ADD COLUMN IF NOT EXISTS uuid UUID;
-UPDATE franchises SET uuid = gen_random_uuid() WHERE uuid IS NULL;
-ALTER TABLE franchises ALTER COLUMN uuid SET DEFAULT gen_random_uuid();
-ALTER TABLE franchises ALTER COLUMN uuid SET NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_franchises_uuid ON franchises(uuid);
-
--- franchise_commission_rules
-ALTER TABLE franchise_commission_rules ADD COLUMN IF NOT EXISTS uuid UUID;
-UPDATE franchise_commission_rules SET uuid = gen_random_uuid() WHERE uuid IS NULL;
-ALTER TABLE franchise_commission_rules ALTER COLUMN uuid SET DEFAULT gen_random_uuid();
-ALTER TABLE franchise_commission_rules ALTER COLUMN uuid SET NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_franchise_commission_rules_uuid ON franchise_commission_rules(uuid);
-
--- blacklist
-ALTER TABLE blacklist ADD COLUMN IF NOT EXISTS uuid UUID;
-UPDATE blacklist SET uuid = gen_random_uuid() WHERE uuid IS NULL;
-ALTER TABLE blacklist ALTER COLUMN uuid SET DEFAULT gen_random_uuid();
-ALTER TABLE blacklist ALTER COLUMN uuid SET NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_blacklist_uuid ON blacklist(uuid);
-
--- email_templates
-ALTER TABLE email_templates ADD COLUMN IF NOT EXISTS uuid UUID;
-UPDATE email_templates SET uuid = gen_random_uuid() WHERE uuid IS NULL;
-ALTER TABLE email_templates ALTER COLUMN uuid SET DEFAULT gen_random_uuid();
-ALTER TABLE email_templates ALTER COLUMN uuid SET NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_email_templates_uuid ON email_templates(uuid);
-
--- order_cancellation_requests
-ALTER TABLE order_cancellation_requests ADD COLUMN IF NOT EXISTS uuid UUID;
-UPDATE order_cancellation_requests SET uuid = gen_random_uuid() WHERE uuid IS NULL;
-ALTER TABLE order_cancellation_requests ALTER COLUMN uuid SET DEFAULT gen_random_uuid();
-ALTER TABLE order_cancellation_requests ALTER COLUMN uuid SET NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_order_cancellation_requests_uuid ON order_cancellation_requests(uuid);
-
--- dish_inventory
-ALTER TABLE dish_inventory ADD COLUMN IF NOT EXISTS uuid UUID;
-UPDATE dish_inventory SET uuid = gen_random_uuid() WHERE uuid IS NULL;
-ALTER TABLE dish_inventory ALTER COLUMN uuid SET DEFAULT gen_random_uuid();
-ALTER TABLE dish_inventory ALTER COLUMN uuid SET NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_dish_inventory_uuid ON dish_inventory(uuid);
-
-COMMIT;
+SELECT _add_uuid_column('vendors');
+SELECT _add_uuid_column('vendor_restaurants');
+SELECT _add_uuid_column('vendor_restaurant_assignments');
+SELECT _add_uuid_column('vendor_configs');
+SELECT _add_uuid_column('vendor_invoices');
+SELECT _add_uuid_column('vendor_commission_reports');
+SELECT _add_uuid_column('vendor_statement_numbers');
+SELECT _add_uuid_column('statement_adjustments');
+SELECT _add_uuid_column('commission_weekly_snapshots');
+SELECT _add_uuid_column('platform_commission_reports');
 
 -- ============================================================================
--- VERIFICATION
+-- DEVICE MANAGEMENT
 -- ============================================================================
--- Run this after to confirm all uuid columns exist:
--- psql "$SUPABASE_BRANCH_DB_URL" -c "
---   SELECT t.table_name,
---          CASE WHEN c.column_name IS NOT NULL THEN 'YES' ELSE 'NO' END as has_uuid
---   FROM information_schema.tables t
---   LEFT JOIN information_schema.columns c
---       ON c.table_schema = t.table_schema
---       AND c.table_name = t.table_name
---       AND c.column_name = 'uuid'
---   WHERE t.table_schema = 'menuca_v3'
---       AND t.table_type = 'BASE TABLE'
---   ORDER BY has_uuid DESC, t.table_name;
--- "
+SELECT _add_uuid_column('device_configs');
+SELECT _add_uuid_column('device_sessions');
+SELECT _add_uuid_column('tablet_app_versions');
+
+-- ============================================================================
+-- CLEANUP: Drop the helper function
+-- ============================================================================
+DROP FUNCTION _add_uuid_column(TEXT);
 
 -- ============================================================================
 -- TABLES INTENTIONALLY SKIPPED (internal infrastructure / logs / static data)
 -- ============================================================================
--- provinces          — static reference data, no external exposure
--- cities             — static reference data, no external exposure
--- audit_log          — internal logging, partitioned on created_at
--- rate_limits        — internal infrastructure
--- email_queue        — internal job queue
--- failed_jobs        — internal job queue
--- coupon_usage_log   — internal log (references parent UUIDs)
+-- provinces             — static reference data
+-- cities                — static reference data
+-- cuisine_types         — static reference data
+-- province_tax_config   — static reference data
+-- same_name_terms       — static lookup
+-- translation_lookup    — static lookup
+-- marketing_tags        — static lookup
+-- audit_log             — internal log (partitioned)
+-- admin_audit_log       — internal log
+-- rate_limits           — internal infrastructure
+-- email_queue           — internal job queue
+-- failed_jobs           — internal job queue
+-- coupon_usage_log      — internal log
 -- stripe_webhook_events — internal Stripe event log
--- cart_sessions      — already has session_id UUID
--- user_favorite_dishes — junction table (references parent UUIDs)
--- user_favorite_restaurants — junction table (references parent UUIDs)
--- restaurant_reviews — duplicate of restaurant_feedback
+-- cart_sessions         — already has session_id UUID
+-- user_favorite_restaurants — junction table
+-- password_reset_tokens — ephemeral auth tokens
+-- autologin_tokens      — ephemeral auth tokens
+-- order_items partitions (orders_20XX_XX, order_items_20XX_XX) — inherit from parent
 -- ============================================================================

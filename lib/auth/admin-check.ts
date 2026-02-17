@@ -5,6 +5,7 @@ import { getUserFromRequest, type LocalUser } from "@/lib/auth/local-auth";
 
 export interface AdminUser {
   id: number;
+  uuid: string;
   email: string;
   first_name: string | null;
   last_name: string | null;
@@ -37,7 +38,7 @@ export async function verifyAdminAuth(
 
   const { data: authIdMatch, error: authIdError } = await adminSupabase
     .from("admin_users")
-    .select("id, email, first_name, last_name, role_id")
+    .select("id, uuid, email, first_name, last_name, role_id")
     .eq("auth_user_id", user.id)
     .is("deleted_at", null)
     .single();
@@ -48,7 +49,7 @@ export async function verifyAdminAuth(
     // Fallback to email match
     const { data: emailMatch } = await adminSupabase
       .from("admin_users")
-      .select("id, email, first_name, last_name, role_id")
+      .select("id, uuid, email, first_name, last_name, role_id")
       .eq("email", user.email)
       .is("deleted_at", null)
       .single();

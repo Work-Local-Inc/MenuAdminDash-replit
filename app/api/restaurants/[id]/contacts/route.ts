@@ -3,6 +3,7 @@ import { verifyAdminAuth } from "@/lib/auth/admin-check";
 import { verifyRestaurantAccess } from "@/lib/auth/restaurant-access";
 import { AuthError } from "@/lib/errors";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { resolveFkParam } from "@/lib/utils/uuid";
 export const dynamic = "force-dynamic";
 
 export async function GET(
@@ -11,10 +12,9 @@ export async function GET(
 ) {
   try {
     const { adminUser } = await verifyAdminAuth(request);
-    const restaurantId = parseInt(params.id);
 
     // Verify restaurant access for Restaurant Admins
-    const access = await verifyRestaurantAccess(adminUser as any, restaurantId);
+    const access = await verifyRestaurantAccess(adminUser as any, params.id);
     if (!access.allowed) {
       return NextResponse.json(
         { error: access.error },
@@ -23,6 +23,11 @@ export async function GET(
     }
 
     const supabase = createAdminClient() as any;
+    const restFk = resolveFkParam(
+      params.id,
+      "restaurant_id",
+      "restaurant_uuid",
+    );
 
     // Fetch from admin_user_restaurants and admin_users
     const { data: adminContacts, error: adminError } = await supabase
@@ -39,7 +44,7 @@ export async function GET(
         )
       `,
       )
-      .eq("restaurant_id", restaurantId);
+      .eq(restFk.column, restFk.value);
 
     if (adminError) {
       console.error("[Contacts API] Admin users query error:", adminError);
@@ -49,7 +54,7 @@ export async function GET(
     const { data: locationContacts, error: locationError } = await supabase
       .from("restaurant_locations")
       .select("id, phone, email, is_primary")
-      .eq("restaurant_id", restaurantId)
+      .eq(restFk.column, restFk.value)
       .eq("is_active", true)
       .order("is_primary", { ascending: false });
 
@@ -114,10 +119,9 @@ export async function POST(
 ) {
   try {
     const { adminUser } = await verifyAdminAuth(request);
-    const restaurantId = parseInt(params.id);
 
     // Verify restaurant access for Restaurant Admins
-    const access = await verifyRestaurantAccess(adminUser as any, restaurantId);
+    const access = await verifyRestaurantAccess(adminUser as any, params.id);
     if (!access.allowed) {
       return NextResponse.json(
         { error: access.error },
@@ -127,13 +131,18 @@ export async function POST(
 
     const supabase = createAdminClient() as any;
     const body = await request.json();
+    const restFk = resolveFkParam(
+      params.id,
+      "restaurant_id",
+      "restaurant_uuid",
+    );
 
     // Update restaurant location with contact info
     // Find the primary location for this restaurant
     const { data: location, error: locError } = await supabase
       .from("restaurant_locations")
       .select("id")
-      .eq("restaurant_id", restaurantId)
+      .eq(restFk.column, restFk.value)
       .eq("is_primary", true)
       .maybeSingle();
 

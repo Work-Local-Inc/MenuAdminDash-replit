@@ -54,6 +54,12 @@ export const STATIC_SUBDOMAIN_MAPPINGS: SubdomainMapping[] = [
     restaurantId: 13,
     name: "Papa Joe's Pizza - Downtown",
   },
+  {
+    subdomain: "jj",
+    slug: "jjs-shawarma-1021",
+    restaurantId: 1021,
+    name: "JJ's Shawarma",
+  },
 ];
 
 // ============================================

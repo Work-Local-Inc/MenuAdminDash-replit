@@ -3,6 +3,7 @@ import { verifyAdminAuth } from "@/lib/auth/admin-check";
 import { verifyRestaurantAccess } from "@/lib/auth/restaurant-access";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthError } from "@/lib/errors";
+import { resolveIdParam, resolveFkParam } from "@/lib/utils/uuid";
 import { z } from "zod";
 export const dynamic = "force-dynamic";
 
@@ -22,8 +23,7 @@ export async function POST(
   try {
     const { adminUser } = await verifyAdminAuth(request);
 
-    const restaurantId = parseInt(params.id);
-    const access = await verifyRestaurantAccess(adminUser as any, restaurantId);
+    const access = await verifyRestaurantAccess(adminUser as any, params.id);
     if (!access.allowed) {
       return NextResponse.json(
         { error: access.error },
@@ -77,13 +77,36 @@ export async function POST(
       );
     }
 
-    const rid = parseInt(params.id);
+    const restFk = resolveFkParam(
+      params.id,
+      "restaurant_id",
+      "restaurant_uuid",
+    );
 
     // Delete existing schedules
     await supabase
       .from("restaurant_schedules")
       .delete()
-      .eq("restaurant_id", rid);
+      .eq(restFk.column, restFk.value);
+
+    // Resolve to int for insert
+    const { column: restCol, value: restVal } = resolveIdParam(params.id);
+    let rid: number;
+    if (restCol === "uuid") {
+      const { data: rest } = await supabase
+        .from("restaurants")
+        .select("id")
+        .eq("uuid", restVal)
+        .single();
+      if (!rest)
+        return NextResponse.json(
+          { error: "Restaurant not found" },
+          { status: 404 },
+        );
+      rid = rest.id;
+    } else {
+      rid = restVal as number;
+    }
 
     // Insert new schedules
     const records = template.flatMap((slots, dayOfWeek) =>

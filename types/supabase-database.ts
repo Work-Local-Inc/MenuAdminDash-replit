@@ -98,6 +98,7 @@ export interface Database {
           phone: string | null;
           email: string | null;
           is_active: boolean;
+          restaurant_uuid: string | null;
           created_at: string;
           updated_at: string | null;
         };
@@ -159,6 +160,7 @@ export interface Database {
           dns_verified: boolean;
           dns_verified_at: string | null;
           added_by: number | null;
+          restaurant_uuid: string | null;
           created_at: string;
           disabled_by: number | null;
           disabled_at: string | null;
@@ -189,6 +191,7 @@ export interface Database {
           day_stop: number;
           is_enabled: boolean;
           notes: string | null;
+          restaurant_uuid: string | null;
           created_at: string;
           updated_at: string | null;
         };
@@ -219,6 +222,7 @@ export interface Database {
           peak_hours: PeakHour[] | null;
           twilio_call: boolean | null;
           accepts_tips: boolean | null;
+          restaurant_uuid: string | null;
           created_at: string;
           updated_at: string | null;
         };
@@ -308,6 +312,7 @@ export interface Database {
           mfa_backup_codes: string[] | null;
           v1_admin_id: number | null;
           v2_admin_id: number | null;
+          role_uuid: string | null;
           created_at: string;
           updated_at: string | null;
         };
@@ -331,6 +336,8 @@ export interface Database {
           admin_user_id: number;
           restaurant_id: number;
           role: string | null;
+          restaurant_uuid: string | null;
+          admin_user_uuid: string | null;
           created_at: string;
         };
         Insert: Omit<
@@ -359,6 +366,7 @@ export interface Database {
           delivery_instructions: string | null;
           is_default: boolean | null;
           v2_address_id: number | null;
+          user_uuid: string | null;
           created_at: string | null;
           updated_at: string | null;
         };
@@ -389,6 +397,7 @@ export interface Database {
           longitude: number | null;
           delivery_instructions: string | null;
           is_default: boolean;
+          user_uuid: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -436,6 +445,7 @@ export interface Database {
           exp_month: number | null;
           exp_year: number | null;
           is_default: boolean;
+          user_uuid: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -468,6 +478,7 @@ export interface Database {
           legacy_v1_id: number | null;
           legacy_v2_id: number | null;
           notes: string | null;
+          restaurant_uuid: string | null;
           created_at: string;
           updated_at: string | null;
         };
@@ -512,6 +523,8 @@ export interface Database {
           legacy_v1_id: number | null;
           legacy_v2_id: number | null;
           notes: string | null;
+          restaurant_uuid: string | null;
+          course_uuid: string | null;
           created_at: string;
           updated_at: string | null;
         };
@@ -535,6 +548,7 @@ export interface Database {
           price: number;
           display_order: number | null;
           is_active: boolean | null;
+          dish_uuid: string | null;
           created_at: string | null;
           updated_at: string | null;
         };
@@ -666,6 +680,7 @@ export interface Database {
           legacy_v1_id: number | null;
           legacy_v2_id: number | null;
           notes: string | null;
+          restaurant_uuid: string | null;
           created_at: string;
           updated_at: string | null;
         };
@@ -725,6 +740,7 @@ export interface Database {
           min_selection: number;
           max_selection: number;
           is_active: boolean;
+          combo_group_uuid: string | null;
           created_at: string | null;
           updated_at: string | null;
         };
@@ -755,6 +771,7 @@ export interface Database {
           type_code: string | null;
           is_selected: boolean; // Whether this is the default selection
           source_id: number | null; // V1 CRM identifier
+          combo_group_section_uuid: string | null;
           created_at: string | null;
           updated_at: string | null;
         };
@@ -780,6 +797,7 @@ export interface Database {
           combo_modifier_group_id: number;
           name: string;
           display_order: number | null;
+          combo_modifier_group_uuid: string | null;
           created_at: string | null;
           updated_at: string | null;
         };
@@ -805,6 +823,7 @@ export interface Database {
           combo_modifier_id: number;
           size_variant: string | null; // e.g., "Small", "Medium", "Large"
           price: number;
+          combo_modifier_uuid: string | null;
           created_at: string | null;
           updated_at: string | null;
         };
@@ -828,6 +847,7 @@ export interface Database {
           uuid: string;
           combo_modifier_id: number;
           placement: "whole" | "left" | "right";
+          combo_modifier_uuid: string | null;
           created_at: string;
         };
         Insert: Omit<
@@ -850,6 +870,8 @@ export interface Database {
           dish_id: number;
           combo_group_id: number;
           is_active: boolean;
+          dish_uuid: string | null;
+          combo_group_uuid: string | null;
           created_at: string | null;
           updated_at: string | null;
         };
@@ -914,6 +936,8 @@ export interface Database {
           source_system: "v1" | "v2" | null;
           source_id: number | null;
           notes: string | null;
+          restaurant_uuid: string | null;
+          dish_uuid: string | null;
           created_at: string;
           updated_at: string | null;
         };
@@ -939,6 +963,9 @@ export interface Database {
           price_adjustment: number;
           display_order: number | null;
           is_active: boolean | null;
+          restaurant_uuid: string | null;
+          dish_uuid: string | null;
+          dish_modifier_uuid: string | null;
           created_at: string | null;
           updated_at: string | null;
         };
@@ -995,6 +1022,8 @@ export interface Database {
           special_instructions: string | null;
           payment_method: string | null;
           source: string | null;
+          restaurant_uuid: string | null;
+          user_uuid: string | null;
           created_at: string; // PARTITION KEY
           created_by: number | null;
           updated_at: string | null;
@@ -1024,6 +1053,7 @@ export interface Database {
           total_price: number;
           customizations: Json | null;
           special_instructions: string | null;
+          dish_uuid: string | null;
           created_at: string; // PARTITION KEY
         };
         Insert: Omit<
@@ -1089,6 +1119,7 @@ export interface Database {
           disabled_by: number | null;
           disabled_at: string | null;
           updated_at: string | null;
+          restaurant_uuid: string | null;
         };
         Insert: Omit<
           Database["menuca_v3"]["Tables"]["promotional_deals"]["Row"],
@@ -1133,6 +1164,7 @@ export interface Database {
           v1_coupon_id: number | null;
           v2_coupon_id: number | null;
           source_table: string | null;
+          restaurant_uuid: string | null;
           created_at: string;
           updated_at: string | null;
         };
@@ -1294,6 +1326,7 @@ export interface Database {
           is_active: boolean;
           last_boot_at: string | null;
           last_check_at: string | null;
+          restaurant_uuid: string | null;
           created_at: string;
           updated_at: string;
           created_by: number | null;

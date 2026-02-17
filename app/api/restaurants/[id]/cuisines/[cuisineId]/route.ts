@@ -3,6 +3,7 @@ import { verifyAdminAuth } from "@/lib/auth/admin-check";
 import { verifyRestaurantAccess } from "@/lib/auth/restaurant-access";
 import { AuthError } from "@/lib/errors";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { resolveFkParam } from "@/lib/utils/uuid";
 export const dynamic = "force-dynamic";
 
 export async function DELETE(
@@ -12,17 +13,7 @@ export async function DELETE(
   try {
     const { adminUser } = await verifyAdminAuth(request);
 
-    const restaurantId = parseInt(params.id);
-    const cuisineId = parseInt(params.cuisineId);
-
-    if (isNaN(restaurantId) || isNaN(cuisineId)) {
-      return NextResponse.json(
-        { error: "Invalid restaurant ID or cuisine ID" },
-        { status: 400 },
-      );
-    }
-
-    const access = await verifyRestaurantAccess(adminUser as any, restaurantId);
+    const access = await verifyRestaurantAccess(adminUser as any, params.id);
     if (!access.allowed) {
       return NextResponse.json(
         { error: access.error },
@@ -31,12 +22,18 @@ export async function DELETE(
     }
 
     const supabase = createAdminClient();
+    const restFk = resolveFkParam(
+      params.id,
+      "restaurant_id",
+      "restaurant_uuid",
+    );
+    const cuisineId = parseInt(params.cuisineId);
 
     // Remove cuisine assignment
     const { error } = await supabase
       .from("restaurant_cuisines")
       .delete()
-      .eq("restaurant_id", restaurantId)
+      .eq(restFk.column, restFk.value)
       .eq("cuisine_type_id", cuisineId);
 
     if (error) throw error;

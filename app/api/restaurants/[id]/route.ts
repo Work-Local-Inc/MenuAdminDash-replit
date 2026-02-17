@@ -4,6 +4,7 @@ import { getRestaurantById } from "@/lib/supabase/queries";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { restaurantUpdateSchema } from "@/lib/validations/restaurant";
 import { AuthError } from "@/lib/errors";
+import { resolveIdParam } from "@/lib/utils/uuid";
 import { z } from "zod";
 export const dynamic = "force-dynamic";
 
@@ -39,6 +40,7 @@ export async function PATCH(
     await verifyAdminAuth(request);
 
     const supabase = createAdminClient() as any;
+    const { column, value } = resolveIdParam(params.id);
 
     const body = await request.json();
     console.log("[Restaurant API] Request body:", JSON.stringify(body));
@@ -56,7 +58,7 @@ export async function PATCH(
       const { error: statusError } = await supabase
         .from("restaurants")
         .update({ status: validatedData.status })
-        .eq("id", params.id);
+        .eq(column, value);
 
       if (statusError) {
         console.error("[Restaurant API] Status update error:", statusError);
@@ -75,7 +77,7 @@ export async function PATCH(
         const { error: updateError } = await supabase
           .from("restaurants")
           .update(otherFields)
-          .eq("id", params.id);
+          .eq(column, value);
 
         if (updateError) throw updateError;
       }
@@ -84,7 +86,7 @@ export async function PATCH(
       const { data, error } = await supabase
         .from("restaurants")
         .update(validatedData)
-        .eq("id", params.id)
+        .eq(column, value)
         .select()
         .single();
 
@@ -103,7 +105,7 @@ export async function PATCH(
         const { data: retryData, error: retryError } = await supabase
           .from("restaurants")
           .update(dataWithoutNewFields)
-          .eq("id", params.id)
+          .eq(column, value)
           .select()
           .single();
 
@@ -117,7 +119,7 @@ export async function PATCH(
     const { data: restaurant, error: fetchError } = await supabase
       .from("restaurants")
       .select()
-      .eq("id", params.id)
+      .eq(column, value)
       .single();
 
     if (fetchError) throw fetchError;
@@ -162,13 +164,14 @@ export async function DELETE(
       // No body or invalid JSON - use default reason
     }
 
+    const { column: delCol, value: delVal } = resolveIdParam(params.id);
     const { error } = await supabase
       .from("restaurants")
       .update({
         status: "inactive",
         updated_at: new Date().toISOString(),
       })
-      .eq("id", params.id);
+      .eq(delCol, delVal);
 
     if (error) throw error;
 
