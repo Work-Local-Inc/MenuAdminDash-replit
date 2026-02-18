@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { getWeek, getYear } from 'date-fns'
 import { toEasternDayStart, toEasternDayEnd } from '@/lib/utils/timezone'
 export const dynamic = 'force-dynamic'
@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
 
     console.log('[Statement] Generating for restaurant', restaurantId, { startDate, endDate })
 
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     const { data: restaurantData, error: restaurantError } = await supabase
       .from('restaurants')
@@ -93,7 +93,6 @@ export async function GET(request: NextRequest) {
     const restaurant = restaurantData as RestaurantRow
 
     const { data: contactData } = await supabase
-      .schema('menuca_v3')
       .from('restaurant_contacts')
       .select('first_name, last_name, phone, email, address, city, postal_code')
       .eq('restaurant_id', restaurantId)

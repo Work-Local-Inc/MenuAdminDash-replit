@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 export const dynamic = 'force-dynamic'
 
 const SUPER_ADMIN_ROLE_ID = 1
@@ -24,7 +24,7 @@ export async function PUT(
       return NextResponse.json({ error: 'group_name and owner_name are required' }, { status: 400 })
     }
 
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     const { data: group, error: updateError } = await (supabase as any)
       .from('restaurant_ownership_groups')

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { toEasternDayStart, toEasternDayEnd } from '@/lib/utils/timezone'
 export const dynamic = 'force-dynamic'
 
@@ -132,7 +132,7 @@ export async function GET(request: NextRequest) {
 
     console.log('[Commission Report] Generating for', { weekStart, weekEnd })
 
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     const { data: restaurantsData, error: restaurantsError } = await supabase
       .from('restaurants')
@@ -350,7 +350,7 @@ export async function POST(request: NextRequest) {
 
     console.log('[Commission Report] Saving snapshot for', { weekStart, weekEnd })
 
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     const { data: restaurantsData, error: restaurantsError } = await supabase
       .from('restaurants')
@@ -565,7 +565,7 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     if (markAllPaid) {
       const { data: allSnapshots, error: fetchError } = await (supabase as any)

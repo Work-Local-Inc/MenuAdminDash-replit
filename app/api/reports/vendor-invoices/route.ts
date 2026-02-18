@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 export const dynamic = 'force-dynamic'
 
 const SUPER_ADMIN_ROLE_ID = 1
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status')
     const limit = parseInt(searchParams.get('limit') || '50')
 
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     let query = (supabase as any)
       .from('vendor_invoices')
@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     const { data: maxData, error: maxError } = await (supabase as any)
       .from('vendor_invoices')
@@ -197,7 +197,7 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     const { data: existing, error: fetchError } = await (supabase as any)
       .from('vendor_invoices')

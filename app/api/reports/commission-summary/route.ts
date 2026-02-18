@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { toEasternDayStart, toEasternDayEnd } from '@/lib/utils/timezone'
 export const dynamic = 'force-dynamic'
 
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
 
     console.log('[Commission Summary] Generating report for', { startDate, endDate })
 
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     const { data: ordersData, error: ordersError } = await supabase
       .from('orders')

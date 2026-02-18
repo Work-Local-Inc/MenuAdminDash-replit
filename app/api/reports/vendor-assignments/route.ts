@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 export const dynamic = 'force-dynamic'
 
 const SUPER_ADMIN_ROLE_ID = 1
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const vendorId = searchParams.get('vendorId')
 
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     let query = (supabase as any)
       .from('vendor_restaurant_assignments')
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     const { data, error } = await (supabase as any)
       .from('vendor_restaurant_assignments')
@@ -147,7 +147,7 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     const { error } = await (supabase as any)
       .from('vendor_restaurant_assignments')

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { getWeek, getYear } from 'date-fns'
 import { toEasternDayStart, toEasternDayEnd } from '@/lib/utils/timezone'
 export const dynamic = 'force-dynamic'
@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
 
     console.log('[Batch Statements] Generating for all restaurants', { startDate, endDate })
 
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     // Get all active restaurants
     const { data: restaurantsData, error: restaurantsError } = await supabase

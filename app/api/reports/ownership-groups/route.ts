@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 export const dynamic = 'force-dynamic'
 
 const SUPER_ADMIN_ROLE_ID = 1
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden - Super Admin access required' }, { status: 403 })
     }
 
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     const { data: groups, error: groupsError } = await (supabase as any)
       .from('restaurant_ownership_groups')
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'group_name and owner_name are required' }, { status: 400 })
     }
 
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     const { data: group, error: groupError } = await (supabase as any)
       .from('restaurant_ownership_groups')
@@ -133,7 +133,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'id query parameter is required' }, { status: 400 })
     }
 
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     const { error } = await (supabase as any)
       .from('restaurant_ownership_groups')
