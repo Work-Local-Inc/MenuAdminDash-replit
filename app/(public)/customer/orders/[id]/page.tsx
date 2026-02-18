@@ -37,13 +37,9 @@ export default function OrderDetailsPage() {
         return
       }
 
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('auth_user_id', user.id)
-        .maybeSingle()
-
-      if (userError || !userData) {
+      const profileRes = await fetch('/api/customer/profile', { credentials: 'include' })
+      const profileData = await profileRes.json()
+      if (!profileData?.user?.id) {
         throw new Error('User record not found')
       }
 
@@ -54,7 +50,7 @@ export default function OrderDetailsPage() {
           restaurant:restaurants(id, name, slug, logo_url, phone)
         `)
         .eq('id', orderId)
-        .eq('user_id', userData.id)
+        .eq('user_id', profileData.user.id)
         .single()
 
       if (orderError) throw orderError

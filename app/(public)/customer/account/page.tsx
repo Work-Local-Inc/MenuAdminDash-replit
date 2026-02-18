@@ -38,14 +38,17 @@ export default function CustomerAccountPage() {
         return
       }
 
-      // Get full user details (query by auth_user_id, not id)
-      const { data: userData } = await supabase
-        .from('users')
-        .select('*')
-        .eq('auth_user_id', user.id)
-        .single()
-
-      setCurrentUser(userData)
+      const profileRes = await fetch('/api/customer/profile', { credentials: 'include' })
+      if (!profileRes.ok) {
+        router.push('/customer/login?redirect=/customer/account')
+        return
+      }
+      const profileData = await profileRes.json()
+      if (!profileData?.user) {
+        router.push('/customer/login?redirect=/customer/account')
+        return
+      }
+      setCurrentUser(profileData.user)
     } catch (error) {
       console.error('Auth check error:', error)
       router.push('/customer/login?redirect=/customer/account')

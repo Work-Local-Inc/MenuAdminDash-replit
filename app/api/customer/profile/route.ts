@@ -32,24 +32,24 @@ export async function GET() {
 
     console.log('[Profile API] Auth user found:', user.id)
 
-    // Get user profile from database
-    console.log('[Profile API] Querying users table...')
-    const { data: userData, error: userError } = await supabase
+    const adminSupabase = createAdminClient() as any
+    console.log('[Profile API] Querying users table with admin client...')
+    const { data: userData, error: userError } = await adminSupabase
+      .schema('menuca_v3')
       .from('users')
-      .select('id, email, first_name, last_name, phone, stripe_customer_id')
+      .select('id, email, first_name, last_name, phone, stripe_customer_id, auth_user_id')
       .eq('auth_user_id', user.id)
       .maybeSingle()
 
+    console.log('[Profile API] Users table result:', { userData: userData ? `id=${userData.id}` : 'null', userError: userError?.message || null })
+
     if (userError) {
       console.error('[Profile API] Database error:', userError.message)
-      // Return null user instead of 500 - allow guest checkout
       return NextResponse.json({ user: null }, { status: 200 })
     }
 
     if (!userData) {
-      // Fallback: check by email or phone to find existing user from previous sign-up method
       console.log('[Profile API] No user record by auth_user_id - checking email/phone fallback')
-      const adminSupabase = createAdminClient() as any
       let fallbackUser = null
 
       if (user.email) {
@@ -62,17 +62,18 @@ export async function GET() {
         if (data) fallbackUser = data
       }
       if (!fallbackUser && user.phone) {
+        const cleanPhone = user.phone.replace(/\D/g, '')
+        console.log('[Profile API] Checking phone fallback:', cleanPhone)
         const { data } = await adminSupabase
           .schema('menuca_v3')
           .from('users')
           .select('id, email, first_name, last_name, phone, stripe_customer_id, auth_user_id')
-          .eq('phone', user.phone)
+          .or(`phone.eq.${user.phone},phone.eq.${cleanPhone},phone.eq.+${cleanPhone}`)
           .maybeSingle()
         if (data) fallbackUser = data
       }
 
       if (fallbackUser) {
-        // Link this auth account to the existing user record
         if (!fallbackUser.auth_user_id) {
           await adminSupabase
             .schema('menuca_v3')
@@ -86,12 +87,13 @@ export async function GET() {
         return NextResponse.json({ user: safeUser }, { status: 200 })
       }
 
-      console.log('[Profile API] No user record found - new auth user')
+      console.log('[Profile API] No user record found - new auth user, phone:', user.phone, 'email:', user.email)
       return NextResponse.json({ user: null }, { status: 200 })
     }
 
-    console.log('[Profile API] Found user:', (userData as any).id, (userData as any).email)
-    return NextResponse.json({ user: userData }, { status: 200 })
+    const { auth_user_id: _, ...safeUserData } = userData
+    console.log('[Profile API] Found user:', userData.id, userData.email)
+    return NextResponse.json({ user: safeUserData }, { status: 200 })
     
   } catch (error: any) {
     console.error('[Profile API] Unexpected error:', error.message)
@@ -144,8 +146,9 @@ export async function PUT(request: NextRequest) {
 
     console.log('[Profile API] PUT - Updating fields:', Object.keys(updateData))
 
-    // Update user profile
-    const { data: updatedUser, error: updateError } = await supabase
+    const adminSupabase = createAdminClient() as any
+    const { data: updatedUser, error: updateError } = await adminSupabase
+      .schema('menuca_v3')
       .from('users')
       .update(updateData)
       .eq('auth_user_id', user.id)
