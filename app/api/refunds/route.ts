@@ -261,25 +261,36 @@ export async function POST(request: NextRequest) {
     sunday.setDate(monday.getDate() + 6)
     const weekEnd = sunday.toISOString().split('T')[0]
 
-    const { data: adjustment, error: adjustmentError } = await (supabase as any)
-      .from('statement_adjustments')
-      .insert({
-        restaurant_id: order.restaurant_id,
-        adjustment_type: 'credit',
-        category: 'refund',
-        description: `Refund for order #${order.id} - ${reason_code.replace(/_/g, ' ')}${notes ? ': ' + notes : ''}`,
-        amount: Math.round(refund_amount * 100) / 100,
-        tax_exempt: true,
-        applies_to_week_start: weekStart,
-        applies_to_week_end: weekEnd,
-        created_by: adminUser.id,
-      })
-      .select()
-      .single()
+    const validStatementStatuses = ['completed', 'accepted', 'ready', 'preparing']
+    const orderAppearsInStatement = ['paid', 'succeeded', 'partially_refunded'].includes(order.payment_status)
+      && validStatementStatuses.includes(order.order_status)
+      && !order.is_test_order
 
-    if (adjustmentError) {
-      console.error('[Refunds] WARNING: Statement adjustment insert failed AFTER Stripe refund was issued:', adjustmentError)
-      console.error('[Refunds] Stripe refund ID:', stripeRefund.id, '- This refund was already processed in Stripe!')
+    let adjustment: any = null
+    if (orderAppearsInStatement) {
+      const { data: adjData, error: adjustmentError } = await (supabase as any)
+        .from('statement_adjustments')
+        .insert({
+          restaurant_id: order.restaurant_id,
+          adjustment_type: 'credit',
+          category: 'refund',
+          description: `Refund for order #${order.id} - ${reason_code.replace(/_/g, ' ')}${notes ? ': ' + notes : ''}`,
+          amount: Math.round(refund_amount * 100) / 100,
+          tax_exempt: true,
+          applies_to_week_start: weekStart,
+          applies_to_week_end: weekEnd,
+          created_by: adminUser.id,
+        })
+        .select()
+        .single()
+
+      adjustment = adjData
+      if (adjustmentError) {
+        console.error('[Refunds] WARNING: Statement adjustment insert failed AFTER Stripe refund was issued:', adjustmentError)
+        console.error('[Refunds] Stripe refund ID:', stripeRefund.id, '- This refund was already processed in Stripe!')
+      }
+    } else {
+      console.log(`[Refunds] Skipping statement adjustment — order #${order.id} would not appear in statement (test=${order.is_test_order}, payment_status=${order.payment_status}, order_status=${order.order_status})`)
     }
 
     const { data: refundRecord, error: refundError } = await (supabase as any)
