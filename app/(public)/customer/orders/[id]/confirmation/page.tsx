@@ -240,9 +240,9 @@ export default function OrderConfirmationPage() {
                 We couldn't find this order. Please check your order confirmation email.
               </p>
               <Button asChild data-testid="button-home">
-                <Link href="/">
+                <Link href="/r">
                   <Home className="w-4 h-4 mr-2" />
-                  Go to Homepage
+                  Browse Restaurants
                 </Link>
               </Button>
             </CardContent>

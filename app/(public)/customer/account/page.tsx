@@ -64,7 +64,8 @@ export default function CustomerAccountPage() {
         title: "Signed Out",
         description: "You've been successfully signed out",
       })
-      router.push('/')
+      const slug = searchParams.get('restaurant')
+      router.push(slug ? `/r/${slug}` : '/r')
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -95,7 +96,7 @@ export default function CustomerAccountPage() {
         <div className="mb-6">
           {/* Navigation back - context-aware */}
           {(() => {
-            const backHref = fromCheckout ? '/checkout' : restaurantSlug ? `/r/${restaurantSlug}` : '/'
+            const backHref = fromCheckout ? '/checkout' : restaurantSlug ? `/r/${restaurantSlug}` : '/r'
             const backLabel = fromCheckout ? 'Back to Checkout' : restaurantSlug ? 'Back to Menu' : 'Browse Restaurants'
             return (
               <Button 

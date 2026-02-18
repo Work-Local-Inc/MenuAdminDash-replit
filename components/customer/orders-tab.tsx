@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -18,6 +19,8 @@ interface OrdersTabProps {
 }
 
 export function OrdersTab({ userId }: OrdersTabProps) {
+  const searchParams = useSearchParams()
+  const restaurantSlug = searchParams.get('restaurant')
   const { toast } = useToast()
   const supabase = createClient()
   const addItem = useCartStore((state) => state.addItem)
@@ -232,7 +235,7 @@ export function OrdersTab({ userId }: OrdersTabProps) {
             Start exploring restaurants and place your first order!
           </p>
           <Button asChild data-testid="button-browse-restaurants">
-            <Link href="/">Browse Restaurants</Link>
+            <Link href={restaurantSlug ? `/r/${restaurantSlug}` : '/r'}>Browse Restaurants</Link>
           </Button>
         </CardContent>
       </Card>
