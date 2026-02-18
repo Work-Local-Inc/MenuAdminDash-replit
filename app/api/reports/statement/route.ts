@@ -132,6 +132,10 @@ export async function GET(request: NextRequest) {
     }
 
     const orders = (ordersData || []) as OrderRow[]
+    console.log(`[Statement] Found ${orders.length} orders for restaurant ${restaurantId} between ${toEasternDayStart(startDate)} and ${toEasternDayEnd(endDate)}`)
+    if (orders.length > 0) {
+      console.log('[Statement] Order IDs:', orders.map(o => o.id).join(', '))
+    }
 
     const { data: configData } = await supabase
       .from('restaurant_commission_configs')
@@ -292,8 +296,14 @@ export async function GET(request: NextRequest) {
     console.log('[Statement] Generated statement', statementNumber)
 
     return NextResponse.json(statement)
-  } catch (error) {
+  } catch (error: any) {
     console.error('[Statement] Error:', error)
+    if (error?.statusCode === 401 || error?.message?.includes('Unauthorized')) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
