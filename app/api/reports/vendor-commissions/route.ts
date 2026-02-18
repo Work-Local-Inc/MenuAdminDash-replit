@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
 import { createClient } from '@/lib/supabase/server'
+import { toEasternDayStart, toEasternDayEnd } from '@/lib/utils/timezone'
 export const dynamic = 'force-dynamic'
 
 const SUPER_ADMIN_ROLE_ID = 1
@@ -128,8 +129,8 @@ export async function GET(request: NextRequest) {
       .from('orders')
       .select('id, subtotal, total_amount, payment_status, order_status, restaurant_id')
       .in('restaurant_id', restaurantIds)
-      .gte('created_at', `${startDate}T00:00:00`)
-      .lte('created_at', `${endDate}T23:59:59`)
+      .gte('created_at', toEasternDayStart(startDate))
+      .lte('created_at', toEasternDayEnd(endDate))
       .in('payment_status', ['paid', 'succeeded'])
       .in('order_status', ['completed', 'accepted', 'ready', 'preparing'])
 

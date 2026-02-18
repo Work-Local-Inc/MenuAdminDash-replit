@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { format } from 'date-fns'
+import { toEasternDayStart, toEasternDayEnd } from '@/lib/utils/timezone'
 export const dynamic = 'force-dynamic'
 
 const SUPER_ADMIN_ROLE_ID = 1
@@ -77,8 +78,8 @@ export async function GET(request: NextRequest) {
         created_at,
         stripe_payment_intent_id
       `)
-      .gte('created_at', `${startDate}T00:00:00`)
-      .lte('created_at', `${endDate}T23:59:59`)
+      .gte('created_at', toEasternDayStart(startDate))
+      .lte('created_at', toEasternDayEnd(endDate))
       .order('created_at', { ascending: false })
       .limit(1000)
 

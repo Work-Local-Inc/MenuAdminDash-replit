@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminAuth } from '@/lib/auth/admin-check'
 import { createClient } from '@/lib/supabase/server'
+import { toEasternDayStart, toEasternDayEnd } from '@/lib/utils/timezone'
 export const dynamic = 'force-dynamic'
 
 const SUPER_ADMIN_ROLE_ID = 1
@@ -164,8 +165,8 @@ export async function GET(request: NextRequest) {
         restaurant_id,
         is_test_order
       `)
-      .gte('created_at', `${weekStart}T00:00:00`)
-      .lte('created_at', `${weekEnd}T23:59:59`)
+      .gte('created_at', toEasternDayStart(weekStart))
+      .lte('created_at', toEasternDayEnd(weekEnd))
       .in('payment_status', ['paid', 'succeeded'])
       .in('order_status', ['completed', 'accepted', 'ready', 'preparing'])
       .or('is_test_order.is.null,is_test_order.eq.false')
@@ -382,8 +383,8 @@ export async function POST(request: NextRequest) {
         restaurant_id,
         is_test_order
       `)
-      .gte('created_at', `${weekStart}T00:00:00`)
-      .lte('created_at', `${weekEnd}T23:59:59`)
+      .gte('created_at', toEasternDayStart(weekStart))
+      .lte('created_at', toEasternDayEnd(weekEnd))
       .in('payment_status', ['paid', 'succeeded'])
       .in('order_status', ['completed', 'accepted', 'ready', 'preparing'])
       .or('is_test_order.is.null,is_test_order.eq.false')
