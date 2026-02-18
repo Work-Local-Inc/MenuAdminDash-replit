@@ -579,6 +579,52 @@ export default function RestaurantStatementsPage() {
                     </div>
                   </div>
 
+                  {/* Accounting Breakdown */}
+                  <div className="mb-6">
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                      <span className="w-1 h-5 bg-red-600 rounded-full"></span>
+                      Accounting Breakdown
+                    </h2>
+                    <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+                      <table className="w-full text-sm" data-testid="table-accounting-breakdown">
+                        <thead className="bg-gray-50 dark:bg-gray-800">
+                          <tr>
+                            <th className="text-right py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">CC Receipts</th>
+                            <th className="text-right py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Commissions</th>
+                            <th className="text-right py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Delivery</th>
+                            <th className="text-right py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">HST</th>
+                            {hasAdjustments && (
+                              <>
+                                <th className="text-right py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Charges</th>
+                                <th className="text-right py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Credits</th>
+                              </>
+                            )}
+                            <th className="text-right py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Net Payment</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr className="bg-white dark:bg-gray-900">
+                            <td className="text-right py-3 px-4 font-mono" data-testid="text-acct-cc-receipts">{formatCurrency(statement.totals.total_unpaid)}</td>
+                            <td className="text-right py-3 px-4 font-mono text-red-600" data-testid="text-acct-commissions">
+                              -{formatCurrency(statement.fees.commission + statement.fees.weekly_commission + statement.fees.transaction_fees + statement.fees.bank_fees + statement.fees.delivery_commission)}
+                            </td>
+                            <td className="text-right py-3 px-4 font-mono" data-testid="text-acct-delivery">{formatCurrency(statement.totals.delivery_fees)}</td>
+                            <td className="text-right py-3 px-4 font-mono text-red-600" data-testid="text-acct-hst">-{formatCurrency(statement.fees.hst)}</td>
+                            {hasAdjustments && (
+                              <>
+                                <td className="text-right py-3 px-4 font-mono text-red-600" data-testid="text-acct-charges">-{formatCurrency(statement.adjustments.total_charges)}</td>
+                                <td className="text-right py-3 px-4 font-mono text-green-600" data-testid="text-acct-credits">+{formatCurrency(statement.adjustments.total_credits)}</td>
+                              </>
+                            )}
+                            <td className={`text-right py-3 px-4 font-mono font-bold ${statement.net_payable >= 0 ? 'text-green-600' : 'text-red-600'}`} data-testid="text-acct-net">
+                              {formatCurrency(statement.net_payable)}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
                   {/* Net Payment */}
                   <div className="bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800 p-6 text-center">
                     <p className="text-sm text-green-700 dark:text-green-400 font-medium mb-1">NET PAYMENT</p>
