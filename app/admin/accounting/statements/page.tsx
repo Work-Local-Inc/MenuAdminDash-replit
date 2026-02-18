@@ -257,7 +257,7 @@ export default function RestaurantStatementsPage() {
                   <SelectValue placeholder="Select a restaurant" />
                 </SelectTrigger>
                 <SelectContent className="max-h-[300px]">
-                  {filteredRestaurants.slice(0, 50).map((restaurant) => (
+                  {(searchTerm ? filteredRestaurants : filteredRestaurants.slice(0, 100)).map((restaurant) => (
                     <SelectItem key={restaurant.id} value={restaurant.id.toString()}>
                       {restaurant.name} (#{restaurant.id})
                     </SelectItem>

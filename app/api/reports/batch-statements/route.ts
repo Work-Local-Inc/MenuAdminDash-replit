@@ -46,6 +46,7 @@ interface RestaurantStatement {
   delivery_commission: number
   delivery_tips: number
   charges: number
+  credits: number
   hst: number
   net_total: number
   cash_count: number
@@ -271,6 +272,7 @@ export async function GET(request: NextRequest) {
         delivery_commission: Math.round(deliveryCommission * 100) / 100,
         delivery_tips: Math.round(deliveryTips * 100) / 100,
         charges: Math.round(charges * 100) / 100,
+        credits: Math.round(totalCredits * 100) / 100,
         hst: Math.round(hst * 100) / 100,
         net_total: Math.round(netTotal * 100) / 100,
         cash_count: cashOrders.length,
@@ -294,6 +296,7 @@ export async function GET(request: NextRequest) {
       delivery_commission: Math.round(statements.reduce((sum, s) => sum + s.delivery_commission, 0) * 100) / 100,
       delivery_tips: Math.round(statements.reduce((sum, s) => sum + s.delivery_tips, 0) * 100) / 100,
       charges: Math.round(statements.reduce((sum, s) => sum + s.charges, 0) * 100) / 100,
+      credits: Math.round(statements.reduce((sum, s) => sum + s.credits, 0) * 100) / 100,
       hst: Math.round(statements.reduce((sum, s) => sum + s.hst, 0) * 100) / 100,
       net_total: Math.round(statements.reduce((sum, s) => sum + s.net_total, 0) * 100) / 100,
     }

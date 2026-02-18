@@ -56,6 +56,7 @@ interface RestaurantStatement {
   delivery_commission: number
   delivery_tips: number
   charges: number
+  credits: number
   hst: number
   net_total: number
   cash_count: number
@@ -80,6 +81,7 @@ interface BatchStatementsData {
     delivery_commission: number
     delivery_tips: number
     charges: number
+    credits: number
     hst: number
     net_total: number
   }
@@ -443,7 +445,7 @@ export default function BatchStatementsPage() {
     const grouped: Array<{
       group: OwnershipGroup
       statements: RestaurantStatement[]
-      totals: { total_paid: number; commission: number; weekly_commission: number; transaction_fees: number; bank_fees: number; delivery_commission: number; delivery_tips: number; charges: number; hst: number; net_total: number }
+      totals: { total_paid: number; commission: number; weekly_commission: number; transaction_fees: number; bank_fees: number; delivery_commission: number; delivery_tips: number; charges: number; credits: number; hst: number; net_total: number }
     }> = []
 
     for (const group of ownershipGroups) {
@@ -459,6 +461,7 @@ export default function BatchStatementsPage() {
         delivery_commission: groupStatements.reduce((sum, s) => sum + s.delivery_commission, 0),
         delivery_tips: groupStatements.reduce((sum, s) => sum + s.delivery_tips, 0),
         charges: groupStatements.reduce((sum, s) => sum + s.charges, 0),
+        credits: groupStatements.reduce((sum, s) => sum + s.credits, 0),
         hst: groupStatements.reduce((sum, s) => sum + s.hst, 0),
         net_total: groupStatements.reduce((sum, s) => sum + s.net_total, 0),
       }
@@ -511,6 +514,7 @@ export default function BatchStatementsPage() {
       'Trans Fee',
       'Bank Fee',
       'Charges',
+      'Credits',
       'Delivery Commission',
       'Delivery Tips',
       'HST',
@@ -540,6 +544,7 @@ export default function BatchStatementsPage() {
         s.transaction_fees.toFixed(2),
         s.bank_fees.toFixed(2),
         (s.charges || 0).toFixed(2),
+        (s.credits || 0).toFixed(2),
         s.delivery_commission.toFixed(2),
         s.delivery_tips.toFixed(2),
         s.hst.toFixed(2),
@@ -552,7 +557,7 @@ export default function BatchStatementsPage() {
       ].join(',')
     }
 
-    const makeGroupHeaderRow = (groupName: string, ownerName: string, totals: { total_paid: number; commission: number; weekly_commission: number; transaction_fees: number; bank_fees: number; charges: number; delivery_commission: number; delivery_tips: number; hst: number; net_total: number }) => {
+    const makeGroupHeaderRow = (groupName: string, ownerName: string, totals: { total_paid: number; commission: number; weekly_commission: number; transaction_fees: number; bank_fees: number; charges: number; credits: number; delivery_commission: number; delivery_tips: number; hst: number; net_total: number }) => {
       return [
         '',
         '',
@@ -564,6 +569,7 @@ export default function BatchStatementsPage() {
         totals.transaction_fees.toFixed(2),
         totals.bank_fees.toFixed(2),
         (totals.charges || 0).toFixed(2),
+        (totals.credits || 0).toFixed(2),
         totals.delivery_commission.toFixed(2),
         totals.delivery_tips.toFixed(2),
         totals.hst.toFixed(2),
@@ -606,6 +612,7 @@ export default function BatchStatementsPage() {
       data.totals.transaction_fees.toFixed(2),
       data.totals.bank_fees.toFixed(2),
       (data.totals.charges || 0).toFixed(2),
+      (data.totals.credits || 0).toFixed(2),
       data.totals.delivery_commission.toFixed(2),
       data.totals.delivery_tips.toFixed(2),
       data.totals.hst.toFixed(2),
@@ -663,6 +670,7 @@ export default function BatchStatementsPage() {
         <TableCell className="text-right font-mono">{formatCurrency(statement.transaction_fees)}</TableCell>
         <TableCell className="text-right font-mono">{formatCurrency(statement.bank_fees)}</TableCell>
         <TableCell className="text-right font-mono">{formatCurrency(statement.charges || 0)}</TableCell>
+        <TableCell className="text-right font-mono">{formatCurrency(statement.credits || 0)}</TableCell>
         <TableCell className="text-right font-mono">{formatCurrency(statement.delivery_commission)}</TableCell>
         <TableCell className="text-right font-mono">{formatCurrency(statement.delivery_tips)}</TableCell>
         <TableCell className="text-right font-mono">{formatCurrency(statement.hst)}</TableCell>
@@ -690,7 +698,7 @@ export default function BatchStatementsPage() {
     )
   }
 
-  const renderGroupHeaderRow = (group: OwnershipGroup, totals: { total_paid: number; commission: number; weekly_commission: number; transaction_fees: number; bank_fees: number; delivery_commission: number; delivery_tips: number; charges: number; hst: number; net_total: number }, count: number) => {
+  const renderGroupHeaderRow = (group: OwnershipGroup, totals: { total_paid: number; commission: number; weekly_commission: number; transaction_fees: number; bank_fees: number; delivery_commission: number; delivery_tips: number; charges: number; credits: number; hst: number; net_total: number }, count: number) => {
     const isCollapsed = collapsedGroups.has(group.id)
     return (
       <TableRow
@@ -714,6 +722,7 @@ export default function BatchStatementsPage() {
         <TableCell className="text-right font-mono font-bold">{formatCurrency(totals.transaction_fees)}</TableCell>
         <TableCell className="text-right font-mono font-bold">{formatCurrency(totals.bank_fees)}</TableCell>
         <TableCell className="text-right font-mono font-bold">{formatCurrency(totals.charges || 0)}</TableCell>
+        <TableCell className="text-right font-mono font-bold">{formatCurrency(totals.credits || 0)}</TableCell>
         <TableCell className="text-right font-mono font-bold">{formatCurrency(totals.delivery_commission)}</TableCell>
         <TableCell className="text-right font-mono font-bold">{formatCurrency(totals.delivery_tips)}</TableCell>
         <TableCell className="text-right font-mono font-bold">{formatCurrency(totals.hst)}</TableCell>
@@ -913,6 +922,7 @@ export default function BatchStatementsPage() {
                       <TableHead className="text-right">Trans Fee</TableHead>
                       <TableHead className="text-right">Bank Fee</TableHead>
                       <TableHead className="text-right">Charges</TableHead>
+                      <TableHead className="text-right">Credits</TableHead>
                       <TableHead className="text-right">Del. Comm.</TableHead>
                       <TableHead className="text-right">Tips</TableHead>
                       <TableHead className="text-right">HST</TableHead>
@@ -932,7 +942,7 @@ export default function BatchStatementsPage() {
                         ))}
                         {groupedData.ungrouped.length > 0 && groupedData.grouped.length > 0 && (
                           <TableRow>
-                            <TableCell colSpan={12} className="text-xs text-muted-foreground font-medium py-2">
+                            <TableCell colSpan={13} className="text-xs text-muted-foreground font-medium py-2">
                               Ungrouped Restaurants
                             </TableCell>
                           </TableRow>
@@ -957,6 +967,7 @@ export default function BatchStatementsPage() {
                           <TableCell className="text-right font-mono">{formatCurrency(data.totals.transaction_fees)}</TableCell>
                           <TableCell className="text-right font-mono">{formatCurrency(data.totals.bank_fees)}</TableCell>
                           <TableCell className="text-right font-mono">{formatCurrency(data.totals.charges || 0)}</TableCell>
+                          <TableCell className="text-right font-mono">{formatCurrency(data.totals.credits || 0)}</TableCell>
                           <TableCell className="text-right font-mono">{formatCurrency(data.totals.delivery_commission)}</TableCell>
                           <TableCell className="text-right font-mono">{formatCurrency(data.totals.delivery_tips)}</TableCell>
                           <TableCell className="text-right font-mono">{formatCurrency(data.totals.hst)}</TableCell>
