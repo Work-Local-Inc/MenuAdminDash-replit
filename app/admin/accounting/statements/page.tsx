@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { format, startOfWeek, endOfWeek, subWeeks, addDays, startOfMonth, endOfMonth, subMonths } from "date-fns"
 import { CalendarIcon, FileText, Printer, Search } from "lucide-react"
@@ -123,6 +123,7 @@ export default function RestaurantStatementsPage() {
   const [endDate, setEndDate] = useState<Date>(defaultDates.end)
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string>("")
   const [searchTerm, setSearchTerm] = useState("")
+  const [isRestaurantDropdownOpen, setIsRestaurantDropdownOpen] = useState(false)
 
   const handlePresetChange = (preset: DatePreset) => {
     setDatePreset(preset)
@@ -237,33 +238,58 @@ export default function RestaurantStatementsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label>Search Restaurant</Label>
-              <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by name or ID..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8"
-                  data-testid="input-search-restaurant"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
               <Label>Restaurant</Label>
-              <Select value={selectedRestaurantId} onValueChange={setSelectedRestaurantId}>
-                <SelectTrigger data-testid="select-restaurant">
-                  <SelectValue placeholder="Select a restaurant" />
-                </SelectTrigger>
-                <SelectContent className="max-h-[300px]">
-                  {(searchTerm ? filteredRestaurants : filteredRestaurants.slice(0, 100)).map((restaurant) => (
-                    <SelectItem key={restaurant.id} value={restaurant.id.toString()}>
-                      {restaurant.name} (#{restaurant.id})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={isRestaurantDropdownOpen} onOpenChange={setIsRestaurantDropdownOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    className="w-full justify-between font-normal"
+                    data-testid="select-restaurant"
+                  >
+                    {selectedRestaurantId
+                      ? restaurants.find(r => r.id.toString() === selectedRestaurantId)?.name || "Select a restaurant"
+                      : "Select a restaurant"}
+                    <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <div className="p-2 border-b">
+                    <Input
+                      placeholder="Search by name or ID..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="h-8"
+                      data-testid="input-search-restaurant"
+                      autoFocus
+                    />
+                  </div>
+                  <div className="max-h-[250px] overflow-y-auto">
+                    {filteredRestaurants.length === 0 ? (
+                      <div className="py-4 text-center text-sm text-muted-foreground">
+                        No restaurants found
+                      </div>
+                    ) : (
+                      filteredRestaurants.slice(0, searchTerm ? 200 : 100).map((restaurant) => (
+                        <button
+                          key={restaurant.id}
+                          className={`w-full text-left px-3 py-2 text-sm hover-elevate cursor-pointer ${
+                            selectedRestaurantId === restaurant.id.toString() ? 'bg-accent' : ''
+                          }`}
+                          onClick={() => {
+                            setSelectedRestaurantId(restaurant.id.toString())
+                            setIsRestaurantDropdownOpen(false)
+                            setSearchTerm("")
+                          }}
+                          data-testid={`option-restaurant-${restaurant.id}`}
+                        >
+                          {restaurant.name} <span className="text-muted-foreground">(#{restaurant.id})</span>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
 
             <div className="space-y-2">
