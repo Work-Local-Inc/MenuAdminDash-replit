@@ -167,7 +167,7 @@ export function CheckoutSignInModal({
       }
 
       toast({ title: "Welcome!", description: "You've successfully signed in" })
-      onOpenChange(false)
+      handleOpenChange(false)
       if (onSuccess) onSuccess()
     } catch (error: any) {
       console.error('Verify OTP error:', error)
@@ -298,7 +298,7 @@ export function CheckoutSignInModal({
       })
 
       // Close modal and trigger success callback
-      onOpenChange(false)
+      handleOpenChange(false)
       if (onSuccess) {
         onSuccess()
       }
@@ -374,7 +374,7 @@ export function CheckoutSignInModal({
       })
 
       // Close modal and trigger success callback
-      onOpenChange(false)
+      handleOpenChange(false)
       if (onSuccess) {
         onSuccess()
       }
@@ -401,8 +401,24 @@ export function CheckoutSignInModal({
     }
   }
 
+  const handleOpenChange = useCallback((newOpen: boolean) => {
+    if (!newOpen) {
+      const active = document.activeElement as HTMLElement | null
+      if (active?.blur) active.blur()
+      const viewportMeta = document.querySelector('meta[name="viewport"]')
+      if (viewportMeta) {
+        const original = viewportMeta.getAttribute('content') || ''
+        viewportMeta.setAttribute('content', original + ', maximum-scale=1')
+        requestAnimationFrame(() => {
+          viewportMeta.setAttribute('content', original)
+        })
+      }
+    }
+    onOpenChange(newOpen)
+  }, [onOpenChange])
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent 
         className="sm:max-w-md"
         data-testid="dialog-checkout-signin"

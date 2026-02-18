@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -116,7 +116,7 @@ export function PostOrderSignupModal({
 
       // Auto-close after showing success
       setTimeout(() => {
-        onOpenChange(false)
+        handleOpenChange(false)
         if (onSuccess) {
           onSuccess()
         }
@@ -143,15 +143,31 @@ export function PostOrderSignupModal({
     }
   }
 
+  const handleOpenChange = useCallback((newOpen: boolean) => {
+    if (!newOpen) {
+      const active = document.activeElement as HTMLElement | null
+      if (active?.blur) active.blur()
+      const viewportMeta = document.querySelector('meta[name="viewport"]')
+      if (viewportMeta) {
+        const original = viewportMeta.getAttribute('content') || ''
+        viewportMeta.setAttribute('content', original + ', maximum-scale=1')
+        requestAnimationFrame(() => {
+          viewportMeta.setAttribute('content', original)
+        })
+      }
+    }
+    onOpenChange(newOpen)
+  }, [onOpenChange])
+
   const handleSkip = () => {
-    onOpenChange(false)
+    handleOpenChange(false)
     if (onSuccess) {
       onSuccess()
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent 
         className="sm:max-w-md"
         data-testid="dialog-post-order-signup"
