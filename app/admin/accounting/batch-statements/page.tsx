@@ -664,6 +664,7 @@ export default function BatchStatementsPage() {
             </span>
           </div>
         </TableCell>
+        <TableCell className="text-sm text-muted-foreground">{statement.restaurant_address || ''}</TableCell>
         <TableCell className="text-right font-mono">{formatCurrency(statement.total_paid)}</TableCell>
         <TableCell className="text-right font-mono">{formatCurrency(statement.commission)}</TableCell>
         <TableCell className="text-right font-mono">{formatCurrency(statement.weekly_commission)}</TableCell>
@@ -716,6 +717,7 @@ export default function BatchStatementsPage() {
             </div>
           </div>
         </TableCell>
+        <TableCell></TableCell>
         <TableCell className="text-right font-mono font-bold">{formatCurrency(totals.total_paid)}</TableCell>
         <TableCell className="text-right font-mono font-bold">{formatCurrency(totals.commission)}</TableCell>
         <TableCell className="text-right font-mono font-bold">{formatCurrency(totals.weekly_commission)}</TableCell>
@@ -914,6 +916,7 @@ export default function BatchStatementsPage() {
                       <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('name')}>
                         Restaurant {sortField === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
                       </TableHead>
+                      <TableHead>Address</TableHead>
                       <TableHead className="text-right cursor-pointer hover:bg-muted/50" onClick={() => handleSort('total_paid')}>
                         Total Paid {sortField === 'total_paid' && (sortDirection === 'asc' ? '↑' : '↓')}
                       </TableHead>
@@ -942,7 +945,7 @@ export default function BatchStatementsPage() {
                         ))}
                         {groupedData.ungrouped.length > 0 && groupedData.grouped.length > 0 && (
                           <TableRow>
-                            <TableCell colSpan={13} className="text-xs text-muted-foreground font-medium py-2">
+                            <TableCell colSpan={14} className="text-xs text-muted-foreground font-medium py-2">
                               Ungrouped Restaurants
                             </TableCell>
                           </TableRow>
@@ -961,6 +964,7 @@ export default function BatchStatementsPage() {
                       <TableBody>
                         <TableRow className="bg-muted/50 font-bold">
                           <TableCell>TOTALS</TableCell>
+                          <TableCell></TableCell>
                           <TableCell className="text-right font-mono">{formatCurrency(data.totals.total_paid)}</TableCell>
                           <TableCell className="text-right font-mono">{formatCurrency(data.totals.commission)}</TableCell>
                           <TableCell className="text-right font-mono">{formatCurrency(data.totals.weekly_commission)}</TableCell>
