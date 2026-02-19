@@ -159,7 +159,7 @@ export default function RestaurantStatementsPage() {
     printStyles.innerHTML = `
       @media print {
         @page {
-          margin: 0.4cm;
+          margin: 0.5cm;
         }
         * {
           -webkit-print-color-adjust: exact !important;
@@ -167,7 +167,7 @@ export default function RestaurantStatementsPage() {
           color-adjust: exact !important;
         }
         body {
-          font-size: 11px !important;
+          font-size: 12px !important;
           background: white !important;
         }
         .print-statement-container {
@@ -177,78 +177,75 @@ export default function RestaurantStatementsPage() {
         }
         .bg-red-600 {
           background-color: #dc2626 !important;
-          padding-top: 0.5rem !important;
-          padding-bottom: 0.5rem !important;
+          padding-top: 0.6rem !important;
+          padding-bottom: 0.6rem !important;
         }
         .bg-red-600 h1 {
-          font-size: 1.1rem !important;
+          font-size: 1.15rem !important;
         }
         .bg-red-600 p {
-          font-size: 0.75rem !important;
-          margin-top: 0 !important;
+          font-size: 0.8rem !important;
+          margin-top: 0.1rem !important;
         }
         .print-statement-container > div {
-          padding-left: 1rem !important;
-          padding-right: 1rem !important;
+          padding-left: 1.25rem !important;
+          padding-right: 1.25rem !important;
         }
         .print-statement-container table th,
         .print-statement-container table td {
-          padding: 0.25rem 0.5rem !important;
-          font-size: 0.7rem !important;
+          padding: 0.3rem 0.5rem !important;
+          font-size: 0.75rem !important;
         }
         .print-statement-container h2 {
-          font-size: 0.85rem !important;
-          margin-bottom: 0.25rem !important;
+          font-size: 0.9rem !important;
+          margin-bottom: 0.3rem !important;
         }
         .print-statement-container .mb-6 {
-          margin-bottom: 0.5rem !important;
+          margin-bottom: 0.6rem !important;
         }
         .print-statement-container .rounded-lg.p-4 {
-          padding: 0.5rem !important;
+          padding: 0.6rem !important;
         }
         .print-statement-container .space-y-2 > * + * {
-          margin-top: 0.15rem !important;
+          margin-top: 0.2rem !important;
         }
         .print-statement-container .p-6.text-center {
-          padding: 0.5rem !important;
+          padding: 0.6rem !important;
         }
         .print-statement-container .text-3xl {
-          font-size: 1.3rem !important;
+          font-size: 1.4rem !important;
         }
         .print-statement-container .py-6.border-t {
-          padding-top: 0.25rem !important;
-          padding-bottom: 0.25rem !important;
+          padding-top: 0.3rem !important;
+          padding-bottom: 0.3rem !important;
         }
         .print-statement-container .gap-6 {
-          gap: 0.35rem !important;
+          gap: 0.45rem !important;
         }
         .print-statement-container img {
-          height: 1.25rem !important;
+          height: 1.5rem !important;
         }
         .print-statement-container .border-b {
-          padding-top: 0.15rem !important;
-          padding-bottom: 0.15rem !important;
+          padding-top: 0.2rem !important;
+          padding-bottom: 0.2rem !important;
         }
         .print-statement-container .py-3.px-4 {
-          padding-top: 0.15rem !important;
-          padding-bottom: 0.15rem !important;
+          padding-top: 0.2rem !important;
+          padding-bottom: 0.2rem !important;
           padding-left: 0.5rem !important;
           padding-right: 0.5rem !important;
-          font-size: 0.7rem !important;
-        }
-        .print-statement-container .mb-6 + .mb-6 {
-          margin-top: 0 !important;
+          font-size: 0.75rem !important;
         }
         .print-statement-container .bg-gray-100 {
-          padding-top: 0.15rem !important;
-          padding-bottom: 0.15rem !important;
+          padding-top: 0.2rem !important;
+          padding-bottom: 0.2rem !important;
         }
         .print-statement-container .grid.grid-cols-2 {
-          gap: 0.35rem !important;
-          margin-bottom: 0.35rem !important;
+          gap: 0.45rem !important;
+          margin-bottom: 0.45rem !important;
         }
         .print-statement-container .text-xs {
-          font-size: 0.6rem !important;
+          font-size: 0.65rem !important;
         }
         .bg-green-50 {
           background-color: #f0fdf4 !important;
