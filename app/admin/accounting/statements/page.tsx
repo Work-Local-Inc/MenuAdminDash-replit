@@ -216,18 +216,39 @@ export default function RestaurantStatementsPage() {
           font-size: 1.3rem !important;
         }
         .print-statement-container .py-6.border-t {
-          padding-top: 0.35rem !important;
-          padding-bottom: 0.35rem !important;
-        }
-        .print-statement-container .gap-6 {
-          gap: 0.5rem !important;
-        }
-        .print-statement-container img {
-          height: 1.5rem !important;
-        }
-        .print-statement-container .border-b {
           padding-top: 0.25rem !important;
           padding-bottom: 0.25rem !important;
+        }
+        .print-statement-container .gap-6 {
+          gap: 0.35rem !important;
+        }
+        .print-statement-container img {
+          height: 1.25rem !important;
+        }
+        .print-statement-container .border-b {
+          padding-top: 0.15rem !important;
+          padding-bottom: 0.15rem !important;
+        }
+        .print-statement-container .py-3.px-4 {
+          padding-top: 0.15rem !important;
+          padding-bottom: 0.15rem !important;
+          padding-left: 0.5rem !important;
+          padding-right: 0.5rem !important;
+          font-size: 0.7rem !important;
+        }
+        .print-statement-container .mb-6 + .mb-6 {
+          margin-top: 0 !important;
+        }
+        .print-statement-container .bg-gray-100 {
+          padding-top: 0.15rem !important;
+          padding-bottom: 0.15rem !important;
+        }
+        .print-statement-container .grid.grid-cols-2 {
+          gap: 0.35rem !important;
+          margin-bottom: 0.35rem !important;
+        }
+        .print-statement-container .text-xs {
+          font-size: 0.6rem !important;
         }
         .bg-green-50 {
           background-color: #f0fdf4 !important;
@@ -675,10 +696,10 @@ export default function RestaurantStatementsPage() {
                   </div>
 
                   {/* Net Payment */}
-                  <div className="bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800 p-6 text-center">
-                    <p className="text-sm text-green-700 dark:text-green-400 font-medium mb-1">NET PAYMENT</p>
-                    <p className="text-3xl font-bold text-green-700 dark:text-green-400" data-testid="text-net-payment">{formatCurrency(statement.net_payable)}</p>
-                    <p className="text-xs text-green-600 dark:text-green-500 mt-2" data-testid="text-net-payment-breakdown">
+                  <div className="bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800 p-6 text-center print:p-2">
+                    <p className="text-sm text-green-700 dark:text-green-400 font-medium mb-1 print:mb-0 print:text-xs">NET PAYMENT</p>
+                    <p className="text-3xl font-bold text-green-700 dark:text-green-400 print:text-lg" data-testid="text-net-payment">{formatCurrency(statement.net_payable)}</p>
+                    <p className="text-xs text-green-600 dark:text-green-500 mt-2 print:mt-0" data-testid="text-net-payment-breakdown">
                       {statement.totals.total_unpaid > 0 ? (
                         netCharges !== 0
                           ? `${formatCurrency(statement.totals.total_unpaid)} collected - ${formatCurrency(statement.fees.total_fees)} fees ${netCharges > 0 ? `- ${formatCurrency(netCharges)} adjustments` : `+ ${formatCurrency(Math.abs(netCharges))} adjustments`}`
@@ -711,10 +732,10 @@ export default function RestaurantStatementsPage() {
                 </div>
 
                 {/* Footer */}
-                <div className="bg-gray-50 dark:bg-gray-800 px-6 py-6 border-t border-gray-200 dark:border-gray-700 text-center print:py-2">
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Allow three business days for payment</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Payments made under "Local Media Concepts Inc."</p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">HST: {statement.menu_hst_number}</p>
+                <div className="bg-gray-50 dark:bg-gray-800 px-6 py-6 border-t border-gray-200 dark:border-gray-700 text-center print:py-1 print:px-2">
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 print:text-xs">Allow three business days for payment</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 print:mt-0">Payments made under "Local Media Concepts Inc."</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-3 print:mt-0">HST: {statement.menu_hst_number}</p>
                   <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 print:hidden">
                     <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Powered by Menu.ca</p>
                     <p className="text-xs text-gray-400 dark:text-gray-500">Connecting you with local restaurants</p>
