@@ -162,7 +162,9 @@ export default function CommissionReportPage() {
     let filtered = data.restaurants.filter(r => {
       if (searchTerm) {
         const search = searchTerm.toLowerCase()
-        if (!r.restaurant_name.toLowerCase().includes(search)) {
+        if (!r.restaurant_name.toLowerCase().includes(search) &&
+            !r.restaurant_address?.toLowerCase().includes(search) &&
+            !r.restaurant_id.toString().includes(search)) {
           return false
         }
       }

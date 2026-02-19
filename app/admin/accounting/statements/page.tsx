@@ -144,10 +144,12 @@ export default function RestaurantStatementsPage() {
     enabled: !!selectedRestaurantId,
   })
 
-  const filteredRestaurants = restaurants.filter((r) =>
-    r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    r.id.toString().includes(searchTerm)
-  )
+  const filteredRestaurants = restaurants.filter((r) => {
+    const search = searchTerm.toLowerCase()
+    return r.name.toLowerCase().includes(search) ||
+      r.id.toString().includes(search) ||
+      (r.address && r.address.toLowerCase().includes(search))
+  })
 
   const formatCurrency = (amount: number) => {
     return `$${amount.toFixed(2)}`
@@ -321,7 +323,10 @@ export default function RestaurantStatementsPage() {
                     data-testid="select-restaurant"
                   >
                     {selectedRestaurantId
-                      ? restaurants.find(r => r.id.toString() === selectedRestaurantId)?.name || "Select a restaurant"
+                      ? (() => {
+                          const r = restaurants.find(r => r.id.toString() === selectedRestaurantId)
+                          return r ? (r.address ? `${r.name} - ${r.address}` : r.name) : "Select a restaurant"
+                        })()
                       : "Select a restaurant"}
                     <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
@@ -360,7 +365,7 @@ export default function RestaurantStatementsPage() {
                           }}
                           data-testid={`option-restaurant-${restaurant.id}`}
                         >
-                          {restaurant.name} <span className="text-muted-foreground">(#{restaurant.id})</span>
+                          {restaurant.name} {restaurant.address && <span className="text-muted-foreground">- {restaurant.address}</span>} <span className="text-muted-foreground">(#{restaurant.id})</span>
                         </button>
                       ))
                     )}

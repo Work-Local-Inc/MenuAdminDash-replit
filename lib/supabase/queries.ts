@@ -12,7 +12,7 @@ export async function getRestaurants(filters?: {
   try {
     let query = supabase
       .from('restaurants')
-      .select('*, restaurant_locations!restaurant_locations_restaurant_id_fkey(city_id, province_id, is_primary, cities(name))')
+      .select('*, restaurant_locations!restaurant_locations_restaurant_id_fkey(city_id, province_id, is_primary, street_address, cities(name))')
       .order('id', { ascending: false })
     
     if (filters?.status && filters.status !== 'All') {
@@ -45,7 +45,8 @@ export async function getRestaurants(filters?: {
       return {
         ...restaurant,
         city: primaryLocation?.cities?.name || null,
-        province: null, // Simplified for now - can fetch separately if needed
+        address: primaryLocation?.street_address || null,
+        province: null,
         restaurant_locations: undefined
       }
     })

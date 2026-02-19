@@ -101,6 +101,17 @@ export async function GET(request: NextRequest) {
 
     const contact = (contactData || {}) as RestaurantContact
 
+    const { data: locationData } = await (supabase as any)
+      .from('restaurant_locations')
+      .select('street_address, city, postal_code')
+      .eq('restaurant_id', restaurantId)
+      .eq('is_active', true)
+      .order('is_primary', { ascending: false })
+      .limit(1)
+      .single()
+
+    const location = (locationData || {}) as { street_address?: string; city?: string; postal_code?: string }
+
     const { data: ordersData, error: ordersError } = await supabase
       .from('orders')
       .select(`
@@ -247,9 +258,9 @@ export async function GET(request: NextRequest) {
         contact_name: contact.first_name && contact.last_name 
           ? `${contact.first_name} ${contact.last_name}` 
           : contact.first_name || '',
-        address: contact.address || '',
-        city: contact.city || '',
-        postal_code: contact.postal_code || '',
+        address: contact.address || location.street_address || '',
+        city: contact.city || location.city || '',
+        postal_code: contact.postal_code || location.postal_code || '',
         phone: contact.phone || '',
         hst_number: null,
       },
