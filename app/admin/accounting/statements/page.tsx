@@ -502,12 +502,21 @@ export default function RestaurantStatementsPage() {
                       {statement.restaurant.contact_name && (
                         <p className="text-sm text-gray-600 dark:text-gray-300">{statement.restaurant.contact_name}</p>
                       )}
-                      <p className="text-sm text-gray-600 dark:text-gray-300">{statement.restaurant.address}</p>
-                      {(statement.restaurant.city || statement.restaurant.postal_code) && (
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                          {statement.restaurant.city}{statement.restaurant.city && statement.restaurant.postal_code ? ', ' : ''}{statement.restaurant.postal_code}
-                        </p>
-                      )}
+                      {(() => {
+                        const displayAddress = statement.restaurant.address || restaurants.find(r => r.id.toString() === selectedRestaurantId)?.address || ''
+                        const displayCity = statement.restaurant.city || ''
+                        const displayPostal = statement.restaurant.postal_code || ''
+                        return (
+                          <>
+                            {displayAddress && <p className="text-sm text-gray-600 dark:text-gray-300">{displayAddress}</p>}
+                            {(displayCity || displayPostal) && (
+                              <p className="text-sm text-gray-600 dark:text-gray-300">
+                                {displayCity}{displayCity && displayPostal ? ', ' : ''}{displayPostal}
+                              </p>
+                            )}
+                          </>
+                        )
+                      })()}
                     </div>
                   </div>
 
