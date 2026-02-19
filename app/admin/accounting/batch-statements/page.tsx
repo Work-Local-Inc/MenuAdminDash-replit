@@ -513,8 +513,7 @@ export default function BatchStatementsPage() {
       'Weekly Commission',
       'Trans Fee',
       'Bank Fee',
-      'Charges',
-      'Credits',
+      'Adjustments',
       'Delivery Commission',
       'Delivery Tips',
       'HST',
@@ -543,8 +542,7 @@ export default function BatchStatementsPage() {
         s.weekly_commission.toFixed(2),
         s.transaction_fees.toFixed(2),
         s.bank_fees.toFixed(2),
-        (s.charges || 0).toFixed(2),
-        (s.credits || 0).toFixed(2),
+        ((s.charges || 0) - (s.credits || 0)).toFixed(2),
         s.delivery_commission.toFixed(2),
         s.delivery_tips.toFixed(2),
         s.hst.toFixed(2),
@@ -568,8 +566,7 @@ export default function BatchStatementsPage() {
         totals.weekly_commission.toFixed(2),
         totals.transaction_fees.toFixed(2),
         totals.bank_fees.toFixed(2),
-        (totals.charges || 0).toFixed(2),
-        (totals.credits || 0).toFixed(2),
+        ((totals.charges || 0) - (totals.credits || 0)).toFixed(2),
         totals.delivery_commission.toFixed(2),
         totals.delivery_tips.toFixed(2),
         totals.hst.toFixed(2),
@@ -611,8 +608,7 @@ export default function BatchStatementsPage() {
       data.totals.weekly_commission.toFixed(2),
       data.totals.transaction_fees.toFixed(2),
       data.totals.bank_fees.toFixed(2),
-      (data.totals.charges || 0).toFixed(2),
-      (data.totals.credits || 0).toFixed(2),
+      ((data.totals.charges || 0) - (data.totals.credits || 0)).toFixed(2),
       data.totals.delivery_commission.toFixed(2),
       data.totals.delivery_tips.toFixed(2),
       data.totals.hst.toFixed(2),
@@ -670,8 +666,7 @@ export default function BatchStatementsPage() {
         <TableCell className="text-right font-mono">{formatCurrency(statement.weekly_commission)}</TableCell>
         <TableCell className="text-right font-mono">{formatCurrency(statement.transaction_fees)}</TableCell>
         <TableCell className="text-right font-mono">{formatCurrency(statement.bank_fees)}</TableCell>
-        <TableCell className="text-right font-mono">{formatCurrency(statement.charges || 0)}</TableCell>
-        <TableCell className="text-right font-mono">{formatCurrency(statement.credits || 0)}</TableCell>
+        <TableCell className="text-right font-mono">{formatCurrency((statement.charges || 0) - (statement.credits || 0))}</TableCell>
         <TableCell className="text-right font-mono">{formatCurrency(statement.delivery_commission)}</TableCell>
         <TableCell className="text-right font-mono">{formatCurrency(statement.delivery_tips)}</TableCell>
         <TableCell className="text-right font-mono">{formatCurrency(statement.hst)}</TableCell>
@@ -723,8 +718,7 @@ export default function BatchStatementsPage() {
         <TableCell className="text-right font-mono font-bold">{formatCurrency(totals.weekly_commission)}</TableCell>
         <TableCell className="text-right font-mono font-bold">{formatCurrency(totals.transaction_fees)}</TableCell>
         <TableCell className="text-right font-mono font-bold">{formatCurrency(totals.bank_fees)}</TableCell>
-        <TableCell className="text-right font-mono font-bold">{formatCurrency(totals.charges || 0)}</TableCell>
-        <TableCell className="text-right font-mono font-bold">{formatCurrency(totals.credits || 0)}</TableCell>
+        <TableCell className="text-right font-mono font-bold">{formatCurrency((totals.charges || 0) - (totals.credits || 0))}</TableCell>
         <TableCell className="text-right font-mono font-bold">{formatCurrency(totals.delivery_commission)}</TableCell>
         <TableCell className="text-right font-mono font-bold">{formatCurrency(totals.delivery_tips)}</TableCell>
         <TableCell className="text-right font-mono font-bold">{formatCurrency(totals.hst)}</TableCell>
@@ -924,8 +918,7 @@ export default function BatchStatementsPage() {
                       <TableHead className="text-right">Weekly</TableHead>
                       <TableHead className="text-right">Trans Fee</TableHead>
                       <TableHead className="text-right">Bank Fee</TableHead>
-                      <TableHead className="text-right">Charges</TableHead>
-                      <TableHead className="text-right">Credits</TableHead>
+                      <TableHead className="text-right">Adjustments</TableHead>
                       <TableHead className="text-right">Del. Comm.</TableHead>
                       <TableHead className="text-right">Tips</TableHead>
                       <TableHead className="text-right">HST</TableHead>
@@ -945,7 +938,7 @@ export default function BatchStatementsPage() {
                         ))}
                         {groupedData.ungrouped.length > 0 && groupedData.grouped.length > 0 && (
                           <TableRow>
-                            <TableCell colSpan={14} className="text-xs text-muted-foreground font-medium py-2">
+                            <TableCell colSpan={13} className="text-xs text-muted-foreground font-medium py-2">
                               Ungrouped Restaurants
                             </TableCell>
                           </TableRow>
@@ -970,8 +963,7 @@ export default function BatchStatementsPage() {
                           <TableCell className="text-right font-mono">{formatCurrency(data.totals.weekly_commission)}</TableCell>
                           <TableCell className="text-right font-mono">{formatCurrency(data.totals.transaction_fees)}</TableCell>
                           <TableCell className="text-right font-mono">{formatCurrency(data.totals.bank_fees)}</TableCell>
-                          <TableCell className="text-right font-mono">{formatCurrency(data.totals.charges || 0)}</TableCell>
-                          <TableCell className="text-right font-mono">{formatCurrency(data.totals.credits || 0)}</TableCell>
+                          <TableCell className="text-right font-mono">{formatCurrency((data.totals.charges || 0) - (data.totals.credits || 0))}</TableCell>
                           <TableCell className="text-right font-mono">{formatCurrency(data.totals.delivery_commission)}</TableCell>
                           <TableCell className="text-right font-mono">{formatCurrency(data.totals.delivery_tips)}</TableCell>
                           <TableCell className="text-right font-mono">{formatCurrency(data.totals.hst)}</TableCell>
