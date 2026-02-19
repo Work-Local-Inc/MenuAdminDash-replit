@@ -216,67 +216,25 @@ export default function CommissionReportPage() {
   const downloadCSV = () => {
     if (!data?.restaurants) return
 
-    const headers = [
-      'ID',
-      'Restaurant Name',
-      'Address',
-      'This Week',
-      'Prev Week',
-      'Carry Value',
-      'Net Paid',
-      'Next Week',
-      'Commission',
-      'Weekly Commission',
-      'Transaction Fees',
-      'Bank Fees',
-      'Delivery Commission',
-      'HST',
-    ]
+    const titleRow = `"Net paid from ${weekStartStr} to ${weekEndStr}"`
+    const headers = ['ID', 'Name', 'Address', 'Amount Payable']
 
     const rows = filteredAndSorted.map(r => [
       r.restaurant_id,
       `"${r.restaurant_name.replace(/"/g, '""')}"`,
       `"${(r.restaurant_address || '').replace(/"/g, '""')}"`,
-      r.this_week.toFixed(2),
-      r.prev_week.toFixed(2),
-      r.carry_value.toFixed(2),
-      r.net_paid.toFixed(2),
       r.next_week.toFixed(2),
-      (r.commission || 0).toFixed(2),
-      (r.weekly_commission || 0).toFixed(2),
-      (r.transaction_fees || 0).toFixed(2),
-      (r.bank_fees || 0).toFixed(2),
-      (r.delivery_commission || 0).toFixed(2),
-      (r.hst || 0).toFixed(2),
     ].join(','))
 
-    const feeTotals = filteredAndSorted.reduce((acc, r) => ({
-      commission: acc.commission + (r.commission || 0),
-      weekly_commission: acc.weekly_commission + (r.weekly_commission || 0),
-      transaction_fees: acc.transaction_fees + (r.transaction_fees || 0),
-      bank_fees: acc.bank_fees + (r.bank_fees || 0),
-      delivery_commission: acc.delivery_commission + (r.delivery_commission || 0),
-      hst: acc.hst + (r.hst || 0),
-    }), { commission: 0, weekly_commission: 0, transaction_fees: 0, bank_fees: 0, delivery_commission: 0, hst: 0 })
-
+    const total = filteredAndSorted.reduce((sum, r) => sum + r.next_week, 0)
     const totalsRow = [
       '',
       '"TOTALS"',
       '',
-      data.totals.this_week.toFixed(2),
-      data.totals.prev_week.toFixed(2),
-      data.totals.carry_value.toFixed(2),
-      data.totals.net_paid.toFixed(2),
-      data.totals.next_week.toFixed(2),
-      feeTotals.commission.toFixed(2),
-      feeTotals.weekly_commission.toFixed(2),
-      feeTotals.transaction_fees.toFixed(2),
-      feeTotals.bank_fees.toFixed(2),
-      feeTotals.delivery_commission.toFixed(2),
-      feeTotals.hst.toFixed(2),
+      total.toFixed(2),
     ].join(',')
 
-    const csvContent = [headers.join(','), ...rows, '', totalsRow].join('\n')
+    const csvContent = [titleRow, headers.join(','), ...rows, '', totalsRow].join('\n')
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
     const link = document.createElement('a')

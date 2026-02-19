@@ -158,12 +158,16 @@ export default function RestaurantStatementsPage() {
     printStyles.id = 'print-styles'
     printStyles.innerHTML = `
       @media print {
+        @page {
+          margin: 0.4cm;
+        }
         * {
           -webkit-print-color-adjust: exact !important;
           print-color-adjust: exact !important;
           color-adjust: exact !important;
         }
         body {
+          font-size: 11px !important;
           background: white !important;
         }
         .print-statement-container {
@@ -173,6 +177,57 @@ export default function RestaurantStatementsPage() {
         }
         .bg-red-600 {
           background-color: #dc2626 !important;
+          padding-top: 0.5rem !important;
+          padding-bottom: 0.5rem !important;
+        }
+        .bg-red-600 h1 {
+          font-size: 1.1rem !important;
+        }
+        .bg-red-600 p {
+          font-size: 0.75rem !important;
+          margin-top: 0 !important;
+        }
+        .print-statement-container > div {
+          padding-left: 1rem !important;
+          padding-right: 1rem !important;
+        }
+        .print-statement-container table th,
+        .print-statement-container table td {
+          padding: 0.25rem 0.5rem !important;
+          font-size: 0.7rem !important;
+        }
+        .print-statement-container h2 {
+          font-size: 0.85rem !important;
+          margin-bottom: 0.25rem !important;
+        }
+        .print-statement-container .mb-6 {
+          margin-bottom: 0.5rem !important;
+        }
+        .print-statement-container .rounded-lg.p-4 {
+          padding: 0.5rem !important;
+        }
+        .print-statement-container .space-y-2 > * + * {
+          margin-top: 0.15rem !important;
+        }
+        .print-statement-container .p-6.text-center {
+          padding: 0.5rem !important;
+        }
+        .print-statement-container .text-3xl {
+          font-size: 1.3rem !important;
+        }
+        .print-statement-container .py-6.border-t {
+          padding-top: 0.35rem !important;
+          padding-bottom: 0.35rem !important;
+        }
+        .print-statement-container .gap-6 {
+          gap: 0.5rem !important;
+        }
+        .print-statement-container img {
+          height: 1.5rem !important;
+        }
+        .print-statement-container .border-b {
+          padding-top: 0.25rem !important;
+          padding-bottom: 0.25rem !important;
         }
         .bg-green-50 {
           background-color: #f0fdf4 !important;
@@ -265,12 +320,16 @@ export default function RestaurantStatementsPage() {
                     />
                   </div>
                   <div className="max-h-[250px] overflow-y-auto">
-                    {filteredRestaurants.length === 0 ? (
+                    {!searchTerm ? (
+                      <div className="py-4 text-center text-sm text-muted-foreground">
+                        Type to search restaurants...
+                      </div>
+                    ) : filteredRestaurants.length === 0 ? (
                       <div className="py-4 text-center text-sm text-muted-foreground">
                         No restaurants found
                       </div>
                     ) : (
-                      filteredRestaurants.slice(0, searchTerm ? 200 : 100).map((restaurant) => (
+                      filteredRestaurants.slice(0, 500).map((restaurant) => (
                         <button
                           key={restaurant.id}
                           className={`w-full text-left px-3 py-2 text-sm hover-elevate cursor-pointer ${
@@ -381,22 +440,22 @@ export default function RestaurantStatementsPage() {
             ) : statement ? (
               <div className="max-w-3xl mx-auto bg-white dark:bg-gray-900 rounded-lg overflow-hidden shadow-sm print:shadow-none print:max-w-none print-statement-container" id="printable-statement">
                 {/* Header with Logo */}
-                <div className="bg-white dark:bg-gray-900 px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-center print:py-2">
+                <div className="bg-white dark:bg-gray-900 px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-center print:py-1">
                   <img 
                     src="https://nthpbtdjhhnwfxqsxbvy.supabase.co/storage/v1/object/public/email-assets/logo.png" 
                     alt="Menu.ca" 
-                    className="h-10 print:h-8"
+                    className="h-10 print:h-6"
                   />
                 </div>
 
                 {/* Hero Section */}
-                <div className="bg-red-600 px-6 py-8 text-center print:py-4">
-                  <h1 className="text-2xl font-bold text-white print:text-xl">Statement</h1>
+                <div className="bg-red-600 px-6 py-8 text-center print:py-2">
+                  <h1 className="text-2xl font-bold text-white print:text-base">Statement</h1>
                   <p className="text-red-100 mt-1">Payment Summary for {statement.restaurant.name}</p>
                 </div>
 
                 {/* Statement Info */}
-                <div className="px-6 py-6 print:py-4">
+                <div className="px-6 py-6 print:py-2">
                   <div className="grid grid-cols-2 gap-6 mb-6">
                     <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
                       <div className="space-y-2 text-sm">
@@ -662,7 +721,7 @@ export default function RestaurantStatementsPage() {
                 </div>
 
                 {/* Footer */}
-                <div className="bg-gray-50 dark:bg-gray-800 px-6 py-6 border-t border-gray-200 dark:border-gray-700 text-center print:py-4">
+                <div className="bg-gray-50 dark:bg-gray-800 px-6 py-6 border-t border-gray-200 dark:border-gray-700 text-center print:py-2">
                   <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Allow three business days for payment</p>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Payments made under "Local Media Concepts Inc."</p>
                   <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">HST: {statement.menu_hst_number}</p>
