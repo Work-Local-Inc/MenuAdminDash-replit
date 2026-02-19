@@ -549,44 +549,42 @@ export default function RestaurantStatementsPage() {
                   </div>
 
                   {/* Credits & Charges */}
-                  {hasAdjustments && (
-                    <div className="mb-6" data-testid="section-credits-charges">
-                      <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                        <span className="w-1 h-5 bg-red-600 rounded-full"></span>
-                        Credits and Charges
-                      </h2>
-                      <div className="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-                        <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                          <div className="flex justify-between py-3 px-4 bg-gray-100 dark:bg-gray-700">
-                            <span className="font-semibold text-gray-700 dark:text-gray-300">Description</span>
-                            <span className="font-semibold text-gray-700 dark:text-gray-300">Amount</span>
-                          </div>
-                          {statement.adjustments.credits.map((item) => (
-                            <div key={`credit-${item.id}`} className="flex justify-between py-3 px-4" data-testid={`row-adjustment-${item.id}`}>
-                              <span className="text-gray-600 dark:text-gray-300">
-                                {formatCategoryLabel(item.category)} — {item.description}
-                              </span>
-                              <span className="font-medium text-green-600 dark:text-green-400">-{formatCurrency(item.amount)}</span>
-                            </div>
-                          ))}
-                          {statement.adjustments.charges.map((item) => (
-                            <div key={`charge-${item.id}`} className="flex justify-between py-3 px-4" data-testid={`row-adjustment-${item.id}`}>
-                              <span className="text-gray-600 dark:text-gray-300">
-                                {formatCategoryLabel(item.category)} — {item.description}
-                              </span>
-                              <span className="font-medium text-red-600 dark:text-red-400">{formatCurrency(item.amount)}</span>
-                            </div>
-                          ))}
-                          <div className="flex justify-between py-3 px-4 bg-gray-100 dark:bg-gray-700 font-semibold">
-                            <span>Net Charges</span>
-                            <span className={netCharges <= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}>
-                              {netCharges < 0 ? `-${formatCurrency(Math.abs(netCharges))}` : formatCurrency(netCharges)}
+                  <div className="mb-6" data-testid="section-credits-charges">
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                      <span className="w-1 h-5 bg-red-600 rounded-full"></span>
+                      Credits and Charges
+                    </h2>
+                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                      <div className="divide-y divide-gray-200 dark:divide-gray-700">
+                        <div className="flex justify-between py-3 px-4 bg-gray-100 dark:bg-gray-700">
+                          <span className="font-semibold text-gray-700 dark:text-gray-300">Description</span>
+                          <span className="font-semibold text-gray-700 dark:text-gray-300">Amount</span>
+                        </div>
+                        {hasAdjustments && statement.adjustments.credits.map((item) => (
+                          <div key={`credit-${item.id}`} className="flex justify-between py-3 px-4" data-testid={`row-adjustment-${item.id}`}>
+                            <span className="text-gray-600 dark:text-gray-300">
+                              {formatCategoryLabel(item.category)} — {item.description}
                             </span>
+                            <span className="font-medium text-green-600 dark:text-green-400">-{formatCurrency(item.amount)}</span>
                           </div>
+                        ))}
+                        {hasAdjustments && statement.adjustments.charges.map((item) => (
+                          <div key={`charge-${item.id}`} className="flex justify-between py-3 px-4" data-testid={`row-adjustment-${item.id}`}>
+                            <span className="text-gray-600 dark:text-gray-300">
+                              {formatCategoryLabel(item.category)} — {item.description}
+                            </span>
+                            <span className="font-medium text-red-600 dark:text-red-400">{formatCurrency(item.amount)}</span>
+                          </div>
+                        ))}
+                        <div className="flex justify-between py-3 px-4 bg-gray-100 dark:bg-gray-700 font-semibold">
+                          <span>Total Owed</span>
+                          <span className={netCharges <= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}>
+                            {formatCurrency(Math.abs(netCharges))}
+                          </span>
                         </div>
                       </div>
                     </div>
-                  )}
+                  </div>
 
                   {/* Fees & Deductions */}
                   <div className="mb-6">
@@ -652,12 +650,7 @@ export default function RestaurantStatementsPage() {
                             <th className="text-right py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Commissions</th>
                             <th className="text-right py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Delivery</th>
                             <th className="text-right py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">HST</th>
-                            {hasAdjustments && (
-                              <>
-                                <th className="text-right py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Charges</th>
-                                <th className="text-right py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Credits</th>
-                              </>
-                            )}
+                            <th className="text-right py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Adjustments</th>
                             <th className="text-right py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Net Payment</th>
                           </tr>
                         </thead>
@@ -669,12 +662,9 @@ export default function RestaurantStatementsPage() {
                             </td>
                             <td className="text-right py-3 px-4 font-mono" data-testid="text-acct-delivery">{formatCurrency(statement.totals.delivery_fees)}</td>
                             <td className="text-right py-3 px-4 font-mono text-red-600" data-testid="text-acct-hst">-{formatCurrency(statement.fees.hst)}</td>
-                            {hasAdjustments && (
-                              <>
-                                <td className="text-right py-3 px-4 font-mono text-red-600" data-testid="text-acct-charges">-{formatCurrency(statement.adjustments.total_charges)}</td>
-                                <td className="text-right py-3 px-4 font-mono text-green-600" data-testid="text-acct-credits">+{formatCurrency(statement.adjustments.total_credits)}</td>
-                              </>
-                            )}
+                            <td className={`text-right py-3 px-4 font-mono ${netCharges > 0 ? 'text-red-600' : netCharges < 0 ? 'text-green-600' : ''}`} data-testid="text-acct-adjustments">
+                              {netCharges > 0 ? `-${formatCurrency(netCharges)}` : netCharges < 0 ? `+${formatCurrency(Math.abs(netCharges))}` : formatCurrency(0)}
+                            </td>
                             <td className={`text-right py-3 px-4 font-mono font-bold ${statement.net_payable >= 0 ? 'text-green-600' : 'text-red-600'}`} data-testid="text-acct-net">
                               {formatCurrency(statement.net_payable)}
                             </td>
@@ -690,8 +680,8 @@ export default function RestaurantStatementsPage() {
                     <p className="text-3xl font-bold text-green-700 dark:text-green-400" data-testid="text-net-payment">{formatCurrency(statement.net_payable)}</p>
                     <p className="text-xs text-green-600 dark:text-green-500 mt-2" data-testid="text-net-payment-breakdown">
                       {statement.totals.total_unpaid > 0 ? (
-                        hasAdjustments
-                          ? `${formatCurrency(statement.totals.total_unpaid)} collected - ${formatCurrency(statement.fees.total_fees)} fees - ${formatCurrency(statement.adjustments.total_charges)} charges + ${formatCurrency(statement.adjustments.total_credits)} credits`
+                        netCharges !== 0
+                          ? `${formatCurrency(statement.totals.total_unpaid)} collected - ${formatCurrency(statement.fees.total_fees)} fees ${netCharges > 0 ? `- ${formatCurrency(netCharges)} adjustments` : `+ ${formatCurrency(Math.abs(netCharges))} adjustments`}`
                           : `${formatCurrency(statement.totals.total_unpaid)} collected - ${formatCurrency(statement.fees.total_fees)} fees`
                       ) : 'No credit card orders this period'}
                     </p>
