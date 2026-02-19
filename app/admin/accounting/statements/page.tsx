@@ -725,7 +725,7 @@ export default function RestaurantStatementsPage() {
                   <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Allow three business days for payment</p>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Payments made under "Local Media Concepts Inc."</p>
                   <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">HST: {statement.menu_hst_number}</p>
-                  <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 print:hidden">
                     <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Powered by Menu.ca</p>
                     <p className="text-xs text-gray-400 dark:text-gray-500">Connecting you with local restaurants</p>
                   </div>
