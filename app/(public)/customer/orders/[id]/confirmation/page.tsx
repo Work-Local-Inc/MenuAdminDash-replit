@@ -488,10 +488,10 @@ export default function OrderConfirmationPage() {
                       </p>
                     )}
                     {order.restaurant.phone && (
-                      <p className="text-sm text-muted-foreground flex items-center gap-2 mt-2">
+                      <a href={`tel:${order.restaurant.phone}`} className="text-sm text-muted-foreground flex items-center gap-2 mt-2 hover:underline" data-testid="link-restaurant-phone">
                         <Phone className="w-4 h-4" />
                         {order.restaurant.phone}
-                      </p>
+                      </a>
                     )}
                   </CardContent>
                 </Card>
@@ -509,10 +509,10 @@ export default function OrderConfirmationPage() {
                         {order.restaurant.name}
                       </p>
                       {order.restaurant.phone && (
-                        <p className="text-sm text-muted-foreground flex items-center gap-2">
+                        <a href={`tel:${order.restaurant.phone}`} className="text-sm text-muted-foreground flex items-center gap-2 hover:underline" data-testid="link-restaurant-phone">
                           <Phone className="w-4 h-4" />
                           {order.restaurant.phone}
-                        </p>
+                        </a>
                       )}
                       {order.restaurant.address && (
                         <p className="text-sm text-muted-foreground">
@@ -637,15 +637,15 @@ export default function OrderConfirmationPage() {
                   .join('\n')
                   .trim()
                 return cleaned ? (
-                  <Card data-testid="card-order-notes" className="border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700">
+                  <Card data-testid="card-order-notes" className="bg-muted/50">
                     <CardHeader className="pb-2">
-                      <CardTitle className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
+                      <CardTitle className="flex items-center gap-2">
                         <MessageSquare className="w-5 h-5" />
                         Your Order Notes
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-sm text-amber-700 dark:text-amber-300" data-testid="text-order-notes">
+                      <p className="text-sm text-muted-foreground" data-testid="text-order-notes">
                         {cleaned}
                       </p>
                     </CardContent>
@@ -693,15 +693,8 @@ export default function OrderConfirmationPage() {
                     <span>{isCashPayment ? 'Total Due' : 'Total Paid'}</span>
                     <span data-testid="text-total">${parseFloat(order.total_amount).toFixed(2)}</span>
                   </div>
-                  <div className="pt-2">
-                    {isCashPayment ? (
-                      <Badge 
-                        variant="secondary" 
-                        className="w-full justify-center no-default-hover-elevate no-default-active-elevate bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200"
-                      >
-                        Payment Pending - {getPaymentMethodLabel(order.payment_method)}
-                      </Badge>
-                    ) : (
+                  {!isCashPayment && (
+                    <div className="pt-2">
                       <Badge 
                         variant="default" 
                         className="w-full justify-center no-default-hover-elevate no-default-active-elevate"
@@ -709,8 +702,8 @@ export default function OrderConfirmationPage() {
                       >
                         Payment Confirmed
                       </Badge>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
