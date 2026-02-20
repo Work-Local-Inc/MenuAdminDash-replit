@@ -360,29 +360,39 @@ export default function OrderConfirmationPage() {
           {/* Pay on Delivery/Pickup Banner for non-card payments */}
           {isCashPayment && (
             <Card 
-              className="mb-6 border-2 border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700"
+              className={`mb-6 border-2 ${!brandColor ? 'border-primary/20' : ''}`}
+              style={brandBorderStyle}
               data-testid="card-payment-due"
             >
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-full bg-amber-200 dark:bg-amber-900 flex items-center justify-center shrink-0">
-                    <Banknote className="w-6 h-6 text-amber-700 dark:text-amber-300" />
+                  <div 
+                    className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${!brandColor ? 'bg-primary/10' : ''}`}
+                    style={brandIconStyle}
+                  >
+                    <Banknote className={`w-6 h-6 ${!brandColor ? 'text-primary' : ''}`} style={brandIconTextStyle} />
                   </div>
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <h3 className="text-lg font-semibold text-amber-800 dark:text-amber-200">
+                    <div className="flex items-center gap-2 flex-wrap mb-2">
+                      <h3 className="text-lg font-semibold">
                         Payment Due {isPickup ? 'at Pickup' : 'on Delivery'}
                       </h3>
-                      <Badge className="bg-amber-200 text-amber-800 dark:bg-amber-800 dark:text-amber-200 no-default-hover-elevate">
+                      <Badge 
+                        variant="secondary"
+                        className="no-default-hover-elevate"
+                      >
                         {getPaymentMethodLabel(order.payment_method)}
                       </Badge>
                     </div>
-                    <p className="text-amber-700 dark:text-amber-300 mb-3">
+                    <p className="text-muted-foreground mb-3">
                       {getPaymentInstructions(order.payment_method)}
                     </p>
-                    <div className="flex items-center gap-2 bg-amber-100 dark:bg-amber-900/50 rounded-md px-4 py-3">
-                      <span className="text-sm text-amber-700 dark:text-amber-300">Amount to pay:</span>
-                      <span className="text-xl font-bold text-amber-800 dark:text-amber-200">
+                    <div 
+                      className={`flex items-center gap-2 rounded-md px-4 py-3 ${!brandColor ? 'bg-primary/5' : ''}`}
+                      style={brandColor ? { backgroundColor: `${brandColor}10` } : undefined}
+                    >
+                      <span className="text-sm text-muted-foreground">Amount to pay:</span>
+                      <span className="text-xl font-bold">
                         ${parseFloat(order.total_amount).toFixed(2)}
                       </span>
                     </div>
