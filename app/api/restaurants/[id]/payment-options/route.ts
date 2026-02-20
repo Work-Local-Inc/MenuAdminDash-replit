@@ -41,6 +41,7 @@ export async function GET(
     const supabase = createAdminClient() as any
     
     const { data, error } = await supabase
+      .schema('menuca_v3')
       .from('restaurant_payment_options')
       .select('*')
       .eq('restaurant_id', params.id)
@@ -56,10 +57,13 @@ export async function GET(
     const transformedData = (data || []).map((row: any) => ({
       id: row.id,
       restaurant_id: row.restaurant_id,
-      payment_type: row.payment_method,
-      enabled: row.is_enabled,
-      label_en: row.english_label,
-      label_fr: row.french_label,
+      payment_type: row.payment_type,
+      enabled: row.enabled,
+      applies_to: row.applies_to,
+      label_en: row.label_en,
+      label_fr: row.label_fr,
+      instructions_en: row.instructions_en,
+      instructions_fr: row.instructions_fr,
       display_order: row.display_order,
     }))
 
@@ -92,13 +96,14 @@ export async function POST(
     const validatedData = paymentOptionSchema.parse(body)
 
     const { data, error } = await supabase
+      .schema('menuca_v3')
       .from('restaurant_payment_options')
       .insert({
         restaurant_id: parseInt(params.id),
-        payment_method: validatedData.payment_type,
-        is_enabled: validatedData.enabled,
-        english_label: validatedData.label_en || null,
-        french_label: validatedData.label_fr || null,
+        payment_type: validatedData.payment_type,
+        enabled: validatedData.enabled,
+        label_en: validatedData.label_en || null,
+        label_fr: validatedData.label_fr || null,
         display_order: validatedData.display_order,
       })
       .select()
@@ -109,10 +114,10 @@ export async function POST(
     return NextResponse.json({
       id: data.id,
       restaurant_id: data.restaurant_id,
-      payment_type: data.payment_method,
-      enabled: data.is_enabled,
-      label_en: data.english_label,
-      label_fr: data.french_label,
+      payment_type: data.payment_type,
+      enabled: data.enabled,
+      label_en: data.label_en,
+      label_fr: data.label_fr,
       display_order: data.display_order,
     })
   } catch (error: any) {
@@ -150,17 +155,18 @@ export async function PUT(
 
     const upsertData = validatedData.map((option, index) => ({
       restaurant_id: restaurantId,
-      payment_method: option.payment_type,
-      is_enabled: option.enabled,
-      english_label: option.label_en || null,
-      french_label: option.label_fr || null,
+      payment_type: option.payment_type,
+      enabled: option.enabled,
+      label_en: option.label_en || null,
+      label_fr: option.label_fr || null,
       display_order: option.display_order ?? index,
     }))
 
     const { data, error } = await supabase
+      .schema('menuca_v3')
       .from('restaurant_payment_options')
       .upsert(upsertData, {
-        onConflict: 'restaurant_id,payment_method',
+        onConflict: 'restaurant_id,payment_type',
         ignoreDuplicates: false,
       })
       .select()
@@ -170,10 +176,13 @@ export async function PUT(
     const transformedData = (data || []).map((row: any) => ({
       id: row.id,
       restaurant_id: row.restaurant_id,
-      payment_type: row.payment_method,
-      enabled: row.is_enabled,
-      label_en: row.english_label,
-      label_fr: row.french_label,
+      payment_type: row.payment_type,
+      enabled: row.enabled,
+      applies_to: row.applies_to,
+      label_en: row.label_en,
+      label_fr: row.label_fr,
+      instructions_en: row.instructions_en,
+      instructions_fr: row.instructions_fr,
       display_order: row.display_order,
     }))
 
