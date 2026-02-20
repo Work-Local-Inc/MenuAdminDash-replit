@@ -23,6 +23,19 @@ function extractIdFromSlug(slug: string): number | null {
   return null
 }
 
+function transformRow(row: any) {
+  return {
+    payment_type: row.payment_method,
+    enabled: row.is_enabled,
+    applies_to: row.applies_to || 'both',
+    label_en: row.english_label,
+    label_fr: row.french_label,
+    instructions_en: row.instructions_en || null,
+    instructions_fr: row.instructions_fr || null,
+    display_order: row.display_order,
+  }
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { slug: string } }
@@ -38,11 +51,10 @@ export async function GET(
     }
     
     const { data, error } = await supabase
-      .schema('menuca_v3')
       .from('restaurant_payment_options')
-      .select('payment_type, enabled, applies_to, label_en, label_fr, instructions_en, instructions_fr, display_order')
+      .select('*')
       .eq('restaurant_id', restaurantId)
-      .eq('enabled', true)
+      .eq('is_enabled', true)
       .order('display_order', { ascending: true })
 
     if (error) {
@@ -54,7 +66,9 @@ export async function GET(
       return NextResponse.json(DEFAULT_PAYMENT_OPTIONS)
     }
 
-    const filteredOptions = data.filter((row: any) => {
+    const transformed = data.map(transformRow)
+
+    const filteredOptions = transformed.filter((row: any) => {
       if (row.applies_to === 'both') return true
       if (orderType === 'pickup' && row.applies_to === 'pickup') return true
       if (orderType === 'delivery' && row.applies_to === 'delivery') return true
