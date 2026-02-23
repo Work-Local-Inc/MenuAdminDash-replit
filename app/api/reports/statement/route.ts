@@ -303,9 +303,29 @@ export async function GET(request: NextRequest) {
       net_payable: Math.round(netPayable * 100) / 100,
     }
 
+    const { data: snapshotData } = await (supabase as any)
+      .from('commission_weekly_snapshots')
+      .select('net_paid, next_week_balance, snapshot_at')
+      .eq('restaurant_id', restaurantId)
+      .eq('week_start', startDate)
+      .single()
+
+    const snapshotExists = !!snapshotData
+    const snapshotNetPaid = snapshotExists ? Math.round(parseFloat(snapshotData.net_paid || 0) * 100) / 100 : 0
+    const snapshotBalance = snapshotExists ? Math.round(parseFloat(snapshotData.next_week_balance || 0) * 100) / 100 : Math.round(netPayable * 100) / 100
+
+    const paymentStatus = {
+      snapshot_exists: snapshotExists,
+      net_paid: snapshotNetPaid,
+      balance: snapshotBalance,
+      is_fully_paid: snapshotExists && snapshotNetPaid >= snapshotBalance,
+      is_partially_paid: snapshotExists && snapshotNetPaid > 0 && snapshotNetPaid < snapshotBalance,
+      paid_at: snapshotExists ? snapshotData.snapshot_at : null,
+    }
+
     console.log('[Statement] Generated statement', statementNumber)
 
-    return NextResponse.json(statement)
+    return NextResponse.json({ ...statement, payment_status: paymentStatus })
   } catch (error: any) {
     console.error('[Statement] Error:', error)
     if (error?.statusCode === 401 || error?.message?.includes('Unauthorized')) {

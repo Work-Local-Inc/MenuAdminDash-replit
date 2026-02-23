@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { format, startOfWeek, endOfWeek, subWeeks, addDays, startOfMonth, endOfMonth, subMonths } from "date-fns"
-import { CalendarIcon, FileText, Printer, Search } from "lucide-react"
+import { CalendarIcon, CheckCircle, FileText, Printer, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Calendar } from "@/components/ui/calendar"
@@ -80,6 +80,14 @@ interface StatementData {
     charges_owed: number
   }
   net_payable: number
+  payment_status?: {
+    snapshot_exists: boolean
+    net_paid: number
+    balance: number
+    is_fully_paid: boolean
+    is_partially_paid: boolean
+    paid_at: string | null
+  }
 }
 
 type DatePreset = "last_week" | "this_week" | "last_month" | "this_month" | "custom"
@@ -272,6 +280,18 @@ export default function RestaurantStatementsPage() {
         }
         .border-green-200 {
           border-color: #bbf7d0 !important;
+        }
+        .bg-amber-50 {
+          background-color: #fffbeb !important;
+        }
+        .border-amber-200 {
+          border-color: #fde68a !important;
+        }
+        .text-amber-700 {
+          color: #b45309 !important;
+        }
+        .text-amber-600 {
+          color: #d97706 !important;
         }
       }
     `
@@ -718,6 +738,44 @@ export default function RestaurantStatementsPage() {
                       ) : 'No credit card orders this period'}
                     </p>
                   </div>
+
+                  {statement.payment_status?.snapshot_exists && (
+                    <div className={`mt-4 rounded-lg border p-4 text-center print:p-2 ${
+                      statement.payment_status.is_fully_paid 
+                        ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+                        : statement.payment_status.is_partially_paid
+                          ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
+                          : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+                    }`} data-testid="status-payment">
+                      {statement.payment_status.is_fully_paid ? (
+                        <>
+                          <div className="flex items-center justify-center gap-2 mb-1">
+                            <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                            <span className="text-lg font-bold text-green-700 dark:text-green-400">PAID</span>
+                          </div>
+                          <p className="text-sm text-green-600 dark:text-green-500">
+                            {formatCurrency(statement.payment_status.net_paid)} paid
+                            {statement.payment_status.paid_at && ` on ${format(new Date(statement.payment_status.paid_at), "MMM d, yyyy")}`}
+                          </p>
+                        </>
+                      ) : statement.payment_status.is_partially_paid ? (
+                        <>
+                          <span className="text-lg font-bold text-amber-700 dark:text-amber-400">PARTIALLY PAID</span>
+                          <p className="text-sm text-amber-600 dark:text-amber-500 mt-1">
+                            {formatCurrency(statement.payment_status.net_paid)} of {formatCurrency(statement.payment_status.balance)} paid
+                            {statement.payment_status.paid_at && ` on ${format(new Date(statement.payment_status.paid_at), "MMM d, yyyy")}`}
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-lg font-bold text-gray-500 dark:text-gray-400">UNPAID</span>
+                          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                            {formatCurrency(statement.payment_status.balance)} outstanding
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  )}
 
                   {/* Delivery Breakdown (if applicable) */}
                   {(statement.totals.delivery_tips > 0 || statement.totals.delivery_fees > 0) && (
