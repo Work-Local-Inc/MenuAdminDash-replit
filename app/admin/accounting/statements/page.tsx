@@ -169,7 +169,8 @@ export default function RestaurantStatementsPage() {
     printStyles.innerHTML = `
       @media print {
         @page {
-          margin: 0.5cm;
+          margin: 0.4cm;
+          size: letter;
         }
         * {
           -webkit-print-color-adjust: exact !important;
@@ -177,85 +178,154 @@ export default function RestaurantStatementsPage() {
           color-adjust: exact !important;
         }
         body {
-          font-size: 12px !important;
+          font-size: 11px !important;
           background: white !important;
+          margin: 0 !important;
+          padding: 0 !important;
         }
         .print-statement-container {
           max-width: 100% !important;
           margin: 0 !important;
           box-shadow: none !important;
+          border: none !important;
+          overflow: hidden !important;
+        }
+        .print-statement-container * {
+          font-size: inherit !important;
         }
         .bg-red-600 {
           background-color: #dc2626 !important;
-          padding-top: 0.6rem !important;
-          padding-bottom: 0.6rem !important;
+          padding: 0.35rem 1rem !important;
         }
         .bg-red-600 h1 {
-          font-size: 1.15rem !important;
+          font-size: 1rem !important;
         }
         .bg-red-600 p {
-          font-size: 0.8rem !important;
-          margin-top: 0.1rem !important;
+          font-size: 0.7rem !important;
+          margin-top: 0 !important;
         }
         .print-statement-container > div {
-          padding-left: 1.25rem !important;
-          padding-right: 1.25rem !important;
+          padding-left: 0.75rem !important;
+          padding-right: 0.75rem !important;
         }
         .print-statement-container table th,
         .print-statement-container table td {
-          padding: 0.3rem 0.5rem !important;
-          font-size: 0.75rem !important;
+          padding: 0.15rem 0.35rem !important;
+          font-size: 0.68rem !important;
+          line-height: 1.2 !important;
         }
         .print-statement-container h2 {
-          font-size: 0.9rem !important;
-          margin-bottom: 0.3rem !important;
+          font-size: 0.8rem !important;
+          margin-bottom: 0.15rem !important;
+          margin-top: 0 !important;
         }
         .print-statement-container .mb-6 {
-          margin-bottom: 0.6rem !important;
+          margin-bottom: 0.3rem !important;
         }
-        .print-statement-container .rounded-lg.p-4 {
-          padding: 0.6rem !important;
+        .print-statement-container .mt-6 {
+          margin-top: 0.3rem !important;
         }
-        .print-statement-container .space-y-2 > * + * {
+        .print-statement-container .mt-4 {
           margin-top: 0.2rem !important;
         }
-        .print-statement-container .p-6.text-center {
-          padding: 0.6rem !important;
+        .print-statement-container .rounded-lg.p-4,
+        .print-statement-container .rounded-lg.p-6 {
+          padding: 0.3rem !important;
+        }
+        .print-statement-container .space-y-2 > * + * {
+          margin-top: 0.1rem !important;
+        }
+        .print-statement-container .p-6.text-center,
+        .print-statement-container .p-4.text-center {
+          padding: 0.3rem !important;
         }
         .print-statement-container .text-3xl {
-          font-size: 1.4rem !important;
+          font-size: 1.1rem !important;
         }
-        .print-statement-container .py-6.border-t {
-          padding-top: 0.3rem !important;
-          padding-bottom: 0.3rem !important;
+        .print-statement-container .text-sm {
+          font-size: 0.68rem !important;
+        }
+        .print-statement-container .py-6.border-t,
+        .print-statement-container .py-6 {
+          padding-top: 0.2rem !important;
+          padding-bottom: 0.2rem !important;
+        }
+        .print-statement-container .py-4 {
+          padding-top: 0.15rem !important;
+          padding-bottom: 0.15rem !important;
+        }
+        .print-statement-container .py-8 {
+          padding-top: 0.35rem !important;
+          padding-bottom: 0.35rem !important;
+        }
+        .print-statement-container .px-6 {
+          padding-left: 0.75rem !important;
+          padding-right: 0.75rem !important;
         }
         .print-statement-container .gap-6 {
-          gap: 0.45rem !important;
+          gap: 0.3rem !important;
+        }
+        .print-statement-container .gap-4 {
+          gap: 0.2rem !important;
         }
         .print-statement-container img {
-          height: 1.5rem !important;
+          height: 1.2rem !important;
         }
         .print-statement-container .border-b {
-          padding-top: 0.2rem !important;
-          padding-bottom: 0.2rem !important;
+          padding-top: 0.1rem !important;
+          padding-bottom: 0.1rem !important;
         }
-        .print-statement-container .py-3.px-4 {
-          padding-top: 0.2rem !important;
-          padding-bottom: 0.2rem !important;
-          padding-left: 0.5rem !important;
-          padding-right: 0.5rem !important;
-          font-size: 0.75rem !important;
+        .print-statement-container .py-3.px-4,
+        .print-statement-container .py-3 {
+          padding-top: 0.12rem !important;
+          padding-bottom: 0.12rem !important;
+          padding-left: 0.35rem !important;
+          padding-right: 0.35rem !important;
+          font-size: 0.68rem !important;
         }
         .print-statement-container .bg-gray-100 {
-          padding-top: 0.2rem !important;
-          padding-bottom: 0.2rem !important;
+          padding-top: 0.12rem !important;
+          padding-bottom: 0.12rem !important;
         }
         .print-statement-container .grid.grid-cols-2 {
-          gap: 0.45rem !important;
-          margin-bottom: 0.45rem !important;
+          gap: 0.3rem !important;
+          margin-bottom: 0.3rem !important;
         }
         .print-statement-container .text-xs {
-          font-size: 0.65rem !important;
+          font-size: 0.6rem !important;
+        }
+        .print-statement-container .font-semibold {
+          font-size: 0.68rem !important;
+        }
+        .print-statement-container .text-lg {
+          font-size: 0.8rem !important;
+        }
+        .print-statement-container .w-1.h-5 {
+          height: 0.7rem !important;
+        }
+        .print-statement-container .pt-4 {
+          padding-top: 0.15rem !important;
+        }
+        .print-statement-container .mt-3 {
+          margin-top: 0.15rem !important;
+        }
+        .print-statement-container .mt-4 {
+          margin-top: 0.2rem !important;
+        }
+        .print-statement-container .mt-2 {
+          margin-top: 0.1rem !important;
+        }
+        .print-statement-container .mt-1 {
+          margin-top: 0 !important;
+        }
+        .print-statement-container .mb-1 {
+          margin-bottom: 0 !important;
+        }
+        .print-statement-container .mb-2 {
+          margin-bottom: 0.1rem !important;
+        }
+        .print-statement-container .mb-3 {
+          margin-bottom: 0.15rem !important;
         }
         .bg-green-50 {
           background-color: #f0fdf4 !important;
@@ -740,7 +810,7 @@ export default function RestaurantStatementsPage() {
                   </div>
 
                   {statement.payment_status?.snapshot_exists && (
-                    <div className={`mt-4 rounded-lg border p-4 text-center print:p-2 ${
+                    <div className={`mt-3 rounded-lg border p-3 text-center print:p-1 print:mt-1 ${
                       statement.payment_status.is_fully_paid 
                         ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
                         : statement.payment_status.is_partially_paid
@@ -748,31 +818,29 @@ export default function RestaurantStatementsPage() {
                           : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'
                     }`} data-testid="status-payment">
                       {statement.payment_status.is_fully_paid ? (
-                        <>
-                          <div className="flex items-center justify-center gap-2 mb-1">
-                            <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
-                            <span className="text-lg font-bold text-green-700 dark:text-green-400">PAID</span>
-                          </div>
-                          <p className="text-sm text-green-600 dark:text-green-500">
-                            {formatCurrency(statement.payment_status.net_paid)} paid
+                        <div className="flex items-center justify-center gap-2 print:gap-1">
+                          <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400 print:h-3 print:w-3" />
+                          <span className="text-lg font-bold text-green-700 dark:text-green-400 print:text-xs">PAID</span>
+                          <span className="text-sm text-green-600 dark:text-green-500 print:text-xs">
+                            — {formatCurrency(statement.payment_status.net_paid)}
                             {statement.payment_status.paid_at && ` on ${format(new Date(statement.payment_status.paid_at), "MMM d, yyyy")}`}
-                          </p>
-                        </>
+                          </span>
+                        </div>
                       ) : statement.payment_status.is_partially_paid ? (
-                        <>
-                          <span className="text-lg font-bold text-amber-700 dark:text-amber-400">PARTIALLY PAID</span>
-                          <p className="text-sm text-amber-600 dark:text-amber-500 mt-1">
-                            {formatCurrency(statement.payment_status.net_paid)} of {formatCurrency(statement.payment_status.balance)} paid
+                        <div className="flex items-center justify-center gap-2 print:gap-1">
+                          <span className="text-lg font-bold text-amber-700 dark:text-amber-400 print:text-xs">PARTIALLY PAID</span>
+                          <span className="text-sm text-amber-600 dark:text-amber-500 print:text-xs">
+                            — {formatCurrency(statement.payment_status.net_paid)} of {formatCurrency(statement.payment_status.balance)}
                             {statement.payment_status.paid_at && ` on ${format(new Date(statement.payment_status.paid_at), "MMM d, yyyy")}`}
-                          </p>
-                        </>
+                          </span>
+                        </div>
                       ) : (
-                        <>
-                          <span className="text-lg font-bold text-gray-500 dark:text-gray-400">UNPAID</span>
-                          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                            {formatCurrency(statement.payment_status.balance)} outstanding
-                          </p>
-                        </>
+                        <div className="flex items-center justify-center gap-2 print:gap-1">
+                          <span className="text-lg font-bold text-gray-500 dark:text-gray-400 print:text-xs">UNPAID</span>
+                          <span className="text-sm text-gray-500 dark:text-gray-400 print:text-xs">
+                            — {formatCurrency(statement.payment_status.balance)} outstanding
+                          </span>
+                        </div>
                       )}
                     </div>
                   )}
@@ -801,10 +869,9 @@ export default function RestaurantStatementsPage() {
                 </div>
 
                 {/* Footer */}
-                <div className="bg-gray-50 dark:bg-gray-800 px-6 py-6 border-t border-gray-200 dark:border-gray-700 text-center print:py-1 print:px-2">
+                <div className="bg-gray-50 dark:bg-gray-800 px-6 py-4 border-t border-gray-200 dark:border-gray-700 text-center print:py-1 print:px-2">
                   <p className="text-sm font-medium text-gray-700 dark:text-gray-300 print:text-xs">Allow three business days for payment</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 print:mt-0">Payments made under "Local Media Concepts Inc."</p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-3 print:mt-0">HST: {statement.menu_hst_number}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 print:mt-0">Payments made under &quot;Local Media Concepts Inc.&quot; &middot; HST: {statement.menu_hst_number}</p>
                   <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 print:hidden">
                     <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Powered by Menu.ca</p>
                     <p className="text-xs text-gray-400 dark:text-gray-500">Connecting you with local restaurants</p>
