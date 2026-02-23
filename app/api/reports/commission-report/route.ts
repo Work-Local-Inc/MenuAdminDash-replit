@@ -281,7 +281,7 @@ export async function GET(request: NextRequest) {
       const currentSnapshot = currentSnapshotMap.get(restaurant.id)
       const netPaid = currentSnapshot ? round2(Number(currentSnapshot.net_paid)) : 0
 
-      const nextWeek = round2(carryValue + prevWeek + thisWeek - netPaid)
+      const nextWeek = round2(carryValue + thisWeek - netPaid)
 
       restaurantResults.push({
         restaurant_id: restaurant.id,
@@ -483,7 +483,7 @@ export async function POST(request: NextRequest) {
       const existingSnapshot = existingSnapshotMap.get(restaurant.id)
       const netPaid = existingSnapshot ? round2(Number(existingSnapshot.net_paid)) : 0
 
-      const nextWeek = round2(carryValue + prevWeek + thisWeek - netPaid)
+      const nextWeek = round2(carryValue + thisWeek - netPaid)
 
       snapshotRows.push({
         restaurant_id: restaurant.id,
@@ -544,6 +544,133 @@ export async function POST(request: NextRequest) {
   }
 }
 
+async function ensureSnapshotExists(
+  supabase: any,
+  weekStart: string,
+  weekEnd: string
+) {
+  const { data: existing } = await (supabase as any)
+    .from('commission_weekly_snapshots')
+    .select('restaurant_id')
+    .eq('week_start', weekStart)
+    .limit(1)
+
+  if (existing && existing.length > 0) {
+    return { created: false }
+  }
+
+  console.log('[Commission Report] Auto-creating snapshot for', weekStart)
+
+  const { data: restaurantsData } = await supabase
+    .from('restaurants')
+    .select('id, name')
+    .not('id', 'in', `(${EXCLUDED_RESTAURANT_IDS.join(',')})`)
+    .order('name')
+
+  const restaurants = (restaurantsData || []) as RestaurantRow[]
+
+  const { data: ordersData } = await supabase
+    .from('orders')
+    .select(`
+      id, subtotal, total_amount, delivery_fee, tip_amount,
+      payment_method, payment_status, order_status,
+      stripe_payment_intent_id, restaurant_id, is_test_order
+    `)
+    .gte('created_at', toEasternDayStart(weekStart))
+    .lte('created_at', toEasternDayEnd(weekEnd))
+    .in('payment_status', ['paid', 'succeeded'])
+    .in('order_status', ['completed', 'accepted', 'ready', 'preparing'])
+    .or('is_test_order.is.null,is_test_order.eq.false')
+
+  const orders = (ordersData || []) as OrderRow[]
+
+  const { data: configsData } = await supabase
+    .from('restaurant_commission_configs')
+    .select('*')
+
+  const configs = (configsData || []) as CommissionConfig[]
+  const configMap = new Map(configs.map(c => [c.restaurant_id, c]))
+
+  const { data: adjustmentsData } = await (supabase as any)
+    .from('statement_adjustments')
+    .select('*')
+    .gte('applies_to_week_start', weekStart)
+    .lte('applies_to_week_start', weekEnd)
+
+  const adjustments = (adjustmentsData || []) as AdjustmentRow[]
+  const adjustmentsByRestaurant = new Map<number, AdjustmentRow[]>()
+  for (const adj of adjustments) {
+    const arr = adjustmentsByRestaurant.get(adj.restaurant_id) || []
+    arr.push(adj)
+    adjustmentsByRestaurant.set(adj.restaurant_id, arr)
+  }
+
+  const prevWeekStart = new Date(weekStart)
+  prevWeekStart.setDate(prevWeekStart.getDate() - 7)
+  const prevWeekStartStr = prevWeekStart.toISOString().split('T')[0]
+
+  const { data: snapshotsData } = await (supabase as any)
+    .from('commission_weekly_snapshots')
+    .select('restaurant_id, this_week_net, next_week_balance, net_paid')
+    .eq('week_start', prevWeekStartStr)
+
+  const snapshots = (snapshotsData || []) as SnapshotRow[]
+  const snapshotMap = new Map(snapshots.map(s => [s.restaurant_id, s]))
+
+  const ordersByRestaurant = new Map<number, OrderRow[]>()
+  for (const order of orders) {
+    const arr = ordersByRestaurant.get(order.restaurant_id) || []
+    arr.push(order)
+    ordersByRestaurant.set(order.restaurant_id, arr)
+  }
+
+  let savedCount = 0
+  for (const restaurant of restaurants) {
+    const restaurantOrders = ordersByRestaurant.get(restaurant.id) || []
+    const config = configMap.get(restaurant.id)
+    const restAdjustments = adjustmentsByRestaurant.get(restaurant.id) || []
+
+    const fees = calculateRestaurantFees(restaurantOrders, config)
+
+    const totalCharges = restAdjustments
+      .filter(a => a.adjustment_type === 'charge')
+      .reduce((sum, a) => sum + round2(parseFloat(String(a.amount))), 0)
+
+    const totalCredits = restAdjustments
+      .filter(a => a.adjustment_type === 'credit')
+      .reduce((sum, a) => sum + round2(parseFloat(String(a.amount))), 0)
+
+    const thisWeek = round2(fees.totalUnpaid - fees.totalFees - totalCharges + totalCredits)
+
+    const prevSnapshot = snapshotMap.get(restaurant.id)
+    const prevWeek = prevSnapshot ? round2(Number(prevSnapshot.this_week_net)) : 0
+    const carryValue = prevSnapshot ? round2(Number(prevSnapshot.next_week_balance)) : 0
+    const nextWeek = round2(carryValue + thisWeek)
+
+    const { error } = await (supabase as any)
+      .from('commission_weekly_snapshots')
+      .upsert(
+        {
+          restaurant_id: restaurant.id,
+          week_start: weekStart,
+          week_end: weekEnd,
+          this_week_net: thisWeek,
+          prev_week_net: prevWeek,
+          carry_value: carryValue,
+          next_week_balance: nextWeek,
+          net_paid: 0,
+          snapshot_at: new Date().toISOString(),
+        },
+        { onConflict: 'restaurant_id,week_start' }
+      )
+
+    if (!error) savedCount++
+  }
+
+  console.log('[Commission Report] Auto-created snapshot with', savedCount, 'rows')
+  return { created: true, savedCount }
+}
+
 export async function PATCH(request: NextRequest) {
   try {
     const { adminUser } = await verifyAdminAuth(request)
@@ -556,7 +683,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { weekStart, restaurantId, netPaid, markAllPaid } = body
+    const { weekStart, weekEnd, restaurantId, netPaid, markAllPaid } = body
 
     if (!weekStart) {
       return NextResponse.json(
@@ -566,6 +693,13 @@ export async function PATCH(request: NextRequest) {
     }
 
     const supabase = createAdminClient()
+    const resolvedWeekEnd = weekEnd || (() => {
+      const d = new Date(weekStart)
+      d.setDate(d.getDate() + 6)
+      return d.toISOString().split('T')[0]
+    })()
+
+    await ensureSnapshotExists(supabase, weekStart, resolvedWeekEnd)
 
     if (markAllPaid) {
       const { data: allSnapshots, error: fetchError } = await (supabase as any)
@@ -581,17 +715,10 @@ export async function PATCH(request: NextRequest) {
         )
       }
 
-      if (!allSnapshots || allSnapshots.length === 0) {
-        return NextResponse.json(
-          { error: 'No snapshots found for this week. Please save a snapshot first before marking payments.' },
-          { status: 400 }
-        )
-      }
-
       let updatedCount = 0
       let errorCount = 0
 
-      for (const snap of allSnapshots) {
+      for (const snap of (allSnapshots || [])) {
         const { error: updateError } = await (supabase as any)
           .from('commission_weekly_snapshots')
           .update({ net_paid: snap.next_week_balance })
@@ -618,20 +745,6 @@ export async function PATCH(request: NextRequest) {
     if (!restaurantId || netPaid === undefined || netPaid === null) {
       return NextResponse.json(
         { error: 'Missing required fields: restaurantId, netPaid' },
-        { status: 400 }
-      )
-    }
-
-    const { data: existingSnap } = await (supabase as any)
-      .from('commission_weekly_snapshots')
-      .select('restaurant_id')
-      .eq('restaurant_id', restaurantId)
-      .eq('week_start', weekStart)
-      .single()
-
-    if (!existingSnap) {
-      return NextResponse.json(
-        { error: 'No snapshot found for this restaurant and week. Please save a snapshot first before marking payments.' },
         { status: 400 }
       )
     }

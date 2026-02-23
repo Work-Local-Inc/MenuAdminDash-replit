@@ -34,6 +34,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { apiRequest, queryClient } from "@/lib/queryClient"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
@@ -84,6 +92,7 @@ export default function CommissionReportPage() {
   const [sortField, setSortField] = useState<SortField>('next_week')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [filterType, setFilterType] = useState<FilterType>('all')
+  const [markPaidDialog, setMarkPaidDialog] = useState<{ restaurantId: number; restaurantName: string; amount: string } | null>(null)
 
   const { toast } = useToast()
 
@@ -126,6 +135,7 @@ export default function CommissionReportPage() {
         method: "PATCH",
         body: JSON.stringify({
           weekStart: weekStartStr,
+          weekEnd: weekEndStr,
           restaurantId: params.restaurantId,
           netPaid: params.netPaid,
           markAllPaid: params.markAllPaid,
@@ -277,7 +287,7 @@ export default function CommissionReportPage() {
                 <AlertDialogHeader>
                   <AlertDialogTitle>Mark All Restaurants as Paid?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This will set net_paid equal to next_week_balance for all restaurants in the {dateRange} snapshot. A snapshot must be saved first.
+                    This will mark all restaurants as fully paid for the week of {dateRange}. A snapshot will be auto-saved if one doesn&apos;t exist yet.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -530,36 +540,20 @@ export default function CommissionReportPage() {
                           {formatCurrency(r.next_week)}
                         </TableCell>
                         <TableCell className="text-center">
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                disabled={r.next_week === 0 || markPaidMutation.isPending}
-                                data-testid={`button-mark-paid-${r.restaurant_id}`}
-                              >
-                                <CheckCircle className="h-4 w-4 mr-1" />
-                                Mark Paid
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Mark as Paid?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  This will mark {r.restaurant_name} as paid with net_paid = {formatCurrency(r.next_week)} for the week of {dateRange}. A snapshot must be saved first.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel data-testid={`button-mark-paid-cancel-${r.restaurant_id}`}>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => markPaidMutation.mutate({ restaurantId: r.restaurant_id, netPaid: r.next_week })}
-                                  data-testid={`button-mark-paid-confirm-${r.restaurant_id}`}
-                                >
-                                  Confirm
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={r.next_week === 0 || markPaidMutation.isPending}
+                            onClick={() => setMarkPaidDialog({
+                              restaurantId: r.restaurant_id,
+                              restaurantName: r.restaurant_name,
+                              amount: r.next_week.toFixed(2),
+                            })}
+                            data-testid={`button-mark-paid-${r.restaurant_id}`}
+                          >
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Mark Paid
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -601,6 +595,69 @@ export default function CommissionReportPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={!!markPaidDialog} onOpenChange={(open) => { if (!open) setMarkPaidDialog(null) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Mark as Paid</DialogTitle>
+            <DialogDescription>
+              Record payment for {markPaidDialog?.restaurantName} for the week of {dateRange}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="payment-amount">Amount Paid</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                <Input
+                  id="payment-amount"
+                  type="number"
+                  step="0.01"
+                  value={markPaidDialog?.amount || ''}
+                  onChange={(e) => {
+                    if (markPaidDialog) {
+                      setMarkPaidDialog({ ...markPaidDialog, amount: e.target.value })
+                    }
+                  }}
+                  className="pl-7 font-mono"
+                  data-testid="input-payment-amount"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Pre-filled with the full amount payable. Adjust if the actual payment differs.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setMarkPaidDialog(null)}
+              data-testid="button-mark-paid-cancel"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (markPaidDialog) {
+                  const amount = parseFloat(markPaidDialog.amount)
+                  if (isNaN(amount)) {
+                    toast({ title: "Invalid amount", description: "Please enter a valid number.", variant: "destructive" })
+                    return
+                  }
+                  markPaidMutation.mutate(
+                    { restaurantId: markPaidDialog.restaurantId, netPaid: amount },
+                    { onSuccess: () => setMarkPaidDialog(null) }
+                  )
+                }
+              }}
+              disabled={markPaidMutation.isPending}
+              data-testid="button-mark-paid-confirm"
+            >
+              {markPaidMutation.isPending ? "Saving..." : "Confirm Payment"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
