@@ -276,7 +276,7 @@ export async function GET(request: NextRequest) {
 
       const prevSnapshot = snapshotMap.get(restaurant.id)
       const prevWeek = prevSnapshot ? round2(Number(prevSnapshot.this_week_net)) : 0
-      const carryValue = prevSnapshot ? round2(Number(prevSnapshot.next_week_balance)) : 0
+      const carryValue = prevSnapshot ? round2(Number(prevSnapshot.next_week_balance) - Number(prevSnapshot.net_paid)) : 0
 
       const currentSnapshot = currentSnapshotMap.get(restaurant.id)
       const netPaid = currentSnapshot ? round2(Number(currentSnapshot.net_paid)) : 0
@@ -478,7 +478,7 @@ export async function POST(request: NextRequest) {
 
       const prevSnapshot = snapshotMap.get(restaurant.id)
       const prevWeek = prevSnapshot ? round2(Number(prevSnapshot.this_week_net)) : 0
-      const carryValue = prevSnapshot ? round2(Number(prevSnapshot.next_week_balance)) : 0
+      const carryValue = prevSnapshot ? round2(Number(prevSnapshot.next_week_balance) - Number(prevSnapshot.net_paid)) : 0
 
       const existingSnapshot = existingSnapshotMap.get(restaurant.id)
       const netPaid = existingSnapshot ? round2(Number(existingSnapshot.net_paid)) : 0
@@ -644,7 +644,7 @@ async function ensureSnapshotExists(
 
     const prevSnapshot = snapshotMap.get(restaurant.id)
     const prevWeek = prevSnapshot ? round2(Number(prevSnapshot.this_week_net)) : 0
-    const carryValue = prevSnapshot ? round2(Number(prevSnapshot.next_week_balance)) : 0
+    const carryValue = prevSnapshot ? round2(Number(prevSnapshot.next_week_balance) - Number(prevSnapshot.net_paid)) : 0
     const nextWeek = round2(carryValue + thisWeek)
 
     const { error } = await (supabase as any)
