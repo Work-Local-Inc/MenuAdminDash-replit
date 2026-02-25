@@ -24,7 +24,8 @@ import {
 import { useOrders } from "@/lib/hooks/use-orders"
 import { useQueryClient } from "@tanstack/react-query"
 import { formatCurrency, formatDate, formatTime } from "@/lib/utils"
-import { Search, Filter, Download, Eye, Loader2 } from "lucide-react"
+import { Search, Filter, Download, Eye, Loader2, XCircle } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 
 export default function OrdersPage() {
@@ -42,6 +43,13 @@ export default function OrdersPage() {
   const [refundSuccess, setRefundSuccess] = useState(false)
   const [refundResultId, setRefundResultId] = useState<string | null>(null)
   const [showConfirmation, setShowConfirmation] = useState(false)
+
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false)
+  const [cancelReason, setCancelReason] = useState("")
+  const [cancelMarkRefunded, setCancelMarkRefunded] = useState(false)
+  const [isCancelling, setIsCancelling] = useState(false)
+  const [cancelError, setCancelError] = useState<string | null>(null)
+  const [cancelSuccess, setCancelSuccess] = useState(false)
 
   const queryClient = useQueryClient()
 
@@ -79,6 +87,51 @@ export default function OrdersPage() {
       order.stripe_payment_intent_id &&
       ['paid', 'succeeded'].includes(order.payment_status)
     )
+  }
+
+  const canCancel = (order: any) => {
+    return ['pending', 'confirmed', 'preparing', 'ready'].includes(order.status)
+  }
+
+  const resetCancelForm = () => {
+    setShowCancelConfirm(false)
+    setCancelReason("")
+    setCancelMarkRefunded(false)
+    setIsCancelling(false)
+    setCancelError(null)
+    setCancelSuccess(false)
+  }
+
+  const processCancelOrder = async () => {
+    if (!selectedOrder) return
+    setIsCancelling(true)
+    setCancelError(null)
+
+    try {
+      const res = await fetch(`/api/orders/${selectedOrder.id}/cancel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reason: cancelReason || undefined,
+          mark_refunded: cancelMarkRefunded,
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        setCancelError(data.error || 'Failed to cancel order')
+        return
+      }
+
+      setCancelSuccess(true)
+      setShowCancelConfirm(false)
+      queryClient.invalidateQueries({ queryKey: ['/api/orders'] })
+    } catch (err: any) {
+      setCancelError(err.message || 'Network error occurred')
+    } finally {
+      setIsCancelling(false)
+    }
   }
 
   const resetRefundForm = () => {
@@ -267,7 +320,7 @@ export default function OrdersPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         <Dialog onOpenChange={(open) => {
-                          if (!open) resetRefundForm()
+                          if (!open) { resetRefundForm(); resetCancelForm() }
                         }}>
                           <DialogTrigger asChild>
                             <Button 
@@ -458,10 +511,40 @@ export default function OrdersPage() {
                                 </div>
                               )}
 
-                              {!showRefundForm && !refundSuccess && (
-                                <p className="text-sm text-muted-foreground">
-                                  Full order management with status workflow coming soon...
-                                </p>
+                              {cancelSuccess && (
+                                <div className="rounded-md border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950 p-4" data-testid="cancel-success-message">
+                                  <p className="text-sm font-medium text-green-800 dark:text-green-200">
+                                    Order cancelled successfully
+                                  </p>
+                                </div>
+                              )}
+
+                              {cancelError && !showCancelConfirm && (
+                                <div className="rounded-md border border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950 p-3" data-testid="cancel-error-message">
+                                  <p className="text-sm text-red-800 dark:text-red-200">{cancelError}</p>
+                                </div>
+                              )}
+
+                              {canCancel(order) && !showRefundForm && !refundSuccess && !cancelSuccess && (
+                                <div className="pt-2 flex items-center gap-2 flex-wrap">
+                                  {canRefund(order) ? null : (
+                                    <p className="text-sm text-muted-foreground w-full mb-1">
+                                      This order can be cancelled.
+                                    </p>
+                                  )}
+                                  <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                      setSelectedOrder(order)
+                                      setShowCancelConfirm(true)
+                                      setCancelMarkRefunded(order.payment_status === 'refunded')
+                                    }}
+                                    data-testid="button-cancel-order"
+                                  >
+                                    <XCircle className="h-4 w-4 mr-2" />
+                                    Cancel Order
+                                  </Button>
+                                </div>
                               )}
                             </div>
                           </DialogContent>
@@ -492,6 +575,62 @@ export default function OrdersPage() {
               data-testid="button-confirm-refund"
             >
               Confirm Refund
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showCancelConfirm} onOpenChange={setShowCancelConfirm}>
+        <AlertDialogContent data-testid="cancel-confirmation-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel Order #{selectedOrder?.id}</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will mark the order as cancelled. The restaurant will no longer see it as a new order.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="cancel-reason">Reason (optional)</Label>
+              <Textarea
+                id="cancel-reason"
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="e.g., Restaurant closed early, customer already refunded"
+                data-testid="textarea-cancel-reason"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="mark-refunded"
+                checked={cancelMarkRefunded}
+                onCheckedChange={(checked) => setCancelMarkRefunded(checked === true)}
+                data-testid="checkbox-mark-refunded"
+              />
+              <Label htmlFor="mark-refunded" className="cursor-pointer text-sm">
+                Also mark payment as refunded (if refund was already processed outside the system)
+              </Label>
+            </div>
+            {cancelError && (
+              <div className="rounded-md border border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950 p-3">
+                <p className="text-sm text-red-800 dark:text-red-200">{cancelError}</p>
+              </div>
+            )}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isCancelling} data-testid="button-dismiss-cancel">
+              Go Back
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault()
+                processCancelOrder()
+              }}
+              disabled={isCancelling}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-cancel"
+            >
+              {isCancelling && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Cancel Order
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
