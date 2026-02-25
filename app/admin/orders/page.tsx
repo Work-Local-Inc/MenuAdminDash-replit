@@ -380,19 +380,35 @@ export default function OrdersPage() {
                                 </div>
                               </div>
 
-                              {canRefund(order) && !showRefundForm && !refundSuccess && (
-                                <div className="pt-2">
-                                  <Button
-                                    variant="destructive"
-                                    onClick={() => {
-                                      setSelectedOrder(order)
-                                      setShowRefundForm(true)
-                                      setRefundAmount(String(order.total || 0))
-                                    }}
-                                    data-testid="button-refund"
-                                  >
-                                    Refund
-                                  </Button>
+                              {!showRefundForm && !refundSuccess && !cancelSuccess && (canRefund(order) || canCancel(order)) && (
+                                <div className="pt-2 flex items-center gap-2 flex-wrap">
+                                  {canRefund(order) && (
+                                    <Button
+                                      variant="destructive"
+                                      onClick={() => {
+                                        setSelectedOrder(order)
+                                        setShowRefundForm(true)
+                                        setRefundAmount(String(order.total || 0))
+                                      }}
+                                      data-testid="button-refund"
+                                    >
+                                      Refund
+                                    </Button>
+                                  )}
+                                  {canCancel(order) && (
+                                    <Button
+                                      variant="outline"
+                                      onClick={() => {
+                                        setSelectedOrder(order)
+                                        setShowCancelConfirm(true)
+                                        setCancelMarkRefunded(order.payment_status === 'refunded')
+                                      }}
+                                      data-testid="button-cancel-order"
+                                    >
+                                      <XCircle className="h-4 w-4 mr-2" />
+                                      Cancel Order
+                                    </Button>
+                                  )}
                                 </div>
                               )}
 
@@ -525,27 +541,6 @@ export default function OrdersPage() {
                                 </div>
                               )}
 
-                              {canCancel(order) && !showRefundForm && !refundSuccess && !cancelSuccess && (
-                                <div className="pt-2 flex items-center gap-2 flex-wrap">
-                                  {canRefund(order) ? null : (
-                                    <p className="text-sm text-muted-foreground w-full mb-1">
-                                      This order can be cancelled.
-                                    </p>
-                                  )}
-                                  <Button
-                                    variant="outline"
-                                    onClick={() => {
-                                      setSelectedOrder(order)
-                                      setShowCancelConfirm(true)
-                                      setCancelMarkRefunded(order.payment_status === 'refunded')
-                                    }}
-                                    data-testid="button-cancel-order"
-                                  >
-                                    <XCircle className="h-4 w-4 mr-2" />
-                                    Cancel Order
-                                  </Button>
-                                </div>
-                              )}
                             </div>
                           </DialogContent>
                         </Dialog>
