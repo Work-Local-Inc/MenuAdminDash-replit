@@ -745,84 +745,84 @@ export default function CheckoutPage() {
         })
       }
     } else {
-      // Non-card payment: Call cash order API directly
-      console.log('[Checkout] Submitting cash order with payment type:', paymentMethod)
-      setIsSubmittingCashOrder(true)
-      
-      try {
-        // Format cart items as required by API
-        const orderCartItems = items.map(item => ({
-          dishId: item.dishId,
-          quantity: item.quantity,
-          size: item.size,
-          modifiers: item.modifiers,
-          specialInstructions: item.specialInstructions
-        }))
+      // Non-card payment: Go to confirmation step instead of submitting immediately
+      console.log('[Checkout] Non-card payment selected, going to confirmation step:', paymentMethod)
+      setStep('payment')
+    }
+  }
 
-        // Calculate delivery fee and tax for non-card orders
-        const cashDeliveryFee = effectiveOrderType === 'delivery' ? effectiveDeliveryFee : 0
-        const cashTax = tax
+  const submitCashOrder = async () => {
+    if (!selectedPaymentMethod || selectedPaymentMethod === 'credit_card') return
+    console.log('[Checkout] Submitting cash order with payment type:', selectedPaymentMethod)
+    setIsSubmittingCashOrder(true)
+    
+    try {
+      const orderCartItems = items.map(item => ({
+        dishId: item.dishId,
+        quantity: item.quantity,
+        size: item.size,
+        modifiers: item.modifiers,
+        specialInstructions: item.specialInstructions
+      }))
 
-        const response = await fetch(`${getApiBaseUrl()}/api/customer/orders/cash`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            payment_type: paymentMethod,
-            delivery_address: selectedAddress,
-            cart_items: orderCartItems,
-            user_id: currentUser?.id ? String(currentUser.id) : undefined,
-            guest_email: selectedAddress?.email,
-            restaurant_slug: restaurantSlug,
-            order_type: effectiveOrderType,
-            service_time: pickupTime,
-            delivery_fee: cashDeliveryFee,
-            tax_amount: cashTax,
-            tip_amount: tipAmount > 0 ? tipAmount : undefined,
-            order_notes: orderNotes.trim() || undefined
-          }),
-        })
+      const cashDeliveryFee = effectiveOrderType === 'delivery' ? effectiveDeliveryFee : 0
+      const cashTax = tax
+      const currentTip = getTipAmount()
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}))
-          throw new Error(errorData.error || 'Failed to create order')
-        }
+      const response = await fetch(`${getApiBaseUrl()}/api/customer/orders/cash`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          payment_type: selectedPaymentMethod,
+          delivery_address: selectedAddress,
+          cart_items: orderCartItems,
+          user_id: currentUser?.id ? String(currentUser.id) : undefined,
+          guest_email: selectedAddress?.email,
+          restaurant_slug: restaurantSlug,
+          order_type: effectiveOrderType,
+          service_time: pickupTime,
+          delivery_fee: cashDeliveryFee,
+          tax_amount: cashTax,
+          tip_amount: currentTip > 0 ? currentTip : undefined,
+          order_notes: orderNotes.trim() || undefined
+        }),
+      })
 
-        const data = await response.json()
-        console.log('[Checkout] Cash order created:', data)
-        
-        // Track purchase event for GA before clearing cart
-        const gaCartItems = items.map(item => ({
-          id: item.dishId,
-          name: item.dishName,
-          price: item.sizePrice,
-          quantity: item.quantity
-        }))
-        trackPurchase(String(data.order_id), total, gaCartItems, getTax(), getEffectiveDeliveryFee())
-        
-        // Set flag BEFORE clearing cart to prevent empty cart redirect
-        setOrderPlacedSuccessfully(true)
-        
-        // Clear cart and redirect to confirmation
-        clearCart()
-        toast({
-          title: "Order Placed!",
-          description: `Your order has been placed successfully. Order #${data.order_id}`,
-        })
-        // Include token for guest order confirmation access
-        const confirmationUrl = data.token 
-          ? `/customer/orders/${data.order_id}/confirmation?token=${data.token}`
-          : `/customer/orders/${data.order_id}/confirmation`
-        router.push(confirmationUrl)
-      } catch (error: any) {
-        console.error('[Checkout] Cash order error:', error)
-        toast({
-          title: "Error",
-          description: error.message || "Failed to place order",
-          variant: "destructive",
-        })
-      } finally {
-        setIsSubmittingCashOrder(false)
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to create order')
       }
+
+      const data = await response.json()
+      console.log('[Checkout] Cash order created:', data)
+      
+      const gaCartItems = items.map(item => ({
+        id: item.dishId,
+        name: item.dishName,
+        price: item.sizePrice,
+        quantity: item.quantity
+      }))
+      trackPurchase(String(data.order_id), total, gaCartItems, getTax(), getEffectiveDeliveryFee())
+      
+      setOrderPlacedSuccessfully(true)
+      clearCart()
+      toast({
+        title: "Order Placed!",
+        description: `Your order has been placed successfully. Order #${data.order_id}`,
+      })
+      const confirmationUrl = data.token 
+        ? `/customer/orders/${data.order_id}/confirmation?token=${data.token}`
+        : `/customer/orders/${data.order_id}/confirmation`
+      router.push(confirmationUrl)
+    } catch (error: any) {
+      console.error('[Checkout] Cash order error:', error)
+      toast({
+        title: "Error",
+        description: error.message || "Failed to place order",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSubmittingCashOrder(false)
     }
   }
 
@@ -1261,6 +1261,80 @@ export default function CheckoutPage() {
                   <div className="flex items-center justify-center py-8">
                     <div className="animate-spin w-6 h-6 border-3 border-primary border-t-transparent rounded-full mr-3" />
                     <span className="text-muted-foreground">Loading payment...</span>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Step Content - Cash/Debit Confirmation (non-card payments) */}
+            {step === 'payment' && !clientSecret && selectedPaymentMethod && selectedPaymentMethod !== 'credit_card' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Wallet className="w-5 h-5" />
+                    Confirm Your Order
+                  </CardTitle>
+                  <CardDescription>
+                    Review your order and confirm to place it
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center gap-3 p-3 rounded-md bg-muted/50">
+                    {selectedPaymentMethod === 'cash' ? (
+                      <Wallet className="w-5 h-5 text-green-600" />
+                    ) : (
+                      <CreditCard className="w-5 h-5 text-blue-600" />
+                    )}
+                    <div>
+                      <p className="font-medium text-sm">
+                        {selectedPaymentMethod === 'cash' ? 'Pay with Cash' : 'Pay with Card at Door'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {selectedPaymentMethod === 'cash' 
+                          ? 'You will pay with cash when you receive your order'
+                          : 'You will pay with card when your order arrives'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {selectedAddress && (
+                    <div className="p-3 rounded-md border">
+                      <p className="text-sm font-medium mb-1">
+                        {effectiveOrderType === 'delivery' ? 'Delivering to:' : 'Pickup by:'}
+                      </p>
+                      <p className="text-sm text-muted-foreground">{selectedAddress.name}</p>
+                      {effectiveOrderType === 'delivery' && selectedAddress.street_address && (
+                        <p className="text-sm text-muted-foreground">{selectedAddress.street_address}</p>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex flex-col gap-2 pt-2">
+                    <Button
+                      onClick={submitCashOrder}
+                      disabled={isSubmittingCashOrder}
+                      data-testid="button-place-order-cash"
+                      className="w-full"
+                      style={brandedButtonStyle || undefined}
+                    >
+                      {isSubmittingCashOrder ? (
+                        <>
+                          <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2" />
+                          Placing Order...
+                        </>
+                      ) : (
+                        `Place Order — $${total.toFixed(2)}`
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setStep('payment-method')}
+                      disabled={isSubmittingCashOrder}
+                      data-testid="button-back-to-method"
+                    >
+                      <ArrowLeft className="w-4 h-4 mr-2" />
+                      Back
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
