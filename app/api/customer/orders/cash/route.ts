@@ -26,8 +26,10 @@ export async function POST(request: NextRequest) {
       restaurant_slug,
       order_type,
       service_time,
-      order_notes
+      order_notes,
+      tip_amount: rawTipAmount,
     } = body
+    const tipAmount = typeof rawTipAmount === 'number' && Number.isFinite(rawTipAmount) && rawTipAmount > 0 ? rawTipAmount : null
 
     // Resolve user_id: If authenticated but no user_id provided (phone-only users),
     // find or create their users table record so their profile persists across orders
@@ -434,7 +436,7 @@ export async function POST(request: NextRequest) {
     const taxableAmount = serverSubtotal + deliveryFee
     const taxBreakdown: TaxLineItem[] = calculateTaxes(taxableAmount, taxConfig)
     const serverTax = getTotalTax(taxBreakdown)
-    const serverTotal = serverSubtotal + deliveryFee + serverTax
+    const serverTotal = serverSubtotal + deliveryFee + serverTax + (tipAmount || 0)
 
     let parsedServiceTime: { type: string; scheduledTime?: string } = { type: 'asap' }
     if (service_time) {
@@ -566,6 +568,7 @@ export async function POST(request: NextRequest) {
         }
         return parts.length > 0 ? parts.join(' | ') : null
       })(),
+      tip_amount: tipAmount,
       stripe_payment_intent_id: cashOrderReference,
       is_test_order: paymentMode === 'test',
     }

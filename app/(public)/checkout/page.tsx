@@ -129,6 +129,7 @@ export default function CheckoutPage() {
   const [serviceConfig, setServiceConfig] = useState<{ 
     has_delivery_enabled?: boolean; 
     pickup_enabled?: boolean;
+    accepts_tips?: boolean;
   } | null>(null)
   const [serviceConfigLoading, setServiceConfigLoading] = useState(true) // Start as loading to prevent flash
   const [orderNotes, setOrderNotes] = useState('')
@@ -293,7 +294,8 @@ export default function CheckoutPage() {
             })
             setServiceConfig({
               has_delivery_enabled: config.has_delivery_enabled,
-              pickup_enabled: config.pickup_enabled
+              pickup_enabled: config.pickup_enabled,
+              accepts_tips: config.accepts_tips,
             })
           } else {
             console.log('[Checkout] ⚠️ No service config found - delivery/pickup will default to enabled')
@@ -410,7 +412,10 @@ export default function CheckoutPage() {
   const discount = getDiscount()
   const effectiveDeliveryFee = getEffectiveDeliveryFee()
   const tax = getTax()
+  const tipAmount = getTipAmount()
   const total = getTotal()
+  const [customTipInput, setCustomTipInput] = useState('')
+  const showTips = serviceConfig?.accepts_tips === true && effectiveOrderType === 'delivery'
 
   // Track begin_checkout event when checkout page loads with items and GA is ready
   const hasTrackedBeginCheckout = useRef(false)
@@ -717,6 +722,7 @@ export default function CheckoutPage() {
               discount_amount: appliedPromo ? String(getDiscount()) : undefined,
               promo_id: appliedPromo?.promoId ? String(appliedPromo.promoId) : undefined,
               promo_type: appliedPromo?.promoType || undefined,
+              tip_amount: tipAmount > 0 ? String(tipAmount) : undefined,
             }
           }),
         })
@@ -771,6 +777,7 @@ export default function CheckoutPage() {
             service_time: pickupTime,
             delivery_fee: cashDeliveryFee,
             tax_amount: cashTax,
+            tip_amount: tipAmount > 0 ? tipAmount : undefined,
             order_notes: orderNotes.trim() || undefined
           }),
         })
@@ -1342,6 +1349,79 @@ export default function CheckoutPage() {
                       <span data-testid={`text-tax-${taxItem.type.toLowerCase()}`}>${taxItem.amount.toFixed(2)}</span>
                     </div>
                   ))}
+
+                  {showTips && (
+                    <>
+                      <Separator />
+                      <div className="space-y-2">
+                        <span className="text-sm font-medium">Tip your driver</span>
+                        <div className="flex gap-2 flex-wrap">
+                          {[10, 15, 20].map((pct) => (
+                            <Button
+                              key={pct}
+                              type="button"
+                              size="sm"
+                              variant={tipType === 'percent' && tipPercent === pct ? 'default' : 'outline'}
+                              data-testid={`button-tip-${pct}`}
+                              onClick={() => {
+                                if (tipType === 'percent' && tipPercent === pct) {
+                                  clearTip()
+                                } else {
+                                  setTipPercent(pct)
+                                  setCustomTipInput('')
+                                }
+                              }}
+                            >
+                              {pct}%
+                            </Button>
+                          ))}
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant={tipType === 'custom' ? 'default' : 'outline'}
+                            data-testid="button-tip-custom"
+                            onClick={() => {
+                              if (tipType === 'custom') {
+                                clearTip()
+                                setCustomTipInput('')
+                              } else {
+                                setTipCustom(0)
+                                setCustomTipInput('')
+                              }
+                            }}
+                          >
+                            Custom
+                          </Button>
+                        </div>
+                        {tipType === 'custom' && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm">$</span>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.50"
+                              placeholder="0.00"
+                              value={customTipInput}
+                              data-testid="input-tip-custom"
+                              className="w-24 rounded-md border px-2 py-1 text-sm bg-background"
+                              onChange={(e) => {
+                                setCustomTipInput(e.target.value)
+                                const val = parseFloat(e.target.value)
+                                setTipCustom(isNaN(val) ? 0 : val)
+                              }}
+                            />
+                          </div>
+                        )}
+                        {tipAmount > 0 && (
+                          <div className="flex justify-between text-sm">
+                            <span>Tip</span>
+                            <span data-testid="text-tip">${tipAmount.toFixed(2)}</span>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+
                   <Separator />
                   <div className="flex justify-between text-lg font-bold">
                     <span>Total</span>

@@ -28,6 +28,7 @@ CRITICAL: NEVER add postgresql-16 to .replit modules. This project uses external
 -   **Customer Ordering System**: Separate Supabase Auth (including Google OAuth), Delivery vs. Pickup order types with contextual fees and scheduling, Multi-step Checkout Flow, Account Pages for order history and addresses, Server-side validation, Default branding, Enhanced order customization, dynamic prep times.
 -   **Promotions**: Comprehensive coupon and deal management including item targeting, tiered discounts, and usage limits.
 -   **Subdomain Routing**: Supports branded subdomain URLs (e.g., `restaurant.menu.ca`) with dynamic mapping and caching.
+-   **Tip-the-Driver**: Optional per-restaurant tip UI at checkout (delivery orders only), with 10%/15%/20% presets + custom amount. Controlled by `accepts_tips` in `delivery_and_pickup_configs`. Tip added after tax, saved to `orders.tip_amount`, included in Stripe charge and cash order totals.
 -   **Payment Mode Toggle**: Allows per-restaurant switching between test and live Stripe payments.
 -   **Provincial Tax System**: Dynamic provincial tax calculation with per-restaurant rates and itemized tax lines.
 -   **Delivery Providers System**: Extensible third-party integration system for delivery providers (e.g., RestoZone) for fee calculation and driver dispatch.
