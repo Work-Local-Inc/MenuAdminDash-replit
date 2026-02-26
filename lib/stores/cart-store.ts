@@ -93,6 +93,11 @@ interface CartStore {
   // Tax configuration (fetched per restaurant)
   taxConfig: TaxConfig[];
   
+  // Tip
+  tipType: 'none' | 'percent' | 'custom';
+  tipPercent: number; // e.g. 10, 15, 20
+  tipCustom: number; // custom dollar amount
+  
   // Actions
   setRestaurant: (id: number, name: string, slug: string, deliveryFee: number, minOrder: number, address?: string, primaryColor?: string, gaMeasurementId?: string | null) => void;
   setGaMeasurementId: (id: string | null) => void;
@@ -113,13 +118,20 @@ interface CartStore {
   // Tax config actions
   setTaxConfig: (config: TaxConfig[]) => void;
   
+  // Tip actions
+  setTipPercent: (percent: number) => void;
+  setTipCustom: (amount: number) => void;
+  clearTip: () => void;
+  
   // Computed values
   getItemCount: () => number;
   getSubtotal: () => number;
   getDiscount: () => number; // Discount amount from promo
   getTax: () => number; // Total tax amount
   getTaxBreakdown: () => TaxLineItem[]; // Itemized tax breakdown (e.g., TPS + TVQ for Quebec)
-  getTotal: () => number;
+  getTipAmount: () => number; // Computed tip in dollars
+  getTotal: () => number; // Total INCLUDING tip
+  getTotalBeforeTip: () => number; // Total WITHOUT tip (for tax/fee calculations)
   getEffectiveDeliveryFee: () => number; // Returns 0 for pickup
 }
 
@@ -200,6 +212,9 @@ export const useCartStore = create<CartStore>()(
       items: [],
       appliedPromo: null,
       taxConfig: [{ type: 'HST', rate: 0.13 }] as TaxConfig[], // Default: Ontario HST 13%
+      tipType: 'none' as const,
+      tipPercent: 0,
+      tipCustom: 0,
       
       // Set restaurant info
       setRestaurant: (id, name, slug, deliveryFee, minOrder, address, primaryColor, gaMeasurementId) => {
@@ -379,6 +394,9 @@ export const useCartStore = create<CartStore>()(
           pickupTime: { type: 'asap' },
           items: [],
           appliedPromo: null,
+          tipType: 'none',
+          tipPercent: 0,
+          tipCustom: 0,
         });
       },
       
@@ -395,6 +413,18 @@ export const useCartStore = create<CartStore>()(
       // Set tax config (called when restaurant is loaded)
       setTaxConfig: (config: TaxConfig[]) => {
         set({ taxConfig: config.length > 0 ? config : [{ type: 'HST', rate: 0.13 }] });
+      },
+      
+      setTipPercent: (percent: number) => {
+        set({ tipType: percent === 0 ? 'none' : 'percent', tipPercent: percent, tipCustom: 0 });
+      },
+      
+      setTipCustom: (amount: number) => {
+        set({ tipType: amount === 0 ? 'none' : 'custom', tipCustom: amount, tipPercent: 0 });
+      },
+      
+      clearTip: () => {
+        set({ tipType: 'none', tipPercent: 0, tipCustom: 0 });
       },
       
       // Get total item count
@@ -473,18 +503,28 @@ export const useCartStore = create<CartStore>()(
         return getTotalTax(taxBreakdown);
       },
       
-      // Get total (subtotal + delivery fee - discount + tax)
-      getTotal: () => {
+      getTipAmount: () => {
+        const { tipType, tipPercent, tipCustom } = get();
+        if (tipType === 'none') return 0;
+        if (tipType === 'custom') return Math.max(0, tipCustom);
+        const subtotal = get().getSubtotal();
+        return Math.round(subtotal * (tipPercent / 100) * 100) / 100;
+      },
+      
+      getTotalBeforeTip: () => {
         const subtotal = get().getSubtotal();
         const discount = get().getDiscount();
         const effectiveDeliveryFee = get().getEffectiveDeliveryFee();
         const tax = get().getTax();
         const promo = get().appliedPromo;
-        
-        // Don't double-count delivery discount
         const nonDeliveryDiscount = promo?.type === 'delivery' ? 0 : discount;
-        
         return Math.max(0, subtotal + effectiveDeliveryFee - nonDeliveryDiscount + tax);
+      },
+      
+      getTotal: () => {
+        const totalBeforeTip = get().getTotalBeforeTip();
+        const tip = get().getTipAmount();
+        return totalBeforeTip + tip;
       },
     }),
     {

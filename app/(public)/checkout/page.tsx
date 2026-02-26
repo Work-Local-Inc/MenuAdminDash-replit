@@ -74,14 +74,22 @@ export default function CheckoutPage() {
     getEffectiveDeliveryFee, 
     getTax,
     getTaxBreakdown,
-    getTotal, 
+    getTipAmount,
+    getTotal,
+    getTotalBeforeTip,
     minOrder,
     orderType,
     orderTypeSelected,
     pickupTime,
     clearCart,
     appliedPromo,
-    applyPromo
+    applyPromo,
+    tipType,
+    tipPercent,
+    tipCustom,
+    setTipPercent,
+    setTipCustom,
+    clearTip,
   } = useCartStore()
   
   const cartHydrated = useHasCartHydrated()
