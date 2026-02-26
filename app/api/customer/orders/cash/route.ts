@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
       order_notes,
       tip_amount: rawTipAmount,
     } = body
-    const tipAmount = typeof rawTipAmount === 'number' && Number.isFinite(rawTipAmount) && rawTipAmount > 0 ? rawTipAmount : null
+    const tipAmount = typeof rawTipAmount === 'number' && Number.isFinite(rawTipAmount) && rawTipAmount > 0 ? rawTipAmount : 0
 
     // Resolve user_id: If authenticated but no user_id provided (phone-only users),
     // find or create their users table record so their profile persists across orders
